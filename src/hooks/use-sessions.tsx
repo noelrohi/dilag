@@ -18,6 +18,7 @@ import {
   loadSessionsMetadata,
   deleteSessionMetadata,
   extractTextFromParts,
+  generateTitle,
   type SessionMeta,
   type OpenCodeMessage,
 } from "@/lib/opencode";
@@ -203,6 +204,9 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
     async (content: string) => {
       if (!currentSessionId) return;
 
+      // Check if this is the first message (for title generation)
+      const isFirstMessage = messages.length === 0;
+
       try {
         setIsLoading(true);
         setError(null);
@@ -227,6 +231,20 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
           createdAt: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
+
+        // Generate title after first response
+        if (isFirstMessage) {
+          const currentSession = sessions.find((s) => s.id === currentSessionId);
+          if (currentSession) {
+            generateTitle(content).then(async (title) => {
+              const updatedSession = { ...currentSession, name: title };
+              await saveSessionMetadata(updatedSession);
+              setSessions((prev) =>
+                prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
+              );
+            });
+          }
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to send message"
@@ -236,7 +254,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [currentSessionId]
+    [currentSessionId, messages.length, sessions]
   );
 
   return (
