@@ -5,7 +5,7 @@ import {
   ReasoningTrigger,
   ReasoningContent,
 } from "@/components/ai-elements/reasoning";
-import { getToolRenderer } from "./tool-renderers";
+import { ToolPart } from "./tool-part";
 import { ImageIcon, BotIcon } from "lucide-react";
 
 interface MessagePartProps {
@@ -29,8 +29,7 @@ export function MessagePart({ part }: MessagePartProps) {
 
     case "tool":
       if (!part.tool || !part.state) return null;
-      const ToolRenderer = getToolRenderer(part.tool);
-      return <ToolRenderer tool={part.tool} state={part.state} />;
+      return <ToolPart tool={part.tool} state={part.state} />;
 
     case "file":
       if (!part.url) return null;
@@ -51,7 +50,6 @@ export function MessagePart({ part }: MessagePartProps) {
           </div>
         );
       }
-      // Non-image file
       return (
         <div className="inline-flex items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm">
           <ImageIcon className="size-4 text-muted-foreground" />
@@ -72,7 +70,6 @@ export function MessagePart({ part }: MessagePartProps) {
       );
 
     case "step-finish":
-      // Usually not rendered visually
       return null;
 
     default:
