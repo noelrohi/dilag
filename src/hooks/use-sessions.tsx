@@ -7,14 +7,19 @@ import {
   type ReactNode,
 } from "react";
 import {
-  getClient,
+  getBaseUrl,
   startServer,
+  createSession as createOpenCodeSession,
+  deleteSession as deleteOpenCodeSession,
+  getSessionMessages,
+  sendMessage as sendOpenCodeMessage,
   createSessionDir,
   saveSessionMetadata,
   loadSessionsMetadata,
   deleteSessionMetadata,
+  extractTextFromParts,
   type SessionMeta,
-  type OpencodeClient,
+  type OpenCodeMessage,
 } from "@/lib/opencode";
 
 export interface Message {
@@ -39,16 +44,14 @@ interface SessionsContextValue {
 
 const SessionsContext = createContext<SessionsContextValue | null>(null);
 
-// Helper to extract text from parts array
-function extractTextFromParts(parts: unknown): string {
-  if (!Array.isArray(parts)) return "";
-  return parts
-    .filter(
-      (p): p is { type: string; text: string } =>
-        typeof p === "object" && p !== null && "type" in p && p.type === "text"
-    )
-    .map((p) => p.text ?? "")
-    .join("");
+// Convert OpenCode message to our Message format
+function convertMessage(msg: OpenCodeMessage): Message {
+  return {
+    id: msg.info.id,
+    role: msg.info.role,
+    content: extractTextFromParts(msg.parts),
+    createdAt: new Date(msg.info.time.created).toISOString(),
+  };
 }
 
 export function SessionsProvider({ children }: { children: ReactNode }) {
@@ -58,7 +61,6 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isServerReady, setIsServerReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [client, setClient] = useState<OpencodeClient | null>(null);
 
   // Initialize server and load sessions on mount
   useEffect(() => {
@@ -70,9 +72,9 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         // Start the OpenCode server
         await startServer();
 
-        // Get the client
-        const c = await getClient();
-        setClient(c);
+        // Initialize the base URL
+        await getBaseUrl();
+
         setIsServerReady(true);
 
         // Load persisted sessions
@@ -83,7 +85,15 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         if (savedSessions.length > 0) {
           const mostRecent = savedSessions[savedSessions.length - 1];
           setCurrentSessionId(mostRecent.id);
-          // Messages will be loaded on demand or stored locally
+
+          // Load messages for this session
+          try {
+            const openCodeMessages = await getSessionMessages(mostRecent.id);
+            setMessages(openCodeMessages.map(convertMessage));
+          } catch {
+            // Session might not exist in OpenCode yet
+            setMessages([]);
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to initialize");
@@ -98,19 +108,13 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
 
   const createSession = useCallback(
     async (name?: string): Promise<string | null> => {
-      if (!client) return null;
-
       try {
         setIsLoading(true);
         setError(null);
 
         // Create session in OpenCode
-        const response = await client.session.create({});
-        const sessionId = response.data?.id;
-
-        if (!sessionId) {
-          throw new Error("Failed to create session - no ID returned");
-        }
+        const openCodeSession = await createOpenCodeSession();
+        const sessionId = openCodeSession.id;
 
         // Create the session directory
         const cwd = await createSessionDir(sessionId);
@@ -142,31 +146,35 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [client, sessions.length]
+    [sessions.length]
   );
 
-  const selectSession = useCallback(
-    async (sessionId: string) => {
-      setCurrentSessionId(sessionId);
-      // Clear messages when switching sessions
-      // In a production app, you might want to load/cache messages per session
+  const selectSession = useCallback(async (sessionId: string) => {
+    setCurrentSessionId(sessionId);
+    setIsLoading(true);
+
+    try {
+      // Load messages for this session
+      const openCodeMessages = await getSessionMessages(sessionId);
+      setMessages(openCodeMessages.map(convertMessage));
+    } catch {
+      // Session might not exist in OpenCode, start fresh
       setMessages([]);
-    },
-    []
-  );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
       try {
         setIsLoading(true);
 
-        // Delete from OpenCode if possible
-        if (client) {
-          try {
-            await client.session.delete({ path: { id: sessionId } });
-          } catch {
-            // Might not exist in OpenCode, continue anyway
-          }
+        // Delete from OpenCode
+        try {
+          await deleteOpenCodeSession(sessionId);
+        } catch {
+          // Might not exist in OpenCode, continue anyway
         }
 
         // Delete local metadata and directory
@@ -188,12 +196,12 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [client, currentSessionId]
+    [currentSessionId]
   );
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!client || !currentSessionId) return;
+      if (!currentSessionId) return;
 
       try {
         setIsLoading(true);
@@ -209,26 +217,16 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setMessages((prev) => [...prev, userMessage]);
 
         // Send to OpenCode
-        const response = await client.session.prompt({
-          path: { id: currentSessionId },
-          body: {
-            parts: [{ type: "text", text: content }],
-          },
-        });
+        const response = await sendOpenCodeMessage(currentSessionId, content);
 
         // Add assistant response
-        if (response.data) {
-          const data = response.data as { info?: { id?: string }; parts?: unknown };
-          const assistantContent = extractTextFromParts(data.parts);
-
-          const assistantMessage: Message = {
-            id: data.info?.id ?? crypto.randomUUID(),
-            role: "assistant",
-            content: assistantContent,
-            createdAt: new Date().toISOString(),
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-        }
+        const assistantMessage: Message = {
+          id: response.info.id,
+          role: "assistant",
+          content: extractTextFromParts(response.parts),
+          createdAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to send message"
@@ -238,7 +236,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [client, currentSessionId]
+    [currentSessionId]
   );
 
   return (
