@@ -311,17 +311,21 @@ export const useSessionStore = create<SessionState>()(
   )
 );
 
+// Stable empty references to avoid infinite loops
+const EMPTY_MESSAGES: Message[] = [];
+const EMPTY_DIFFS: FileDiff[] = [];
+
 // Selector hooks for performance
 export const useSessions = () => useSessionStore((state) => state.sessions);
 export const useCurrentSessionId = () => useSessionStore((state) => state.currentSessionId);
 export const useCurrentSession = () =>
   useSessionStore((state) => state.sessions.find((s) => s.id === state.currentSessionId) ?? null);
 export const useSessionMessages = (sessionId: string | null) =>
-  useSessionStore((state) => (sessionId ? state.messages[sessionId] ?? [] : []));
+  useSessionStore((state) => (sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES));
 export const useSessionStatus = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.sessionStatus[sessionId] ?? "unknown" : "unknown"));
 export const useSessionDiffs = (sessionId: string | null) =>
-  useSessionStore((state) => (sessionId ? state.sessionDiffs[sessionId] ?? [] : []));
+  useSessionStore((state) => (sessionId ? state.sessionDiffs[sessionId] ?? EMPTY_DIFFS : EMPTY_DIFFS));
 export const useIsServerReady = () => useSessionStore((state) => state.isServerReady);
 export const useError = () => useSessionStore((state) => state.error);
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents);
