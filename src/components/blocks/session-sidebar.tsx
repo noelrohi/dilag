@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import {
   Plus,
   Trash2,
@@ -34,9 +34,12 @@ type SessionMeta = {
 };
 
 function SessionStatusDot({ sessionId }: { sessionId: string }) {
-  const status = useSessionStore(
-    (state) => state.sessionStatus[sessionId] ?? "unknown"
+  const selector = useCallback(
+    (state: { sessionStatus: Record<string, string> }) =>
+      state.sessionStatus[sessionId] ?? "unknown",
+    [sessionId]
   );
+  const status = useSessionStore(selector);
 
   return (
     <div
