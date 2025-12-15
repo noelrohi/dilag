@@ -85,8 +85,12 @@ export interface OpenCodeMessage {
 }
 
 // OpenCode API functions
-export async function createSession(): Promise<OpenCodeSession> {
-  const response = await fetch(`${baseUrl}/session`, {
+export async function createSession(directory?: string): Promise<OpenCodeSession> {
+  const url = directory
+    ? `${baseUrl}/session?directory=${encodeURIComponent(directory)}`
+    : `${baseUrl}/session`;
+
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
@@ -216,7 +220,8 @@ export async function sendMessageStreaming(
     onComplete: (messageInfo: MessageInfo) => void;
     onError?: (error: Error) => void;
   },
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  directory?: string
 ): Promise<() => void> {
   let messageId: string | null = null;
   let eventSource: EventSource | null = null;
@@ -246,9 +251,14 @@ export async function sendMessageStreaming(
     }
   });
 
+  // Build URL with optional directory parameter
+  const messageUrl = directory
+    ? `${baseUrl}/session/${sessionId}/message?directory=${encodeURIComponent(directory)}`
+    : `${baseUrl}/session/${sessionId}/message`;
+
   // Send the message
   try {
-    const response = await fetch(`${baseUrl}/session/${sessionId}/message`, {
+    const response = await fetch(messageUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

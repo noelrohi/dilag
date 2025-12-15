@@ -114,12 +114,15 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setError(null);
 
-        // Create session in OpenCode
-        const openCodeSession = await createOpenCodeSession();
-        const sessionId = openCodeSession.id;
+        // Generate local session ID first
+        const localSessionId = crypto.randomUUID();
 
         // Create the session directory
-        const cwd = await createSessionDir(sessionId);
+        const cwd = await createSessionDir(localSessionId);
+
+        // Create session in OpenCode with the directory
+        const openCodeSession = await createOpenCodeSession(cwd);
+        const sessionId = openCodeSession.id;
 
         // Create session metadata
         const sessionMeta: SessionMeta = {
@@ -208,6 +211,10 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
       // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;
 
+      // Get current session's cwd for directory isolation
+      const currentSession = sessions.find((s) => s.id === currentSessionId);
+      const directory = currentSession?.cwd;
+
       // Generate a temporary ID for the assistant message
       const assistantMessageId = crypto.randomUUID();
 
@@ -234,7 +241,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
-        // Send with streaming
+        // Send with streaming (pass directory for session isolation)
         const cleanup = await sendMessageStreaming(
           currentSessionId,
           content,
@@ -282,7 +289,9 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
               setIsLoading(false);
               cleanup();
             },
-          }
+          },
+          undefined, // use default model
+          directory
         );
       } catch (err) {
         setError(
