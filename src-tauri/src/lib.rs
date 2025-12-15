@@ -36,12 +36,14 @@ fn get_sessions_file() -> PathBuf {
     get_dilag_dir().join("sessions.json")
 }
 
-fn get_config_dir() -> PathBuf {
-    get_dilag_dir().join("config")
+fn get_opencode_config_dir() -> PathBuf {
+    // OpenCode looks in $XDG_CONFIG_HOME/opencode
+    // We set XDG_CONFIG_HOME to ~/.dilag, so config goes in ~/.dilag/opencode/
+    get_dilag_dir().join("opencode")
 }
 
 fn ensure_config_exists() -> Result<(), String> {
-    let config_dir = get_config_dir();
+    let config_dir = get_opencode_config_dir();
     fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
 
     let config_file = config_dir.join("opencode.json");
@@ -153,12 +155,13 @@ async fn start_opencode_server(
     ensure_config_exists()?;
 
     // Spawn opencode server with isolated config
+    // Set XDG_CONFIG_HOME to ~/.dilag so OpenCode looks in ~/.dilag/opencode/ for all config including plugins
     let shell = app.shell();
-    let config_dir = get_config_dir();
+    let dilag_dir = get_dilag_dir();
     let (_rx, child) = shell
         .command("opencode")
         .args(["serve", "--port", &OPENCODE_PORT.to_string(), "--hostname", "127.0.0.1"])
-        .env("OPENCODE_CONFIG_DIR", config_dir.to_string_lossy().to_string())
+        .env("XDG_CONFIG_HOME", dilag_dir.to_string_lossy().to_string())
         .spawn()
         .map_err(|e| format!("Failed to start opencode server: {}", e))?;
 
