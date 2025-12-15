@@ -172,7 +172,10 @@ export interface OAuthAuthorizeResponse {
   instructions: string;
 }
 
-export async function getProviders(): Promise<{ all: ProviderInfo[] }> {
+export async function getProviders(): Promise<{
+  all: ProviderInfo[];
+  connected: string[];
+}> {
   const response = await fetch(`${baseUrl}/provider`);
   if (!response.ok) {
     throw new Error(`Failed to get providers: ${response.statusText}`);

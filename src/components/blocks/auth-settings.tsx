@@ -16,28 +16,19 @@ import {
   startOAuthFlow,
   completeOAuthFlow,
   disconnectProvider,
-  type ProviderInfo,
 } from "@/lib/opencode";
-
-const OAUTH_CONNECTED_KEY = "dilag:anthropic:oauth_connected";
 
 export function AuthSettings() {
   const [open, setOpen] = useState(false);
-  const [provider, setProvider] = useState<ProviderInfo | null>(null);
+  const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [oauthConnected, setOauthConnected] = useState(() =>
-    localStorage.getItem(OAUTH_CONNECTED_KEY) === "true"
-  );
 
   // OAuth flow state
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   const [oauthCode, setOauthCode] = useState("");
 
-  const isConnected =
-    oauthConnected ||
-    (provider?.key != null && provider.key !== "") ||
-    (provider?.options?.apiKey != null && provider.options.apiKey !== "");
+  const isConnected = connectedProviders.includes("anthropic");
 
   useEffect(() => {
     if (open) {
@@ -51,8 +42,7 @@ export function AuthSettings() {
       setError(null);
 
       const providersRes = await getProviders();
-      const anthropic = providersRes.all.find((p) => p.id === "anthropic");
-      setProvider(anthropic || null);
+      setConnectedProviders(providersRes.connected);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load provider info");
     } finally {
@@ -87,11 +77,7 @@ export function AuthSettings() {
 
       await completeOAuthFlow("anthropic", oauthCode.trim());
 
-      // Mark as connected via OAuth
-      localStorage.setItem(OAUTH_CONNECTED_KEY, "true");
-      setOauthConnected(true);
-
-      // Refresh provider info
+      // Refresh provider info to get updated connected status
       await loadProviderInfo();
 
       // Reset OAuth state
@@ -111,11 +97,7 @@ export function AuthSettings() {
 
       await disconnectProvider("anthropic");
 
-      // Clear OAuth connected flag
-      localStorage.removeItem(OAUTH_CONNECTED_KEY);
-      setOauthConnected(false);
-
-      // Refresh provider info
+      // Refresh provider info to get updated connected status
       await loadProviderInfo();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disconnect");
