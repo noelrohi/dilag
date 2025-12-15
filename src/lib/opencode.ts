@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 const DEFAULT_MODEL = {
   providerID: "anthropic",
-  modelID: "claude-sonnet-4-20250514",
+  modelID: "claude-opus-4-5",
 };
 
 let baseUrl = "http://127.0.0.1:4096";
@@ -150,4 +150,100 @@ export function extractTextFromParts(parts: MessagePart[]): string {
     .filter((p) => p.type === "text" && p.text)
     .map((p) => p.text!)
     .join("");
+}
+
+// Auth types and functions
+export interface ProviderInfo {
+  id: string;
+  name: string;
+  key: string | null;
+  models: Record<string, unknown>;
+}
+
+export interface AuthMethod {
+  type: "oauth" | "api";
+  label: string;
+}
+
+export interface OAuthAuthorizeResponse {
+  url: string;
+  method: string;
+  instructions: string;
+}
+
+export async function getProviders(): Promise<{ all: ProviderInfo[] }> {
+  const response = await fetch(`${baseUrl}/provider`);
+  if (!response.ok) {
+    throw new Error(`Failed to get providers: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getProviderAuthMethods(): Promise<
+  Record<string, AuthMethod[]>
+> {
+  const response = await fetch(`${baseUrl}/provider/auth`);
+  if (!response.ok) {
+    throw new Error(`Failed to get auth methods: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function startOAuthFlow(
+  providerId: string,
+  methodIndex: number
+): Promise<OAuthAuthorizeResponse> {
+  const response = await fetch(
+    `${baseUrl}/provider/${providerId}/oauth/authorize`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: methodIndex }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to start OAuth: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function completeOAuthFlow(
+  providerId: string,
+  code: string
+): Promise<boolean> {
+  const response = await fetch(
+    `${baseUrl}/provider/${providerId}/oauth/callback?code=${encodeURIComponent(code)}`,
+    { method: "GET" }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to complete OAuth: ${response.statusText}`);
+  }
+  return true;
+}
+
+export async function setApiKey(
+  providerId: string,
+  apiKey: string
+): Promise<boolean> {
+  const response = await fetch(`${baseUrl}/auth/${providerId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "api", key: apiKey }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to set API key: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function disconnectProvider(providerId: string): Promise<boolean> {
+  const response = await fetch(`${baseUrl}/auth/${providerId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "api", key: "" }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to disconnect: ${response.statusText}`);
+  }
+  return true;
 }

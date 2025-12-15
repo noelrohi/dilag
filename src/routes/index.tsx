@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SessionSidebar } from "@/components/blocks/session-sidebar";
 import { ChatView } from "@/components/blocks/chat-view";
+import { AuthSettings } from "@/components/blocks/auth-settings";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
@@ -17,6 +18,9 @@ function HomePage() {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-4" />
           <h1 className="text-sm font-medium">dilag</h1>
+          <div className="ml-auto">
+            <AuthSettings />
+          </div>
         </header>
         <ChatView />
       </SidebarInset>
