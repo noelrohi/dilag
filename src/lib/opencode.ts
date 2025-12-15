@@ -86,6 +86,7 @@ export interface OpenCodeMessage {
 
 // OpenCode API functions
 export async function createSession(directory?: string): Promise<OpenCodeSession> {
+  // Pass directory param to set session's working directory for isolation
   const url = directory
     ? `${baseUrl}/session?directory=${encodeURIComponent(directory)}`
     : `${baseUrl}/session`;
@@ -111,9 +112,13 @@ export async function deleteSession(sessionId: string): Promise<void> {
 }
 
 export async function getSessionMessages(
-  sessionId: string
+  sessionId: string,
+  directory?: string
 ): Promise<OpenCodeMessage[]> {
-  const response = await fetch(`${baseUrl}/session/${sessionId}/message`, {
+  const url = directory
+    ? `${baseUrl}/session/${sessionId}/message?directory=${encodeURIComponent(directory)}`
+    : `${baseUrl}/session/${sessionId}/message`;
+  const response = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
@@ -159,8 +164,11 @@ export function extractTextFromParts(parts: MessagePart[]): string {
 }
 
 // Fetch a single session by ID (includes title)
-export async function getSession(sessionId: string): Promise<OpenCodeSession> {
-  const response = await fetch(`${baseUrl}/session/${sessionId}`);
+export async function getSession(sessionId: string, directory?: string): Promise<OpenCodeSession> {
+  const url = directory
+    ? `${baseUrl}/session/${sessionId}?directory=${encodeURIComponent(directory)}`
+    : `${baseUrl}/session/${sessionId}`;
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to get session: ${response.statusText}`);
   }
@@ -191,9 +199,14 @@ export type OpenCodeEvent =
 // Create an EventSource connection to the event stream
 export function createEventSource(
   onEvent: (event: OpenCodeEvent) => void,
-  onError?: (error: Event) => void
+  onError?: (error: Event) => void,
+  directory?: string
 ): EventSource {
-  const eventSource = new EventSource(`${baseUrl}/event`);
+  // Pass directory to scope events to the correct project context
+  const url = directory
+    ? `${baseUrl}/event?directory=${encodeURIComponent(directory)}`
+    : `${baseUrl}/event`;
+  const eventSource = new EventSource(url);
 
   eventSource.onmessage = (e) => {
     try {
@@ -226,30 +239,34 @@ export async function sendMessageStreaming(
   let messageId: string | null = null;
   let eventSource: EventSource | null = null;
 
-  // Set up event listener before sending
-  eventSource = createEventSource((event) => {
-    if (event.type === "message.part.updated") {
-      const partEvent = event as EventMessagePartUpdated;
-      const { part, delta } = partEvent.properties;
-      // Only handle parts for our session
-      if (part.sessionID === sessionId && part.type === "text" && delta) {
-        messageId = part.messageID ?? null;
-        callbacks.onText(delta, part.id);
+  // Set up event listener before sending (pass directory for correct event scoping)
+  eventSource = createEventSource(
+    (event) => {
+      if (event.type === "message.part.updated") {
+        const partEvent = event as EventMessagePartUpdated;
+        const { part, delta } = partEvent.properties;
+        // Only handle parts for our session
+        if (part.sessionID === sessionId && part.type === "text" && delta) {
+          messageId = part.messageID ?? null;
+          callbacks.onText(delta, part.id);
+        }
+      } else if (event.type === "message.updated") {
+        const msgEvent = event as EventMessageUpdated;
+        const { info } = msgEvent.properties;
+        // Check if this is our message completing
+        if (
+          info.sessionID === sessionId &&
+          info.role === "assistant" &&
+          info.time.completed &&
+          (messageId === null || info.id === messageId)
+        ) {
+          callbacks.onComplete(info);
+        }
       }
-    } else if (event.type === "message.updated") {
-      const msgEvent = event as EventMessageUpdated;
-      const { info } = msgEvent.properties;
-      // Check if this is our message completing
-      if (
-        info.sessionID === sessionId &&
-        info.role === "assistant" &&
-        info.time.completed &&
-        (messageId === null || info.id === messageId)
-      ) {
-        callbacks.onComplete(info);
-      }
-    }
-  });
+    },
+    undefined,
+    directory
+  );
 
   // Build URL with optional directory parameter
   const messageUrl = directory

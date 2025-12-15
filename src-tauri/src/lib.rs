@@ -154,8 +154,9 @@ async fn start_opencode_server(
     fs::create_dir_all(get_sessions_dir()).map_err(|e| e.to_string())?;
     ensure_config_exists()?;
 
-    // Spawn opencode server with isolated config
-    // Set XDG_CONFIG_HOME to ~/.dilag so OpenCode looks in ~/.dilag/opencode/ for all config including plugins
+    // Spawn opencode server with isolated config (XDG_CONFIG_HOME)
+    // This makes OpenCode look in ~/.dilag/opencode/ for config/plugins
+    // Auth still works from ~/.local/share/opencode/ (XDG_DATA_HOME)
     let shell = app.shell();
     let dilag_dir = get_dilag_dir();
     let (_rx, child) = shell

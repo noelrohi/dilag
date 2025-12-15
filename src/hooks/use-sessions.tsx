@@ -88,9 +88,9 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
           const mostRecent = savedSessions[savedSessions.length - 1];
           setCurrentSessionId(mostRecent.id);
 
-          // Load messages for this session
+          // Load messages for this session (pass directory for isolation)
           try {
-            const openCodeMessages = await getSessionMessages(mostRecent.id);
+            const openCodeMessages = await getSessionMessages(mostRecent.id, mostRecent.cwd);
             setMessages(openCodeMessages.map(convertMessage));
           } catch {
             // Session might not exist in OpenCode yet
@@ -114,13 +114,11 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setError(null);
 
-        // Generate local session ID first
-        const localSessionId = crypto.randomUUID();
+        // Create session directory first (use UUID for unique path)
+        const dirId = crypto.randomUUID();
+        const cwd = await createSessionDir(dirId);
 
-        // Create the session directory
-        const cwd = await createSessionDir(localSessionId);
-
-        // Create session in OpenCode with the directory
+        // Create session in OpenCode with the directory for isolation
         const openCodeSession = await createOpenCodeSession(cwd);
         const sessionId = openCodeSession.id;
 
@@ -158,9 +156,13 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
     setCurrentSessionId(sessionId);
     setIsLoading(true);
 
+    // Get session's directory for isolation
+    const session = sessions.find((s) => s.id === sessionId);
+    const directory = session?.cwd;
+
     try {
-      // Load messages for this session
-      const openCodeMessages = await getSessionMessages(sessionId);
+      // Load messages for this session (pass directory for isolation)
+      const openCodeMessages = await getSessionMessages(sessionId, directory);
       setMessages(openCodeMessages.map(convertMessage));
     } catch {
       // Session might not exist in OpenCode, start fresh
@@ -168,7 +170,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [sessions]);
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
@@ -211,7 +213,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
       // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;
 
-      // Get current session's cwd for directory isolation
+      // Get session's directory for isolation
       const currentSession = sessions.find((s) => s.id === currentSessionId);
       const directory = currentSession?.cwd;
 
@@ -268,17 +270,14 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
               setIsLoading(false);
 
               // Update title from OpenCode after first response
-              if (isFirstMessage) {
-                const currentSession = sessions.find((s) => s.id === currentSessionId);
-                if (currentSession) {
-                  getSession(currentSessionId).then(async (openCodeSession) => {
-                    const updatedSession = { ...currentSession, name: openCodeSession.title };
-                    await saveSessionMetadata(updatedSession);
-                    setSessions((prev) =>
-                      prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
-                    );
-                  });
-                }
+              if (isFirstMessage && currentSession) {
+                getSession(currentSessionId, directory).then(async (openCodeSession) => {
+                  const updatedSession = { ...currentSession, name: openCodeSession.title };
+                  await saveSessionMetadata(updatedSession);
+                  setSessions((prev) =>
+                    prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
+                  );
+                });
               }
 
               // Clean up event source
