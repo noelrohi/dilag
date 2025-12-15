@@ -1,9 +1,9 @@
 import {
-  Task,
-  TaskTrigger,
-  TaskContent,
-  TaskItem,
-} from "@/components/ai-elements/task";
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import { Bot } from "lucide-react";
+import { CustomToolHeader } from "./tool-header";
 import type { ToolRendererProps } from "./types";
 
 export function TaskTool({ state }: ToolRendererProps) {
@@ -18,27 +18,30 @@ export function TaskTool({ state }: ToolRendererProps) {
   const output = state.status === "completed" ? state.output : undefined;
 
   return (
-    <Task defaultOpen={false}>
-      <TaskTrigger title={description || "Running task..."} />
-      <TaskContent>
+    <Collapsible defaultOpen={false}>
+      <CustomToolHeader
+        icon={Bot}
+        title="Task"
+        subtitle={description}
+        state={state}
+      />
+      <CollapsibleContent className="pl-5 pt-1 space-y-2">
         {prompt && (
-          <TaskItem>
-            <span className="font-medium">Prompt:</span> {prompt.slice(0, 200)}
+          <p className="text-xs text-muted-foreground">
+            {prompt.slice(0, 200)}
             {prompt.length > 200 && "..."}
-          </TaskItem>
+          </p>
         )}
         {output && (
-          <TaskItem>
-            <span className="font-medium">Output:</span> {output.slice(0, 500)}
+          <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
+            {output.slice(0, 500)}
             {output.length > 500 && "..."}
-          </TaskItem>
+          </pre>
         )}
         {state.status === "error" && (
-          <TaskItem className="text-destructive">
-            <span className="font-medium">Error:</span> {state.error}
-          </TaskItem>
+          <p className="text-xs text-destructive">{state.error}</p>
         )}
-      </TaskContent>
-    </Task>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

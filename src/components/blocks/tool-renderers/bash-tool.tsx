@@ -1,5 +1,7 @@
-import { Tool, ToolContent, ToolOutput } from "@/components/ai-elements/tool";
-import { CodeBlock } from "@/components/ai-elements/code-block";
+import {
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { Terminal } from "lucide-react";
 import { CustomToolHeader } from "./tool-header";
 import type { ToolRendererProps } from "./types";
@@ -13,29 +15,32 @@ export function BashTool({ state }: ToolRendererProps) {
     state.status === "completed"
       ? (state.input.description as string | undefined)
       : undefined;
+  const output = state.status === "completed" ? state.output : undefined;
 
   return (
-    <Tool defaultOpen={false}>
+    <Collapsible defaultOpen={false}>
       <CustomToolHeader
         icon={Terminal}
         title="Shell"
         subtitle={description || command?.slice(0, 50)}
         state={state}
       />
-      <ToolContent>
+      <CollapsibleContent className="pl-5 pt-1 space-y-2">
         {command && (
-          <div className="p-4">
-            <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide mb-2">
-              Command
-            </h4>
-            <CodeBlock code={command} language="bash" />
-          </div>
+          <pre className="text-xs font-mono bg-muted/50 rounded px-2 py-1 overflow-x-auto">
+            $ {command}
+          </pre>
         )}
-        <ToolOutput
-          output={state.status === "completed" ? state.output : undefined}
-          errorText={state.status === "error" ? state.error : undefined}
-        />
-      </ToolContent>
-    </Tool>
+        {output && (
+          <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
+            {output.slice(0, 2000)}
+            {output.length > 2000 && "..."}
+          </pre>
+        )}
+        {state.status === "error" && (
+          <p className="text-xs text-destructive">{state.error}</p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

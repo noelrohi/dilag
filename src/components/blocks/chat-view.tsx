@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { MessagePart } from "./message-part";
 import { extractTextFromParts } from "@/lib/opencode";
+import { Loader } from "@/components/ai-elements/loader";
 
 export function ChatView() {
   const {
@@ -122,8 +123,9 @@ export function ChatView() {
                         <MessagePart key={part.id} part={part} />
                       ))}
                     {message.isStreaming && message.parts.length === 0 && (
-                      <div className="bg-muted rounded-lg px-4 py-2">
-                        <span className="inline-block w-2 h-4 bg-current animate-pulse" />
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm py-1">
+                        <Loader size={14} />
+                        <span>Thinking...</span>
                       </div>
                     )}
                   </div>

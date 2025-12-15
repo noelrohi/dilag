@@ -1,4 +1,7 @@
-import { Tool, ToolContent, ToolOutput } from "@/components/ai-elements/tool";
+import {
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { Glasses } from "lucide-react";
 import { getFilename } from "@/lib/path-utils";
 import { CustomToolHeader } from "./tool-header";
@@ -9,21 +12,24 @@ export function ReadTool({ state }: ToolRendererProps) {
     state.status === "completed"
       ? (state.input.file_path as string | undefined)
       : undefined;
+  const output = state.status === "completed" ? state.output : undefined;
 
   return (
-    <Tool defaultOpen={false}>
+    <Collapsible defaultOpen={false}>
       <CustomToolHeader
         icon={Glasses}
         title="Read"
         subtitle={filePath ? getFilename(filePath) : undefined}
         state={state}
       />
-      <ToolContent>
-        <ToolOutput
-          output={state.status === "completed" ? state.output : undefined}
-          errorText={state.status === "error" ? state.error : undefined}
-        />
-      </ToolContent>
-    </Tool>
+      {output && (
+        <CollapsibleContent className="pl-5 pt-1">
+          <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
+            {output.slice(0, 1000)}
+            {output.length > 1000 && "..."}
+          </pre>
+        </CollapsibleContent>
+      )}
+    </Collapsible>
   );
 }

@@ -1,16 +1,13 @@
-import { Badge } from "@/components/ui/badge";
 import { CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type { ToolState } from "@/lib/opencode";
 import {
   CheckCircleIcon,
-  ChevronDownIcon,
-  CircleIcon,
-  ClockIcon,
+  ChevronRightIcon,
+  Loader2Icon,
   XCircleIcon,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactNode } from "react";
 
 interface CustomToolHeaderProps {
   icon: LucideIcon;
@@ -20,37 +17,16 @@ interface CustomToolHeaderProps {
   className?: string;
 }
 
-function getStatusBadge(state: ToolState) {
-  const statusConfig: Record<
-    ToolState["status"],
-    { label: string; icon: ReactNode }
-  > = {
-    pending: {
-      label: "Pending",
-      icon: <CircleIcon className="size-4" />,
-    },
-    running: {
-      label: "Running",
-      icon: <ClockIcon className="size-4 animate-pulse" />,
-    },
-    completed: {
-      label: "Completed",
-      icon: <CheckCircleIcon className="size-4 text-green-600" />,
-    },
-    error: {
-      label: "Error",
-      icon: <XCircleIcon className="size-4 text-red-600" />,
-    },
-  };
-
-  const config = statusConfig[state.status];
-
-  return (
-    <Badge className="gap-1.5 rounded-full text-xs" variant="secondary">
-      {config.icon}
-      {config.label}
-    </Badge>
-  );
+function StatusIcon({ status }: { status: ToolState["status"] }) {
+  switch (status) {
+    case "pending":
+    case "running":
+      return <Loader2Icon className="size-3 animate-spin text-muted-foreground" />;
+    case "completed":
+      return <CheckCircleIcon className="size-3 text-green-600" />;
+    case "error":
+      return <XCircleIcon className="size-3 text-red-600" />;
+  }
 }
 
 export function CustomToolHeader({
@@ -63,21 +39,17 @@ export function CustomToolHeader({
   return (
     <CollapsibleTrigger
       className={cn(
-        "flex w-full items-center justify-between gap-4 p-3",
+        "group flex w-full items-center gap-2 py-1 text-sm text-muted-foreground hover:text-foreground transition-colors",
         className
       )}
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
-        <Icon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="font-medium text-sm">{title}</span>
-        {subtitle && (
-          <span className="truncate text-sm text-muted-foreground">
-            {subtitle}
-          </span>
-        )}
-        {getStatusBadge(state)}
-      </div>
-      <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+      <ChevronRightIcon className="size-3 shrink-0 transition-transform group-data-[state=open]:rotate-90" />
+      <Icon className="size-4 shrink-0" />
+      <span className="font-medium text-foreground">{title}</span>
+      {subtitle && (
+        <span className="truncate text-muted-foreground">{subtitle}</span>
+      )}
+      <StatusIcon status={state.status} />
     </CollapsibleTrigger>
   );
 }

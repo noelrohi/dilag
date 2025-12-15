@@ -1,4 +1,7 @@
-import { Tool, ToolContent, ToolOutput } from "@/components/ai-elements/tool";
+import {
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { FolderSearch } from "lucide-react";
 import { CustomToolHeader } from "./tool-header";
 import type { ToolRendererProps } from "./types";
@@ -8,21 +11,24 @@ export function GlobTool({ state }: ToolRendererProps) {
     state.status === "completed"
       ? (state.input.pattern as string | undefined)
       : undefined;
+  const output = state.status === "completed" ? state.output : undefined;
 
   return (
-    <Tool defaultOpen={false}>
+    <Collapsible defaultOpen={false}>
       <CustomToolHeader
         icon={FolderSearch}
         title="Glob"
         subtitle={pattern}
         state={state}
       />
-      <ToolContent>
-        <ToolOutput
-          output={state.status === "completed" ? state.output : undefined}
-          errorText={state.status === "error" ? state.error : undefined}
-        />
-      </ToolContent>
-    </Tool>
+      {output && (
+        <CollapsibleContent className="pl-5 pt-1">
+          <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
+            {output.slice(0, 1000)}
+            {output.length > 1000 && "..."}
+          </pre>
+        </CollapsibleContent>
+      )}
+    </Collapsible>
   );
 }

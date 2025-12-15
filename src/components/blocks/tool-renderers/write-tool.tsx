@@ -1,6 +1,6 @@
-import { Tool, ToolContent, ToolOutput } from "@/components/ai-elements/tool";
+import { Collapsible } from "@/components/ui/collapsible";
 import { FilePlus2 } from "lucide-react";
-import { getFilename, getDirectory } from "@/lib/path-utils";
+import { getFilename } from "@/lib/path-utils";
 import { CustomToolHeader } from "./tool-header";
 import type { ToolRendererProps } from "./types";
 
@@ -10,24 +10,14 @@ export function WriteTool({ state }: ToolRendererProps) {
       ? (state.input.file_path as string | undefined)
       : undefined;
 
-  const subtitle = filePath
-    ? `${getDirectory(filePath)}${getFilename(filePath)}`
-    : undefined;
-
   return (
-    <Tool defaultOpen={false}>
+    <Collapsible defaultOpen={false}>
       <CustomToolHeader
         icon={FilePlus2}
         title="Write"
-        subtitle={subtitle}
+        subtitle={filePath ? getFilename(filePath) : undefined}
         state={state}
       />
-      <ToolContent>
-        <ToolOutput
-          output={state.status === "completed" ? state.output : undefined}
-          errorText={state.status === "error" ? state.error : undefined}
-        />
-      </ToolContent>
-    </Tool>
+    </Collapsible>
   );
 }

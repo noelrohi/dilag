@@ -1,40 +1,34 @@
-import type { ToolUIPart } from "ai";
 import {
-  Tool,
-  ToolHeader,
-  ToolContent,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import { Wrench } from "lucide-react";
+import { CustomToolHeader } from "./tool-header";
 import type { ToolRendererProps } from "./types";
 
-// Map OpenCode tool state to AI SDK ToolUIPart state
-function mapState(state: ToolRendererProps["state"]): ToolUIPart["state"] {
-  switch (state.status) {
-    case "pending":
-      return "input-streaming";
-    case "running":
-      return "input-available";
-    case "completed":
-      return "output-available";
-    case "error":
-      return "output-error";
-  }
-}
-
 export function GenericTool({ tool, state }: ToolRendererProps) {
-  const mappedState = mapState(state);
   const input = state.status === "completed" ? state.input : {};
   const output = state.status === "completed" ? state.output : undefined;
-  const errorText = state.status === "error" ? state.error : undefined;
 
   return (
-    <Tool defaultOpen={false}>
-      <ToolHeader title={tool} type="tool-call" state={mappedState} />
-      <ToolContent>
-        <ToolInput input={input} />
-        <ToolOutput output={output} errorText={errorText} />
-      </ToolContent>
-    </Tool>
+    <Collapsible defaultOpen={false}>
+      <CustomToolHeader icon={Wrench} title={tool} state={state} />
+      <CollapsibleContent className="pl-5 pt-1 space-y-2">
+        {Object.keys(input).length > 0 && (
+          <pre className="text-xs text-muted-foreground">
+            {JSON.stringify(input, null, 2).slice(0, 500)}
+          </pre>
+        )}
+        {output && (
+          <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
+            {output.slice(0, 500)}
+            {output.length > 500 && "..."}
+          </pre>
+        )}
+        {state.status === "error" && (
+          <p className="text-xs text-destructive">{state.error}</p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
