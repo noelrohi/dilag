@@ -6,6 +6,7 @@ import { WriteTool } from "./write-tool";
 import { GlobTool } from "./glob-tool";
 import { GrepTool } from "./grep-tool";
 import { WebfetchTool } from "./webfetch-tool";
+import { TaskTool } from "./task-tool";
 import { GenericTool } from "./generic-tool";
 
 export const TOOL_RENDERERS: Record<string, ToolRendererComponent> = {
@@ -16,6 +17,7 @@ export const TOOL_RENDERERS: Record<string, ToolRendererComponent> = {
   Glob: GlobTool,
   Grep: GrepTool,
   WebFetch: WebfetchTool,
+  Task: TaskTool,
   // Fallback is GenericTool for unknown tools
 };
 

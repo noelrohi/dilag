@@ -77,12 +77,19 @@ export interface MessagePart {
   id: string;
   sessionID?: string;
   messageID?: string;
-  type: "text" | "tool" | "reasoning";
+  type: "text" | "tool" | "reasoning" | "file" | "step-start" | "step-finish";
   // Text part fields
   text?: string;
   // Tool part fields
   tool?: string;
   state?: ToolState;
+  // File part fields
+  mime?: string;
+  url?: string;
+  filename?: string;
+  // Step part fields
+  provider?: string;
+  model?: string;
 }
 
 export interface MessageInfo {
@@ -267,8 +274,14 @@ export async function sendMessageStreaming(
           if (part.type === "text" && delta) {
             // Text streaming - send delta
             callbacks.onText(delta, part.id);
-          } else if (part.type === "tool" || part.type === "reasoning") {
-            // Tool/reasoning parts - send full part update
+          } else if (
+            part.type === "tool" ||
+            part.type === "reasoning" ||
+            part.type === "file" ||
+            part.type === "step-start" ||
+            part.type === "step-finish"
+          ) {
+            // Non-text parts - send full part update
             callbacks.onPart?.(part);
           }
         }
