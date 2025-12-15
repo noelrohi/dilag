@@ -254,6 +254,7 @@ export async function sendMessageStreaming(
     onPart?: (part: MessagePart) => void;
     onComplete: (messageInfo: MessageInfo) => void;
     onError?: (error: Error) => void;
+    onEvent?: (event: OpenCodeEvent) => void;
   },
   model = DEFAULT_MODEL,
   directory?: string
@@ -264,6 +265,9 @@ export async function sendMessageStreaming(
   // Set up event listener before sending (pass directory for correct event scoping)
   eventSource = createEventSource(
     (event) => {
+      // Forward all events to debug callback
+      callbacks.onEvent?.(event);
+
       if (event.type === "message.part.updated") {
         const partEvent = event as EventMessagePartUpdated;
         const { part, delta } = partEvent.properties;

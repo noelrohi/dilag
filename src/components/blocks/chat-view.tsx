@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { MessagePart } from "./message-part";
 import { extractTextFromParts } from "@/lib/opencode";
 import { Loader } from "@/components/ai-elements/loader";
+import { DebugPane } from "./debug-pane";
 
 export function ChatView() {
   const {
@@ -15,8 +16,10 @@ export function ChatView() {
     isLoading,
     isServerReady,
     error,
+    debugEvents,
     sendMessage,
     createSession,
+    clearDebugEvents,
   } = useSessions();
 
   const [input, setInput] = useState("");
@@ -165,6 +168,9 @@ export function ChatView() {
           </Button>
         </form>
       </div>
+
+      {/* Debug pane */}
+      <DebugPane events={debugEvents} onClear={clearDebugEvents} />
     </div>
   );
 }

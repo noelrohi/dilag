@@ -21,6 +21,7 @@ import {
   type SessionMeta,
   type OpenCodeMessage,
   type MessagePart,
+  type OpenCodeEvent,
 } from "@/lib/opencode";
 
 export interface Message {
@@ -38,10 +39,12 @@ interface SessionsContextValue {
   isLoading: boolean;
   isServerReady: boolean;
   error: string | null;
+  debugEvents: OpenCodeEvent[];
   createSession: (name?: string) => Promise<string | null>;
   selectSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
+  clearDebugEvents: () => void;
 }
 
 const SessionsContext = createContext<SessionsContextValue | null>(null);
@@ -63,6 +66,15 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isServerReady, setIsServerReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugEvents, setDebugEvents] = useState<OpenCodeEvent[]>([]);
+
+  const clearDebugEvents = useCallback(() => {
+    setDebugEvents([]);
+  }, []);
+
+  const addDebugEvent = useCallback((event: OpenCodeEvent) => {
+    setDebugEvents((prev) => [...prev.slice(-499), event]); // Keep last 500 events
+  }, []);
 
   // Initialize server and load sessions on mount
   useEffect(() => {
@@ -328,6 +340,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
               setIsLoading(false);
               cleanup();
             },
+            onEvent: addDebugEvent,
           },
           undefined, // use default model
           directory
@@ -340,7 +353,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [currentSessionId, messages.length, sessions]
+    [currentSessionId, messages.length, sessions, addDebugEvent]
   );
 
   return (
@@ -352,9 +365,11 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         isLoading,
         isServerReady,
         error,
+        debugEvents,
         createSession,
         selectSession,
         deleteSession,
+        clearDebugEvents,
         sendMessage,
       }}
     >
