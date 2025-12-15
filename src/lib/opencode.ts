@@ -62,13 +62,27 @@ export interface OpenCodeSession {
   time: { created: number; updated: number };
 }
 
+export type ToolState =
+  | { status: "pending" }
+  | { status: "running"; metadata?: Record<string, unknown> }
+  | {
+      status: "completed";
+      input: Record<string, unknown>;
+      output?: string;
+      metadata?: Record<string, unknown>;
+    }
+  | { status: "error"; error: string };
+
 export interface MessagePart {
   id: string;
   sessionID?: string;
   messageID?: string;
-  type: string;
+  type: "text" | "tool" | "reasoning";
+  // Text part fields
   text?: string;
-  [key: string]: unknown;
+  // Tool part fields
+  tool?: string;
+  state?: ToolState;
 }
 
 export interface MessageInfo {
@@ -230,6 +244,7 @@ export async function sendMessageStreaming(
   text: string,
   callbacks: {
     onText: (delta: string, partId: string) => void;
+    onPart?: (part: MessagePart) => void;
     onComplete: (messageInfo: MessageInfo) => void;
     onError?: (error: Error) => void;
   },
@@ -246,9 +261,16 @@ export async function sendMessageStreaming(
         const partEvent = event as EventMessagePartUpdated;
         const { part, delta } = partEvent.properties;
         // Only handle parts for our session
-        if (part.sessionID === sessionId && part.type === "text" && delta) {
+        if (part.sessionID === sessionId) {
           messageId = part.messageID ?? null;
-          callbacks.onText(delta, part.id);
+
+          if (part.type === "text" && delta) {
+            // Text streaming - send delta
+            callbacks.onText(delta, part.id);
+          } else if (part.type === "tool" || part.type === "reasoning") {
+            // Tool/reasoning parts - send full part update
+            callbacks.onPart?.(part);
+          }
         }
       } else if (event.type === "message.updated") {
         const msgEvent = event as EventMessageUpdated;

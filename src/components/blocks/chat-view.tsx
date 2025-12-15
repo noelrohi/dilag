@@ -4,6 +4,8 @@ import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { MessagePart } from "./message-part";
+import { extractTextFromParts } from "@/lib/opencode";
 
 export function ChatView() {
   const {
@@ -104,21 +106,28 @@ export function ChatView() {
                   message.role === "user" ? "justify-end" : "justify-start"
                 )}
               >
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-lg px-4 py-2",
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  )}
-                >
-                  <p className="whitespace-pre-wrap text-sm">
-                    {message.content}
-                    {message.isStreaming && (
-                      <span className="inline-block w-2 h-4 ml-0.5 bg-current animate-pulse" />
+                {message.role === "user" ? (
+                  // User messages: simple bubble with text
+                  <div className="max-w-[80%] rounded-lg px-4 py-2 bg-primary text-primary-foreground">
+                    <p className="whitespace-pre-wrap text-sm">
+                      {extractTextFromParts(message.parts)}
+                    </p>
+                  </div>
+                ) : (
+                  // Assistant messages: render all parts
+                  <div className="max-w-[80%] flex flex-col gap-2">
+                    {message.parts
+                      .filter((p) => !(p.type === "tool" && p.tool === "todoread"))
+                      .map((part) => (
+                        <MessagePart key={part.id} part={part} />
+                      ))}
+                    {message.isStreaming && message.parts.length === 0 && (
+                      <div className="bg-muted rounded-lg px-4 py-2">
+                        <span className="inline-block w-2 h-4 bg-current animate-pulse" />
+                      </div>
                     )}
-                  </p>
-                </div>
+                  </div>
+                )}
               </div>
             ))}
             <div ref={messagesEndRef} />

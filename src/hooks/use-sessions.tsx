@@ -18,15 +18,15 @@ import {
   saveSessionMetadata,
   loadSessionsMetadata,
   deleteSessionMetadata,
-  extractTextFromParts,
   type SessionMeta,
   type OpenCodeMessage,
+  type MessagePart,
 } from "@/lib/opencode";
 
 export interface Message {
   id: string;
   role: "user" | "assistant";
-  content: string;
+  parts: MessagePart[];
   createdAt: string;
   isStreaming?: boolean;
 }
@@ -51,7 +51,7 @@ function convertMessage(msg: OpenCodeMessage): Message {
   return {
     id: msg.info.id,
     role: msg.info.role,
-    content: extractTextFromParts(msg.parts),
+    parts: msg.parts,
     createdAt: new Date(msg.info.time.created).toISOString(),
   };
 }
@@ -228,7 +228,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         const userMessage: Message = {
           id: crypto.randomUUID(),
           role: "user",
-          content,
+          parts: [{ id: crypto.randomUUID(), type: "text", text: content }],
           createdAt: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, userMessage]);
@@ -237,7 +237,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         const assistantMessage: Message = {
           id: assistantMessageId,
           role: "assistant",
-          content: "",
+          parts: [],
           createdAt: new Date().toISOString(),
           isStreaming: true,
         };
@@ -248,14 +248,54 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
           currentSessionId,
           content,
           {
-            onText: (delta) => {
-              // Append delta to assistant message content
+            onText: (delta, partId) => {
+              // Update or add text part with delta
               setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessageId
-                    ? { ...msg, content: msg.content + delta }
-                    : msg
-                )
+                prev.map((msg) => {
+                  if (msg.id !== assistantMessageId) return msg;
+                  const existingPartIndex = msg.parts.findIndex(
+                    (p) => p.id === partId
+                  );
+                  if (existingPartIndex >= 0) {
+                    // Append to existing part
+                    const updatedParts = [...msg.parts];
+                    const part = updatedParts[existingPartIndex];
+                    updatedParts[existingPartIndex] = {
+                      ...part,
+                      text: (part.text || "") + delta,
+                    };
+                    return { ...msg, parts: updatedParts };
+                  } else {
+                    // Add new text part
+                    return {
+                      ...msg,
+                      parts: [
+                        ...msg.parts,
+                        { id: partId, type: "text" as const, text: delta },
+                      ],
+                    };
+                  }
+                })
+              );
+            },
+            onPart: (part) => {
+              // Update or add any part type (tool, reasoning, etc.)
+              setMessages((prev) =>
+                prev.map((msg) => {
+                  if (msg.id !== assistantMessageId) return msg;
+                  const existingPartIndex = msg.parts.findIndex(
+                    (p) => p.id === part.id
+                  );
+                  if (existingPartIndex >= 0) {
+                    // Update existing part
+                    const updatedParts = [...msg.parts];
+                    updatedParts[existingPartIndex] = part;
+                    return { ...msg, parts: updatedParts };
+                  } else {
+                    // Add new part
+                    return { ...msg, parts: [...msg.parts, part] };
+                  }
+                })
               );
             },
             onComplete: (messageInfo) => {
