@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import {
   getBaseUrl,
   startServer,
@@ -51,9 +51,6 @@ export function useSessions() {
   const debugEvents = useDebugEvents();
 
   const {
-    setServerReady,
-    setError,
-    setSessions,
     addSession,
     updateSession,
     removeSession,
@@ -63,26 +60,43 @@ export function useSessions() {
     setSessionStatus,
     clearDebugEvents,
     handleEvent,
+    setError,
   } = useSessionStore();
 
   const { subscribe, subscribeToSession } = useGlobalEvents();
 
-  // Subscribe to global events
+  // Use ref for handleEvent to avoid infinite loops
+  const handleEventRef = useRef(handleEvent);
+  handleEventRef.current = handleEvent;
+
+  // Subscribe to global events (only once on mount)
   useEffect(() => {
-    return subscribe(handleEvent);
-  }, [subscribe, handleEvent]);
+    const handler = (event: Parameters<typeof handleEvent>[0]) => {
+      handleEventRef.current(event);
+    };
+    return subscribe(handler);
+  }, [subscribe]);
 
   // Subscribe to current session events specifically
   useEffect(() => {
     if (!currentSessionId) return;
-    return subscribeToSession(currentSessionId, handleEvent);
-  }, [currentSessionId, subscribeToSession, handleEvent]);
+    const handler = (event: Parameters<typeof handleEvent>[0]) => {
+      handleEventRef.current(event);
+    };
+    return subscribeToSession(currentSessionId, handler);
+  }, [currentSessionId, subscribeToSession]);
 
-  // Initialize server and load sessions on mount
+  // Track if initialized to prevent double init
+  const initializedRef = useRef(false);
+
+  // Initialize server and load sessions on mount (only once)
   useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
     async function init() {
       try {
-        setError(null);
+        useSessionStore.getState().setError(null);
 
         // Start the OpenCode server
         await startServer();
@@ -90,34 +104,34 @@ export function useSessions() {
         // Initialize the base URL
         await getBaseUrl();
 
-        setServerReady(true);
+        useSessionStore.getState().setServerReady(true);
 
         // Load persisted sessions
         const savedSessions = await loadSessionsMetadata();
-        setSessions(savedSessions);
+        useSessionStore.getState().setSessions(savedSessions);
 
         // Select the most recent session if available
         if (savedSessions.length > 0) {
           const mostRecent = savedSessions[savedSessions.length - 1];
-          setCurrentSessionId(mostRecent.id);
+          useSessionStore.getState().setCurrentSessionId(mostRecent.id);
 
           // Load messages for this session
           try {
             const openCodeMessages = await getSessionMessages(mostRecent.id, mostRecent.cwd);
-            setMessages(mostRecent.id, openCodeMessages.map(convertMessage));
+            useSessionStore.getState().setMessages(mostRecent.id, openCodeMessages.map(convertMessage));
           } catch {
             // Session might not exist in OpenCode yet
-            setMessages(mostRecent.id, []);
+            useSessionStore.getState().setMessages(mostRecent.id, []);
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to initialize");
+        useSessionStore.getState().setError(err instanceof Error ? err.message : "Failed to initialize");
         console.error("Failed to initialize:", err);
       }
     }
 
     init();
-  }, [setServerReady, setError, setSessions, setCurrentSessionId, setMessages]);
+  }, []);
 
   const createSession = useCallback(
     async (name?: string): Promise<string | null> => {
