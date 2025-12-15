@@ -19,17 +19,25 @@ import {
   type ProviderInfo,
 } from "@/lib/opencode";
 
+const OAUTH_CONNECTED_KEY = "dilag:anthropic:oauth_connected";
+
 export function AuthSettings() {
   const [open, setOpen] = useState(false);
   const [provider, setProvider] = useState<ProviderInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [oauthConnected, setOauthConnected] = useState(() =>
+    localStorage.getItem(OAUTH_CONNECTED_KEY) === "true"
+  );
 
   // OAuth flow state
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   const [oauthCode, setOauthCode] = useState("");
 
-  const isConnected = provider?.key != null && provider.key !== "";
+  const isConnected =
+    oauthConnected ||
+    (provider?.key != null && provider.key !== "") ||
+    (provider?.options?.apiKey != null && provider.options.apiKey !== "");
 
   useEffect(() => {
     if (open) {
@@ -79,6 +87,10 @@ export function AuthSettings() {
 
       await completeOAuthFlow("anthropic", oauthCode.trim());
 
+      // Mark as connected via OAuth
+      localStorage.setItem(OAUTH_CONNECTED_KEY, "true");
+      setOauthConnected(true);
+
       // Refresh provider info
       await loadProviderInfo();
 
@@ -98,6 +110,10 @@ export function AuthSettings() {
       setError(null);
 
       await disconnectProvider("anthropic");
+
+      // Clear OAuth connected flag
+      localStorage.removeItem(OAUTH_CONNECTED_KEY);
+      setOauthConnected(false);
 
       // Refresh provider info
       await loadProviderInfo();

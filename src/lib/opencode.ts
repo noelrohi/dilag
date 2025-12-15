@@ -156,7 +156,8 @@ export function extractTextFromParts(parts: MessagePart[]): string {
 export interface ProviderInfo {
   id: string;
   name: string;
-  key: string | null;
+  key?: string | null;
+  options?: { apiKey?: string };
   models: Record<string, unknown>;
 }
 
