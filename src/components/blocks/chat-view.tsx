@@ -112,17 +112,15 @@ export function ChatView() {
                       : "bg-muted"
                   )}
                 >
-                  <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                  <p className="whitespace-pre-wrap text-sm">
+                    {message.content}
+                    {message.isStreaming && (
+                      <span className="inline-block w-2 h-4 ml-0.5 bg-current animate-pulse" />
+                    )}
+                  </p>
                 </div>
               </div>
             ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted rounded-lg px-4 py-2">
-                  <Loader2 className="size-4 animate-spin" />
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
         )}

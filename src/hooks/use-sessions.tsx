@@ -13,7 +13,7 @@ import {
   deleteSession as deleteOpenCodeSession,
   getSessionMessages,
   getSession,
-  sendMessage as sendOpenCodeMessage,
+  sendMessageStreaming,
   createSessionDir,
   saveSessionMetadata,
   loadSessionsMetadata,
@@ -28,6 +28,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   createdAt: string;
+  isStreaming?: boolean;
 }
 
 interface SessionsContextValue {
@@ -204,8 +205,11 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
     async (content: string) => {
       if (!currentSessionId) return;
 
-      // Check if this is the first message (for title generation)
+      // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;
+
+      // Generate a temporary ID for the assistant message
+      const assistantMessageId = crypto.randomUUID();
 
       try {
         setIsLoading(true);
@@ -220,38 +224,71 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         };
         setMessages((prev) => [...prev, userMessage]);
 
-        // Send to OpenCode
-        const response = await sendOpenCodeMessage(currentSessionId, content);
-
-        // Add assistant response
+        // Add placeholder assistant message for streaming
         const assistantMessage: Message = {
-          id: response.info.id,
+          id: assistantMessageId,
           role: "assistant",
-          content: extractTextFromParts(response.parts),
+          content: "",
           createdAt: new Date().toISOString(),
+          isStreaming: true,
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
-        // Update title from OpenCode after first response
-        if (isFirstMessage) {
-          const currentSession = sessions.find((s) => s.id === currentSessionId);
-          if (currentSession) {
-            // Fetch updated session to get OpenCode-generated title
-            getSession(currentSessionId).then(async (openCodeSession) => {
-              const updatedSession = { ...currentSession, name: openCodeSession.title };
-              await saveSessionMetadata(updatedSession);
-              setSessions((prev) =>
-                prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
+        // Send with streaming
+        const cleanup = await sendMessageStreaming(
+          currentSessionId,
+          content,
+          {
+            onText: (delta) => {
+              // Append delta to assistant message content
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMessageId
+                    ? { ...msg, content: msg.content + delta }
+                    : msg
+                )
               );
-            });
+            },
+            onComplete: (messageInfo) => {
+              // Mark message as complete and update ID
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantMessageId
+                    ? { ...msg, id: messageInfo.id, isStreaming: false }
+                    : msg
+                )
+              );
+              setIsLoading(false);
+
+              // Update title from OpenCode after first response
+              if (isFirstMessage) {
+                const currentSession = sessions.find((s) => s.id === currentSessionId);
+                if (currentSession) {
+                  getSession(currentSessionId).then(async (openCodeSession) => {
+                    const updatedSession = { ...currentSession, name: openCodeSession.title };
+                    await saveSessionMetadata(updatedSession);
+                    setSessions((prev) =>
+                      prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
+                    );
+                  });
+                }
+              }
+
+              // Clean up event source
+              cleanup();
+            },
+            onError: (err) => {
+              setError(err.message);
+              setIsLoading(false);
+              cleanup();
+            },
           }
-        }
+        );
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to send message"
         );
         console.error("Failed to send message:", err);
-      } finally {
         setIsLoading(false);
       }
     },

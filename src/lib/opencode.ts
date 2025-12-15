@@ -64,6 +64,8 @@ export interface OpenCodeSession {
 
 export interface MessagePart {
   id: string;
+  sessionID?: string;
+  messageID?: string;
   type: string;
   text?: string;
   [key: string]: unknown;
@@ -159,6 +161,116 @@ export async function getSession(sessionId: string): Promise<OpenCodeSession> {
     throw new Error(`Failed to get session: ${response.statusText}`);
   }
   return response.json();
+}
+
+// Event stream types
+export interface EventMessagePartUpdated {
+  type: "message.part.updated";
+  properties: {
+    part: MessagePart;
+    delta?: string;
+  };
+}
+
+export interface EventMessageUpdated {
+  type: "message.updated";
+  properties: {
+    info: MessageInfo;
+  };
+}
+
+export type OpenCodeEvent =
+  | EventMessagePartUpdated
+  | EventMessageUpdated
+  | { type: string; properties: unknown };
+
+// Create an EventSource connection to the event stream
+export function createEventSource(
+  onEvent: (event: OpenCodeEvent) => void,
+  onError?: (error: Event) => void
+): EventSource {
+  const eventSource = new EventSource(`${baseUrl}/event`);
+
+  eventSource.onmessage = (e) => {
+    try {
+      const event = JSON.parse(e.data) as OpenCodeEvent;
+      onEvent(event);
+    } catch {
+      // Ignore parse errors
+    }
+  };
+
+  if (onError) {
+    eventSource.onerror = onError;
+  }
+
+  return eventSource;
+}
+
+// Send message and stream response via events
+export async function sendMessageStreaming(
+  sessionId: string,
+  text: string,
+  callbacks: {
+    onText: (delta: string, partId: string) => void;
+    onComplete: (messageInfo: MessageInfo) => void;
+    onError?: (error: Error) => void;
+  },
+  model = DEFAULT_MODEL
+): Promise<() => void> {
+  let messageId: string | null = null;
+  let eventSource: EventSource | null = null;
+
+  // Set up event listener before sending
+  eventSource = createEventSource((event) => {
+    if (event.type === "message.part.updated") {
+      const partEvent = event as EventMessagePartUpdated;
+      const { part, delta } = partEvent.properties;
+      // Only handle parts for our session
+      if (part.sessionID === sessionId && part.type === "text" && delta) {
+        messageId = part.messageID ?? null;
+        callbacks.onText(delta, part.id);
+      }
+    } else if (event.type === "message.updated") {
+      const msgEvent = event as EventMessageUpdated;
+      const { info } = msgEvent.properties;
+      // Check if this is our message completing
+      if (
+        info.sessionID === sessionId &&
+        info.role === "assistant" &&
+        info.time.completed &&
+        (messageId === null || info.id === messageId)
+      ) {
+        callbacks.onComplete(info);
+      }
+    }
+  });
+
+  // Send the message
+  try {
+    const response = await fetch(`${baseUrl}/session/${sessionId}/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        parts: [{ type: "text", text }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to send message: ${errorText}`);
+    }
+  } catch (error) {
+    eventSource?.close();
+    callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+    throw error;
+  }
+
+  // Return cleanup function
+  return () => {
+    eventSource?.close();
+  };
 }
 
 // Auth types and functions
