@@ -12,13 +12,13 @@ import {
   createSession as createOpenCodeSession,
   deleteSession as deleteOpenCodeSession,
   getSessionMessages,
+  getSession,
   sendMessage as sendOpenCodeMessage,
   createSessionDir,
   saveSessionMetadata,
   loadSessionsMetadata,
   deleteSessionMetadata,
   extractTextFromParts,
-  generateTitle,
   type SessionMeta,
   type OpenCodeMessage,
 } from "@/lib/opencode";
@@ -232,12 +232,13 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
-        // Generate title after first response
+        // Update title from OpenCode after first response
         if (isFirstMessage) {
           const currentSession = sessions.find((s) => s.id === currentSessionId);
           if (currentSession) {
-            generateTitle(content).then(async (title) => {
-              const updatedSession = { ...currentSession, name: title };
+            // Fetch updated session to get OpenCode-generated title
+            getSession(currentSessionId).then(async (openCodeSession) => {
+              const updatedSession = { ...currentSession, name: openCodeSession.title };
               await saveSessionMetadata(updatedSession);
               setSessions((prev) =>
                 prev.map((s) => (s.id === currentSessionId ? updatedSession : s))

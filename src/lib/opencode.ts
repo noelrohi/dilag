@@ -5,11 +5,6 @@ const DEFAULT_MODEL = {
   modelID: "claude-opus-4-5",
 };
 
-const TITLE_MODEL = {
-  providerID: "anthropic",
-  modelID: "claude-haiku-4-5",
-};
-
 let baseUrl = "http://127.0.0.1:4096";
 
 export async function getBaseUrl(): Promise<string> {
@@ -157,42 +152,13 @@ export function extractTextFromParts(parts: MessagePart[]): string {
     .join("");
 }
 
-// Generate a short title for a conversation using Haiku
-export async function generateTitle(userMessage: string): Promise<string> {
-  // Create a temporary session for title generation
-  const tempSession = await createSession();
-
-  try {
-    const prompt = `Generate a very short title (3-5 words max) for a conversation that starts with this message. Reply with ONLY the title, nothing else:\n\n${userMessage}`;
-
-    const response = await fetch(`${baseUrl}/session/${tempSession.id}/message`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: TITLE_MODEL,
-        parts: [{ type: "text", text: prompt }],
-      }),
-    });
-
-    if (!response.ok) {
-      return "New Chat";
-    }
-
-    const data: SendMessageResponse = await response.json();
-    const title = extractTextFromParts(data.parts).trim();
-
-    // Clean up quotes if present
-    return title.replace(/^["']|["']$/g, "") || "New Chat";
-  } catch {
-    return "New Chat";
-  } finally {
-    // Clean up temp session
-    try {
-      await deleteSession(tempSession.id);
-    } catch {
-      // Ignore cleanup errors
-    }
+// Fetch a single session by ID (includes title)
+export async function getSession(sessionId: string): Promise<OpenCodeSession> {
+  const response = await fetch(`${baseUrl}/session/${sessionId}`);
+  if (!response.ok) {
+    throw new Error(`Failed to get session: ${response.statusText}`);
   }
+  return response.json();
 }
 
 // Auth types and functions
