@@ -36,6 +36,26 @@ fn get_sessions_file() -> PathBuf {
     get_dilag_dir().join("sessions.json")
 }
 
+fn get_config_dir() -> PathBuf {
+    get_dilag_dir().join("config")
+}
+
+fn ensure_config_exists() -> Result<(), String> {
+    let config_dir = get_config_dir();
+    fs::create_dir_all(&config_dir).map_err(|e| e.to_string())?;
+
+    let config_file = config_dir.join("opencode.json");
+    if !config_file.exists() {
+        let default_config = r#"{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
+  "share": "disabled"
+}"#;
+        fs::write(&config_file, default_config).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn get_opencode_port() -> u16 {
     OPENCODE_PORT
@@ -128,14 +148,17 @@ async fn start_opencode_server(
         return Ok(OPENCODE_PORT);
     }
 
-    // Ensure dilag directories exist
+    // Ensure dilag directories and config exist
     fs::create_dir_all(get_sessions_dir()).map_err(|e| e.to_string())?;
+    ensure_config_exists()?;
 
-    // Spawn opencode server
+    // Spawn opencode server with isolated config
     let shell = app.shell();
+    let config_dir = get_config_dir();
     let (_rx, child) = shell
         .command("opencode")
         .args(["serve", "--port", &OPENCODE_PORT.to_string(), "--hostname", "127.0.0.1"])
+        .env("OPENCODE_CONFIG_DIR", config_dir.to_string_lossy().to_string())
         .spawn()
         .map_err(|e| format!("Failed to start opencode server: {}", e))?;
 
