@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  type ReactNode,
-} from "react";
+import { useEffect, useCallback } from "react";
 import {
   getBaseUrl,
   startServer,
@@ -13,74 +6,82 @@ import {
   deleteSession as deleteOpenCodeSession,
   getSessionMessages,
   getSession,
-  sendMessageStreaming,
+  sendMessageToSession,
   createSessionDir,
   saveSessionMetadata,
   loadSessionsMetadata,
   deleteSessionMetadata,
   type SessionMeta,
   type OpenCodeMessage,
-  type MessagePart,
-  type OpenCodeEvent,
 } from "@/lib/opencode";
-
-export interface Message {
-  id: string;
-  role: "user" | "assistant";
-  parts: MessagePart[];
-  createdAt: string;
-  isStreaming?: boolean;
-}
-
-interface SessionsContextValue {
-  sessions: SessionMeta[];
-  currentSessionId: string | null;
-  messages: Message[];
-  isLoading: boolean;
-  isServerReady: boolean;
-  error: string | null;
-  debugEvents: OpenCodeEvent[];
-  createSession: (name?: string) => Promise<string | null>;
-  selectSession: (sessionId: string) => Promise<void>;
-  deleteSession: (sessionId: string) => Promise<void>;
-  sendMessage: (content: string) => Promise<void>;
-  clearDebugEvents: () => void;
-}
-
-const SessionsContext = createContext<SessionsContextValue | null>(null);
+import {
+  useSessionStore,
+  useSessions as useSessionsList,
+  useCurrentSessionId,
+  useCurrentSession,
+  useSessionMessages,
+  useSessionStatus,
+  useIsServerReady,
+  useError,
+  useDebugEvents,
+  type Message,
+} from "@/context/session-store";
+import { useGlobalEvents } from "@/context/global-events";
 
 // Convert OpenCode message to our Message format
 function convertMessage(msg: OpenCodeMessage): Message {
   return {
     id: msg.info.id,
+    sessionID: msg.info.sessionID,
     role: msg.info.role,
     parts: msg.parts,
-    createdAt: new Date(msg.info.time.created).toISOString(),
+    time: msg.info.time,
   };
 }
 
-export function SessionsProvider({ children }: { children: ReactNode }) {
-  const [sessions, setSessions] = useState<SessionMeta[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isServerReady, setIsServerReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [debugEvents, setDebugEvents] = useState<OpenCodeEvent[]>([]);
+// Main hook for session management
+export function useSessions() {
+  const sessions = useSessionsList();
+  const currentSessionId = useCurrentSessionId();
+  const currentSession = useCurrentSession();
+  const messages = useSessionMessages(currentSessionId);
+  const sessionStatus = useSessionStatus(currentSessionId);
+  const isServerReady = useIsServerReady();
+  const error = useError();
+  const debugEvents = useDebugEvents();
 
-  const clearDebugEvents = useCallback(() => {
-    setDebugEvents([]);
-  }, []);
+  const {
+    setServerReady,
+    setError,
+    setSessions,
+    addSession,
+    updateSession,
+    removeSession,
+    setCurrentSessionId,
+    setMessages,
+    addMessage,
+    setSessionStatus,
+    clearDebugEvents,
+    handleEvent,
+  } = useSessionStore();
 
-  const addDebugEvent = useCallback((event: OpenCodeEvent) => {
-    setDebugEvents((prev) => [...prev.slice(-499), event]); // Keep last 500 events
-  }, []);
+  const { subscribe, subscribeToSession } = useGlobalEvents();
+
+  // Subscribe to global events
+  useEffect(() => {
+    return subscribe(handleEvent);
+  }, [subscribe, handleEvent]);
+
+  // Subscribe to current session events specifically
+  useEffect(() => {
+    if (!currentSessionId) return;
+    return subscribeToSession(currentSessionId, handleEvent);
+  }, [currentSessionId, subscribeToSession, handleEvent]);
 
   // Initialize server and load sessions on mount
   useEffect(() => {
     async function init() {
       try {
-        setIsLoading(true);
         setError(null);
 
         // Start the OpenCode server
@@ -89,7 +90,7 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         // Initialize the base URL
         await getBaseUrl();
 
-        setIsServerReady(true);
+        setServerReady(true);
 
         // Load persisted sessions
         const savedSessions = await loadSessionsMetadata();
@@ -100,33 +101,30 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
           const mostRecent = savedSessions[savedSessions.length - 1];
           setCurrentSessionId(mostRecent.id);
 
-          // Load messages for this session (pass directory for isolation)
+          // Load messages for this session
           try {
             const openCodeMessages = await getSessionMessages(mostRecent.id, mostRecent.cwd);
-            setMessages(openCodeMessages.map(convertMessage));
+            setMessages(mostRecent.id, openCodeMessages.map(convertMessage));
           } catch {
             // Session might not exist in OpenCode yet
-            setMessages([]);
+            setMessages(mostRecent.id, []);
           }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to initialize");
         console.error("Failed to initialize:", err);
-      } finally {
-        setIsLoading(false);
       }
     }
 
     init();
-  }, []);
+  }, [setServerReady, setError, setSessions, setCurrentSessionId, setMessages]);
 
   const createSession = useCallback(
     async (name?: string): Promise<string | null> => {
       try {
-        setIsLoading(true);
         setError(null);
 
-        // Create session directory first (use UUID for unique path)
+        // Create session directory first
         const dirId = crypto.randomUUID();
         const cwd = await createSessionDir(dirId);
 
@@ -146,49 +144,43 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         await saveSessionMetadata(sessionMeta);
 
         // Update state
-        setSessions((prev) => [...prev, sessionMeta]);
+        addSession(sessionMeta);
         setCurrentSessionId(sessionId);
-        setMessages([]);
+        setMessages(sessionId, []);
 
         return sessionId;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to create session"
-        );
+        setError(err instanceof Error ? err.message : "Failed to create session");
         console.error("Failed to create session:", err);
         return null;
-      } finally {
-        setIsLoading(false);
       }
     },
-    [sessions.length]
+    [sessions.length, setError, addSession, setCurrentSessionId, setMessages]
   );
 
-  const selectSession = useCallback(async (sessionId: string) => {
-    setCurrentSessionId(sessionId);
-    setIsLoading(true);
+  const selectSession = useCallback(
+    async (sessionId: string) => {
+      setCurrentSessionId(sessionId);
 
-    // Get session's directory for isolation
-    const session = sessions.find((s) => s.id === sessionId);
-    const directory = session?.cwd;
+      // Get session's directory for isolation
+      const session = sessions.find((s) => s.id === sessionId);
+      const directory = session?.cwd;
 
-    try {
-      // Load messages for this session (pass directory for isolation)
-      const openCodeMessages = await getSessionMessages(sessionId, directory);
-      setMessages(openCodeMessages.map(convertMessage));
-    } catch {
-      // Session might not exist in OpenCode, start fresh
-      setMessages([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [sessions]);
+      try {
+        // Load messages for this session
+        const openCodeMessages = await getSessionMessages(sessionId, directory);
+        setMessages(sessionId, openCodeMessages.map(convertMessage));
+      } catch {
+        // Session might not exist in OpenCode, start fresh
+        setMessages(sessionId, []);
+      }
+    },
+    [sessions, setCurrentSessionId, setMessages]
+  );
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
       try {
-        setIsLoading(true);
-
         // Delete from OpenCode
         try {
           await deleteOpenCodeSession(sessionId);
@@ -200,188 +192,84 @@ export function SessionsProvider({ children }: { children: ReactNode }) {
         await deleteSessionMetadata(sessionId);
 
         // Update state
-        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-
-        if (currentSessionId === sessionId) {
-          setCurrentSessionId(null);
-          setMessages([]);
-        }
+        removeSession(sessionId);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to delete session"
-        );
+        setError(err instanceof Error ? err.message : "Failed to delete session");
         console.error("Failed to delete session:", err);
-      } finally {
-        setIsLoading(false);
       }
     },
-    [currentSessionId]
+    [removeSession, setError]
   );
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!currentSessionId) return;
+      if (!currentSessionId || !currentSession) return;
 
       // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;
-
-      // Get session's directory for isolation
-      const currentSession = sessions.find((s) => s.id === currentSessionId);
-      const directory = currentSession?.cwd;
-
-      // Generate a temporary ID for the assistant message
-      const assistantMessageId = crypto.randomUUID();
+      const directory = currentSession.cwd;
 
       try {
-        setIsLoading(true);
         setError(null);
 
         // Add user message optimistically
         const userMessage: Message = {
           id: crypto.randomUUID(),
+          sessionID: currentSessionId,
           role: "user",
           parts: [{ id: crypto.randomUUID(), type: "text", text: content }],
-          createdAt: new Date().toISOString(),
+          time: { created: Date.now() },
         };
-        setMessages((prev) => [...prev, userMessage]);
+        addMessage(currentSessionId, userMessage);
 
         // Add placeholder assistant message for streaming
+        const assistantMessageId = crypto.randomUUID();
         const assistantMessage: Message = {
           id: assistantMessageId,
+          sessionID: currentSessionId,
           role: "assistant",
           parts: [],
-          createdAt: new Date().toISOString(),
+          time: { created: Date.now() },
           isStreaming: true,
         };
-        setMessages((prev) => [...prev, assistantMessage]);
+        addMessage(currentSessionId, assistantMessage);
 
-        // Send with streaming (pass directory for session isolation)
-        const cleanup = await sendMessageStreaming(
-          currentSessionId,
-          content,
-          {
-            onText: (delta, partId) => {
-              // Update or add text part with delta
-              setMessages((prev) =>
-                prev.map((msg) => {
-                  if (msg.id !== assistantMessageId) return msg;
-                  const existingPartIndex = msg.parts.findIndex(
-                    (p) => p.id === partId
-                  );
-                  if (existingPartIndex >= 0) {
-                    // Append to existing part
-                    const updatedParts = [...msg.parts];
-                    const part = updatedParts[existingPartIndex];
-                    updatedParts[existingPartIndex] = {
-                      ...part,
-                      text: (part.text || "") + delta,
-                    };
-                    return { ...msg, parts: updatedParts };
-                  } else {
-                    // Add new text part
-                    return {
-                      ...msg,
-                      parts: [
-                        ...msg.parts,
-                        { id: partId, type: "text" as const, text: delta },
-                      ],
-                    };
-                  }
-                })
-              );
-            },
-            onPart: (part) => {
-              // Update or add any part type (tool, reasoning, etc.)
-              setMessages((prev) =>
-                prev.map((msg) => {
-                  if (msg.id !== assistantMessageId) return msg;
-                  const existingPartIndex = msg.parts.findIndex(
-                    (p) => p.id === part.id
-                  );
-                  if (existingPartIndex >= 0) {
-                    // Update existing part
-                    const updatedParts = [...msg.parts];
-                    updatedParts[existingPartIndex] = part;
-                    return { ...msg, parts: updatedParts };
-                  } else {
-                    // Add new part
-                    return { ...msg, parts: [...msg.parts, part] };
-                  }
-                })
-              );
-            },
-            onComplete: (messageInfo) => {
-              // Mark message as complete and update ID
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessageId
-                    ? { ...msg, id: messageInfo.id, isStreaming: false }
-                    : msg
-                )
-              );
-              setIsLoading(false);
+        // Set session status to running
+        setSessionStatus(currentSessionId, "running");
 
-              // Update title from OpenCode after first response
-              if (isFirstMessage && currentSession) {
-                getSession(currentSessionId, directory).then(async (openCodeSession) => {
-                  const updatedSession = { ...currentSession, name: openCodeSession.title };
-                  await saveSessionMetadata(updatedSession);
-                  setSessions((prev) =>
-                    prev.map((s) => (s.id === currentSessionId ? updatedSession : s))
-                  );
-                });
-              }
+        // Send message - events will come via global event stream
+        await sendMessageToSession(currentSessionId, content, undefined, directory);
 
-              // Clean up event source
-              cleanup();
-            },
-            onError: (err) => {
-              setError(err.message);
-              setIsLoading(false);
-              cleanup();
-            },
-            onEvent: addDebugEvent,
-          },
-          undefined, // use default model
-          directory
-        );
+        // Update title from OpenCode after first response
+        if (isFirstMessage) {
+          getSession(currentSessionId, directory).then(async (openCodeSession) => {
+            const updatedSession = { ...currentSession, name: openCodeSession.title };
+            await saveSessionMetadata(updatedSession);
+            updateSession(currentSessionId, { name: openCodeSession.title });
+          });
+        }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to send message"
-        );
+        setError(err instanceof Error ? err.message : "Failed to send message");
+        setSessionStatus(currentSessionId, "error");
         console.error("Failed to send message:", err);
-        setIsLoading(false);
       }
     },
-    [currentSessionId, messages.length, sessions, addDebugEvent]
+    [currentSessionId, currentSession, messages.length, setError, addMessage, setSessionStatus, updateSession]
   );
 
-  return (
-    <SessionsContext.Provider
-      value={{
-        sessions,
-        currentSessionId,
-        messages,
-        isLoading,
-        isServerReady,
-        error,
-        debugEvents,
-        createSession,
-        selectSession,
-        deleteSession,
-        clearDebugEvents,
-        sendMessage,
-      }}
-    >
-      {children}
-    </SessionsContext.Provider>
-  );
-}
-
-export function useSessions() {
-  const context = useContext(SessionsContext);
-  if (!context) {
-    throw new Error("useSessions must be used within a SessionsProvider");
-  }
-  return context;
+  return {
+    sessions,
+    currentSessionId,
+    messages,
+    isLoading: sessionStatus === "running",
+    isServerReady,
+    error,
+    debugEvents,
+    sessionStatus,
+    createSession,
+    selectSession,
+    deleteSession,
+    sendMessage,
+    clearDebugEvents,
+  };
 }

@@ -1,5 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { SessionsProvider } from "@/hooks/use-sessions";
+import { GlobalEventsProvider } from "@/context/global-events";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 export const Route = createRootRoute({
@@ -8,10 +8,10 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   return (
-    <SessionsProvider>
+    <GlobalEventsProvider>
       <SidebarProvider>
         <Outlet />
       </SidebarProvider>
-    </SessionsProvider>
+    </GlobalEventsProvider>
   );
 }

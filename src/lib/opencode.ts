@@ -1,4 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { MessagePart, Message, ToolState } from "@/context/session-store";
+
+// Re-export types for convenience
+export type { MessagePart, Message, ToolState };
 
 const DEFAULT_MODEL = {
   providerID: "anthropic",
@@ -60,36 +64,6 @@ export interface OpenCodeSession {
   directory: string;
   title: string;
   time: { created: number; updated: number };
-}
-
-export type ToolState =
-  | { status: "pending" }
-  | { status: "running"; metadata?: Record<string, unknown> }
-  | {
-      status: "completed";
-      input: Record<string, unknown>;
-      output?: string;
-      metadata?: Record<string, unknown>;
-    }
-  | { status: "error"; error: string };
-
-export interface MessagePart {
-  id: string;
-  sessionID?: string;
-  messageID?: string;
-  type: "text" | "tool" | "reasoning" | "file" | "step-start" | "step-finish";
-  // Text part fields
-  text?: string;
-  // Tool part fields
-  tool?: string;
-  state?: ToolState;
-  // File part fields
-  mime?: string;
-  url?: string;
-  filename?: string;
-  // Step part fields
-  provider?: string;
-  model?: string;
 }
 
 export interface MessageInfo {
@@ -196,147 +170,40 @@ export async function getSession(sessionId: string, directory?: string): Promise
   return response.json();
 }
 
-// Event stream types
-export interface EventMessagePartUpdated {
-  type: "message.part.updated";
-  properties: {
-    part: MessagePart;
-    delta?: string;
-  };
-}
+// Re-export event types from global-events for backward compatibility
+export type {
+  OpenCodeEvent,
+  EventMessagePartUpdated,
+  EventMessageUpdated,
+  SessionStatus,
+  FileDiff,
+  DiffHunk,
+} from "@/context/global-events";
 
-export interface EventMessageUpdated {
-  type: "message.updated";
-  properties: {
-    info: MessageInfo;
-  };
-}
-
-export type OpenCodeEvent =
-  | EventMessagePartUpdated
-  | EventMessageUpdated
-  | { type: string; properties: unknown };
-
-// Create an EventSource connection to the event stream
-export function createEventSource(
-  onEvent: (event: OpenCodeEvent) => void,
-  onError?: (error: Event) => void,
-  directory?: string
-): EventSource {
-  // Pass directory to scope events to the correct project context
-  const url = directory
-    ? `${baseUrl}/event?directory=${encodeURIComponent(directory)}`
-    : `${baseUrl}/event`;
-  const eventSource = new EventSource(url);
-
-  eventSource.onmessage = (e) => {
-    try {
-      const event = JSON.parse(e.data) as OpenCodeEvent;
-      onEvent(event);
-    } catch {
-      // Ignore parse errors
-    }
-  };
-
-  if (onError) {
-    eventSource.onerror = onError;
-  }
-
-  return eventSource;
-}
-
-// Send message and stream response via events
-export async function sendMessageStreaming(
+// Send message (no streaming - events come from global event stream)
+export async function sendMessageToSession(
   sessionId: string,
   text: string,
-  callbacks: {
-    onText: (delta: string, partId: string) => void;
-    onPart?: (part: MessagePart) => void;
-    onComplete: (messageInfo: MessageInfo) => void;
-    onError?: (error: Error) => void;
-    onEvent?: (event: OpenCodeEvent) => void;
-  },
   model = DEFAULT_MODEL,
   directory?: string
-): Promise<() => void> {
-  let messageId: string | null = null;
-  let eventSource: EventSource | null = null;
-
-  // Set up event listener before sending (pass directory for correct event scoping)
-  eventSource = createEventSource(
-    (event) => {
-      // Forward all events to debug callback
-      callbacks.onEvent?.(event);
-
-      if (event.type === "message.part.updated") {
-        const partEvent = event as EventMessagePartUpdated;
-        const { part, delta } = partEvent.properties;
-        // Only handle parts for our session
-        if (part.sessionID === sessionId) {
-          messageId = part.messageID ?? null;
-
-          if (part.type === "text" && delta) {
-            // Text streaming - send delta
-            callbacks.onText(delta, part.id);
-          } else if (
-            part.type === "tool" ||
-            part.type === "reasoning" ||
-            part.type === "file" ||
-            part.type === "step-start" ||
-            part.type === "step-finish"
-          ) {
-            // Non-text parts - send full part update
-            callbacks.onPart?.(part);
-          }
-        }
-      } else if (event.type === "message.updated") {
-        const msgEvent = event as EventMessageUpdated;
-        const { info } = msgEvent.properties;
-        // Check if this is our message completing
-        if (
-          info.sessionID === sessionId &&
-          info.role === "assistant" &&
-          info.time.completed &&
-          (messageId === null || info.id === messageId)
-        ) {
-          callbacks.onComplete(info);
-        }
-      }
-    },
-    undefined,
-    directory
-  );
-
-  // Build URL with optional directory parameter
+): Promise<void> {
   const messageUrl = directory
     ? `${baseUrl}/session/${sessionId}/message?directory=${encodeURIComponent(directory)}`
     : `${baseUrl}/session/${sessionId}/message`;
 
-  // Send the message
-  try {
-    const response = await fetch(messageUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        parts: [{ type: "text", text }],
-      }),
-    });
+  const response = await fetch(messageUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      parts: [{ type: "text", text }],
+    }),
+  });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to send message: ${errorText}`);
-    }
-  } catch (error) {
-    eventSource?.close();
-    callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
-    throw error;
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to send message: ${errorText}`);
   }
-
-  // Return cleanup function
-  return () => {
-    eventSource?.close();
-  };
 }
 
 // Auth types and functions
