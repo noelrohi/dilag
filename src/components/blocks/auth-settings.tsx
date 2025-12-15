@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Settings, ExternalLink, Check, X, Loader2 } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -60,8 +61,8 @@ export function AuthSettings() {
       const result = await startOAuthFlow("anthropic", 0);
       setOauthUrl(result.url);
 
-      // Open URL in browser
-      window.open(result.url, "_blank");
+      // Open URL in system browser
+      await openUrl(result.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start OAuth");
     } finally {
@@ -175,7 +176,7 @@ export function AuthSettings() {
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2"
-                onClick={() => window.open(oauthUrl, "_blank")}
+                onClick={() => openUrl(oauthUrl)}
               >
                 <ExternalLink className="size-4" />
                 Open Authorization Page
