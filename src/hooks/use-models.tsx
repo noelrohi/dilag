@@ -54,7 +54,10 @@ export function useModels() {
         if (!connected.includes(provider.id)) continue;
 
         // Extract models
-        for (const [modelID, model] of Object.entries(provider.models)) {
+        for (const [key, model] of Object.entries(provider.models)) {
+          // Use model.id if available, otherwise use the key
+          const modelID = model.id || key;
+
           // Filter specific models based on provider
           if (provider.id === "anthropic") {
             // Include Claude models
