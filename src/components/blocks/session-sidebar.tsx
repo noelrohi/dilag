@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import {
   Plus,
   Trash2,
@@ -9,7 +9,6 @@ import {
   Archive,
 } from "lucide-react";
 import { useSessions } from "@/hooks/use-sessions";
-import { useSessionStore } from "@/context/session-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,27 +31,6 @@ type SessionMeta = {
   created_at: string;
   cwd: string;
 };
-
-function SessionStatusDot({ sessionId }: { sessionId: string }) {
-  const selector = useCallback(
-    (state: { sessionStatus: Record<string, string> }) =>
-      state.sessionStatus[sessionId] ?? "unknown",
-    [sessionId]
-  );
-  const status = useSessionStore(selector);
-
-  return (
-    <div
-      className={cn(
-        "size-1.5 rounded-full transition-all duration-300 shrink-0",
-        status === "running" && "bg-[var(--status-running)] status-running",
-        status === "idle" && "bg-[var(--status-idle)]",
-        status === "error" && "bg-[var(--status-error)]",
-        status === "unknown" && "bg-muted-foreground/30"
-      )}
-    />
-  );
-}
 
 function groupSessionsByTime(sessions: SessionMeta[]) {
   const now = new Date();
@@ -124,22 +102,14 @@ function SessionGroup({
                 isActive={currentSessionId === session.id}
                 onClick={() => onSelect(session.id)}
                 className={cn(
-                  "group pr-8 py-3 transition-all duration-200",
+                  "group pr-8 transition-all duration-200",
                   currentSessionId === session.id &&
                     "bg-sidebar-accent/80 border-l-2 border-primary"
                 )}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <SessionStatusDot sessionId={session.id} />
-                  <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-                    <span className="truncate text-sm font-medium">
-                      {session.name}
-                    </span>
-                    <span className="text-[10px] font-mono text-muted-foreground/50">
-                      {formatTime(session.created_at)}
-                    </span>
-                  </div>
-                </div>
+                <span className="truncate text-sm font-medium">
+                  {session.name}
+                </span>
               </SidebarMenuButton>
               <SidebarMenuAction
                 onClick={(e) => onDelete(e, session.id)}
@@ -155,24 +125,6 @@ function SessionGroup({
       </SidebarGroupContent>
     </SidebarGroup>
   );
-}
-
-function formatTime(dateString: string) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  if (date >= today) {
-    return date.toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
 }
 
 export function SessionSidebar() {
