@@ -102,7 +102,7 @@ function SessionGroup({
                 isActive={currentSessionId === session.id}
                 onClick={() => onSelect(session.id)}
                 className={cn(
-                  "group pr-8 transition-all duration-200",
+                  "group pr-8 transition-all duration-200 rounded-none",
                   currentSessionId === session.id &&
                     "bg-sidebar-accent/80 border-l-2 border-primary"
                 )}
