@@ -39,18 +39,8 @@ export function AuthSettings() {
 
       const response = await sdk.provider.list();
       if (response.data) {
-        // Find connected providers (those with valid auth)
-        const connected = Object.entries(response.data)
-          .filter(([, provider]) => {
-            // Provider is an object with env property
-            if (typeof provider === "object" && provider !== null && "env" in provider) {
-              const p = provider as { env?: { api?: boolean; oauth?: boolean } };
-              return p.env?.api || p.env?.oauth;
-            }
-            return false;
-          })
-          .map(([id]) => id);
-        setConnectedProviders(connected);
+        // Use the connected array directly from the SDK response
+        setConnectedProviders(response.data.connected);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load provider info");
