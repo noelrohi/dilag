@@ -1,30 +1,25 @@
 # AGENTS.md
 
-## Build & Run Commands
-- `bun run dev` - Start Vite dev server (frontend only)
-- `bun run tauri dev` - Start full Tauri app (frontend + Rust backend)
-- `bun run build` - Build frontend; `bun run tauri build` - Build desktop app
-- No test framework configured; no lint commands available
-
-## Tech Stack
-- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS 4 + TanStack Router
-- **Backend:** Rust with Tauri v2
-- **UI Components:** shadcn/ui (New York style) with Radix primitives
-- **Package Manager:** Bun
+## Build & Run
+- `bun run dev` - Vite dev server (frontend only)
+- `bun run tauri dev` - Full Tauri app (frontend + Rust)
+- `bun run build` / `bun run tauri build` - Production builds
+- No test/lint configured; type-check with `tsc --noEmit`
 
 ## Code Style
-- **TypeScript:** Strict mode enabled; no unused locals/parameters
-- **Imports:** Use `@/*` alias for `src/*` paths (e.g., `import { cn } from "@/lib/utils"`)
-- **Components:** Function components with explicit prop types using `React.ComponentProps<>`
-- **Styling:** Use `cn()` utility for merging Tailwind classes; prefer `cva` for variants
-- **Exports:** Named exports for components (`export { Button }`), default export for pages
+- **Imports:** Use `@/*` alias for `src/*` (e.g., `import { cn } from "@/lib/utils"`)
+- **Components:** Function components, props via `React.ComponentProps<>` intersection types
+- **Styling:** `cn()` for class merging; `cva` for variant components
+- **Exports:** Named exports for components; default exports only for route pages
+- **Naming:** PascalCase components, camelCase functions/variables, kebab-case files
+- **Error handling:** Rust commands return `Result<T, String>`; React uses try/catch
 
 ## Project Structure
-- **Pages:** Keep route pages minimal and readable; extract complex UI to `src/components/blocks/`
-- **Blocks:** Reusable page sections/compositions live in `src/components/blocks/`
-- **UI:** Primitive shadcn/ui components in `src/components/ui/`
+- `src/components/ui/` - shadcn/ui primitives (Radix-based)
+- `src/components/blocks/` - Composed page sections
+- `src/components/ai-elements/` - AI/chat-specific components
+- `src/routes/` - TanStack Router pages (keep minimal, delegate to blocks)
 
 ## Tauri Commands
-- Define Rust commands in `src-tauri/src/lib.rs` with `#[tauri::command]`
-- Call from React via `invoke("command_name", { args })` from `@tauri-apps/api/core`
-- Register commands in `invoke_handler(tauri::generate_handler![...])`
+- Define in `src-tauri/src/lib.rs` with `#[tauri::command]`
+- Call via `invoke("cmd", { args })` from `@tauri-apps/api/core`
