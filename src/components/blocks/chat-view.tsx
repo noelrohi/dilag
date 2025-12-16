@@ -1,16 +1,19 @@
 import { Send, Sparkles, Terminal, AlertCircle, Plus } from "lucide-react";
 import { useSessions } from "@/hooks/use-sessions";
-import { useMessageParts, type Message } from "@/context/session-store";
+import {
+  useMessageParts,
+  type Message as SessionMessage,
+} from "@/context/session-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MessagePart } from "./message-part";
-import { DebugPane } from "./debug-pane";
 import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputTextarea,
@@ -31,7 +34,7 @@ function StatusIndicator({ status }: { status: string }) {
           status === "running" && "bg-[var(--status-running)] status-running",
           status === "idle" && "bg-[var(--status-idle)]",
           status === "error" && "bg-[var(--status-error)]",
-          status === "unknown" && "bg-muted-foreground/50"
+          status === "unknown" && "bg-muted-foreground/50",
         )}
       />
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -61,7 +64,9 @@ function ThinkingIndicator() {
 }
 
 // Helper to extract text from parts
-function extractTextFromParts(parts: { type: string; text?: string }[]): string {
+function extractTextFromParts(
+  parts: { type: string; text?: string }[],
+): string {
   return parts
     .filter((p) => p.type === "text" && p.text)
     .map((p) => p.text!)
@@ -69,66 +74,63 @@ function extractTextFromParts(parts: { type: string; text?: string }[]): string 
 }
 
 // Component that renders a user message with parts from the store
-function UserMessage({ message, index }: { message: Message; index: number }) {
+function UserMessage({
+  message,
+  index,
+}: {
+  message: SessionMessage;
+  index: number;
+}) {
   const parts = useMessageParts(message.id);
 
   return (
-    <div
-      className={cn("animate-slide-up", "flex justify-end")}
+    <Message
+      from="user"
+      className="animate-slide-up !ml-0"
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
-      <div className="max-w-[85%] group">
-        <div className="rounded-2xl rounded-br-md px-4 py-3 bg-primary text-primary-foreground">
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">
-            {extractTextFromParts(parts)}
-          </p>
-        </div>
-        <div className="mt-1.5 text-right">
-          <span className="text-[10px] font-mono text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
-            you
-          </span>
-        </div>
-      </div>
-    </div>
+      <MessageContent className="!ml-0">
+        <p className="whitespace-pre-wrap leading-relaxed">
+          {extractTextFromParts(parts)}
+        </p>
+      </MessageContent>
+    </Message>
   );
 }
 
 // Component that renders an assistant message with parts from the store
-function AssistantMessage({ message, index }: { message: Message; index: number }) {
+function AssistantMessage({
+  message,
+  index,
+}: {
+  message: SessionMessage;
+  index: number;
+}) {
   const parts = useMessageParts(message.id);
 
   return (
-    <div
+    <Message
+      from="assistant"
       className="animate-slide-up"
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
-      <div className="w-full">
-        <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <div className="shrink-0 size-7 rounded-lg bg-card border border-border/50 flex items-center justify-center mt-0.5">
-            <Sparkles className="size-3.5 text-primary" />
-          </div>
+      <MessageContent className="space-y-3">
+        {parts
+          .filter((p) => !(p.type === "tool" && p.tool === "todoread"))
+          .map((part, partIndex) => (
+            <div
+              key={part.id}
+              className="animate-stream-in"
+              style={{ animationDelay: `${partIndex * 50}ms` }}
+            >
+              <MessagePart part={part} />
+            </div>
+          ))}
 
-          {/* Content */}
-          <div className="flex-1 min-w-0 space-y-3">
-            {parts
-              .filter((p) => !(p.type === "tool" && p.tool === "todoread"))
-              .map((part, partIndex) => (
-                <div
-                  key={part.id}
-                  className="animate-stream-in"
-                  style={{ animationDelay: `${partIndex * 50}ms` }}
-                >
-                  <MessagePart part={part} />
-                </div>
-              ))}
-
-            {/* Thinking indicator - show when streaming and no parts yet */}
-            {message.isStreaming && parts.length === 0 && <ThinkingIndicator />}
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Thinking indicator - show when streaming and no parts yet */}
+        {message.isStreaming && parts.length === 0 && <ThinkingIndicator />}
+      </MessageContent>
+    </Message>
   );
 }
 
@@ -151,8 +153,8 @@ function EmptyState({ onCreateSession }: { onCreateSession: () => void }) {
               Start a new session
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Create a session to begin coding with AI assistance.
-              Each session maintains its own context and history.
+              Create a session to begin coding with AI assistance. Each session
+              maintains its own context and history.
             </p>
           </div>
 
@@ -216,7 +218,7 @@ function ErrorState({ error }: { error: string }) {
 
 function ChatInputArea({
   isLoading,
-  sendMessage
+  sendMessage,
 }: {
   isLoading: boolean;
   sendMessage: (message: string) => Promise<void>;
@@ -238,7 +240,7 @@ function ChatInputArea({
           className={cn(
             "rounded-2xl bg-card/50 backdrop-blur-sm transition-all duration-300",
             hasInput && "glow-ring",
-            isLoading && "opacity-80"
+            isLoading && "opacity-80",
           )}
         >
           <PromptInputBody>
@@ -256,7 +258,7 @@ function ChatInputArea({
                 "size-9 rounded-xl transition-all duration-200",
                 hasInput && !isLoading
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-muted text-muted-foreground",
               )}
             >
               {isLoading ? (
@@ -271,7 +273,11 @@ function ChatInputArea({
         {/* Keyboard hint */}
         <div className="mt-2 text-center">
           <span className="text-[10px] font-mono text-muted-foreground/40">
-            Press <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/60">Enter</kbd> to send
+            Press{" "}
+            <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/60">
+              Enter
+            </kbd>{" "}
+            to send
           </span>
         </div>
       </div>
@@ -286,11 +292,9 @@ export function ChatView() {
     isLoading,
     isServerReady,
     error,
-    debugEvents,
     sessionStatus,
     sendMessage,
     createSession,
-    clearDebugEvents,
   } = useSessions();
 
   if (!isServerReady) {
@@ -307,17 +311,17 @@ export function ChatView() {
 
   return (
     <PromptInputProvider>
-      <div className="flex flex-1 flex-col relative">
+      <div className="flex flex-col h-[calc(100dvh-48px)]">
         {/* Status bar */}
-        <div className="absolute top-0 left-0 right-0 z-10 px-6 py-3 flex items-center justify-between bg-gradient-to-b from-background via-background/95 to-transparent pointer-events-none">
+        <div className="shrink-0 px-6 py-3 flex items-center justify-between">
           <StatusIndicator status={sessionStatus} />
           <div className="text-xs font-mono text-muted-foreground/60">
             {messages.length} messages
           </div>
         </div>
 
-        {/* Messages area */}
-        <Conversation className="pt-14">
+        {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
+        <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-6 max-w-4xl mx-auto">
             {messages.length === 0 ? (
               <ConversationEmptyState
@@ -328,10 +332,18 @@ export function ChatView() {
             ) : (
               messages.map((message, index) =>
                 message.role === "user" ? (
-                  <UserMessage key={message.id} message={message} index={index} />
+                  <UserMessage
+                    key={message.id}
+                    message={message}
+                    index={index}
+                  />
                 ) : (
-                  <AssistantMessage key={message.id} message={message} index={index} />
-                )
+                  <AssistantMessage
+                    key={message.id}
+                    message={message}
+                    index={index}
+                  />
+                ),
               )
             )}
           </ConversationContent>
@@ -339,10 +351,9 @@ export function ChatView() {
         </Conversation>
 
         {/* Input area */}
-        <ChatInputArea isLoading={isLoading} sendMessage={sendMessage} />
-
-        {/* Debug pane */}
-        <DebugPane events={debugEvents} onClear={clearDebugEvents} />
+        <div className="shrink-0">
+          <ChatInputArea isLoading={isLoading} sendMessage={sendMessage} />
+        </div>
       </div>
     </PromptInputProvider>
   );

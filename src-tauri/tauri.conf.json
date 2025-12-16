@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "dilag",
-        "width": 800,
-        "height": 600
+        "title": "Dilag",
+        "width": 1000,
+        "height": 700,
+        "minWidth": 600,
+        "minHeight": 400,
+        "titleBarStyle": "Visible",
+        "backgroundColor": "#262630"
       }
     ],
     "security": {

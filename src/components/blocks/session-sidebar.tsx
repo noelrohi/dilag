@@ -7,6 +7,7 @@ import {
   Clock,
   Calendar,
   Archive,
+  PanelLeft,
 } from "lucide-react";
 import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
@@ -162,34 +164,45 @@ export function SessionSidebar() {
     await deleteSession(sessionId);
   };
 
+  const { toggleSidebar } = useSidebar();
+
   return (
     <Sidebar className="border-r border-sidebar-border/50">
-      <SidebarHeader className="p-4 space-y-4">
-        {/* New Session Button */}
-        <Button
-          onClick={handleCreateSession}
-          disabled={isLoading}
-          className={cn(
-            "w-full justify-start gap-2.5 h-10 rounded-xl",
-            "bg-primary/10 hover:bg-primary/20 text-primary border-0",
-            "transition-all duration-200"
-          )}
-          variant="outline"
-        >
-          <Plus className="size-4" />
-          <span className="font-medium">New Session</span>
-        </Button>
+      <SidebarHeader className="p-3 space-y-3">
+        {/* Toolbar row */}
+        <div className="flex items-center justify-between">
+          <Button
+            onClick={handleCreateSession}
+            disabled={isLoading}
+            variant="ghost"
+            size="sm"
+            className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
+          >
+            <Plus className="size-4" />
+            <span className="font-medium">New</span>
+          </Button>
+
+          <Button
+            onClick={toggleSidebar}
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground hover:text-foreground"
+          >
+            <PanelLeft className="size-4" />
+            <span className="sr-only">Toggle sidebar</span>
+          </Button>
+        </div>
 
         {/* Search */}
         {sessions.length > 3 && (
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search sessions..."
+              placeholder="Search..."
               className={cn(
-                "pl-9 h-9 bg-sidebar-accent/30 border-0 rounded-lg",
+                "pl-8 h-8 bg-sidebar-accent/50 border-0 rounded-md",
                 "placeholder:text-muted-foreground/40 text-sm",
                 "focus-visible:ring-1 focus-visible:ring-primary/30"
               )}
