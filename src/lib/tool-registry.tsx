@@ -10,8 +10,13 @@ import {
   Globe,
   Bot,
   Wrench,
+  ListChecks,
+  CheckSquare,
+  Square,
   type LucideIcon,
 } from "lucide-react";
+import { Streamdown } from "streamdown";
+import { createPatch } from "diff";
 
 // Tool props passed to render functions
 export interface ToolRenderProps {
@@ -26,43 +31,136 @@ export interface ToolRenderProps {
 export interface ToolConfig {
   icon: LucideIcon;
   title: (props: ToolRenderProps) => string;
-  subtitle?: (props: ToolRenderProps) => string | undefined;
+  chipLabel?: (props: ToolRenderProps) => string | undefined;
+  subtitle?: (props: ToolRenderProps) => ReactNode;
   content?: (props: ToolRenderProps) => ReactNode;
 }
 
-// Extract common input fields
+// Extract common input fields (try multiple possible keys)
 const getInput = (props: ToolRenderProps) => ({
-  filePath: props.input.file_path as string | undefined,
+  filePath: (props.input.file_path ?? props.input.filePath ?? props.input.path ?? props.input.filename ?? props.input.file) as string | undefined,
   pattern: props.input.pattern as string | undefined,
   command: props.input.command as string | undefined,
   description: props.input.description as string | undefined,
   url: props.input.url as string | undefined,
   prompt: props.input.prompt as string | undefined,
-  oldString: props.input.old_string as string | undefined,
-  newString: props.input.new_string as string | undefined,
+  oldString: (props.input.old_string ?? props.input.oldString ?? props.input.old ?? props.input.before) as string | undefined,
+  newString: (props.input.new_string ?? props.input.newString ?? props.input.new ?? props.input.after) as string | undefined,
+  content: props.input.content as string | undefined,
 });
 
 // Get filename from path
 const filename = (path?: string) => path?.split("/").pop() || "";
 
+// Language map for file extensions
+const LANG_MAP: Record<string, string> = {
+  ts: "typescript",
+  tsx: "tsx",
+  js: "javascript",
+  jsx: "jsx",
+  py: "python",
+  rb: "ruby",
+  rs: "rust",
+  go: "go",
+  java: "java",
+  kt: "kotlin",
+  swift: "swift",
+  c: "c",
+  cpp: "cpp",
+  h: "c",
+  hpp: "cpp",
+  cs: "csharp",
+  php: "php",
+  html: "html",
+  css: "css",
+  scss: "scss",
+  less: "less",
+  json: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  md: "markdown",
+  sql: "sql",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  fish: "fish",
+  ps1: "powershell",
+  dockerfile: "dockerfile",
+  toml: "toml",
+  xml: "xml",
+  vue: "vue",
+  svelte: "svelte",
+};
+
+// Get language from file extension for syntax highlighting
+const getLanguage = (path?: string, content?: string): string => {
+  // Try to detect from file extension first
+  if (path) {
+    const ext = path.split(".").pop()?.toLowerCase();
+    if (ext && LANG_MAP[ext]) return LANG_MAP[ext];
+  }
+
+  // Fallback: detect from content
+  if (content) {
+    const trimmed = content.trimStart();
+    if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) return "html";
+    if (trimmed.startsWith("<?xml")) return "xml";
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json";
+    if (trimmed.startsWith("<!-") && trimmed.includes("<template")) return "vue";
+    if (trimmed.startsWith("---")) return "yaml";
+    if (trimmed.startsWith("#!") && trimmed.includes("python")) return "python";
+    if (trimmed.startsWith("#!") && (trimmed.includes("bash") || trimmed.includes("sh"))) return "bash";
+    if (trimmed.startsWith("package ") && trimmed.includes("func ")) return "go";
+    if (trimmed.startsWith("use ") || trimmed.includes("fn ")) return "rust";
+  }
+
+  return "text";
+};
+
+// Todo type
+interface Todo {
+  content: string;
+  status: "pending" | "in_progress" | "completed";
+}
+
 // Tool registry - all tool configs in one place
+// Note: Tool names from backend are lowercase
 export const TOOLS: Record<string, ToolConfig> = {
-  Read: {
+  read: {
     icon: Glasses,
     title: () => "Read",
-    subtitle: (p) => filename(getInput(p).filePath),
-    content: (p) =>
-      p.output && (
-        <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-          {p.output.slice(0, 1000)}
-          {p.output.length > 1000 && "..."}
-        </pre>
-      ),
+    chipLabel: (p) => filename(getInput(p).filePath),
+    subtitle: (p) => {
+      const file = filename(getInput(p).filePath);
+      const lines = p.output?.split("\n").length ?? 0;
+      if (!file) return undefined;
+      return lines > 0 ? `${file} (${lines} lines)` : file;
+    },
+    content: (p) => {
+      const { filePath } = getInput(p);
+      if (!p.output) return null;
+
+      const lang = getLanguage(filePath, p.output);
+      const truncated = p.output.length > 3000 ? p.output.slice(0, 3000) + "\n// ... truncated" : p.output;
+      const markdown = "```" + lang + "\n" + truncated + "\n```";
+
+      return (
+        <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
+          <Streamdown>{markdown}</Streamdown>
+        </div>
+      );
+    },
   },
 
-  Bash: {
+  bash: {
     icon: Terminal,
     title: () => "Shell",
+    chipLabel: (p) => {
+      const { description, command } = getInput(p);
+      if (description) return description.slice(0, 25);
+      if (command) return command.slice(0, 20);
+      return undefined;
+    },
     subtitle: (p) => {
       const { description, command } = getInput(p);
       return description || command?.slice(0, 50);
@@ -87,46 +185,135 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
   },
 
-  Edit: {
+  edit: {
     icon: Code2,
     title: () => "Edit",
-    subtitle: (p) => filename(getInput(p).filePath),
-    content: (p) => {
-      const { oldString, newString } = getInput(p);
+    chipLabel: (p) => filename(getInput(p).filePath),
+    subtitle: (p) => {
+      const { filePath, oldString, newString } = getInput(p);
+      const file = filename(filePath);
+      const oldLines = oldString?.split("\n").length ?? 0;
+      const newLines = newString?.split("\n").length ?? 0;
+      if (!file && oldLines === 0 && newLines === 0) return undefined;
       return (
         <>
-          {oldString && (
-            <div>
-              <span className="text-xs text-red-500 font-medium">- </span>
-              <pre className="inline text-xs text-muted-foreground">
-                {oldString.slice(0, 200)}
-                {oldString.length > 200 && "..."}
-              </pre>
-            </div>
-          )}
-          {newString && (
-            <div>
-              <span className="text-xs text-green-500 font-medium">+ </span>
-              <pre className="inline text-xs text-muted-foreground">
-                {newString.slice(0, 200)}
-                {newString.length > 200 && "..."}
-              </pre>
-            </div>
-          )}
+          {file}{" "}
+          <span className="text-green-500">+{newLines}</span>{" "}
+          <span className="text-red-500">-{oldLines}</span>
         </>
+      );
+    },
+    content: (p) => {
+      const { filePath, oldString, newString } = getInput(p);
+
+      // If we have old/new strings, generate a diff
+      if (oldString || newString) {
+        const patch = createPatch(
+          filename(filePath) || "file",
+          oldString || "",
+          newString || "",
+          "",
+          "",
+          { context: 3 }
+        );
+
+        // Remove the first 4 lines (header) and format as diff code block
+        const diffLines = patch.split("\n").slice(4).join("\n");
+        if (diffLines.trim()) {
+          const markdown = "```diff\n" + diffLines + "\n```";
+          return (
+            <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
+              <Streamdown>{markdown}</Streamdown>
+            </div>
+          );
+        }
+      }
+
+      // Fallback: show raw input if available
+      const hasInput = Object.keys(p.input).length > 0;
+      if (!hasInput) return null;
+
+      return (
+        <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+          {JSON.stringify(p.input, null, 2).slice(0, 1000)}
+        </pre>
       );
     },
   },
 
-  Write: {
+  write: {
     icon: FilePlus2,
     title: () => "Write",
-    subtitle: (p) => filename(getInput(p).filePath),
+    chipLabel: (p) => filename(getInput(p).filePath),
+    subtitle: (p) => {
+      const { filePath, content } = getInput(p);
+      const file = filename(filePath);
+      const lines = content?.split("\n").length ?? 0;
+      if (!file && lines === 0) return undefined;
+      return (
+        <>
+          {file || "file"}{" "}
+          <span className="text-green-500">+{lines}</span>
+        </>
+      );
+    },
+    content: (p) => {
+      const { filePath, content } = getInput(p);
+      if (!content) return null;
+
+      const lang = getLanguage(filePath, content);
+      const truncated = content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content;
+      const markdown = "```" + lang + "\n" + truncated + "\n```";
+
+      return (
+        <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
+          <Streamdown>{markdown}</Streamdown>
+        </div>
+      );
+    },
   },
 
-  Glob: {
+  todowrite: {
+    icon: ListChecks,
+    title: () => "To-dos",
+    subtitle: (p) => {
+      const todos = p.input.todos as Todo[] | undefined;
+      if (!todos?.length) return undefined;
+      const completed = todos.filter((t) => t.status === "completed").length;
+      return `${completed}/${todos.length}`;
+    },
+    content: (p) => {
+      const todos = p.input.todos as Todo[] | undefined;
+      if (!todos?.length) return null;
+      return (
+        <div className="space-y-1">
+          {todos.map((todo, i) => (
+            <div key={i} className="flex items-start gap-2">
+              {todo.status === "completed" ? (
+                <CheckSquare className="size-4 shrink-0 text-emerald-500 mt-0.5" />
+              ) : (
+                <Square className="size-4 shrink-0 text-muted-foreground mt-0.5" />
+              )}
+              <span
+                className={
+                  todo.status === "completed"
+                    ? "text-sm text-muted-foreground line-through"
+                    : "text-sm text-foreground"
+                }
+              >
+                {todo.content}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    },
+  },
+
+  glob: {
     icon: FolderSearch,
     title: () => "Glob",
+    chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => getInput(p).pattern,
     content: (p) =>
       p.output && (
@@ -137,9 +324,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       ),
   },
 
-  Grep: {
+  grep: {
     icon: Search,
     title: () => "Grep",
+    chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => getInput(p).pattern,
     content: (p) =>
       p.output && (
@@ -150,29 +338,61 @@ export const TOOLS: Record<string, ToolConfig> = {
       ),
   },
 
-  WebFetch: {
+  webfetch: {
     icon: Globe,
-    title: () => "WebFetch",
-    subtitle: (p) => {
+    title: () => "Fetch",
+    chipLabel: (p) => {
       const url = getInput(p).url;
       try {
         return url ? new URL(url).hostname : undefined;
       } catch {
-        return url;
+        return url?.slice(0, 20);
       }
     },
-    content: (p) =>
-      p.output && (
-        <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-          {p.output.slice(0, 1000)}
-          {p.output.length > 1000 && "..."}
-        </pre>
-      ),
+    subtitle: (p) => {
+      const { url, prompt } = getInput(p);
+      // Show hostname and prompt summary
+      let hostname = "";
+      try {
+        hostname = url ? new URL(url).hostname : "";
+      } catch {
+        hostname = url?.slice(0, 30) ?? "";
+      }
+      const promptSummary = prompt ? ` - "${prompt.slice(0, 40)}${prompt.length > 40 ? "..." : ""}"` : "";
+      return hostname + promptSummary;
+    },
+    content: (p) => {
+      const { url, prompt } = getInput(p);
+      return (
+        <div className="space-y-2">
+          {url && (
+            <div className="text-xs">
+              <span className="text-muted-foreground/60">URL: </span>
+              <span className="text-blue-400/80 break-all">{url}</span>
+            </div>
+          )}
+          {prompt && (
+            <div className="text-xs">
+              <span className="text-muted-foreground/60">Prompt: </span>
+              <span className="text-foreground/80">{prompt}</span>
+            </div>
+          )}
+          {p.output && (
+            <div className="mt-2 pt-2 border-t border-border/30">
+              <pre className="text-xs text-muted-foreground max-h-48 overflow-auto whitespace-pre-wrap">
+                {p.output.slice(0, 2000)}{p.output.length > 2000 && "\n..."}
+              </pre>
+            </div>
+          )}
+        </div>
+      );
+    },
   },
 
-  Task: {
+  task: {
     icon: Bot,
     title: () => "Task",
+    chipLabel: (p) => getInput(p).description?.slice(0, 25),
     subtitle: (p) => getInput(p).description,
     content: (p) => {
       const { prompt } = getInput(p);

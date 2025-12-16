@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Send, Sparkles, Terminal, AlertCircle, Plus, ChevronDown } from "lucide-react";
+import {
+  ArrowUp,
+  Sparkles,
+  Terminal,
+  AlertCircle,
+  Plus,
+  ChevronDown,
+} from "lucide-react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
   useMessageParts,
@@ -38,25 +45,6 @@ import {
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
 import { useModels } from "@/hooks/use-models";
-
-function StatusIndicator({ status }: { status: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className={cn(
-          "size-2 rounded-full transition-all duration-300",
-          status === "running" && "bg-[var(--status-running)] status-running",
-          status === "idle" && "bg-[var(--status-idle)]",
-          status === "error" && "bg-[var(--status-error)]",
-          status === "unknown" && "bg-muted-foreground/50",
-        )}
-      />
-      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        {status === "running" ? "Processing" : status}
-      </span>
-    </div>
-  );
-}
 
 function ThinkingIndicator() {
   return (
@@ -100,10 +88,10 @@ function UserMessage({
   return (
     <Message
       from="user"
-      className="animate-slide-up !ml-0"
+      className="animate-slide-up ml-0!"
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
-      <MessageContent className="!ml-0">
+      <MessageContent className="ml-0!">
         <p className="whitespace-pre-wrap leading-relaxed">
           {extractTextFromParts(parts)}
         </p>
@@ -128,7 +116,7 @@ function AssistantMessage({
       className="animate-slide-up"
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
-      <MessageContent className="space-y-3">
+      <MessageContent className="space-y-2 w-full">
         {parts
           .filter((p) => !(p.type === "tool" && p.tool === "todoread"))
           .map((part, partIndex) => (
@@ -246,7 +234,7 @@ function ModelSelectorButton() {
       acc[model.providerID].models.push(model);
       return acc;
     },
-    {} as Record<string, { name: string; models: typeof models }>
+    {} as Record<string, { name: string; models: typeof models }>,
   );
 
   return (
@@ -278,27 +266,29 @@ function ModelSelectorButton() {
         <ModelSelectorInput placeholder="Search models..." />
         <ModelSelectorList>
           <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-          {Object.entries(groupedModels).map(([providerID, { name, models: providerModels }]) => (
-            <ModelSelectorGroup key={providerID} heading={name}>
-              {providerModels.map((model) => (
-                <ModelSelectorItem
-                  key={`${model.providerID}/${model.id}`}
-                  value={`${model.providerID}/${model.id}`}
-                  onSelect={() => {
-                    selectModel(model.providerID, model.id);
-                    setOpen(false);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <ModelSelectorLogo
-                    provider={model.providerID as any}
-                    className="size-4"
-                  />
-                  <ModelSelectorName>{model.name}</ModelSelectorName>
-                </ModelSelectorItem>
-              ))}
-            </ModelSelectorGroup>
-          ))}
+          {Object.entries(groupedModels).map(
+            ([providerID, { name, models: providerModels }]) => (
+              <ModelSelectorGroup key={providerID} heading={name}>
+                {providerModels.map((model) => (
+                  <ModelSelectorItem
+                    key={`${model.providerID}/${model.id}`}
+                    value={`${model.providerID}/${model.id}`}
+                    onSelect={() => {
+                      selectModel(model.providerID, model.id);
+                      setOpen(false);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <ModelSelectorLogo
+                      provider={model.providerID as any}
+                      className="size-4"
+                    />
+                    <ModelSelectorName>{model.name}</ModelSelectorName>
+                  </ModelSelectorItem>
+                ))}
+              </ModelSelectorGroup>
+            ),
+          )}
         </ModelSelectorList>
       </ModelSelectorContent>
     </ModelSelector>
@@ -356,22 +346,11 @@ function ChatInputArea({
               {isLoading ? (
                 <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Send className="size-4" />
+                <ArrowUp className="size-4" />
               )}
             </PromptInputSubmit>
           </PromptInputFooter>
         </PromptInput>
-
-        {/* Keyboard hint */}
-        <div className="mt-2 text-center">
-          <span className="text-[10px] font-mono text-muted-foreground/40">
-            Press{" "}
-            <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground/60">
-              Enter
-            </kbd>{" "}
-            to send
-          </span>
-        </div>
       </div>
     </div>
   );
@@ -384,7 +363,6 @@ export function ChatView() {
     isLoading,
     isServerReady,
     error,
-    sessionStatus,
     sendMessage,
     createSession,
   } = useSessions();
@@ -403,15 +381,7 @@ export function ChatView() {
 
   return (
     <PromptInputProvider>
-      <div className="flex flex-col h-[calc(100dvh-48px)]">
-        {/* Status bar */}
-        <div className="shrink-0 px-6 py-3 flex items-center justify-between">
-          <StatusIndicator status={sessionStatus} />
-          <div className="text-xs font-mono text-muted-foreground/60">
-            {messages.length} messages
-          </div>
-        </div>
-
+      <div className="flex flex-col h-[calc(100dvh-48px)] w-3xl mx-auto">
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-6 max-w-4xl mx-auto">
