@@ -3,7 +3,7 @@ import { useSDK } from "@/context/global-events";
 import { create } from "zustand";
 
 // Providers that use OAuth (no API key needed)
-const OAUTH_PROVIDERS = ["anthropic", "google", "github-copilot"] as const;
+const OAUTH_PROVIDERS = ["anthropic", "google", "github-copilot", "openai"] as const;
 type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
 export interface Model {
@@ -65,6 +65,9 @@ export function useModels() {
           } else if (provider.id === "github-copilot") {
             // Include Codex and GPT models
             if (!modelID.includes("codex") && !modelID.includes("gpt")) continue;
+          } else if (provider.id === "openai") {
+            // Include GPT and Codex models
+            if (!modelID.includes("gpt") && !modelID.includes("codex") && !modelID.includes("o1") && !modelID.includes("o3")) continue;
           }
 
           filteredModels.push({
@@ -76,9 +79,9 @@ export function useModels() {
         }
       }
 
-      // Sort models: Claude first, then Gemini, then GPT/Codex
+      // Sort models: Claude first, then Gemini, then OpenAI, then GitHub Copilot
       filteredModels.sort((a, b) => {
-        const providerOrder = ["anthropic", "google", "github-copilot"];
+        const providerOrder = ["anthropic", "google", "openai", "github-copilot"];
         const aOrder = providerOrder.indexOf(a.providerID);
         const bOrder = providerOrder.indexOf(b.providerID);
         if (aOrder !== bOrder) return aOrder - bOrder;
