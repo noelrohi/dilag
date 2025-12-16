@@ -13,6 +13,15 @@ pub struct SessionMeta {
     pub cwd: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DesignFile {
+    pub filename: String,
+    pub title: String,
+    pub screen_type: String,
+    pub html: String,
+    pub modified_at: u64,
+}
+
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SessionsStore {
     pub sessions: Vec<SessionMeta>,
@@ -190,6 +199,90 @@ fn is_opencode_running(state: tauri::State<'_, AppState>) -> bool {
     state.opencode_pid.lock().unwrap().is_some()
 }
 
+#[tauri::command]
+fn load_session_designs(session_cwd: String) -> Vec<DesignFile> {
+    use std::time::UNIX_EPOCH;
+
+    let session_dir = PathBuf::from(&session_cwd);
+    let designs_dir = session_dir.join("designs");
+    let mut designs = Vec::new();
+
+    // Helper to process HTML files from a directory
+    let mut process_dir = |dir: &PathBuf| {
+        if !dir.exists() {
+            return;
+        }
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().map_or(false, |e| e == "html") {
+                    if let Ok(html) = fs::read_to_string(&path) {
+                        let filename = path.file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
+
+                        // Skip if already added (avoid duplicates)
+                        if designs.iter().any(|d: &DesignFile| d.filename == filename) {
+                            continue;
+                        }
+
+                        // Extract title from data-title attribute or filename
+                        let title = extract_html_attr(&html, "data-title")
+                            .unwrap_or_else(|| {
+                                filename.replace(".html", "")
+                                    .split('-')
+                                    .map(|w| {
+                                        let mut c = w.chars();
+                                        match c.next() {
+                                            None => String::new(),
+                                            Some(f) => f.to_uppercase().chain(c).collect(),
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join(" ")
+                            });
+
+                        // Extract screen type from data-screen-type attribute
+                        let screen_type = extract_html_attr(&html, "data-screen-type")
+                            .unwrap_or_else(|| "web".to_string());
+
+                        // Get modified time
+                        let modified_at = entry.metadata()
+                            .and_then(|m| m.modified())
+                            .map(|t| t.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0))
+                            .unwrap_or(0);
+
+                        designs.push(DesignFile {
+                            filename,
+                            title,
+                            screen_type,
+                            html,
+                            modified_at,
+                        });
+                    }
+                }
+            }
+        }
+    };
+
+    // Scan both session root and designs/ subfolder
+    process_dir(&session_dir);
+    process_dir(&designs_dir);
+
+    // Sort by modified time (newest first)
+    designs.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    designs
+}
+
+fn extract_html_attr(html: &str, attr: &str) -> Option<String> {
+    let pattern = format!(r#"{}=["']([^"']+)["']"#, attr);
+    regex::Regex::new(&pattern)
+        .ok()?
+        .captures(html)?
+        .get(1)
+        .map(|m| m.as_str().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -208,6 +301,7 @@ pub fn run() {
             start_opencode_server,
             stop_opencode_server,
             is_opencode_running,
+            load_session_designs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

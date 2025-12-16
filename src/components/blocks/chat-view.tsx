@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Plus,
   ChevronDown,
+  Palette,
 } from "lucide-react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
@@ -305,26 +306,28 @@ function ChatInputArea({
   const { textInput } = usePromptInputController();
   const hasInput = textInput.value.trim().length > 0;
 
+  const handleSubmit = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+    await sendMessage(text.trim());
+  };
+
   return (
-    <div className="relative px-6 pb-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="relative px-4 pb-4">
+      <div>
         {/* Gradient fade */}
         <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
         <PromptInput
-          onSubmit={async ({ text }) => {
-            if (!text.trim() || isLoading) return;
-            await sendMessage(text.trim());
-          }}
+          onSubmit={async ({ text }) => handleSubmit(text)}
           className={cn(
-            "rounded-2xl bg-card/50 backdrop-blur-sm transition-all duration-300",
+            "rounded-2xl bg-card/50 backdrop-blur-sm transition-all duration-300 ring-2 ring-purple-500/30",
             hasInput && "glow-ring",
             isLoading && "opacity-80",
           )}
         >
           <PromptInputBody>
             <PromptInputTextarea
-              placeholder="Ask anything..."
+              placeholder="Describe a design..."
               disabled={isLoading}
               className="min-h-[56px] max-h-[200px]"
             />
@@ -332,6 +335,13 @@ function ChatInputArea({
           <PromptInputFooter>
             <div className="flex items-center gap-2">
               <ModelSelectorButton />
+
+              {/* Designer mode indicator */}
+              <div className="flex items-center gap-1.5 px-2 h-7 text-xs bg-purple-500/20 text-purple-500 rounded-md">
+                <Palette className="size-3" />
+                Designer
+              </div>
+
               <PromptInputTools />
             </div>
             <PromptInputSubmit
@@ -339,7 +349,7 @@ function ChatInputArea({
               className={cn(
                 "size-9 rounded-xl transition-all duration-200",
                 hasInput && !isLoading
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                  ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
                   : "bg-muted text-muted-foreground",
               )}
             >
@@ -381,15 +391,15 @@ export function ChatView() {
 
   return (
     <PromptInputProvider>
-      <div className="flex flex-col h-[calc(100dvh-48px)] w-3xl mx-auto">
+      <div className="flex flex-col h-full">
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
-          <ConversationContent className="px-6 max-w-4xl mx-auto">
+          <ConversationContent className="px-4">
             {messages.length === 0 ? (
               <ConversationEmptyState
-                icon={<Sparkles className="size-10 text-primary/60" />}
-                title="Start a conversation"
-                description="Send a message to begin chatting"
+                icon={<Palette className="size-10 text-purple-500/60" />}
+                title="Design something"
+                description="Describe a UI screen and it will appear in the preview"
               />
             ) : (
               messages.map((message, index) =>
@@ -414,7 +424,10 @@ export function ChatView() {
 
         {/* Input area */}
         <div className="shrink-0">
-          <ChatInputArea isLoading={isLoading} sendMessage={sendMessage} />
+          <ChatInputArea
+            isLoading={isLoading}
+            sendMessage={sendMessage}
+          />
         </div>
       </div>
     </PromptInputProvider>

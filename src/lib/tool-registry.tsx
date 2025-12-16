@@ -13,6 +13,8 @@ import {
   ListChecks,
   CheckSquare,
   Square,
+  Palette,
+  Paintbrush,
   type LucideIcon,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
@@ -243,11 +245,37 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   write: {
     icon: FilePlus2,
-    title: () => "Write",
-    chipLabel: (p) => filename(getInput(p).filePath),
+    title: (p) => {
+      const { filePath } = getInput(p);
+      // Show "Design" for HTML files (design outputs)
+      if (filePath?.endsWith(".html")) return "Design";
+      return "Write";
+    },
+    chipLabel: (p) => {
+      const { filePath, content } = getInput(p);
+      // For HTML files, try to get title from data-title attribute
+      if (filePath?.endsWith(".html") && content) {
+        const titleMatch = content.match(/data-title=["']([^"']+)["']/);
+        if (titleMatch) return titleMatch[1].slice(0, 25);
+      }
+      return filename(filePath);
+    },
     subtitle: (p) => {
       const { filePath, content } = getInput(p);
       const file = filename(filePath);
+
+      // For HTML files, show as design output
+      if (filePath?.endsWith(".html") && content) {
+        const titleMatch = content.match(/data-title=["']([^"']+)["']/);
+        const title = titleMatch?.[1] ?? file?.replace(".html", "");
+        return (
+          <>
+            <Palette className="size-3 inline mr-1 text-purple-500" />
+            <span className="text-purple-500">{title}</span>
+          </>
+        );
+      }
+
       const lines = content?.split("\n").length ?? 0;
       if (!file && lines === 0) return undefined;
       return (
@@ -260,6 +288,26 @@ export const TOOLS: Record<string, ToolConfig> = {
     content: (p) => {
       const { filePath, content } = getInput(p);
       if (!content) return null;
+
+      // For HTML files, show a mini preview
+      if (filePath?.endsWith(".html")) {
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-purple-500/70">
+              Design output - view in preview panel
+            </div>
+            <div className="h-32 rounded-lg border overflow-hidden bg-white">
+              <iframe
+                srcDoc={content}
+                sandbox="allow-scripts"
+                className="w-full h-full scale-50 origin-top-left pointer-events-none"
+                style={{ width: "200%", height: "200%" }}
+                title="Design preview"
+              />
+            </div>
+          </div>
+        );
+      }
 
       const lang = getLanguage(filePath, content);
       const truncated = content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content;
@@ -411,6 +459,111 @@ export const TOOLS: Record<string, ToolConfig> = {
             </pre>
           )}
         </>
+      );
+    },
+  },
+
+  theme: {
+    icon: Paintbrush,
+    title: () => "Theme",
+    chipLabel: (p) => {
+      const name = p.input.name as string | undefined;
+      return name?.slice(0, 20);
+    },
+    subtitle: (p) => {
+      const name = p.input.name as string | undefined;
+      const style = p.input.style as string | undefined;
+      return (
+        <>
+          <Paintbrush className="size-3 inline mr-1 text-pink-500" />
+          <span className="text-pink-500">{name ?? "Theme"}</span>
+          {style && <span className="text-muted-foreground ml-1">({style})</span>}
+        </>
+      );
+    },
+    content: (p) => {
+      const name = p.input.name as string | undefined;
+      const style = p.input.style as string | undefined;
+
+      // Extract color values from flat input
+      const colorKeys = ['primary', 'secondary', 'accent', 'background', 'muted', 'card', 'border', 'destructive'];
+      const colors = colorKeys
+        .map(key => ({ key, value: p.input[key] as string }))
+        .filter(c => c.value);
+
+      if (colors.length === 0) {
+        return (
+          <div className="text-xs text-muted-foreground">
+            Creating theme...
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-3">
+          <div className="text-xs text-pink-500/70">
+            {name} - {style} style
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
+            {colors.map(({ key, value }) => (
+              <div
+                key={key}
+                className="aspect-square rounded-md border shadow-sm"
+                style={{ backgroundColor: value }}
+                title={`${key}: ${value}`}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    },
+  },
+
+  design: {
+    icon: Palette,
+    title: () => "Design",
+    chipLabel: (p) => {
+      const title = p.input.title as string | undefined;
+      return title?.slice(0, 25);
+    },
+    subtitle: (p) => {
+      const title = p.input.title as string | undefined;
+      const type = p.input.type as string | undefined;
+      return (
+        <>
+          <Palette className="size-3 inline mr-1 text-purple-500" />
+          <span className="text-purple-500">{title ?? "Design"}</span>
+          {type && <span className="text-muted-foreground ml-1">({type})</span>}
+        </>
+      );
+    },
+    content: (p) => {
+      const html = p.input.html as string | undefined;
+      const title = p.input.title as string | undefined;
+
+      if (!html) {
+        return (
+          <div className="text-xs text-muted-foreground">
+            Creating design...
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-2">
+          <div className="text-xs text-purple-500/70">
+            {title ?? "Design"} - view in preview panel
+          </div>
+          <div className="h-32 rounded-lg border overflow-hidden bg-white">
+            <iframe
+              srcDoc={html}
+              sandbox="allow-scripts"
+              className="w-full h-full scale-50 origin-top-left pointer-events-none"
+              style={{ width: "200%", height: "200%" }}
+              title="Design preview"
+            />
+          </div>
+        </div>
       );
     },
   },

@@ -48,6 +48,18 @@ export interface Message {
   isStreaming?: boolean;
 }
 
+// Design screen type for preview components
+export interface DesignScreen {
+  id: string;
+  sessionId: string;
+  messageId: string;
+  title: string;
+  type: "mobile" | "web";
+  filePath: string;
+  html: string;
+  createdAt: number;
+}
+
 interface SessionState {
   // Core state
   sessions: SessionMeta[];
@@ -278,17 +290,7 @@ export const useSessionStore = create<SessionState>()(
                 tool: "tool" in sdkPart ? sdkPart.tool : undefined,
                 state: "state" in sdkPart ? sdkPart.state : undefined,
               };
-              console.log("[EVENT] message.part.updated", {
-                partId: part.id,
-                messageId: part.messageID,
-                type: part.type,
-                hasText: !!part.text
-              });
               updatePart(sdkPart.messageID, part);
-
-              // Debug: log current parts state
-              const state = get();
-              console.log("[STATE] parts for message:", state.parts[sdkPart.messageID]?.length ?? 0);
             }
             break;
           }
@@ -300,15 +302,6 @@ export const useSessionStore = create<SessionState>()(
             const exists = messages?.some((m) => m.id === info.id);
             const isCompleted = "completed" in info.time && !!info.time.completed;
 
-            console.log("[EVENT] message.updated", {
-              messageId: info.id,
-              sessionId: info.sessionID,
-              role: info.role,
-              completed: isCompleted,
-              exists,
-              messagesCount: messages?.length ?? 0
-            });
-
             if (!exists) {
               // Message doesn't exist yet - create it (like OpenCode)
               const newMessage: Message = {
@@ -318,15 +311,9 @@ export const useSessionStore = create<SessionState>()(
                 time: info.time as { created: number; completed?: number },
                 isStreaming: !isCompleted,
               };
-              console.log("[ACTION] Adding new message:", newMessage);
               addMessage(info.sessionID, newMessage);
-
-              // Debug: verify message was added
-              const newState = get();
-              console.log("[STATE] messages after add:", newState.messages[info.sessionID]?.length);
             } else if (isCompleted) {
               // Message exists and is complete - update it
-              console.log("[ACTION] Marking message complete");
               updateMessage(info.sessionID, info.id, {
                 isStreaming: false,
                 time: info.time as { created: number; completed?: number },
