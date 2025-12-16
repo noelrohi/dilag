@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSDK } from "@/context/global-events";
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 // Providers that use OAuth (no API key needed)
 const OAUTH_PROVIDERS = ["anthropic", "google", "github-copilot", "openai"] as const;
@@ -18,10 +19,18 @@ interface ModelState {
   setSelectedModel: (model: { providerID: string; modelID: string } | null) => void;
 }
 
-export const useModelStore = create<ModelState>((set) => ({
-  selectedModel: { providerID: "anthropic", modelID: "claude-sonnet-4-20250514" },
-  setSelectedModel: (model) => set({ selectedModel: model }),
-}));
+export const useModelStore = create<ModelState>()(
+  persist(
+    (set) => ({
+      selectedModel: { providerID: "anthropic", modelID: "claude-sonnet-4-20250514" },
+      setSelectedModel: (model) => set({ selectedModel: model }),
+    }),
+    {
+      name: "dilag-model-store",
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+);
 
 export function useModels() {
   const sdk = useSDK();
