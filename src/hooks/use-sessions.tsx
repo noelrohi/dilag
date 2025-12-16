@@ -13,6 +13,7 @@ import {
   type MessagePart,
 } from "@/context/session-store";
 import { useGlobalEvents, useSDK, type Event } from "@/context/global-events";
+import { useModelStore } from "@/hooks/use-models";
 import type { Part } from "@opencode-ai/sdk/v2/client";
 
 // Session metadata stored locally via Tauri
@@ -283,6 +284,9 @@ export function useSessions() {
     async (content: string) => {
       if (!currentSessionId || !currentSession) return;
 
+      // Get selected model from store
+      const { selectedModel } = useModelStore.getState();
+
       // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;
       const directory = currentSession.cwd;
@@ -298,7 +302,7 @@ export function useSessions() {
         sdk.session.prompt({
           sessionID: currentSessionId,
           directory,
-          model: {
+          model: selectedModel ?? {
             providerID: "anthropic",
             modelID: "claude-sonnet-4-20250514",
           },

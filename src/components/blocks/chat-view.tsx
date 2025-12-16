@@ -1,4 +1,5 @@
-import { Send, Sparkles, Terminal, AlertCircle, Plus } from "lucide-react";
+import { useState } from "react";
+import { Send, Sparkles, Terminal, AlertCircle, Plus, ChevronDown } from "lucide-react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
   useMessageParts,
@@ -24,6 +25,19 @@ import {
   PromptInputProvider,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
+import {
+  ModelSelector,
+  ModelSelectorTrigger,
+  ModelSelectorContent,
+  ModelSelectorInput,
+  ModelSelectorList,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorItem,
+  ModelSelectorLogo,
+  ModelSelectorName,
+} from "@/components/ai-elements/model-selector";
+import { useModels } from "@/hooks/use-models";
 
 function StatusIndicator({ status }: { status: string }) {
   return (
@@ -216,6 +230,81 @@ function ErrorState({ error }: { error: string }) {
   );
 }
 
+function ModelSelectorButton() {
+  const { models, selectedModelInfo, selectModel, isLoading } = useModels();
+  const [open, setOpen] = useState(false);
+
+  // Group models by provider
+  const groupedModels = models.reduce(
+    (acc, model) => {
+      if (!acc[model.providerID]) {
+        acc[model.providerID] = {
+          name: model.providerName,
+          models: [],
+        };
+      }
+      acc[model.providerID].models.push(model);
+      return acc;
+    },
+    {} as Record<string, { name: string; models: typeof models }>
+  );
+
+  return (
+    <ModelSelector open={open} onOpenChange={setOpen}>
+      <ModelSelectorTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+          disabled={isLoading}
+        >
+          {selectedModelInfo ? (
+            <>
+              <ModelSelectorLogo
+                provider={selectedModelInfo.providerID as any}
+                className="size-3"
+              />
+              <span className="max-w-[120px] truncate">
+                {selectedModelInfo.name}
+              </span>
+            </>
+          ) : (
+            <span>Select model</span>
+          )}
+          <ChevronDown className="size-3 opacity-50" />
+        </Button>
+      </ModelSelectorTrigger>
+      <ModelSelectorContent title="Select Model">
+        <ModelSelectorInput placeholder="Search models..." />
+        <ModelSelectorList>
+          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+          {Object.entries(groupedModels).map(([providerID, { name, models: providerModels }]) => (
+            <ModelSelectorGroup key={providerID} heading={name}>
+              {providerModels.map((model) => (
+                <ModelSelectorItem
+                  key={`${model.providerID}/${model.id}`}
+                  value={`${model.providerID}/${model.id}`}
+                  onSelect={() => {
+                    selectModel(model.providerID, model.id);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <ModelSelectorLogo
+                    provider={model.providerID as any}
+                    className="size-4"
+                  />
+                  <ModelSelectorName>{model.name}</ModelSelectorName>
+                </ModelSelectorItem>
+              ))}
+            </ModelSelectorGroup>
+          ))}
+        </ModelSelectorList>
+      </ModelSelectorContent>
+    </ModelSelector>
+  );
+}
+
 function ChatInputArea({
   isLoading,
   sendMessage,
@@ -251,7 +340,10 @@ function ChatInputArea({
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools />
+            <div className="flex items-center gap-2">
+              <ModelSelectorButton />
+              <PromptInputTools />
+            </div>
             <PromptInputSubmit
               disabled={!hasInput || isLoading}
               className={cn(
