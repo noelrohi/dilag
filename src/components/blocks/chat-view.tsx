@@ -335,13 +335,6 @@ function ChatInputArea({
           <PromptInputFooter>
             <div className="flex items-center gap-2">
               <ModelSelectorButton />
-
-              {/* Designer mode indicator */}
-              <div className="flex items-center gap-1.5 px-2 h-7 text-xs bg-purple-500/20 text-purple-500 rounded-md">
-                <Palette className="size-3" />
-                Designer
-              </div>
-
               <PromptInputTools />
             </div>
             <PromptInputSubmit

@@ -31,17 +31,17 @@ export function useDesigns() {
     try {
       const files = await loadSessionDesigns(session.cwd);
       setDesigns(files);
-      // Reset active index if out of bounds
-      if (activeIndex >= files.length && files.length > 0) {
-        setActiveIndex(files.length - 1);
-      }
+      // Reset active index if out of bounds (using functional update to avoid stale closure)
+      setActiveIndex((current) =>
+        current >= files.length && files.length > 0 ? files.length - 1 : current
+      );
     } catch (err) {
       console.error("Failed to load designs:", err);
       setDesigns([]);
     } finally {
       setIsLoading(false);
     }
-  }, [session?.cwd, activeIndex]);
+  }, [session?.cwd]);
 
   // Load designs when session changes
   useEffect(() => {

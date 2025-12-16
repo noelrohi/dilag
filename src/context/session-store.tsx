@@ -60,6 +60,13 @@ export interface DesignScreen {
   createdAt: number;
 }
 
+// Screen position for canvas
+export interface ScreenPosition {
+  id: string;
+  x: number;
+  y: number;
+}
+
 interface SessionState {
   // Core state
   sessions: SessionMeta[];
@@ -68,6 +75,7 @@ interface SessionState {
   parts: Record<string, MessagePart[]>; // Keyed by messageId (like OpenCode!)
   sessionStatus: Record<string, SessionStatus>; // Keyed by sessionId
   sessionDiffs: Record<string, FileDiff[]>; // Keyed by sessionId
+  screenPositions: Record<string, ScreenPosition[]>; // Keyed by sessionId
 
   // UI state
   isServerReady: boolean;
@@ -90,6 +98,7 @@ interface SessionState {
   updatePart: (messageId: string, part: MessagePart) => void;
   setSessionStatus: (sessionId: string, status: SessionStatus) => void;
   setSessionDiffs: (sessionId: string, diffs: FileDiff[]) => void;
+  setScreenPositions: (sessionId: string, positions: ScreenPosition[]) => void;
   addDebugEvent: (event: Event) => void;
   clearDebugEvents: () => void;
 
@@ -144,6 +153,7 @@ export const useSessionStore = create<SessionState>()(
       parts: {}, // Parts stored separately by messageId
       sessionStatus: {},
       sessionDiffs: {},
+      screenPositions: {},
       isServerReady: false,
       error: null,
       debugEvents: [],
@@ -254,6 +264,11 @@ export const useSessionStore = create<SessionState>()(
           state.sessionDiffs[sessionId] = diffs;
         }),
 
+      setScreenPositions: (sessionId, positions) =>
+        set((state) => {
+          state.screenPositions[sessionId] = positions;
+        }),
+
       addDebugEvent: (event) =>
         set((state) => {
           // Keep last 500 events
@@ -354,8 +369,9 @@ export const useSessionStore = create<SessionState>()(
       name: "dilag-session-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        // Only persist UI preferences, not messages (they come from server)
+        // Persist UI preferences and screen positions
         currentSessionId: state.currentSessionId,
+        screenPositions: state.screenPositions,
       }),
     }
   )
@@ -382,3 +398,8 @@ export const useSessionDiffs = (sessionId: string | null) =>
 export const useIsServerReady = () => useSessionStore((state) => state.isServerReady);
 export const useError = () => useSessionStore((state) => state.error);
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents);
+
+// Screen positions
+const EMPTY_POSITIONS: ScreenPosition[] = [];
+export const useScreenPositions = (sessionId: string | null) =>
+  useSessionStore((state) => (sessionId ? state.screenPositions[sessionId] ?? EMPTY_POSITIONS : EMPTY_POSITIONS));

@@ -299,13 +299,19 @@ export function useSessions() {
 
         // Send message using SDK - fire and forget
         // User message will be added via server events (message.updated)
+        const model = selectedModel ?? {
+          providerID: "anthropic",
+          modelID: "claude-sonnet-4-20250514",
+        };
+        console.log("[sendMessage] agent:", "designer");
+        console.log("[sendMessage] model:", `${model.providerID}/${model.modelID}`);
+        console.log("[sendMessage] directory:", directory);
+
         sdk.session.prompt({
           sessionID: currentSessionId,
           directory,
-          model: selectedModel ?? {
-            providerID: "anthropic",
-            modelID: "claude-sonnet-4-20250514",
-          },
+          agent: "designer",
+          model,
           parts: [{ type: "text", text: content }],
         }).catch((err) => {
           setError(err instanceof Error ? err.message : "Failed to send message");

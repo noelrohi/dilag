@@ -1,6 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { GlobalEventsProvider } from "@/context/global-events";
-import { SidebarProvider } from "@/components/ui/sidebar";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -9,9 +8,7 @@ export const Route = createRootRoute({
 function RootLayout() {
   return (
     <GlobalEventsProvider>
-      <SidebarProvider>
-        <Outlet />
-      </SidebarProvider>
+      <Outlet />
     </GlobalEventsProvider>
   );
 }
