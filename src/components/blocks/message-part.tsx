@@ -1,4 +1,4 @@
-import type { MessagePart as MessagePartType } from "@/lib/opencode";
+import type { MessagePart as MessagePartType } from "@/context/session-store";
 import { MessageResponse } from "@/components/ai-elements/message";
 import {
   Reasoning,

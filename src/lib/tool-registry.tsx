@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ToolState } from "./opencode";
+import type { ToolState } from "@/context/session-store";
 import {
   Glasses,
   Terminal,

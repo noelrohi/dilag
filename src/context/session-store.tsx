@@ -1,19 +1,21 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import {
-  type OpenCodeEvent,
-  type EventMessagePartUpdated,
-  type EventMessageUpdated,
-  type EventSessionStatus,
-  type EventSessionDiff,
-  type FileDiff,
-  type SessionStatus,
-  type ToolState,
-} from "./global-events";
+import type {
+  Event,
+  EventMessagePartUpdated,
+  EventMessageUpdated,
+  EventSessionStatus,
+  EventSessionDiff,
+  FileDiff,
+  ToolState,
+} from "@opencode-ai/sdk/v2/client";
 
-// Re-export types
-export type { ToolState, SessionStatus, FileDiff };
+// Re-export SDK types
+export type { ToolState, FileDiff };
+
+// Our internal session status type (simpler than SDK's object type)
+export type SessionStatus = "idle" | "running" | "error" | "unknown";
 
 // Types
 export interface SessionMeta {
@@ -42,7 +44,6 @@ export interface Message {
   id: string;
   sessionID: string;
   role: "user" | "assistant";
-  parts: MessagePart[];
   time: { created: number; completed?: number };
   isStreaming?: boolean;
 }
@@ -52,6 +53,7 @@ interface SessionState {
   sessions: SessionMeta[];
   currentSessionId: string | null;
   messages: Record<string, Message[]>; // Keyed by sessionId
+  parts: Record<string, MessagePart[]>; // Keyed by messageId (like OpenCode!)
   sessionStatus: Record<string, SessionStatus>; // Keyed by sessionId
   sessionDiffs: Record<string, FileDiff[]>; // Keyed by sessionId
 
@@ -60,7 +62,7 @@ interface SessionState {
   error: string | null;
 
   // Debug
-  debugEvents: OpenCodeEvent[];
+  debugEvents: Event[];
 
   // Actions
   setServerReady: (ready: boolean) => void;
@@ -73,17 +75,17 @@ interface SessionState {
   setMessages: (sessionId: string, messages: Message[]) => void;
   addMessage: (sessionId: string, message: Message) => void;
   updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
-  updateMessagePart: (sessionId: string, messageId: string, part: MessagePart, delta?: string) => void;
+  updatePart: (messageId: string, part: MessagePart) => void;
   setSessionStatus: (sessionId: string, status: SessionStatus) => void;
   setSessionDiffs: (sessionId: string, diffs: FileDiff[]) => void;
-  addDebugEvent: (event: OpenCodeEvent) => void;
+  addDebugEvent: (event: Event) => void;
   clearDebugEvents: () => void;
 
   // Event handler
-  handleEvent: (event: OpenCodeEvent) => void;
+  handleEvent: (event: Event) => void;
 }
 
-// Binary search for efficient sorted insertions
+// Binary search for efficient sorted insertions (by ID for lookups)
 function binarySearch<T>(arr: T[], id: string, getId: (item: T) => string): { found: boolean; index: number } {
   let low = 0;
   let high = arr.length - 1;
@@ -104,6 +106,22 @@ function binarySearch<T>(arr: T[], id: string, getId: (item: T) => string): { fo
   return { found: false, index: low };
 }
 
+// Binary search by timestamp for message ordering
+function binarySearchByTime(arr: Message[], timestamp: number): { index: number } {
+  let low = 0;
+  let high = arr.length - 1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if (arr[mid].time.created < timestamp) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return { index: low };
+}
+
 export const useSessionStore = create<SessionState>()(
   persist(
     immer((set, get) => ({
@@ -111,6 +129,7 @@ export const useSessionStore = create<SessionState>()(
       sessions: [],
       currentSessionId: null,
       messages: {},
+      parts: {}, // Parts stored separately by messageId
       sessionStatus: {},
       sessionDiffs: {},
       isServerReady: false,
@@ -172,10 +191,13 @@ export const useSessionStore = create<SessionState>()(
           if (!state.messages[sessionId]) {
             state.messages[sessionId] = [];
           }
-          const result = binarySearch(state.messages[sessionId], message.id, (m) => m.id);
-          if (!result.found) {
-            state.messages[sessionId].splice(result.index, 0, message);
-          }
+          // Check if already exists by ID
+          const exists = state.messages[sessionId].some((m) => m.id === message.id);
+          if (exists) return;
+
+          // Insert by timestamp order
+          const { index } = binarySearchByTime(state.messages[sessionId], message.time.created);
+          state.messages[sessionId].splice(index, 0, message);
         }),
 
       updateMessage: (sessionId, messageId, updates) =>
@@ -189,36 +211,24 @@ export const useSessionStore = create<SessionState>()(
           }
         }),
 
-      updateMessagePart: (sessionId, messageId, part, delta) =>
+      // Store parts separately by messageId (like OpenCode)
+      updatePart: (messageId, part) =>
         set((state) => {
-          const messages = state.messages[sessionId];
-          if (!messages) return;
+          const parts = state.parts[messageId];
+          if (!parts) {
+            // Create new parts array for this message
+            state.parts[messageId] = [part];
+            return;
+          }
 
-          // Find message
-          const msgResult = binarySearch(messages, messageId, (m) => m.id);
-          if (!msgResult.found) return;
-
-          const message = messages[msgResult.index];
-
-          // Find or create part
-          const partIndex = message.parts.findIndex((p) => p.id === part.id);
-
-          if (partIndex >= 0) {
-            // Update existing part
-            if (part.type === "text" && delta) {
-              // For text parts, append delta
-              message.parts[partIndex].text = (message.parts[partIndex].text || "") + delta;
-            } else {
-              // For other parts, replace entirely
-              message.parts[partIndex] = part;
-            }
+          // Find existing part by ID using binary search
+          const result = binarySearch(parts, part.id, (p) => p.id);
+          if (result.found) {
+            // Update existing part - replace entirely (like OpenCode's reconcile)
+            parts[result.index] = part;
           } else {
-            // Add new part
-            if (part.type === "text" && delta) {
-              message.parts.push({ ...part, text: delta });
-            } else {
-              message.parts.push(part);
-            }
+            // Insert new part in sorted order
+            parts.splice(result.index, 0, part);
           }
         }),
 
@@ -246,29 +256,80 @@ export const useSessionStore = create<SessionState>()(
           state.debugEvents = [];
         }),
 
-      // Central event handler
+      // Central event handler - matches OpenCode's pattern exactly
       handleEvent: (event) => {
-        const { addDebugEvent, updateMessagePart, updateMessage, setSessionStatus, setSessionDiffs } = get();
+        const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs } = get();
 
         // Add to debug events
         addDebugEvent(event);
 
         switch (event.type) {
           case "message.part.updated": {
-            const { part, delta } = (event as EventMessagePartUpdated).properties;
-            if (part.sessionID && part.messageID) {
-              updateMessagePart(part.sessionID, part.messageID, part, delta);
+            // Match OpenCode exactly - only need messageId for parts!
+            const sdkPart = (event as EventMessagePartUpdated).properties.part;
+            if (sdkPart.messageID) {
+              // Convert SDK Part to our internal MessagePart type
+              const part: MessagePart = {
+                id: sdkPart.id,
+                messageID: sdkPart.messageID,
+                sessionID: sdkPart.sessionID,
+                type: sdkPart.type as MessagePart["type"],
+                text: "text" in sdkPart ? sdkPart.text : undefined,
+                tool: "tool" in sdkPart ? sdkPart.tool : undefined,
+                state: "state" in sdkPart ? sdkPart.state : undefined,
+              };
+              console.log("[EVENT] message.part.updated", {
+                partId: part.id,
+                messageId: part.messageID,
+                type: part.type,
+                hasText: !!part.text
+              });
+              updatePart(sdkPart.messageID, part);
+
+              // Debug: log current parts state
+              const state = get();
+              console.log("[STATE] parts for message:", state.parts[sdkPart.messageID]?.length ?? 0);
             }
             break;
           }
 
           case "message.updated": {
             const { info } = (event as EventMessageUpdated).properties;
-            // If message is complete, update it
-            if (info.time.completed) {
+            const state = get();
+            const messages = state.messages[info.sessionID];
+            const exists = messages?.some((m) => m.id === info.id);
+            const isCompleted = "completed" in info.time && !!info.time.completed;
+
+            console.log("[EVENT] message.updated", {
+              messageId: info.id,
+              sessionId: info.sessionID,
+              role: info.role,
+              completed: isCompleted,
+              exists,
+              messagesCount: messages?.length ?? 0
+            });
+
+            if (!exists) {
+              // Message doesn't exist yet - create it (like OpenCode)
+              const newMessage: Message = {
+                id: info.id,
+                sessionID: info.sessionID,
+                role: info.role,
+                time: info.time as { created: number; completed?: number },
+                isStreaming: !isCompleted,
+              };
+              console.log("[ACTION] Adding new message:", newMessage);
+              addMessage(info.sessionID, newMessage);
+
+              // Debug: verify message was added
+              const newState = get();
+              console.log("[STATE] messages after add:", newState.messages[info.sessionID]?.length);
+            } else if (isCompleted) {
+              // Message exists and is complete - update it
+              console.log("[ACTION] Marking message complete");
               updateMessage(info.sessionID, info.id, {
                 isStreaming: false,
-                time: info.time,
+                time: info.time as { created: number; completed?: number },
               });
             }
             break;
@@ -276,13 +337,15 @@ export const useSessionStore = create<SessionState>()(
 
           case "session.status": {
             const { sessionID, status } = (event as EventSessionStatus).properties;
-            setSessionStatus(sessionID, status);
+            // SDK status is { type: "idle" | "running" | ... }
+            const statusType = status.type as SessionStatus;
+            setSessionStatus(sessionID, statusType);
             break;
           }
 
           case "session.diff": {
-            const { sessionID, diffs } = (event as EventSessionDiff).properties;
-            setSessionDiffs(sessionID, diffs);
+            const props = (event as EventSessionDiff).properties;
+            setSessionDiffs(props.sessionID, props.diff);
             break;
           }
 
@@ -313,6 +376,7 @@ export const useSessionStore = create<SessionState>()(
 
 // Stable empty references to avoid infinite loops
 const EMPTY_MESSAGES: Message[] = [];
+const EMPTY_PARTS: MessagePart[] = [];
 const EMPTY_DIFFS: FileDiff[] = [];
 
 // Selector hooks for performance
@@ -322,6 +386,8 @@ export const useCurrentSession = () =>
   useSessionStore((state) => state.sessions.find((s) => s.id === state.currentSessionId) ?? null);
 export const useSessionMessages = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES));
+export const useMessageParts = (messageId: string | null) =>
+  useSessionStore((state) => (messageId ? state.parts[messageId] ?? EMPTY_PARTS : EMPTY_PARTS));
 export const useSessionStatus = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.sessionStatus[sessionId] ?? "unknown" : "unknown"));
 export const useSessionDiffs = (sessionId: string | null) =>

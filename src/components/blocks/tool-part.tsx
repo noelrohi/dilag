@@ -10,7 +10,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { getToolConfig, type ToolRenderProps } from "@/lib/tool-registry";
-import type { ToolState } from "@/lib/opencode";
+import type { ToolState } from "@/context/session-store";
 
 interface ToolPartProps {
   tool: string;

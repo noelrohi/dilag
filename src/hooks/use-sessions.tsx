@@ -1,19 +1,5 @@
 import { useEffect, useCallback, useRef } from "react";
-import {
-  getBaseUrl,
-  startServer,
-  createSession as createOpenCodeSession,
-  deleteSession as deleteOpenCodeSession,
-  getSessionMessages,
-  getSession,
-  sendMessageToSession,
-  createSessionDir,
-  saveSessionMetadata,
-  loadSessionsMetadata,
-  deleteSessionMetadata,
-  type SessionMeta,
-  type OpenCodeMessage,
-} from "@/lib/opencode";
+import { invoke } from "@tauri-apps/api/core";
 import {
   useSessionStore,
   useSessions as useSessionsList,
@@ -24,18 +10,46 @@ import {
   useIsServerReady,
   useError,
   useDebugEvents,
-  type Message,
+  type MessagePart,
 } from "@/context/session-store";
-import { useGlobalEvents } from "@/context/global-events";
+import { useGlobalEvents, useSDK, type Event } from "@/context/global-events";
+import type { Part } from "@opencode-ai/sdk/v2/client";
 
-// Convert OpenCode message to our Message format
-function convertMessage(msg: OpenCodeMessage): Message {
+// Session metadata stored locally via Tauri
+interface SessionMeta {
+  id: string;
+  name: string;
+  created_at: string;
+  cwd: string;
+}
+
+// Tauri commands for local session management
+async function createSessionDir(sessionId: string): Promise<string> {
+  return invoke<string>("create_session_dir", { sessionId });
+}
+
+async function saveSessionMetadata(session: SessionMeta): Promise<void> {
+  return invoke<void>("save_session_metadata", { session });
+}
+
+async function loadSessionsMetadata(): Promise<SessionMeta[]> {
+  return invoke<SessionMeta[]>("load_sessions_metadata");
+}
+
+async function deleteSessionMetadata(sessionId: string): Promise<void> {
+  return invoke<void>("delete_session_metadata", { sessionId });
+}
+
+// Convert SDK message format to our internal format
+function convertPart(part: Part, messageID: string, sessionID: string): MessagePart {
   return {
-    id: msg.info.id,
-    sessionID: msg.info.sessionID,
-    role: msg.info.role,
-    parts: msg.parts,
-    time: msg.info.time,
+    id: part.id,
+    messageID,
+    sessionID,
+    type: part.type as MessagePart["type"],
+    text: "text" in part ? part.text : undefined,
+    tool: "tool" in part ? part.tool : undefined,
+    state: "state" in part ? part.state : undefined,
   };
 }
 
@@ -50,20 +64,21 @@ export function useSessions() {
   const error = useError();
   const debugEvents = useDebugEvents();
 
+  const sdk = useSDK();
+
   const {
     addSession,
     updateSession,
     removeSession,
     setCurrentSessionId,
     setMessages,
-    addMessage,
     setSessionStatus,
     clearDebugEvents,
     handleEvent,
     setError,
   } = useSessionStore();
 
-  const { subscribe, subscribeToSession } = useGlobalEvents();
+  const { subscribe, subscribeToSession, isServerReady: globalServerReady } = useGlobalEvents();
 
   // Use ref for handleEvent to avoid infinite loops
   const handleEventRef = useRef(handleEvent);
@@ -71,16 +86,23 @@ export function useSessions() {
 
   // Subscribe to global events (only once on mount)
   useEffect(() => {
-    const handler = (event: Parameters<typeof handleEvent>[0]) => {
+    console.log("[useSessions] Setting up global event subscription");
+    const handler = (event: Event) => {
+      console.log("[useSessions] Received event:", event.type);
       handleEventRef.current(event);
     };
-    return subscribe(handler);
+    const unsubscribe = subscribe(handler);
+    console.log("[useSessions] Subscribed to global events");
+    return () => {
+      console.log("[useSessions] Unsubscribing from global events");
+      unsubscribe();
+    };
   }, [subscribe]);
 
   // Subscribe to current session events specifically
   useEffect(() => {
     if (!currentSessionId) return;
-    const handler = (event: Parameters<typeof handleEvent>[0]) => {
+    const handler = (event: Event) => {
       handleEventRef.current(event);
     };
     return subscribeToSession(currentSessionId, handler);
@@ -89,21 +111,14 @@ export function useSessions() {
   // Track if initialized to prevent double init
   const initializedRef = useRef(false);
 
-  // Initialize server and load sessions on mount (only once)
+  // Initialize and load sessions once server is ready
   useEffect(() => {
-    if (initializedRef.current) return;
+    if (!globalServerReady || initializedRef.current) return;
     initializedRef.current = true;
 
     async function init() {
       try {
         useSessionStore.getState().setError(null);
-
-        // Start the OpenCode server
-        await startServer();
-
-        // Initialize the base URL
-        await getBaseUrl();
-
         useSessionStore.getState().setServerReady(true);
 
         // Load persisted sessions
@@ -115,10 +130,30 @@ export function useSessions() {
           const mostRecent = savedSessions[savedSessions.length - 1];
           useSessionStore.getState().setCurrentSessionId(mostRecent.id);
 
-          // Load messages for this session
+          // Load messages for this session using SDK
           try {
-            const openCodeMessages = await getSessionMessages(mostRecent.id, mostRecent.cwd);
-            useSessionStore.getState().setMessages(mostRecent.id, openCodeMessages.map(convertMessage));
+            const response = await sdk.session.messages({
+              sessionID: mostRecent.id,
+              directory: mostRecent.cwd,
+            });
+
+            if (response.data) {
+              const msgs = response.data.map((msg) => ({
+                id: msg.info.id,
+                sessionID: msg.info.sessionID,
+                role: msg.info.role as "user" | "assistant",
+                time: msg.info.time,
+              }));
+              useSessionStore.getState().setMessages(mostRecent.id, msgs);
+
+              // Set parts for each message
+              const state = useSessionStore.getState();
+              response.data.forEach((msg) => {
+                msg.parts?.forEach((part) => {
+                  state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID));
+                });
+              });
+            }
           } catch {
             // Session might not exist in OpenCode yet
             useSessionStore.getState().setMessages(mostRecent.id, []);
@@ -131,7 +166,7 @@ export function useSessions() {
     }
 
     init();
-  }, []);
+  }, [globalServerReady, sdk]);
 
   const createSession = useCallback(
     async (name?: string): Promise<string | null> => {
@@ -143,8 +178,11 @@ export function useSessions() {
         const cwd = await createSessionDir(dirId);
 
         // Create session in OpenCode with the directory for isolation
-        const openCodeSession = await createOpenCodeSession(cwd);
-        const sessionId = openCodeSession.id;
+        const response = await sdk.session.create({ directory: cwd });
+        if (!response.data) {
+          throw new Error("Failed to create session");
+        }
+        const sessionId = response.data.id;
 
         // Create session metadata
         const sessionMeta: SessionMeta = {
@@ -169,7 +207,7 @@ export function useSessions() {
         return null;
       }
     },
-    [sessions.length, setError, addSession, setCurrentSessionId, setMessages]
+    [sessions.length, setError, addSession, setCurrentSessionId, setMessages, sdk]
   );
 
   const selectSession = useCallback(
@@ -181,23 +219,49 @@ export function useSessions() {
       const directory = session?.cwd;
 
       try {
-        // Load messages for this session
-        const openCodeMessages = await getSessionMessages(sessionId, directory);
-        setMessages(sessionId, openCodeMessages.map(convertMessage));
+        // Load messages for this session using SDK
+        const response = await sdk.session.messages({
+          sessionID: sessionId,
+          directory,
+        });
+
+        if (response.data) {
+          const msgs = response.data.map((msg) => ({
+            id: msg.info.id,
+            sessionID: msg.info.sessionID,
+            role: msg.info.role as "user" | "assistant",
+            time: msg.info.time,
+          }));
+          setMessages(sessionId, msgs);
+
+          // Set parts for each message
+          const state = useSessionStore.getState();
+          response.data.forEach((msg) => {
+            msg.parts?.forEach((part) => {
+              state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID));
+            });
+          });
+        }
       } catch {
         // Session might not exist in OpenCode, start fresh
         setMessages(sessionId, []);
       }
     },
-    [sessions, setCurrentSessionId, setMessages]
+    [sessions, setCurrentSessionId, setMessages, sdk]
   );
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
       try {
+        // Get session's directory
+        const session = sessions.find((s) => s.id === sessionId);
+
         // Delete from OpenCode
         try {
-          await deleteOpenCodeSession(sessionId);
+          await sdk.session.delete({
+            sessionID: sessionId,
+            directory: session?.cwd,
+          });
         } catch {
           // Might not exist in OpenCode, continue anyway
         }
@@ -212,7 +276,7 @@ export function useSessions() {
         console.error("Failed to delete session:", err);
       }
     },
-    [removeSession, setError]
+    [sessions, removeSession, setError, sdk]
   );
 
   const sendMessage = useCallback(
@@ -226,41 +290,40 @@ export function useSessions() {
       try {
         setError(null);
 
-        // Add user message optimistically
-        const userMessage: Message = {
-          id: crypto.randomUUID(),
-          sessionID: currentSessionId,
-          role: "user",
-          parts: [{ id: crypto.randomUUID(), type: "text", text: content }],
-          time: { created: Date.now() },
-        };
-        addMessage(currentSessionId, userMessage);
-
-        // Add placeholder assistant message for streaming
-        const assistantMessageId = crypto.randomUUID();
-        const assistantMessage: Message = {
-          id: assistantMessageId,
-          sessionID: currentSessionId,
-          role: "assistant",
-          parts: [],
-          time: { created: Date.now() },
-          isStreaming: true,
-        };
-        addMessage(currentSessionId, assistantMessage);
-
         // Set session status to running
         setSessionStatus(currentSessionId, "running");
 
-        // Send message - events will come via global event stream
-        await sendMessageToSession(currentSessionId, content, undefined, directory);
+        // Send message using SDK - fire and forget
+        // User message will be added via server events (message.updated)
+        sdk.session.prompt({
+          sessionID: currentSessionId,
+          directory,
+          model: {
+            providerID: "anthropic",
+            modelID: "claude-sonnet-4-20250514",
+          },
+          parts: [{ type: "text", text: content }],
+        }).catch((err) => {
+          setError(err instanceof Error ? err.message : "Failed to send message");
+          setSessionStatus(currentSessionId, "error");
+          console.error("Failed to send message:", err);
+        });
 
         // Update title from OpenCode after first response
         if (isFirstMessage) {
-          getSession(currentSessionId, directory).then(async (openCodeSession) => {
-            const updatedSession = { ...currentSession, name: openCodeSession.title };
-            await saveSessionMetadata(updatedSession);
-            updateSession(currentSessionId, { name: openCodeSession.title });
-          });
+          // Delay slightly to let the session process
+          setTimeout(() => {
+            sdk.session.get({
+              sessionID: currentSessionId,
+              directory,
+            }).then(async (response) => {
+              if (response.data?.title) {
+                const updatedSession = { ...currentSession, name: response.data.title };
+                await saveSessionMetadata(updatedSession);
+                updateSession(currentSessionId, { name: response.data.title });
+              }
+            });
+          }, 2000);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message");
@@ -268,7 +331,7 @@ export function useSessions() {
         console.error("Failed to send message:", err);
       }
     },
-    [currentSessionId, currentSession, messages.length, setError, addMessage, setSessionStatus, updateSession]
+    [currentSessionId, currentSession, messages.length, setError, setSessionStatus, updateSession, sdk]
   );
 
   return {

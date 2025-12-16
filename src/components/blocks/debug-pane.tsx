@@ -7,10 +7,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import type { OpenCodeEvent } from "@/lib/opencode";
+import type { Event } from "@opencode-ai/sdk/v2/client";
 
 interface DebugPaneProps {
-  events: OpenCodeEvent[];
+  events: Event[];
   onClear: () => void;
 }
 
@@ -99,7 +99,7 @@ function EventItem({
   event,
   index,
 }: {
-  event: OpenCodeEvent;
+  event: Event;
   index: number;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -140,7 +140,7 @@ function getTypeColor(type: string): string {
   return "text-foreground";
 }
 
-function getEventPreview(event: OpenCodeEvent): string {
+function getEventPreview(event: Event): string {
   const props = event.properties as Record<string, unknown>;
 
   if (event.type === "message.part.updated") {

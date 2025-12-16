@@ -11,14 +11,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  getProviders,
-  startOAuthFlow,
-  completeOAuthFlow,
-  disconnectProvider,
-} from "@/lib/opencode";
+import { useSDK } from "@/context/global-events";
 
 export function AuthSettings() {
+  const sdk = useSDK();
   const [open, setOpen] = useState(false);
   const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,8 +37,21 @@ export function AuthSettings() {
       setIsLoading(true);
       setError(null);
 
-      const providersRes = await getProviders();
-      setConnectedProviders(providersRes.connected);
+      const response = await sdk.provider.list();
+      if (response.data) {
+        // Find connected providers (those with valid auth)
+        const connected = Object.entries(response.data)
+          .filter(([, provider]) => {
+            // Provider is an object with env property
+            if (typeof provider === "object" && provider !== null && "env" in provider) {
+              const p = provider as { env?: { api?: boolean; oauth?: boolean } };
+              return p.env?.api || p.env?.oauth;
+            }
+            return false;
+          })
+          .map(([id]) => id);
+        setConnectedProviders(connected);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load provider info");
     } finally {
@@ -56,11 +65,16 @@ export function AuthSettings() {
       setError(null);
 
       // Start OAuth flow with method 0 (Claude Pro/Max)
-      const result = await startOAuthFlow("anthropic", 0);
-      setOauthUrl(result.url);
+      const response = await sdk.provider.oauth.authorize({
+        providerID: "anthropic",
+        method: 0,
+      });
 
-      // Open URL in system browser
-      await openUrl(result.url);
+      if (response.data?.url) {
+        setOauthUrl(response.data.url);
+        // Open URL in system browser
+        await openUrl(response.data.url);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start OAuth");
     } finally {
@@ -75,7 +89,10 @@ export function AuthSettings() {
       setIsLoading(true);
       setError(null);
 
-      await completeOAuthFlow("anthropic", oauthCode.trim());
+      await sdk.provider.oauth.callback({
+        providerID: "anthropic",
+        code: oauthCode.trim(),
+      });
 
       // Refresh provider info to get updated connected status
       await loadProviderInfo();
@@ -95,7 +112,11 @@ export function AuthSettings() {
       setIsLoading(true);
       setError(null);
 
-      await disconnectProvider("anthropic");
+      // Use auth.set with empty key to disconnect
+      await sdk.auth.set({
+        providerID: "anthropic",
+        auth: { type: "api", key: "" },
+      });
 
       // Refresh provider info to get updated connected status
       await loadProviderInfo();
@@ -214,7 +235,7 @@ export function AuthSettings() {
           {/* Model Info */}
           <div className="rounded-lg border p-4">
             <p className="text-sm font-medium">Current Model</p>
-            <p className="text-sm text-muted-foreground">claude-opus-4-5</p>
+            <p className="text-sm text-muted-foreground">claude-sonnet-4</p>
           </div>
         </div>
       </DialogContent>

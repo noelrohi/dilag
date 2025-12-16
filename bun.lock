@@ -4,7 +4,7 @@
     "": {
       "name": "dilag",
       "dependencies": {
-        "@opencode-ai/sdk": "^1.0.153",
+        "@opencode-ai/sdk": "^1.0.162",
         "@radix-ui/react-collapsible": "^1.1.12",
         "@radix-ui/react-dialog": "^1.1.15",
         "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -215,7 +215,7 @@
 
     "@mermaid-js/parser": ["@mermaid-js/parser@0.6.3", "", { "dependencies": { "langium": "3.3.1" } }, "sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA=="],
 
-    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.0.153", "", {}, "sha512-2iymLBfxzDJMcyOdj3mKQBmcQZiRNtoG8Ccq8Tw6+b24L0cBZhsw3rPWNyjZzdlJZ6jn/sOxzDmd9KbMvP1dTg=="],
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.0.162", "", {}, "sha512-+XqRErBUt9eb1m3i/7WkZc/QCKCCjTaGV3MvhLhs/CUwbUn767D/ugzcG/i2ec8j/4nQmjJbjPDRmrQfvF1Qjw=="],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
 

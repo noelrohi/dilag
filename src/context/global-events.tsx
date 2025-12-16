@@ -1,208 +1,61 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { createOpencodeClient, type Event, type OpencodeClient } from "@opencode-ai/sdk/v2/client";
 
-// Get base URL directly to avoid circular dependency with opencode.ts
-async function getEventStreamUrl(): Promise<string> {
-  const port = await invoke<number>("get_opencode_port");
-  return `http://127.0.0.1:${port}/event`;
-}
+// Re-export types from SDK for convenience
+export type { Event } from "@opencode-ai/sdk/v2/client";
+export type {
+  EventMessagePartUpdated,
+  EventMessageUpdated,
+  EventSessionStatus,
+  EventSessionUpdated,
+  EventSessionDiff,
+  EventSessionIdle,
+  EventSessionError,
+  SessionStatus,
+  Part,
+  ToolState,
+  FileDiff,
+} from "@opencode-ai/sdk/v2/client";
 
-// Event types matching OpenCode's event system
-export type SessionStatus = "idle" | "running" | "error" | "unknown";
+const OPENCODE_PORT = 4096;
 
-export interface EventMessagePartUpdated {
-  type: "message.part.updated";
-  properties: {
-    part: {
-      id: string;
-      sessionID?: string;
-      messageID?: string;
-      type: "text" | "tool" | "reasoning" | "file" | "step-start" | "step-finish";
-      text?: string;
-      tool?: string;
-      state?: ToolState;
-      mime?: string;
-      url?: string;
-      filename?: string;
-      provider?: string;
-      model?: string;
-    };
-    delta?: string;
-  };
-}
-
-export interface EventMessageUpdated {
-  type: "message.updated";
-  properties: {
-    info: {
-      id: string;
-      sessionID: string;
-      role: "user" | "assistant";
-      time: { created: number; completed?: number };
-    };
-  };
-}
-
-export interface EventSessionStatus {
-  type: "session.status";
-  properties: {
-    sessionID: string;
-    status: SessionStatus;
-  };
-}
-
-export interface EventSessionUpdated {
-  type: "session.updated";
-  properties: {
-    info: {
-      id: string;
-      title: string;
-      directory: string;
-      time: { created: number; updated: number };
-    };
-  };
-}
-
-export interface EventSessionDiff {
-  type: "session.diff";
-  properties: {
-    sessionID: string;
-    diffs: FileDiff[];
-  };
-}
-
-export interface FileDiff {
-  path: string;
-  hunks: DiffHunk[];
-  additions: number;
-  deletions: number;
-}
-
-export interface DiffHunk {
-  oldStart: number;
-  oldLines: number;
-  newStart: number;
-  newLines: number;
-  lines: string[];
-}
-
-export interface EventSessionIdle {
-  type: "session.idle";
-  properties: {
-    sessionID: string;
-  };
-}
-
-export interface EventSessionError {
-  type: "session.error";
-  properties: {
-    sessionID: string;
-    error: string;
-  };
-}
-
-export type ToolState =
-  | { status: "pending" }
-  | { status: "running"; metadata?: Record<string, unknown> }
-  | { status: "completed"; input: Record<string, unknown>; output?: string; metadata?: Record<string, unknown> }
-  | { status: "error"; error: string };
-
-export type OpenCodeEvent =
-  | EventMessagePartUpdated
-  | EventMessageUpdated
-  | EventSessionStatus
-  | EventSessionUpdated
-  | EventSessionDiff
-  | EventSessionIdle
-  | EventSessionError
-  | { type: string; properties: unknown };
-
-// Event emitter type
-type EventHandler<T = OpenCodeEvent> = (event: T) => void;
+type EventHandler = (event: Event) => void;
 
 interface GlobalEventsContextValue {
+  sdk: OpencodeClient;
   subscribe: (handler: EventHandler) => () => void;
   subscribeToSession: (sessionId: string, handler: EventHandler) => () => void;
   isConnected: boolean;
+  isServerReady: boolean;
 }
 
 const GlobalEventsContext = createContext<GlobalEventsContextValue | null>(null);
 
 export function GlobalEventsProvider({ children }: { children: ReactNode }) {
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const [isServerReady, setIsServerReady] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const handlersRef = useRef<Set<EventHandler>>(new Set());
   const sessionHandlersRef = useRef<Map<string, Set<EventHandler>>>(new Map());
-  const isConnectedRef = useRef(false);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Connect to event stream
-  const connect = async () => {
-    if (eventSourceRef.current?.readyState === EventSource.OPEN) return;
-
-    try {
-      const url = await getEventStreamUrl();
-      const eventSource = new EventSource(url);
-
-      eventSource.onopen = () => {
-        isConnectedRef.current = true;
-        console.log("[GlobalEvents] Connected to event stream");
-      };
-
-      eventSource.onmessage = (e) => {
-        try {
-          const event = JSON.parse(e.data) as OpenCodeEvent;
-
-          // Notify all global handlers
-          handlersRef.current.forEach((handler) => handler(event));
-
-          // Notify session-specific handlers
-          const sessionId = getSessionIdFromEvent(event);
-          if (sessionId) {
-            const sessionHandlers = sessionHandlersRef.current.get(sessionId);
-            sessionHandlers?.forEach((handler) => handler(event));
-          }
-        } catch {
-          // Ignore parse errors
-        }
-      };
-
-      eventSource.onerror = () => {
-        isConnectedRef.current = false;
-        eventSource.close();
-        eventSourceRef.current = null;
-
-        // Reconnect after delay
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log("[GlobalEvents] Reconnecting...");
-          connect();
-        }, 2000);
-      };
-
-      eventSourceRef.current = eventSource;
-    } catch (error) {
-      console.error("[GlobalEvents] Failed to connect:", error);
-      reconnectTimeoutRef.current = setTimeout(connect, 2000);
-    }
-  };
-
-  // Disconnect from event stream
-  const disconnect = () => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    eventSourceRef.current?.close();
-    eventSourceRef.current = null;
-    isConnectedRef.current = false;
-  };
+  // Create SDK client
+  const sdkRef = useRef<OpencodeClient | null>(null);
+  if (!sdkRef.current) {
+    sdkRef.current = createOpencodeClient({
+      baseUrl: `http://127.0.0.1:${OPENCODE_PORT}`,
+    });
+  }
+  const sdk = sdkRef.current;
 
   // Subscribe to all events
-  const subscribe = (handler: EventHandler): (() => void) => {
+  const subscribe = useCallback((handler: EventHandler): (() => void) => {
     handlersRef.current.add(handler);
     return () => handlersRef.current.delete(handler);
-  };
+  }, []);
 
   // Subscribe to events for a specific session
-  const subscribeToSession = (sessionId: string, handler: EventHandler): (() => void) => {
+  const subscribeToSession = useCallback((sessionId: string, handler: EventHandler): (() => void) => {
     if (!sessionHandlersRef.current.has(sessionId)) {
       sessionHandlersRef.current.set(sessionId, new Set());
     }
@@ -215,20 +68,91 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
         sessionHandlersRef.current.delete(sessionId);
       }
     };
+  }, []);
+
+  // Helper to extract sessionId from any event
+  const getSessionIdFromEvent = (event: Event): string | null => {
+    if ("properties" in event && event.properties) {
+      const props = event.properties as Record<string, unknown>;
+      if ("sessionID" in props) return props.sessionID as string;
+      if ("info" in props && typeof props.info === "object" && props.info !== null) {
+        const info = props.info as Record<string, unknown>;
+        if ("sessionID" in info) return info.sessionID as string;
+      }
+      if ("part" in props && typeof props.part === "object" && props.part !== null) {
+        const part = props.part as Record<string, unknown>;
+        if ("sessionID" in part) return part.sessionID as string;
+      }
+    }
+    return null;
   };
 
-  // Connect on mount
+  // Start server and connect to event stream
   useEffect(() => {
-    connect();
-    return () => disconnect();
-  }, []);
+    let mounted = true;
+    abortControllerRef.current = new AbortController();
+
+    async function init() {
+      console.log("[GlobalEvents] Starting OpenCode server...");
+      try {
+        const port = await invoke<number>("start_opencode_server");
+        console.log("[GlobalEvents] Server started on port", port);
+
+        if (!mounted) return;
+        setIsServerReady(true);
+
+        // Connect to SSE event stream using SDK
+        console.log("[GlobalEvents] Connecting to event stream...");
+        const events = await sdk.global.event();
+
+        if (!mounted) return;
+        setIsConnected(true);
+        console.log("[GlobalEvents] Connected to event stream");
+
+        // Process events
+        for await (const event of events.stream) {
+          if (!mounted) break;
+
+          const payload = event.payload;
+          console.log("[SSE] Event received:", payload.type);
+
+          // Notify all global handlers
+          handlersRef.current.forEach((handler) => handler(payload));
+
+          // Notify session-specific handlers
+          const sessionId = getSessionIdFromEvent(payload);
+          if (sessionId) {
+            const sessionHandlers = sessionHandlersRef.current.get(sessionId);
+            sessionHandlers?.forEach((handler) => handler(payload));
+          }
+        }
+      } catch (err) {
+        console.error("[GlobalEvents] Error:", err);
+        // Still mark as ready so UI can show error state
+        if (mounted) {
+          setIsServerReady(true);
+          setIsConnected(false);
+        }
+      }
+    }
+
+    init();
+
+    return () => {
+      mounted = false;
+      abortControllerRef.current?.abort();
+      console.log("[GlobalEvents] Cleanup - disconnected");
+    };
+  }, [sdk]);
 
   return (
     <GlobalEventsContext.Provider
       value={{
+        sdk,
         subscribe,
         subscribeToSession,
-        isConnected: isConnectedRef.current,
+        isConnected,
+        isServerReady,
       }}
     >
       {children}
@@ -244,22 +168,7 @@ export function useGlobalEvents() {
   return context;
 }
 
-// Helper to extract sessionId from any event
-function getSessionIdFromEvent(event: OpenCodeEvent): string | null {
-  switch (event.type) {
-    case "message.part.updated":
-      return (event as EventMessagePartUpdated).properties.part.sessionID ?? null;
-    case "message.updated":
-      return (event as EventMessageUpdated).properties.info.sessionID;
-    case "session.status":
-      return (event as EventSessionStatus).properties.sessionID;
-    case "session.diff":
-      return (event as EventSessionDiff).properties.sessionID;
-    case "session.idle":
-      return (event as EventSessionIdle).properties.sessionID;
-    case "session.error":
-      return (event as EventSessionError).properties.sessionID;
-    default:
-      return null;
-  }
+export function useSDK() {
+  const { sdk } = useGlobalEvents();
+  return sdk;
 }
