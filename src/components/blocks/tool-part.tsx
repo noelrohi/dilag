@@ -44,6 +44,7 @@ export function ToolPart({ tool, state }: ToolPartProps) {
     output: state.status === "completed" ? state.output : undefined,
     error: state.status === "error" ? state.error : undefined,
     status: state.status,
+    metadata: "metadata" in state ? state.metadata : undefined,
   };
 
   const title = config.title(props);

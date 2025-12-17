@@ -13,14 +13,12 @@ import {
   ListChecks,
   CheckSquare,
   Square,
-  Palette,
   Paintbrush,
   type LucideIcon,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
-import { createPatch } from "diff";
-import { Shimmer } from "@/components/ai-elements/shimmer";
-import { AnimatePresence, motion } from "motion/react";
+import { cn } from "@/lib/utils";
+
 
 // Tool props passed to render functions
 export interface ToolRenderProps {
@@ -29,6 +27,7 @@ export interface ToolRenderProps {
   output?: string;
   error?: string;
   status: ToolState["status"];
+  metadata?: Record<string, unknown>;
 }
 
 // Tool registration config
@@ -127,32 +126,6 @@ interface Todo {
   status: "pending" | "in_progress" | "completed";
 }
 
-// Design skeleton for generating state
-function DesignSkeleton() {
-  return (
-    <div className="space-y-2">
-      <div className="h-32 rounded-lg border border-primary/20 overflow-hidden bg-muted/30 animate-pulse">
-        <div className="p-3 space-y-2">
-          {/* Header skeleton */}
-          <div className="flex gap-2">
-            <div className="w-8 h-8 rounded bg-primary/10" />
-            <div className="flex-1 space-y-1">
-              <div className="h-3 w-24 rounded bg-primary/10" />
-              <div className="h-2 w-16 rounded bg-muted" />
-            </div>
-          </div>
-          {/* Content skeleton */}
-          <div className="space-y-1.5 mt-3">
-            <div className="h-2 w-full rounded bg-muted" />
-            <div className="h-2 w-3/4 rounded bg-muted" />
-            <div className="h-2 w-1/2 rounded bg-muted" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Tool registry - all tool configs in one place
 // Note: Tool names from backend are lowercase
 export const TOOLS: Record<string, ToolConfig> = {
@@ -162,18 +135,56 @@ export const TOOLS: Record<string, ToolConfig> = {
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const file = filename(getInput(p).filePath);
-      const lines = p.output?.split("\n").length ?? 0;
+      // Use metadata.preview if available (first 20 lines from backend)
+      const preview = p.metadata?.preview as string | undefined;
+      const lines = preview?.split("\n").length ?? p.output?.split("\n").length ?? 0;
       if (!file) return undefined;
       return lines > 0 ? `${file} (${lines} lines)` : file;
     },
     content: (p) => {
       const { filePath } = getInput(p);
-      if (!p.output) return null;
+      // Prefer metadata.preview for display (more concise)
+      const content = (p.metadata?.preview as string) ?? p.output;
+      if (!content) return null;
 
-      const lang = getLanguage(filePath, p.output);
-      const truncated = p.output.length > 3000 ? p.output.slice(0, 3000) + "\n// ... truncated" : p.output;
+      const lang = getLanguage(filePath, content);
+      const truncated = content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content;
       const markdown = "```" + lang + "\n" + truncated + "\n```";
 
+      return (
+        <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
+          <Streamdown>{markdown}</Streamdown>
+        </div>
+      );
+    },
+  },
+
+  edit: {
+    icon: Code2,
+    title: () => "Edit",
+    chipLabel: (p) => filename(getInput(p).filePath),
+    subtitle: (p) => {
+      const { filePath } = getInput(p);
+      const file = filename(filePath);
+      const filediff = p.metadata?.filediff as { additions?: number; deletions?: number } | undefined;
+      if (!file && !filediff) return undefined;
+      return (
+        <>
+          {file}{" "}
+          {filediff && (
+            <>
+              <span className="text-green-500">+{filediff.additions ?? 0}</span>{" "}
+              <span className="text-red-500">-{filediff.deletions ?? 0}</span>
+            </>
+          )}
+        </>
+      );
+    },
+    content: (p) => {
+      const diff = p.metadata?.diff as string | undefined;
+      if (!diff) return null;
+
+      const markdown = "```diff\n" + diff + "\n```";
       return (
         <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
           <Streamdown>{markdown}</Streamdown>
@@ -186,17 +197,32 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: Terminal,
     title: () => "Shell",
     chipLabel: (p) => {
+      // metadata.description is set by backend
+      const desc = p.metadata?.description as string | undefined;
       const { description, command } = getInput(p);
+      if (desc) return desc.slice(0, 25);
       if (description) return description.slice(0, 25);
       if (command) return command.slice(0, 20);
       return undefined;
     },
     subtitle: (p) => {
+      const desc = p.metadata?.description as string | undefined;
       const { description, command } = getInput(p);
-      return description || command?.slice(0, 50);
+      const exit = p.metadata?.exit as number | null | undefined;
+      const exitIndicator = exit !== undefined && exit !== null && exit !== 0 
+        ? <span className="text-red-500 ml-1">(exit {exit})</span> 
+        : null;
+      return (
+        <>
+          {desc || description || command?.slice(0, 50)}
+          {exitIndicator}
+        </>
+      );
     },
     content: (p) => {
       const { command } = getInput(p);
+      // metadata.output contains the streamed output
+      const output = (p.metadata?.output as string) ?? p.output;
       return (
         <>
           {command && (
@@ -204,10 +230,10 @@ export const TOOLS: Record<string, ToolConfig> = {
               $ {command}
             </pre>
           )}
-          {p.output && (
+          {output && (
             <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-              {p.output.slice(0, 2000)}
-              {p.output.length > 2000 && "..."}
+              {output.slice(0, 2000)}
+              {output.length > 2000 && "..."}
             </pre>
           )}
         </>
@@ -215,108 +241,13 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
   },
 
-  edit: {
-    icon: Code2,
-    title: () => "Edit",
-    chipLabel: (p) => filename(getInput(p).filePath),
-    subtitle: (p) => {
-      const { filePath, oldString, newString } = getInput(p);
-      const file = filename(filePath);
-      const oldLines = oldString?.split("\n").length ?? 0;
-      const newLines = newString?.split("\n").length ?? 0;
-      if (!file && oldLines === 0 && newLines === 0) return undefined;
-      return (
-        <>
-          {file}{" "}
-          <span className="text-green-500">+{newLines}</span>{" "}
-          <span className="text-red-500">-{oldLines}</span>
-        </>
-      );
-    },
-    content: (p) => {
-      const { filePath, oldString, newString } = getInput(p);
-
-      // If we have old/new strings, generate a diff
-      if (oldString || newString) {
-        const patch = createPatch(
-          filename(filePath) || "file",
-          oldString || "",
-          newString || "",
-          "",
-          "",
-          { context: 3 }
-        );
-
-        // Remove the first 4 lines (header) and format as diff code block
-        const diffLines = patch.split("\n").slice(4).join("\n");
-        if (diffLines.trim()) {
-          const markdown = "```diff\n" + diffLines + "\n```";
-          return (
-            <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
-              <Streamdown>{markdown}</Streamdown>
-            </div>
-          );
-        }
-      }
-
-      // Fallback: show raw input if available
-      const hasInput = Object.keys(p.input).length > 0;
-      if (!hasInput) return null;
-
-      return (
-        <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-          {JSON.stringify(p.input, null, 2).slice(0, 1000)}
-        </pre>
-      );
-    },
-  },
-
   write: {
     icon: FilePlus2,
-    title: (p) => {
-      const { filePath } = getInput(p);
-      // Show "Design" for HTML files (design outputs)
-      if (filePath?.endsWith(".html")) return "Design";
-      return "Write";
-    },
-    chipLabel: (p) => {
-      const { filePath, content } = getInput(p);
-      // For HTML files, try to get title from data-title attribute
-      if (filePath?.endsWith(".html") && content) {
-        const titleMatch = content.match(/data-title=["']([^"']+)["']/);
-        if (titleMatch) return titleMatch[1].slice(0, 25);
-      }
-      return filename(filePath);
-    },
+    title: () => "Write",
+    chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const { filePath, content } = getInput(p);
       const file = filename(filePath);
-
-      // For HTML files (design outputs)
-      if (filePath?.endsWith(".html")) {
-        // Extract title from data-title attribute or filename
-        const titleMatch = content?.match(/data-title=["']([^"']+)["']/);
-        const title = titleMatch?.[1] ?? file?.replace(".html", "");
-
-        // Design generation state - show "Generating {title}..."
-        if (p.status === "pending" || p.status === "running") {
-          const shimmerText = title ? `Generating ${title}...` : "Generating design...";
-          return (
-            <Shimmer className="text-primary" duration={1.5}>
-              {shimmerText}
-            </Shimmer>
-          );
-        }
-
-        // Completed state - show title with icon
-        return (
-          <>
-            <Palette className="size-3 inline mr-1 text-primary" />
-            <span className="text-primary">{title}</span>
-          </>
-        );
-      }
-
       const lines = content?.split("\n").length ?? 0;
       if (!file && lines === 0) return undefined;
       return (
@@ -328,69 +259,6 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
     content: (p) => {
       const { filePath, content } = getInput(p);
-
-      // For HTML files (design outputs)
-      if (filePath?.endsWith(".html")) {
-        const isGenerating = !content || p.status === "pending" || p.status === "running";
-
-        // Progressive reveal: show partial content during streaming
-        if (content && p.status === "running") {
-          return (
-            <div className="space-y-2">
-              <div className="h-32 rounded-lg border border-primary/30 overflow-hidden bg-white relative">
-                <iframe
-                  srcDoc={content}
-                  sandbox="allow-scripts"
-                  className="w-full h-full scale-50 origin-top-left pointer-events-none"
-                  style={{ width: "200%", height: "200%" }}
-                  title="Design preview"
-                />
-                {/* Overlay shimmer to indicate still loading */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent animate-pulse" />
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <AnimatePresence mode="wait">
-            {isGenerating ? (
-              <motion.div
-                key="skeleton"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <DesignSkeleton />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="preview"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="space-y-2">
-                  <div className="text-xs text-primary/70">
-                    Design output - view in preview panel
-                  </div>
-                  <div className="h-32 rounded-lg border overflow-hidden bg-white">
-                    <iframe
-                      srcDoc={content}
-                      sandbox="allow-scripts"
-                      className="w-full h-full scale-50 origin-top-left pointer-events-none"
-                      style={{ width: "200%", height: "200%" }}
-                      title="Design preview"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        );
-      }
-
       if (!content) return null;
 
       const lang = getLanguage(filePath, content);
@@ -446,7 +314,22 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: FolderSearch,
     title: () => "Glob",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
-    subtitle: (p) => getInput(p).pattern,
+    subtitle: (p) => {
+      const pattern = getInput(p).pattern;
+      const count = p.metadata?.count as number | undefined;
+      const truncated = p.metadata?.truncated as boolean | undefined;
+      if (count !== undefined) {
+        return (
+          <>
+            {pattern}{" "}
+            <span className="text-muted-foreground">
+              ({count} files{truncated ? "+" : ""})
+            </span>
+          </>
+        );
+      }
+      return pattern;
+    },
     content: (p) =>
       p.output && (
         <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
@@ -456,11 +339,56 @@ export const TOOLS: Record<string, ToolConfig> = {
       ),
   },
 
+  list: {
+    icon: FolderSearch,
+    title: () => "List",
+    chipLabel: (p) => filename(getInput(p).filePath) || "directory",
+    subtitle: (p) => {
+      const { filePath } = getInput(p);
+      const count = p.metadata?.count as number | undefined;
+      const truncated = p.metadata?.truncated as boolean | undefined;
+      const path = filePath ? filename(filePath) || filePath : "directory";
+      if (count !== undefined) {
+        return (
+          <>
+            {path}{" "}
+            <span className="text-muted-foreground">
+              ({count} items{truncated ? "+" : ""})
+            </span>
+          </>
+        );
+      }
+      return path;
+    },
+    content: (p) =>
+      p.output && (
+        <pre className="text-xs text-muted-foreground max-h-40 overflow-auto font-mono">
+          {p.output.slice(0, 1500)}
+          {p.output.length > 1500 && "..."}
+        </pre>
+      ),
+  },
+
   grep: {
     icon: Search,
     title: () => "Grep",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
-    subtitle: (p) => getInput(p).pattern,
+    subtitle: (p) => {
+      const pattern = getInput(p).pattern;
+      const matches = p.metadata?.matches as number | undefined;
+      const truncated = p.metadata?.truncated as boolean | undefined;
+      if (matches !== undefined) {
+        return (
+          <>
+            {pattern}{" "}
+            <span className="text-muted-foreground">
+              ({matches} matches{truncated ? "+" : ""})
+            </span>
+          </>
+        );
+      }
+      return pattern;
+    },
     content: (p) =>
       p.output && (
         <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
@@ -525,24 +453,59 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: Bot,
     title: () => "Task",
     chipLabel: (p) => getInput(p).description?.slice(0, 25),
-    subtitle: (p) => getInput(p).description,
+    subtitle: (p) => {
+      const { description } = getInput(p);
+      const summary = p.metadata?.summary as Array<{ tool: string; state: { status: string } }> | undefined;
+      if (summary?.length) {
+        const completed = summary.filter(s => s.state.status === "completed").length;
+        return (
+          <>
+            {description}{" "}
+            <span className="text-muted-foreground">
+              ({completed}/{summary.length} tools)
+            </span>
+          </>
+        );
+      }
+      return description;
+    },
     content: (p) => {
       const { prompt } = getInput(p);
+      const summary = p.metadata?.summary as Array<{ id: string; tool: string; state: { status: string; title?: string } }> | undefined;
+      
       return (
-        <>
+        <div className="space-y-2">
           {prompt && (
             <p className="text-xs text-muted-foreground">
               {prompt.slice(0, 200)}
               {prompt.length > 200 && "..."}
             </p>
           )}
-          {p.output && (
+          {summary && summary.length > 0 && (
+            <div className="space-y-1 pt-1 border-t border-border/30">
+              {summary.map((s) => (
+                <div key={s.id} className="flex items-center gap-2 text-xs">
+                  <span className={cn(
+                    "size-1.5 rounded-full",
+                    s.state.status === "completed" ? "bg-green-500" :
+                    s.state.status === "error" ? "bg-red-500" :
+                    s.state.status === "running" ? "bg-yellow-500" : "bg-muted-foreground"
+                  )} />
+                  <span className="text-muted-foreground">{s.tool}</span>
+                  {s.state.title && (
+                    <span className="text-foreground/70 truncate">{s.state.title}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {p.output && !summary && (
             <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
               {p.output.slice(0, 500)}
               {p.output.length > 500 && "..."}
             </pre>
           )}
-        </>
+        </div>
       );
     },
   },
@@ -603,54 +566,6 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
   },
 
-  design: {
-    icon: Palette,
-    title: () => "Design",
-    chipLabel: (p) => {
-      const title = p.input.title as string | undefined;
-      return title?.slice(0, 25);
-    },
-    subtitle: (p) => {
-      const title = p.input.title as string | undefined;
-      const type = p.input.type as string | undefined;
-      return (
-        <>
-          <Palette className="size-3 inline mr-1 text-primary" />
-          <span className="text-primary">{title ?? "Design"}</span>
-          {type && <span className="text-muted-foreground ml-1">({type})</span>}
-        </>
-      );
-    },
-    content: (p) => {
-      const html = p.input.html as string | undefined;
-      const title = p.input.title as string | undefined;
-
-      if (!html) {
-        return (
-          <div className="text-xs text-muted-foreground">
-            Creating design...
-          </div>
-        );
-      }
-
-      return (
-        <div className="space-y-2">
-          <div className="text-xs text-primary/70">
-            {title ?? "Design"} - view in preview panel
-          </div>
-          <div className="h-32 rounded-lg border overflow-hidden bg-white">
-            <iframe
-              srcDoc={html}
-              sandbox="allow-scripts"
-              className="w-full h-full scale-50 origin-top-left pointer-events-none"
-              style={{ width: "200%", height: "200%" }}
-              title="Design preview"
-            />
-          </div>
-        </div>
-      );
-    },
-  },
 };
 
 // Default config for unknown tools
