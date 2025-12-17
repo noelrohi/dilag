@@ -22,7 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Theme tool test artifacts
-theme.css
-theme.json

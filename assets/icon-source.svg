@@ -1,0 +1,40 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a22"/>
+      <stop offset="100%" stop-color="#111116"/>
+    </linearGradient>
+    <!-- macOS icon mask shape - superellipse approximation -->
+    <clipPath id="iconMask">
+      <rect x="0" y="0" width="1024" height="1024" rx="227" ry="227"/>
+    </clipPath>
+  </defs>
+  
+  <!-- Background fills entire canvas, will be masked by macOS -->
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#bgGrad)"/>
+  
+  <!-- Ghost rectangle - positioned for visual balance -->
+  <rect 
+    x="198" 
+    y="248" 
+    width="230" 
+    height="528" 
+    rx="36" 
+    fill="none" 
+    stroke="#f5f5f7" 
+    stroke-width="18" 
+    opacity="0.35"
+  />
+  
+  <!-- Organic morph shape -->
+  <path 
+    d="
+      M512 248
+      C696 248, 826 372, 826 512
+      C826 652, 696 776, 512 776
+      L512 248
+      Z
+    " 
+    fill="#f5f5f7"
+  />
+</svg>
