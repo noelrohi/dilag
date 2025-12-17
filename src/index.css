@@ -1,22 +1,15 @@
-/* Native macOS App Theme */
-/* Uses system fonts and Apple's design language */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
-/* System fonts - SF Pro on Mac, Segoe on Windows, system default elsewhere */
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-    system-ui, sans-serif;
-  --font-mono: "SF Mono", ui-monospace, "Cascadia Code", "Segoe UI Mono",
-    monospace;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-    "Segoe UI", system-ui, sans-serif;
-}
+  --font-sans: "Rubik", system-ui, sans-serif;
+  --font-serif: "IBM Plex Serif", Georgia, serif;
+  --font-mono: "IBM Plex Mono", monospace;
 
-@theme inline {
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -114,10 +107,6 @@
   --sidebar-border: oklch(0 0 0 / 6%);
   --sidebar-ring: oklch(0.55 0.2 255 / 50%);
 
-  /* Status colors */
-  --status-idle: oklch(0.6 0.15 145);
-  --status-running: oklch(0.55 0.2 255);
-  --status-error: oklch(0.55 0.22 25);
 }
 
 /* Dark theme - macOS dark appearance */
@@ -175,10 +164,6 @@
   --sidebar-border: oklch(1 0 0 / 6%);
   --sidebar-ring: oklch(0.65 0.2 255 / 50%);
 
-  /* Status colors */
-  --status-idle: oklch(0.6 0.15 145);
-  --status-running: oklch(0.65 0.2 255);
-  --status-error: oklch(0.6 0.22 25);
 }
 
 @layer base {
@@ -269,17 +254,6 @@
   }
 }
 
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @keyframes pulse-subtle {
   0%,
   100% {
@@ -291,16 +265,8 @@
 }
 
 /* Animation utilities */
-.animate-fade-in {
-  animation: fade-in 0.15s ease-out;
-}
-
 .animate-slide-up {
   animation: slide-up 0.2s ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.15s ease-out;
 }
 
 .animate-thinking {
@@ -311,69 +277,6 @@
   animation: fade-in 0.1s ease-out;
 }
 
-/* Vibrancy/Glass effect - mimics macOS materials */
-.vibrancy {
-  background: oklch(1 0 0 / 70%);
-  backdrop-filter: blur(20px) saturate(180%);
-}
-
-.dark .vibrancy {
-  background: oklch(0.15 0.01 260 / 80%);
-  backdrop-filter: blur(20px) saturate(180%);
-}
-
-/* Sidebar vibrancy */
-.vibrancy-sidebar {
-  background: oklch(0.96 0.003 260 / 90%);
-  backdrop-filter: blur(20px) saturate(180%);
-}
-
-.dark .vibrancy-sidebar {
-  background: oklch(0.12 0.01 260 / 85%);
-  backdrop-filter: blur(20px) saturate(180%);
-}
-
-/* Window controls spacing (for Tauri) */
-.window-drag {
-  -webkit-app-region: drag;
-}
-
-.window-no-drag {
-  -webkit-app-region: no-drag;
-}
-
-/* macOS-style button press effect */
-.press-effect:active {
-  transform: scale(0.98);
-  transition: transform 0.1s ease;
-}
-
-/* Subtle hover states */
-.hover-lift {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px oklch(0 0 0 / 8%);
-}
-
-.dark .hover-lift:hover {
-  box-shadow: 0 2px 8px oklch(0 0 0 / 25%);
-}
-
-/* Status indicator */
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 100%;
-  transition: background-color 0.2s ease;
-}
-
-.status-running {
-  animation: pulse-subtle 1.5s ease-in-out infinite;
-}
-
 /* Code styling */
 code,
 pre,
@@ -382,33 +285,7 @@ pre,
   font-size: 12px;
 }
 
-/* Refined shadows */
-.shadow-mac {
-  box-shadow:
-    0 0 0 1px oklch(0 0 0 / 4%),
-    0 2px 4px oklch(0 0 0 / 4%),
-    0 4px 8px oklch(0 0 0 / 4%);
+/* Serif styling */
+.font-serif {
+  font-family: var(--font-serif);
 }
-
-.dark .shadow-mac {
-  box-shadow:
-    0 0 0 1px oklch(0 0 0 / 20%),
-    0 2px 4px oklch(0 0 0 / 15%),
-    0 4px 8px oklch(0 0 0 / 15%);
-}
-
-/* Popover/dropdown shadow */
-.shadow-popover {
-  box-shadow:
-    0 0 0 1px oklch(0 0 0 / 6%),
-    0 4px 16px oklch(0 0 0 / 12%),
-    0 8px 32px oklch(0 0 0 / 8%);
-}
-
-.dark .shadow-popover {
-  box-shadow:
-    0 0 0 1px oklch(1 0 0 / 6%),
-    0 4px 16px oklch(0 0 0 / 40%),
-    0 8px 32px oklch(0 0 0 / 30%);
-}
-

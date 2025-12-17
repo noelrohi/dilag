@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useSessions } from "@/hooks/use-sessions";
 import { useModels } from "@/hooks/use-models";
+import type { DesignFile } from "@/hooks/use-designs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +27,13 @@ import {
   ModelSelectorLogo,
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
-import { ArrowRight, ChevronDown, Folder, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, ChevronDown, X } from "lucide-react";
+
+// Mini thumbnail constants
+const THUMB_RENDER_W = 393;
+const THUMB_RENDER_H = 852;
+const THUMB_DISPLAY_H = 80;
+const THUMB_SCALE = THUMB_DISPLAY_H / THUMB_RENDER_H;
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -37,11 +45,7 @@ function LandingPage() {
 
   const handleSubmit = async (text: string) => {
     if (!text.trim()) return;
-
-    // Store prompt in localStorage for the studio page to retrieve
     localStorage.setItem("dilag-initial-prompt", text);
-
-    // Create new session
     const sessionId = await createSession();
     if (sessionId) {
       navigate({ to: "/studio/$sessionId", params: { sessionId } });
@@ -57,73 +61,182 @@ function LandingPage() {
     await deleteSession(sessionId);
   };
 
-  // Sort sessions by created_at descending (newest first)
   const sortedSessions = [...sessions].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
   return (
     <div className="h-dvh flex flex-col bg-background">
-      {/* Hero section with composer */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
-        {/* Logo/Brand */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 mb-4">
-            <Sparkles className="size-8 text-white" />
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight mb-2">Dilag</h1>
-          <p className="text-muted-foreground">Design stunning interfaces with AI</p>
-        </div>
+      {/* Minimal header */}
+      <header className="px-6 py-5 flex items-center justify-between">
+        <span className="text-[13px] font-medium tracking-tight text-foreground">
+          dilag
+        </span>
+        {!isServerReady && (
+          <span className="text-[11px] text-muted-foreground">
+            connecting...
+          </span>
+        )}
+      </header>
 
-        {/* Composer */}
-        <div className="w-full max-w-2xl">
+      {/* Main content - vertically centered */}
+      <main className="flex-1 flex items-center justify-center px-6 pb-24">
+        <div className="w-full max-w-xl">
+          {/* Single line prompt */}
+          <p className="text-muted-foreground text-[13px] mb-4 tracking-wide">
+            What would you like to design?
+          </p>
+
           <PromptInputProvider>
             <ComposerInput onSubmit={handleSubmit} disabled={!isServerReady} />
           </PromptInputProvider>
 
-          {!isServerReady && (
-            <p className="text-center text-sm text-muted-foreground mt-3">
-              Starting server...
-            </p>
+          {/* Recent projects with screen previews */}
+          {sortedSessions.length > 0 && (
+            <div className="mt-16">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-6">
+                Recent
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                {sortedSessions.slice(0, 4).map((session) => (
+                  <ProjectCard
+                    key={session.id}
+                    session={session}
+                    onOpen={() => handleOpenProject(session.id)}
+                    onDelete={(e) => handleDeleteProject(e, session.id)}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
+      </main>
+    </div>
+  );
+}
+
+interface SessionMeta {
+  id: string;
+  name: string;
+  created_at: string;
+  cwd: string;
+}
+
+function ProjectCard({
+  session,
+  onOpen,
+  onDelete,
+}: {
+  session: SessionMeta;
+  onOpen: () => void;
+  onDelete: (e: React.MouseEvent) => void;
+}) {
+  const [designs, setDesigns] = useState<DesignFile[]>([]);
+
+  useEffect(() => {
+    if (!session.cwd) return;
+    invoke<DesignFile[]>("load_session_designs", { sessionCwd: session.cwd })
+      .then(setDesigns)
+      .catch(() => setDesigns([]));
+  }, [session.cwd]);
+
+  // Show all designs
+  const previewDesigns = designs;
+
+  return (
+    <button
+      onClick={onOpen}
+      className="group relative text-left p-3 rounded-lg border border-border bg-card hover:bg-secondary/50 transition-all duration-200"
+    >
+      {/* Screen previews - horizontal scroll */}
+      <div className="flex gap-1.5 mb-3 h-20 overflow-x-auto overflow-y-hidden rounded-md bg-muted/50 scrollbar-none">
+        {previewDesigns.length > 0 ? (
+          previewDesigns.map((design, i) => (
+            <ScreenThumbnail key={i} html={design.html} />
+          ))
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <span className="text-[10px] text-muted-foreground">No screens</span>
+          </div>
+        )}
       </div>
 
-      {/* Projects section */}
-      {sortedSessions.length > 0 && (
-        <div className="border-t bg-muted/30">
-          <div className="max-w-4xl mx-auto px-6 py-8">
-            <h2 className="text-sm font-medium text-muted-foreground mb-4">Recent Projects</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {sortedSessions.map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => handleOpenProject(session.id)}
-                  className="group relative flex items-center gap-3 p-4 rounded-xl border bg-card hover:bg-accent/50 transition-colors text-left"
-                >
-                  <div className="size-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-                    <Folder className="size-5 text-purple-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{session.name || "Untitled"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(session.created_at)}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                    onClick={(e) => handleDeleteProject(e, session.id)}
-                  >
-                    <Trash2 className="size-4 text-muted-foreground" />
-                  </Button>
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Title and meta */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-medium text-foreground truncate">
+            {session.name || "Untitled"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {formatDate(session.created_at)}
+          </p>
         </div>
-      )}
+        <button
+          onClick={onDelete}
+          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded transition-all shrink-0"
+        >
+          <X className="size-3 text-muted-foreground" />
+        </button>
+      </div>
+    </button>
+  );
+}
+
+function ScreenThumbnail({ html }: { html: string }) {
+  const srcDoc = useMemo(() => {
+    if (!html) return null;
+
+    const sizingCSS = `
+      <style>
+        html, body {
+          width: ${THUMB_RENDER_W}px !important;
+          height: ${THUMB_RENDER_H}px !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+      </style>
+    `;
+
+    if (html.includes("<!DOCTYPE") || html.includes("<html")) {
+      if (html.includes("</head>")) {
+        return html.replace("</head>", `${sizingCSS}</head>`);
+      }
+      return sizingCSS + html;
+    }
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  ${sizingCSS}
+</head>
+<body>
+${html}
+</body>
+</html>`;
+  }, [html]);
+
+  if (!srcDoc) return null;
+
+  const displayW = THUMB_RENDER_W * THUMB_SCALE;
+
+  return (
+    <div
+      className="shrink-0 overflow-hidden rounded-sm bg-card"
+      style={{ width: displayW, height: THUMB_DISPLAY_H }}
+    >
+      <iframe
+        srcDoc={srcDoc}
+        className="border-0 origin-top-left pointer-events-none"
+        style={{
+          width: THUMB_RENDER_W,
+          height: THUMB_RENDER_H,
+          transform: `scale(${THUMB_SCALE})`,
+        }}
+        sandbox="allow-scripts allow-same-origin"
+        tabIndex={-1}
+      />
     </div>
   );
 }
@@ -141,30 +254,27 @@ function ComposerInput({
   return (
     <PromptInput
       onSubmit={async ({ text }) => onSubmit(text)}
-      className={cn(
-        "rounded-2xl bg-card border-2 transition-all duration-300",
-        hasInput ? "border-purple-500/50 shadow-lg shadow-purple-500/10" : "border-border"
-      )}
+      className="rounded-xl bg-card border border-border shadow-sm"
     >
       <PromptInputBody>
         <PromptInputTextarea
-          placeholder="Describe the app you want to design..."
+          placeholder="A dashboard for tracking daily habits..."
           disabled={disabled}
-          className="min-h-[100px] max-h-[200px] text-base"
+          className="min-h-[80px] max-h-[160px] text-[14px] leading-relaxed placeholder:text-muted-foreground/50"
         />
       </PromptInputBody>
-      <PromptInputFooter>
+      <PromptInputFooter className="border-t border-border">
         <ModelSelectorButton />
         <PromptInputSubmit
           disabled={!hasInput || disabled}
           className={cn(
-            "size-10 rounded-xl transition-all duration-200",
+            "size-8 rounded-lg transition-all duration-200",
             hasInput && !disabled
-              ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
+              ? "bg-foreground text-background"
               : "bg-muted text-muted-foreground"
           )}
         >
-          <ArrowRight className="size-5" />
+          <ArrowRight className="size-4" />
         </PromptInputSubmit>
       </PromptInputFooter>
     </PromptInput>
@@ -175,7 +285,6 @@ function ModelSelectorButton() {
   const { models, selectedModelInfo, selectModel, isLoading } = useModels();
   const [open, setOpen] = useState(false);
 
-  // Group models by provider
   const groupedModels = models.reduce(
     (acc, model) => {
       if (!acc[model.providerID]) {
@@ -196,27 +305,27 @@ function ModelSelectorButton() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 px-2.5 text-sm text-muted-foreground hover:text-foreground"
+          className="h-7 gap-1 px-2 text-[12px] text-muted-foreground hover:text-foreground"
           disabled={isLoading}
         >
           {selectedModelInfo ? (
             <>
               <ModelSelectorLogo
                 provider={selectedModelInfo.providerID as any}
-                className="size-4"
+                className="size-3.5"
               />
-              <span className="max-w-[150px] truncate">
+              <span className="max-w-[120px] truncate">
                 {selectedModelInfo.name}
               </span>
             </>
           ) : (
-            <span>Select model</span>
+            <span>Model</span>
           )}
-          <ChevronDown className="size-3.5 opacity-50" />
+          <ChevronDown className="size-3 opacity-50" />
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent title="Select Model">
-        <ModelSelectorInput placeholder="Search models..." />
+        <ModelSelectorInput placeholder="Search..." />
         <ModelSelectorList>
           <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
           {Object.entries(groupedModels).map(
@@ -254,13 +363,8 @@ function formatDate(dateStr: string): string {
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) {
-    return "Today";
-  } else if (diffDays === 1) {
-    return "Yesterday";
-  } else if (diffDays < 7) {
-    return `${diffDays} days ago`;
-  } else {
-    return date.toLocaleDateString();
-  }
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return `${diffDays}d`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
