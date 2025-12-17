@@ -1,5 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useSessions } from "@/hooks/use-sessions";
+import { useModels } from "@/hooks/use-models";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +13,19 @@ import {
   PromptInputProvider,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
-import { ArrowRight, Folder, Sparkles, Trash2 } from "lucide-react";
+import {
+  ModelSelector,
+  ModelSelectorTrigger,
+  ModelSelectorContent,
+  ModelSelectorInput,
+  ModelSelectorList,
+  ModelSelectorEmpty,
+  ModelSelectorGroup,
+  ModelSelectorItem,
+  ModelSelectorLogo,
+  ModelSelectorName,
+} from "@/components/ai-elements/model-selector";
+import { ArrowRight, ChevronDown, Folder, Sparkles, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -139,7 +153,8 @@ function ComposerInput({
           className="min-h-[100px] max-h-[200px] text-base"
         />
       </PromptInputBody>
-      <PromptInputFooter className="justify-end">
+      <PromptInputFooter>
+        <ModelSelectorButton />
         <PromptInputSubmit
           disabled={!hasInput || disabled}
           className={cn(
@@ -153,6 +168,83 @@ function ComposerInput({
         </PromptInputSubmit>
       </PromptInputFooter>
     </PromptInput>
+  );
+}
+
+function ModelSelectorButton() {
+  const { models, selectedModelInfo, selectModel, isLoading } = useModels();
+  const [open, setOpen] = useState(false);
+
+  // Group models by provider
+  const groupedModels = models.reduce(
+    (acc, model) => {
+      if (!acc[model.providerID]) {
+        acc[model.providerID] = {
+          name: model.providerName,
+          models: [],
+        };
+      }
+      acc[model.providerID].models.push(model);
+      return acc;
+    },
+    {} as Record<string, { name: string; models: typeof models }>
+  );
+
+  return (
+    <ModelSelector open={open} onOpenChange={setOpen}>
+      <ModelSelectorTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5 px-2.5 text-sm text-muted-foreground hover:text-foreground"
+          disabled={isLoading}
+        >
+          {selectedModelInfo ? (
+            <>
+              <ModelSelectorLogo
+                provider={selectedModelInfo.providerID as any}
+                className="size-4"
+              />
+              <span className="max-w-[150px] truncate">
+                {selectedModelInfo.name}
+              </span>
+            </>
+          ) : (
+            <span>Select model</span>
+          )}
+          <ChevronDown className="size-3.5 opacity-50" />
+        </Button>
+      </ModelSelectorTrigger>
+      <ModelSelectorContent title="Select Model">
+        <ModelSelectorInput placeholder="Search models..." />
+        <ModelSelectorList>
+          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+          {Object.entries(groupedModels).map(
+            ([providerID, { name, models: providerModels }]) => (
+              <ModelSelectorGroup key={providerID} heading={name}>
+                {providerModels.map((model) => (
+                  <ModelSelectorItem
+                    key={`${model.providerID}/${model.id}`}
+                    value={`${model.providerID}/${model.id}`}
+                    onSelect={() => {
+                      selectModel(model.providerID, model.id);
+                      setOpen(false);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <ModelSelectorLogo
+                      provider={model.providerID as any}
+                      className="size-4"
+                    />
+                    <ModelSelectorName>{model.name}</ModelSelectorName>
+                  </ModelSelectorItem>
+                ))}
+              </ModelSelectorGroup>
+            )
+          )}
+        </ModelSelectorList>
+      </ModelSelectorContent>
+    </ModelSelector>
   );
 }
 
