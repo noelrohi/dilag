@@ -19,7 +19,6 @@ import {
 import { Streamdown } from "streamdown";
 import { cn } from "@/lib/utils";
 
-
 // Tool props passed to render functions
 export interface ToolRenderProps {
   tool: string;
@@ -41,14 +40,24 @@ export interface ToolConfig {
 
 // Extract common input fields (try multiple possible keys)
 const getInput = (props: ToolRenderProps) => ({
-  filePath: (props.input.file_path ?? props.input.filePath ?? props.input.path ?? props.input.filename ?? props.input.file) as string | undefined,
+  filePath: (props.input.file_path ??
+    props.input.filePath ??
+    props.input.path ??
+    props.input.filename ??
+    props.input.file) as string | undefined,
   pattern: props.input.pattern as string | undefined,
   command: props.input.command as string | undefined,
   description: props.input.description as string | undefined,
   url: props.input.url as string | undefined,
   prompt: props.input.prompt as string | undefined,
-  oldString: (props.input.old_string ?? props.input.oldString ?? props.input.old ?? props.input.before) as string | undefined,
-  newString: (props.input.new_string ?? props.input.newString ?? props.input.new ?? props.input.after) as string | undefined,
+  oldString: (props.input.old_string ??
+    props.input.oldString ??
+    props.input.old ??
+    props.input.before) as string | undefined,
+  newString: (props.input.new_string ??
+    props.input.newString ??
+    props.input.new ??
+    props.input.after) as string | undefined,
   content: props.input.content as string | undefined,
 });
 
@@ -106,14 +115,21 @@ const getLanguage = (path?: string, content?: string): string => {
   // Fallback: detect from content
   if (content) {
     const trimmed = content.trimStart();
-    if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) return "html";
+    if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html"))
+      return "html";
     if (trimmed.startsWith("<?xml")) return "xml";
     if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json";
-    if (trimmed.startsWith("<!-") && trimmed.includes("<template")) return "vue";
+    if (trimmed.startsWith("<!-") && trimmed.includes("<template"))
+      return "vue";
     if (trimmed.startsWith("---")) return "yaml";
     if (trimmed.startsWith("#!") && trimmed.includes("python")) return "python";
-    if (trimmed.startsWith("#!") && (trimmed.includes("bash") || trimmed.includes("sh"))) return "bash";
-    if (trimmed.startsWith("package ") && trimmed.includes("func ")) return "go";
+    if (
+      trimmed.startsWith("#!") &&
+      (trimmed.includes("bash") || trimmed.includes("sh"))
+    )
+      return "bash";
+    if (trimmed.startsWith("package ") && trimmed.includes("func "))
+      return "go";
     if (trimmed.startsWith("use ") || trimmed.includes("fn ")) return "rust";
   }
 
@@ -137,7 +153,8 @@ export const TOOLS: Record<string, ToolConfig> = {
       const file = filename(getInput(p).filePath);
       // Use metadata.preview if available (first 20 lines from backend)
       const preview = p.metadata?.preview as string | undefined;
-      const lines = preview?.split("\n").length ?? p.output?.split("\n").length ?? 0;
+      const lines =
+        preview?.split("\n").length ?? p.output?.split("\n").length ?? 0;
       if (!file) return undefined;
       return lines > 0 ? `${file} (${lines} lines)` : file;
     },
@@ -148,11 +165,14 @@ export const TOOLS: Record<string, ToolConfig> = {
       if (!content) return null;
 
       const lang = getLanguage(filePath, content);
-      const truncated = content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content;
+      const truncated =
+        content.length > 3000
+          ? content.slice(0, 3000) + "\n// ... truncated"
+          : content;
       const markdown = "```" + lang + "\n" + truncated + "\n```";
 
       return (
-        <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
+        <div className="text-xs">
           <Streamdown>{markdown}</Streamdown>
         </div>
       );
@@ -166,7 +186,9 @@ export const TOOLS: Record<string, ToolConfig> = {
     subtitle: (p) => {
       const { filePath } = getInput(p);
       const file = filename(filePath);
-      const filediff = p.metadata?.filediff as { additions?: number; deletions?: number } | undefined;
+      const filediff = p.metadata?.filediff as
+        | { additions?: number; deletions?: number }
+        | undefined;
       if (!file && !filediff) return undefined;
       return (
         <>
@@ -209,9 +231,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       const desc = p.metadata?.description as string | undefined;
       const { description, command } = getInput(p);
       const exit = p.metadata?.exit as number | null | undefined;
-      const exitIndicator = exit !== undefined && exit !== null && exit !== 0 
-        ? <span className="text-red-500 ml-1">(exit {exit})</span> 
-        : null;
+      const exitIndicator =
+        exit !== undefined && exit !== null && exit !== 0 ? (
+          <span className="text-red-500 ml-1">(exit {exit})</span>
+        ) : null;
       return (
         <>
           {desc || description || command?.slice(0, 50)}
@@ -252,8 +275,7 @@ export const TOOLS: Record<string, ToolConfig> = {
       if (!file && lines === 0) return undefined;
       return (
         <>
-          {file || "file"}{" "}
-          <span className="text-green-500">+{lines}</span>
+          {file || "file"} <span className="text-green-500">+{lines}</span>
         </>
       );
     },
@@ -262,7 +284,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       if (!content) return null;
 
       const lang = getLanguage(filePath, content);
-      const truncated = content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content;
+      const truncated =
+        content.length > 3000
+          ? content.slice(0, 3000) + "\n// ... truncated"
+          : content;
       const markdown = "```" + lang + "\n" + truncated + "\n```";
 
       return (
@@ -418,7 +443,9 @@ export const TOOLS: Record<string, ToolConfig> = {
       } catch {
         hostname = url?.slice(0, 30) ?? "";
       }
-      const promptSummary = prompt ? ` - "${prompt.slice(0, 40)}${prompt.length > 40 ? "..." : ""}"` : "";
+      const promptSummary = prompt
+        ? ` - "${prompt.slice(0, 40)}${prompt.length > 40 ? "..." : ""}"`
+        : "";
       return hostname + promptSummary;
     },
     content: (p) => {
@@ -440,7 +467,8 @@ export const TOOLS: Record<string, ToolConfig> = {
           {p.output && (
             <div className="mt-2 pt-2 border-t border-border/30">
               <pre className="text-xs text-muted-foreground max-h-48 overflow-auto whitespace-pre-wrap">
-                {p.output.slice(0, 2000)}{p.output.length > 2000 && "\n..."}
+                {p.output.slice(0, 2000)}
+                {p.output.length > 2000 && "\n..."}
               </pre>
             </div>
           )}
@@ -455,9 +483,13 @@ export const TOOLS: Record<string, ToolConfig> = {
     chipLabel: (p) => getInput(p).description?.slice(0, 25),
     subtitle: (p) => {
       const { description } = getInput(p);
-      const summary = p.metadata?.summary as Array<{ tool: string; state: { status: string } }> | undefined;
+      const summary = p.metadata?.summary as
+        | Array<{ tool: string; state: { status: string } }>
+        | undefined;
       if (summary?.length) {
-        const completed = summary.filter(s => s.state.status === "completed").length;
+        const completed = summary.filter(
+          (s) => s.state.status === "completed",
+        ).length;
         return (
           <>
             {description}{" "}
@@ -471,8 +503,14 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
     content: (p) => {
       const { prompt } = getInput(p);
-      const summary = p.metadata?.summary as Array<{ id: string; tool: string; state: { status: string; title?: string } }> | undefined;
-      
+      const summary = p.metadata?.summary as
+        | Array<{
+            id: string;
+            tool: string;
+            state: { status: string; title?: string };
+          }>
+        | undefined;
+
       return (
         <div className="space-y-2">
           {prompt && (
@@ -485,15 +523,23 @@ export const TOOLS: Record<string, ToolConfig> = {
             <div className="space-y-1 pt-1 border-t border-border/30">
               {summary.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 text-xs">
-                  <span className={cn(
-                    "size-1.5 rounded-full",
-                    s.state.status === "completed" ? "bg-green-500" :
-                    s.state.status === "error" ? "bg-red-500" :
-                    s.state.status === "running" ? "bg-yellow-500" : "bg-muted-foreground"
-                  )} />
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      s.state.status === "completed"
+                        ? "bg-green-500"
+                        : s.state.status === "error"
+                          ? "bg-red-500"
+                          : s.state.status === "running"
+                            ? "bg-yellow-500"
+                            : "bg-muted-foreground",
+                    )}
+                  />
                   <span className="text-muted-foreground">{s.tool}</span>
                   {s.state.title && (
-                    <span className="text-foreground/70 truncate">{s.state.title}</span>
+                    <span className="text-foreground/70 truncate">
+                      {s.state.title}
+                    </span>
                   )}
                 </div>
               ))}
@@ -524,7 +570,9 @@ export const TOOLS: Record<string, ToolConfig> = {
         <>
           <Paintbrush className="size-3 inline mr-1 text-primary" />
           <span className="text-primary">{name ?? "Theme"}</span>
-          {style && <span className="text-muted-foreground ml-1">({style})</span>}
+          {style && (
+            <span className="text-muted-foreground ml-1">({style})</span>
+          )}
         </>
       );
     },
@@ -533,16 +581,23 @@ export const TOOLS: Record<string, ToolConfig> = {
       const style = p.input.style as string | undefined;
 
       // Extract color values from flat input
-      const colorKeys = ['primary', 'secondary', 'accent', 'background', 'muted', 'card', 'border', 'destructive'];
+      const colorKeys = [
+        "primary",
+        "secondary",
+        "accent",
+        "background",
+        "muted",
+        "card",
+        "border",
+        "destructive",
+      ];
       const colors = colorKeys
-        .map(key => ({ key, value: p.input[key] as string }))
-        .filter(c => c.value);
+        .map((key) => ({ key, value: p.input[key] as string }))
+        .filter((c) => c.value);
 
       if (colors.length === 0) {
         return (
-          <div className="text-xs text-muted-foreground">
-            Creating theme...
-          </div>
+          <div className="text-xs text-muted-foreground">Creating theme...</div>
         );
       }
 
@@ -565,7 +620,6 @@ export const TOOLS: Record<string, ToolConfig> = {
       );
     },
   },
-
 };
 
 // Default config for unknown tools
