@@ -104,7 +104,7 @@ function StudioPage() {
     setScreenPositions(sessionId, getInitialPositions(designIds));
   }, [designs, sessionId, setScreenPositions]);
 
-  const currentSession = sessions.find((s) => s.id === sessionId);
+  const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
 
   return (
     <div className="h-dvh flex flex-col bg-background">

@@ -7,12 +7,21 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { ToolPart } from "./tool-part";
 import { FileCode2 } from "lucide-react";
+import { ErrorBoundary, InlineErrorFallback } from "@/components/ui/error-boundary";
 
 interface MessagePartProps {
   part: MessagePartType;
 }
 
 export function MessagePart({ part }: MessagePartProps) {
+  return (
+    <ErrorBoundary fallback={<InlineErrorFallback message="Failed to render message part" />}>
+      <MessagePartContent part={part} />
+    </ErrorBoundary>
+  );
+}
+
+function MessagePartContent({ part }: MessagePartProps) {
   switch (part.type) {
     case "text":
       if (!part.text?.trim()) return null;

@@ -9,6 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { useCallback, useRef, useState, useEffect, createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 // Grid configuration for visual display
 const GRID_SIZE = 20;
@@ -32,6 +33,27 @@ interface DesignCanvasProps {
 }
 
 export function DesignCanvas({
+  children,
+  screenPositions,
+  onPositionsChange,
+  onReset,
+  className,
+}: DesignCanvasProps) {
+  return (
+    <ErrorBoundary>
+      <DesignCanvasContent
+        screenPositions={screenPositions}
+        onPositionsChange={onPositionsChange}
+        onReset={onReset}
+        className={className}
+      >
+        {children}
+      </DesignCanvasContent>
+    </ErrorBoundary>
+  );
+}
+
+function DesignCanvasContent({
   children,
   screenPositions,
   onPositionsChange,

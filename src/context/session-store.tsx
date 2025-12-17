@@ -67,42 +67,55 @@ export interface ScreenPosition {
   y: number;
 }
 
+/**
+ * Session Store - Zustand store for CLIENT-ONLY and REAL-TIME state
+ * 
+ * Architecture (TkDodo/KCD hybrid approach):
+ * - Zustand handles: Real-time SSE data (messages, parts), UI state, client preferences
+ * - React Query handles: Server state fetching (sessions list, initial message load)
+ * 
+ * This store intentionally does NOT manage the sessions list - that's in React Query.
+ */
 interface SessionState {
-  // Core state
-  sessions: SessionMeta[];
+  // Client state (UI preferences)
   currentSessionId: string | null;
+  screenPositions: Record<string, ScreenPosition[]>; // Persisted
+
+  // Real-time state (from SSE events)
   messages: Record<string, Message[]>; // Keyed by sessionId
-  parts: Record<string, MessagePart[]>; // Keyed by messageId (like OpenCode!)
+  parts: Record<string, MessagePart[]>; // Keyed by messageId
   sessionStatus: Record<string, SessionStatus>; // Keyed by sessionId
   sessionDiffs: Record<string, FileDiff[]>; // Keyed by sessionId
-  screenPositions: Record<string, ScreenPosition[]>; // Keyed by sessionId
 
-  // UI state
+  // Server connection state
   isServerReady: boolean;
   error: string | null;
 
   // Debug
   debugEvents: Event[];
 
-  // Actions
-  setServerReady: (ready: boolean) => void;
-  setError: (error: string | null) => void;
-  setSessions: (sessions: SessionMeta[]) => void;
-  addSession: (session: SessionMeta) => void;
-  updateSession: (id: string, updates: Partial<SessionMeta>) => void;
-  removeSession: (id: string) => void;
+  // Actions - Client state
   setCurrentSessionId: (id: string | null) => void;
+  setScreenPositions: (sessionId: string, positions: ScreenPosition[]) => void;
+
+  // Actions - Real-time state
   setMessages: (sessionId: string, messages: Message[]) => void;
   addMessage: (sessionId: string, message: Message) => void;
   updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
   updatePart: (messageId: string, part: MessagePart) => void;
   setSessionStatus: (sessionId: string, status: SessionStatus) => void;
   setSessionDiffs: (sessionId: string, diffs: FileDiff[]) => void;
-  setScreenPositions: (sessionId: string, positions: ScreenPosition[]) => void;
+  clearSessionData: (sessionId: string) => void;
+
+  // Actions - Server state
+  setServerReady: (ready: boolean) => void;
+  setError: (error: string | null) => void;
+
+  // Actions - Debug
   addDebugEvent: (event: Event) => void;
   clearDebugEvents: () => void;
 
-  // Event handler
+  // Event handler for SSE
   handleEvent: (event: Event) => void;
 }
 
@@ -147,62 +160,28 @@ export const useSessionStore = create<SessionState>()(
   persist(
     immer((set, get) => ({
       // Initial state
-      sessions: [],
       currentSessionId: null,
+      screenPositions: {},
       messages: {},
-      parts: {}, // Parts stored separately by messageId
+      parts: {},
       sessionStatus: {},
       sessionDiffs: {},
-      screenPositions: {},
       isServerReady: false,
       error: null,
       debugEvents: [],
 
-      // Actions
-      setServerReady: (ready) =>
-        set((state) => {
-          state.isServerReady = ready;
-        }),
-
-      setError: (error) =>
-        set((state) => {
-          state.error = error;
-        }),
-
-      setSessions: (sessions) =>
-        set((state) => {
-          state.sessions = sessions;
-        }),
-
-      addSession: (session) =>
-        set((state) => {
-          state.sessions.push(session);
-        }),
-
-      updateSession: (id, updates) =>
-        set((state) => {
-          const index = state.sessions.findIndex((s) => s.id === id);
-          if (index !== -1) {
-            Object.assign(state.sessions[index], updates);
-          }
-        }),
-
-      removeSession: (id) =>
-        set((state) => {
-          state.sessions = state.sessions.filter((s) => s.id !== id);
-          if (state.currentSessionId === id) {
-            state.currentSessionId = null;
-          }
-          delete state.messages[id];
-          delete state.sessionStatus[id];
-          delete state.sessionDiffs[id];
-        }),
-
+      // Client state actions
       setCurrentSessionId: (id) =>
         set((state) => {
           state.currentSessionId = id;
         }),
 
+      setScreenPositions: (sessionId, positions) =>
+        set((state) => {
+          state.screenPositions[sessionId] = positions;
+        }),
+
+      // Real-time state actions
       setMessages: (sessionId, messages) =>
         set((state) => {
           state.messages[sessionId] = messages;
@@ -213,11 +192,9 @@ export const useSessionStore = create<SessionState>()(
           if (!state.messages[sessionId]) {
             state.messages[sessionId] = [];
           }
-          // Check if already exists by ID
           const exists = state.messages[sessionId].some((m) => m.id === message.id);
           if (exists) return;
 
-          // Insert by timestamp order
           const { index } = binarySearchByTime(state.messages[sessionId], message.time.created);
           state.messages[sessionId].splice(index, 0, message);
         }),
@@ -233,23 +210,18 @@ export const useSessionStore = create<SessionState>()(
           }
         }),
 
-      // Store parts separately by messageId (like OpenCode)
       updatePart: (messageId, part) =>
         set((state) => {
           const parts = state.parts[messageId];
           if (!parts) {
-            // Create new parts array for this message
             state.parts[messageId] = [part];
             return;
           }
 
-          // Find existing part by ID using binary search
           const result = binarySearch(parts, part.id, (p) => p.id);
           if (result.found) {
-            // Update existing part - replace entirely (like OpenCode's reconcile)
             parts[result.index] = part;
           } else {
-            // Insert new part in sorted order
             parts.splice(result.index, 0, part);
           }
         }),
@@ -264,14 +236,30 @@ export const useSessionStore = create<SessionState>()(
           state.sessionDiffs[sessionId] = diffs;
         }),
 
-      setScreenPositions: (sessionId, positions) =>
+      clearSessionData: (sessionId) =>
         set((state) => {
-          state.screenPositions[sessionId] = positions;
+          delete state.messages[sessionId];
+          delete state.sessionStatus[sessionId];
+          delete state.sessionDiffs[sessionId];
+          if (state.currentSessionId === sessionId) {
+            state.currentSessionId = null;
+          }
         }),
 
+      // Server state actions
+      setServerReady: (ready) =>
+        set((state) => {
+          state.isServerReady = ready;
+        }),
+
+      setError: (error) =>
+        set((state) => {
+          state.error = error;
+        }),
+
+      // Debug actions
       addDebugEvent: (event) =>
         set((state) => {
-          // Keep last 500 events
           if (state.debugEvents.length >= 500) {
             state.debugEvents = state.debugEvents.slice(-499);
           }
@@ -283,19 +271,16 @@ export const useSessionStore = create<SessionState>()(
           state.debugEvents = [];
         }),
 
-      // Central event handler - matches OpenCode's pattern exactly
+      // Central event handler for SSE - handles real-time updates
       handleEvent: (event) => {
         const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs } = get();
 
-        // Add to debug events
         addDebugEvent(event);
 
         switch (event.type) {
           case "message.part.updated": {
-            // Match OpenCode exactly - only need messageId for parts!
             const sdkPart = (event as EventMessagePartUpdated).properties.part;
             if (sdkPart.messageID) {
-              // Convert SDK Part to our internal MessagePart type
               const part: MessagePart = {
                 id: sdkPart.id,
                 messageID: sdkPart.messageID,
@@ -318,7 +303,6 @@ export const useSessionStore = create<SessionState>()(
             const isCompleted = "completed" in info.time && !!info.time.completed;
 
             if (!exists) {
-              // Message doesn't exist yet - create it (like OpenCode)
               const newMessage: Message = {
                 id: info.id,
                 sessionID: info.sessionID,
@@ -328,7 +312,6 @@ export const useSessionStore = create<SessionState>()(
               };
               addMessage(info.sessionID, newMessage);
             } else if (isCompleted) {
-              // Message exists and is complete - update it
               updateMessage(info.sessionID, info.id, {
                 isStreaming: false,
                 time: info.time as { created: number; completed?: number },
@@ -339,7 +322,6 @@ export const useSessionStore = create<SessionState>()(
 
           case "session.status": {
             const { sessionID, status } = (event as EventSessionStatus).properties;
-            // SDK status is { type: "idle" | "running" | ... }
             const statusType = status.type as SessionStatus;
             setSessionStatus(sessionID, statusType);
             break;
@@ -369,7 +351,6 @@ export const useSessionStore = create<SessionState>()(
       name: "dilag-session-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        // Persist UI preferences and screen positions
         currentSessionId: state.currentSessionId,
         screenPositions: state.screenPositions,
       }),
@@ -377,16 +358,14 @@ export const useSessionStore = create<SessionState>()(
   )
 );
 
-// Stable empty references to avoid infinite loops
+// Stable empty references to avoid re-renders
 const EMPTY_MESSAGES: Message[] = [];
 const EMPTY_PARTS: MessagePart[] = [];
 const EMPTY_DIFFS: FileDiff[] = [];
+const EMPTY_POSITIONS: ScreenPosition[] = [];
 
-// Selector hooks for performance
-export const useSessions = () => useSessionStore((state) => state.sessions);
+// Selector hooks for Zustand state
 export const useCurrentSessionId = () => useSessionStore((state) => state.currentSessionId);
-export const useCurrentSession = () =>
-  useSessionStore((state) => state.sessions.find((s) => s.id === state.currentSessionId) ?? null);
 export const useSessionMessages = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES));
 export const useMessageParts = (messageId: string | null) =>
@@ -395,11 +374,8 @@ export const useSessionStatus = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.sessionStatus[sessionId] ?? "unknown" : "unknown"));
 export const useSessionDiffs = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.sessionDiffs[sessionId] ?? EMPTY_DIFFS : EMPTY_DIFFS));
+export const useScreenPositions = (sessionId: string | null) =>
+  useSessionStore((state) => (sessionId ? state.screenPositions[sessionId] ?? EMPTY_POSITIONS : EMPTY_POSITIONS));
 export const useIsServerReady = () => useSessionStore((state) => state.isServerReady);
 export const useError = () => useSessionStore((state) => state.error);
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents);
-
-// Screen positions
-const EMPTY_POSITIONS: ScreenPosition[] = [];
-export const useScreenPositions = (sessionId: string | null) =>
-  useSessionStore((state) => (sessionId ? state.screenPositions[sessionId] ?? EMPTY_POSITIONS : EMPTY_POSITIONS));

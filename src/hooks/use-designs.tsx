@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import { useCurrentSession } from "@/context/session-store";
+import { useSessions } from "@/hooks/use-sessions";
 
 export interface DesignFile {
   filename: string;
@@ -14,54 +15,65 @@ async function loadSessionDesigns(sessionCwd: string): Promise<DesignFile[]> {
   return invoke<DesignFile[]>("load_session_designs", { sessionCwd });
 }
 
+/**
+ * Query key factory for designs
+ * Following TkDodo's query key factory pattern
+ */
+export const designKeys = {
+  all: ["designs"] as const,
+  session: (sessionCwd: string | undefined) =>
+    [...designKeys.all, "session", sessionCwd] as const,
+};
+
+/**
+ * Hook to fetch designs for the current session
+ * Uses React Query for data fetching with polling
+ */
+export function useSessionDesigns(sessionCwd: string | undefined) {
+  return useQuery({
+    queryKey: designKeys.session(sessionCwd),
+    queryFn: () => {
+      if (!sessionCwd) throw new Error("No session cwd");
+      return loadSessionDesigns(sessionCwd);
+    },
+    enabled: !!sessionCwd,
+    refetchInterval: 2000, // Poll every 2 seconds
+    staleTime: 1000, // Consider data stale after 1 second
+  });
+}
+
+/**
+ * Convenience hook that combines data fetching with UI state
+ * This is a composite hook for backward compatibility with existing components
+ */
 export function useDesigns() {
-  const session = useCurrentSession();
-  const [designs, setDesigns] = useState<DesignFile[]>([]);
+  const { currentSession } = useSessions();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<"preview" | "code">("preview");
 
-  const refresh = useCallback(async () => {
-    if (!session?.cwd) {
-      setDesigns([]);
-      return;
-    }
+  const {
+    data: designs = [],
+    isLoading,
+    refetch,
+  } = useSessionDesigns(currentSession?.cwd);
 
-    setIsLoading(true);
-    try {
-      const files = await loadSessionDesigns(session.cwd);
-      setDesigns(files);
-      // Reset active index if out of bounds (using functional update to avoid stale closure)
-      setActiveIndex((current) =>
-        current >= files.length && files.length > 0 ? files.length - 1 : current
-      );
-    } catch (err) {
-      console.error("Failed to load designs:", err);
-      setDesigns([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session?.cwd]);
+  // Ensure activeIndex stays in bounds
+  const boundedActiveIndex =
+    designs.length > 0
+      ? Math.min(activeIndex, designs.length - 1)
+      : 0;
 
-  // Load designs when session changes
-  useEffect(() => {
-    refresh();
-  }, [session?.cwd]);
+  const activeDesign = designs[boundedActiveIndex] ?? null;
 
-  // Poll for new designs while session is active
-  useEffect(() => {
-    if (!session?.cwd) return;
-
-    const interval = setInterval(refresh, 2000); // Poll every 2 seconds
-    return () => clearInterval(interval);
-  }, [session?.cwd, refresh]);
-
-  const activeDesign = designs[activeIndex] ?? null;
+  // Wrap refetch to be compatible with event handlers
+  const refresh = () => {
+    refetch();
+  };
 
   return {
     designs,
     activeDesign,
-    activeIndex,
+    activeIndex: boundedActiveIndex,
     setActiveIndex,
     viewMode,
     setViewMode,

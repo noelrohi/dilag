@@ -1,45 +1,24 @@
 import { useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import {
   useSessionStore,
-  useSessions as useSessionsList,
   useCurrentSessionId,
-  useCurrentSession,
   useSessionMessages,
   useSessionStatus,
   useIsServerReady,
   useError,
   useDebugEvents,
   type MessagePart,
+  type SessionMeta,
 } from "@/context/session-store";
+import {
+  useSessionsList,
+  useCurrentSession,
+  useSessionMutations,
+  createSessionDir,
+} from "@/hooks/use-session-data";
 import { useGlobalEvents, useSDK, type Event } from "@/context/global-events";
 import { useModelStore } from "@/hooks/use-models";
 import type { Part } from "@opencode-ai/sdk/v2/client";
-
-// Session metadata stored locally via Tauri
-interface SessionMeta {
-  id: string;
-  name: string;
-  created_at: string;
-  cwd: string;
-}
-
-// Tauri commands for local session management
-async function createSessionDir(sessionId: string): Promise<string> {
-  return invoke<string>("create_session_dir", { sessionId });
-}
-
-async function saveSessionMetadata(session: SessionMeta): Promise<void> {
-  return invoke<void>("save_session_metadata", { session });
-}
-
-async function loadSessionsMetadata(): Promise<SessionMeta[]> {
-  return invoke<SessionMeta[]>("load_sessions_metadata");
-}
-
-async function deleteSessionMetadata(sessionId: string): Promise<void> {
-  return invoke<void>("delete_session_metadata", { sessionId });
-}
 
 // Convert SDK message format to our internal format
 function convertPart(part: Part, messageID: string, sessionID: string): MessagePart {
@@ -54,29 +33,45 @@ function convertPart(part: Part, messageID: string, sessionID: string): MessageP
   };
 }
 
-// Main hook for session management
+/**
+ * Main hook for session management
+ * 
+ * Architecture:
+ * - Sessions list: React Query (useSessionsList)
+ * - Current session selection: Zustand (client state)
+ * - Messages/parts: Zustand (real-time SSE updates)
+ * - CRUD operations: React Query mutations
+ */
 export function useSessions() {
-  const sessions = useSessionsList();
+  const sdk = useSDK();
+
+  // React Query for sessions list
+  const { data: sessions = [], isLoading: isLoadingSessions } = useSessionsList();
+
+  // Zustand for client state
   const currentSessionId = useCurrentSessionId();
-  const currentSession = useCurrentSession();
   const messages = useSessionMessages(currentSessionId);
   const sessionStatus = useSessionStatus(currentSessionId);
   const isServerReady = useIsServerReady();
   const error = useError();
   const debugEvents = useDebugEvents();
 
-  const sdk = useSDK();
+  // Derived: current session from React Query data
+  const currentSession = useCurrentSession(sessions, currentSessionId);
 
+  // React Query mutations
+  const { createSession: saveSession, updateSession: saveSessionUpdate, deleteSession: removeSession } = useSessionMutations();
+
+  // Zustand actions
   const {
-    addSession,
-    updateSession,
-    removeSession,
     setCurrentSessionId,
     setMessages,
     setSessionStatus,
     clearDebugEvents,
     handleEvent,
     setError,
+    setServerReady,
+    clearSessionData,
   } = useSessionStore();
 
   const { subscribe, subscribeToSession, isServerReady: globalServerReady } = useGlobalEvents();
@@ -112,62 +107,55 @@ export function useSessions() {
   // Track if initialized to prevent double init
   const initializedRef = useRef(false);
 
-  // Initialize and load sessions once server is ready
+  // Initialize when server is ready - select most recent session and load its messages
   useEffect(() => {
     if (!globalServerReady || initializedRef.current) return;
     initializedRef.current = true;
 
-    async function init() {
-      try {
-        useSessionStore.getState().setError(null);
-        useSessionStore.getState().setServerReady(true);
+    setError(null);
+    setServerReady(true);
 
-        // Load persisted sessions
-        const savedSessions = await loadSessionsMetadata();
-        useSessionStore.getState().setSessions(savedSessions);
-
-        // Select the most recent session if available
-        if (savedSessions.length > 0) {
-          const mostRecent = savedSessions[savedSessions.length - 1];
-          useSessionStore.getState().setCurrentSessionId(mostRecent.id);
-
-          // Load messages for this session using SDK
-          try {
-            const response = await sdk.session.messages({
-              sessionID: mostRecent.id,
-              directory: mostRecent.cwd,
-            });
-
-            if (response.data) {
-              const msgs = response.data.map((msg) => ({
-                id: msg.info.id,
-                sessionID: msg.info.sessionID,
-                role: msg.info.role as "user" | "assistant",
-                time: msg.info.time,
-              }));
-              useSessionStore.getState().setMessages(mostRecent.id, msgs);
-
-              // Set parts for each message
-              const state = useSessionStore.getState();
-              response.data.forEach((msg) => {
-                msg.parts?.forEach((part) => {
-                  state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID));
-                });
-              });
-            }
-          } catch {
-            // Session might not exist in OpenCode yet
-            useSessionStore.getState().setMessages(mostRecent.id, []);
-          }
-        }
-      } catch (err) {
-        useSessionStore.getState().setError(err instanceof Error ? err.message : "Failed to initialize");
-        console.error("Failed to initialize:", err);
-      }
+    // Auto-select most recent session if available and none selected
+    if (sessions.length > 0 && !currentSessionId) {
+      const mostRecent = sessions[sessions.length - 1];
+      setCurrentSessionId(mostRecent.id);
+      loadSessionMessages(mostRecent.id, mostRecent.cwd);
     }
+  }, [globalServerReady, sessions, currentSessionId, setError, setServerReady, setCurrentSessionId]);
 
-    init();
-  }, [globalServerReady, sdk]);
+  // Load messages for a session
+  const loadSessionMessages = useCallback(
+    async (sessionId: string, directory?: string) => {
+      try {
+        const response = await sdk.session.messages({
+          sessionID: sessionId,
+          directory,
+        });
+
+        if (response.data) {
+          const msgs = response.data.map((msg) => ({
+            id: msg.info.id,
+            sessionID: msg.info.sessionID,
+            role: msg.info.role as "user" | "assistant",
+            time: msg.info.time,
+          }));
+          setMessages(sessionId, msgs);
+
+          // Set parts for each message
+          const state = useSessionStore.getState();
+          response.data.forEach((msg) => {
+            msg.parts?.forEach((part) => {
+              state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID));
+            });
+          });
+        }
+      } catch {
+        // Session might not exist in OpenCode yet
+        setMessages(sessionId, []);
+      }
+    },
+    [sdk, setMessages]
+  );
 
   const createSession = useCallback(
     async (name?: string): Promise<string | null> => {
@@ -193,11 +181,10 @@ export function useSessions() {
           cwd,
         };
 
-        // Save to local storage
-        await saveSessionMetadata(sessionMeta);
+        // Save to Tauri + update React Query cache
+        await saveSession(sessionMeta);
 
-        // Update state
-        addSession(sessionMeta);
+        // Update Zustand client state
         setCurrentSessionId(sessionId);
         setMessages(sessionId, []);
 
@@ -208,7 +195,7 @@ export function useSessions() {
         return null;
       }
     },
-    [sessions.length, setError, addSession, setCurrentSessionId, setMessages, sdk]
+    [sessions.length, setError, setCurrentSessionId, setMessages, sdk, saveSession]
   );
 
   const selectSession = useCallback(
@@ -217,38 +204,9 @@ export function useSessions() {
 
       // Get session's directory for isolation
       const session = sessions.find((s) => s.id === sessionId);
-      const directory = session?.cwd;
-
-      try {
-        // Load messages for this session using SDK
-        const response = await sdk.session.messages({
-          sessionID: sessionId,
-          directory,
-        });
-
-        if (response.data) {
-          const msgs = response.data.map((msg) => ({
-            id: msg.info.id,
-            sessionID: msg.info.sessionID,
-            role: msg.info.role as "user" | "assistant",
-            time: msg.info.time,
-          }));
-          setMessages(sessionId, msgs);
-
-          // Set parts for each message
-          const state = useSessionStore.getState();
-          response.data.forEach((msg) => {
-            msg.parts?.forEach((part) => {
-              state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID));
-            });
-          });
-        }
-      } catch {
-        // Session might not exist in OpenCode, start fresh
-        setMessages(sessionId, []);
-      }
+      await loadSessionMessages(sessionId, session?.cwd);
     },
-    [sessions, setCurrentSessionId, setMessages, sdk]
+    [sessions, setCurrentSessionId, loadSessionMessages]
   );
 
   const deleteSession = useCallback(
@@ -267,17 +225,17 @@ export function useSessions() {
           // Might not exist in OpenCode, continue anyway
         }
 
-        // Delete local metadata and directory
-        await deleteSessionMetadata(sessionId);
+        // Delete local metadata (React Query mutation)
+        await removeSession(sessionId);
 
-        // Update state
-        removeSession(sessionId);
+        // Clear Zustand real-time data
+        clearSessionData(sessionId);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to delete session");
         console.error("Failed to delete session:", err);
       }
     },
-    [sessions, removeSession, setError, sdk]
+    [sessions, removeSession, clearSessionData, setError, sdk]
   );
 
   const sendMessage = useCallback(
@@ -328,9 +286,10 @@ export function useSessions() {
               directory,
             }).then(async (response) => {
               if (response.data?.title) {
-                const updatedSession = { ...currentSession, name: response.data.title };
-                await saveSessionMetadata(updatedSession);
-                updateSession(currentSessionId, { name: response.data.title });
+                await saveSessionUpdate({
+                  id: currentSessionId,
+                  updates: { name: response.data.title },
+                });
               }
             });
           }, 2000);
@@ -341,14 +300,16 @@ export function useSessions() {
         console.error("Failed to send message:", err);
       }
     },
-    [currentSessionId, currentSession, messages.length, setError, setSessionStatus, updateSession, sdk]
+    [currentSessionId, currentSession, messages.length, setError, setSessionStatus, saveSessionUpdate, sdk]
   );
 
   return {
     sessions,
     currentSessionId,
+    currentSession,
     messages,
     isLoading: sessionStatus === "running",
+    isLoadingSessions,
     isServerReady,
     error,
     debugEvents,
