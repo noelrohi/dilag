@@ -1,4 +1,8 @@
-# AGENTS.md
+# CLAUDE.md
+
+## Documentation
+- `docs/platform.md` - UI screens, components, user flows, tool registry
+- `docs/architecture.md` - App startup, storage, SSE events, session lifecycle
 
 ## Build & Run
 - `bun run dev` - Vite dev server (frontend only)
