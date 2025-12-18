@@ -18,7 +18,7 @@
         "minWidth": 600,
         "minHeight": 400,
         "titleBarStyle": "Visible",
-        "backgroundColor": "#262630"
+        "backgroundColor": "#0E1014"
       }
     ],
     "security": {
@@ -34,6 +34,18 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/noelrohi/dilag/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJEQUUwMDEzQUMxQ0IyMEUKUldRT3NoeXNFd0N1dlRYYTJycHUrUFR4cVhnQXM2NXZCZFdwZVg1Umw1TmRBWEdvQ0hXR3N2Nm4K"
+    }
   }
 }

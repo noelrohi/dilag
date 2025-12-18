@@ -34,6 +34,8 @@
     "@tanstack/react-router": "^1.141.2",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.9.0",
     "@xyflow/react": "^12.10.0",
     "ai": "^5.0.113",
     "class-variance-authority": "^0.7.1",
