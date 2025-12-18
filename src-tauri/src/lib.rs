@@ -667,22 +667,19 @@ pub fn run() {
 
             let window = win_builder.build()?;
 
-            // Set background color on macOS using cocoa
+            // Set background color on macOS using objc2-app-kit
             #[cfg(target_os = "macos")]
-            unsafe {
-                use cocoa::appkit::{NSColor, NSWindow};
-                use cocoa::base::id;
+            {
+                use objc2_app_kit::{NSColor, NSWindow};
+                use objc2::rc::Retained;
 
-                let ns_win = window.as_ref().window().ns_window().unwrap() as id;
+                let ns_win: Retained<NSWindow> = unsafe {
+                    let ptr = window.as_ref().window().ns_window().unwrap();
+                    Retained::retain(ptr as *mut NSWindow).unwrap()
+                };
                 // #16161c in normalized RGB (22/255, 22/255, 28/255)
-                let bg_color = NSColor::colorWithRed_green_blue_alpha_(
-                    cocoa::base::nil,
-                    0.086,  // 22/255
-                    0.086,  // 22/255
-                    0.110,  // 28/255
-                    1.0,
-                );
-                ns_win.setBackgroundColor_(bg_color);
+                let bg_color = NSColor::colorWithRed_green_blue_alpha(0.086, 0.086, 0.110, 1.0);
+                ns_win.setBackgroundColor(Some(&bg_color));
             }
 
             #[cfg(not(target_os = "macos"))]
