@@ -268,6 +268,49 @@ fn ensure_config_exists() -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Debug, Serialize)]
+pub struct OpenCodeCheckResult {
+    pub installed: bool,
+    pub version: Option<String>,
+    pub error: Option<String>,
+}
+
+#[tauri::command]
+async fn check_opencode_installation(app: tauri::AppHandle) -> OpenCodeCheckResult {
+    use tauri_plugin_shell::ShellExt;
+    
+    let shell = app.shell();
+    
+    // Try to run "opencode --version" to check if it's installed
+    match shell.command("opencode").args(["--version"]).output().await {
+        Ok(output) => {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                OpenCodeCheckResult {
+                    installed: true,
+                    version: if version.is_empty() { None } else { Some(version) },
+                    error: None,
+                }
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                OpenCodeCheckResult {
+                    installed: false,
+                    version: None,
+                    error: if stderr.is_empty() { None } else { Some(stderr) },
+                }
+            }
+        }
+        Err(e) => {
+            // Command not found or failed to execute
+            OpenCodeCheckResult {
+                installed: false,
+                version: None,
+                error: Some(format!("OpenCode CLI not found: {}", e)),
+            }
+        }
+    }
+}
+
 #[tauri::command]
 fn get_opencode_port() -> u16 {
     OPENCODE_PORT
@@ -708,6 +751,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            check_opencode_installation,
             get_opencode_port,
             create_session_dir,
             get_session_cwd,

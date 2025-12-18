@@ -41,6 +41,7 @@ interface GlobalEventsContextValue {
   reconnectAttempt: number;
   isConnected: boolean;
   isServerReady: boolean;
+  serverError: string | null;
   bootstrap: () => Promise<void>;
 }
 
@@ -48,6 +49,7 @@ const GlobalEventsContext = createContext<GlobalEventsContextValue | null>(null)
 
 export function GlobalEventsProvider({ children }: { children: ReactNode }) {
   const [isServerReady, setIsServerReady] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const handlersRef = useRef<Set<EventHandler>>(new Set());
@@ -262,6 +264,7 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
         console.error("[GlobalEvents] Server start error:", err);
         if (mountedRef.current) {
           setIsServerReady(false);
+          setServerError(err instanceof Error ? err.message : String(err));
           setConnectionStatus("disconnected");
         }
       }
@@ -286,6 +289,7 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
         reconnectAttempt,
         isConnected: connectionStatus === "connected",
         isServerReady,
+        serverError,
         bootstrap,
       }}
     >
