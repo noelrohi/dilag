@@ -1,14 +1,13 @@
 import { useState } from "react";
 import {
-  ArrowUp,
   Sparkles,
   Terminal,
   AlertCircle,
-  Plus,
   ChevronDown,
   Palette,
   Paperclip,
 } from "lucide-react";
+import { ArrowUp, Sparkle } from "@phosphor-icons/react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
   useMessageParts,
@@ -203,7 +202,7 @@ function EmptyState({ onCreateSession }: { onCreateSession: () => void }) {
             className="gap-2 glow-ring"
             size="lg"
           >
-            <Plus className="size-4" />
+            <Sparkle className="size-4" weight="fill" />
             New Session
           </Button>
         </div>
@@ -280,14 +279,14 @@ function ModelSelectorButton() {
         <Button
           variant="outline"
           size="sm"
-          className="h-7 gap-1.5 px-2.5 text-[11px] text-muted-foreground hover:text-foreground border-border/60"
+          className="h-9 gap-2 px-3 text-xs text-muted-foreground hover:text-foreground border"
           disabled={isLoading}
         >
           {selectedModelInfo ? (
             <>
               <ModelSelectorLogo
                 provider={selectedModelInfo.providerID as any}
-                className="size-3"
+                className="size-4"
               />
               <span className="max-w-[120px] truncate">
                 {selectedModelInfo.name}
@@ -296,7 +295,7 @@ function ModelSelectorButton() {
           ) : (
             <span>Select model</span>
           )}
-          <ChevronDown className="size-3 opacity-50" />
+          <ChevronDown className="size-3.5 opacity-50" />
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent title="Select Model">
@@ -356,8 +355,10 @@ function ChatInputArea({
         <PromptInput
           onSubmit={async ({ text, files }) => handleSubmit(text, files)}
           className={cn(
-            "rounded-2xl bg-card/50 backdrop-blur-sm transition-all duration-300 ring-2 ring-purple-500/30",
-            hasInput && "glow-ring",
+            "[&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border-border/50",
+            "[&_[data-slot=input-group]]:bg-card/50 [&_[data-slot=input-group]]:backdrop-blur-sm",
+            "[&_[data-slot=input-group]]:focus-within:border-primary/50 [&_[data-slot=input-group]]:focus-within:ring-2 [&_[data-slot=input-group]]:focus-within:ring-primary/20",
+            "transition-all duration-300",
             isLoading && "opacity-80",
           )}
         >
@@ -392,7 +393,7 @@ function ChatInputArea({
                 className={cn(
                   "size-9 rounded-xl transition-all duration-200",
                   hasInput && !isLoading
-                    ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -441,7 +442,7 @@ export function ChatView() {
           <ConversationContent className="px-4">
             {messages.length === 0 ? (
               <ConversationEmptyState
-                icon={<Palette className="size-10 text-purple-500/60" />}
+                icon={<Palette className="size-10 text-primary/60" />}
                 title="Design something"
                 description="Describe a UI screen and it will appear in the preview"
               />

@@ -6,6 +6,9 @@ import { MenuEventsProvider } from "@/context/menu-events";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { UpdateDialog } from "@/components/blocks/update-dialog";
+import { Toaster } from "@/components/ui/sonner";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/blocks/app-sidebar";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,12 +35,18 @@ function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GlobalEventsProvider>
             <MenuEventsProvider>
-              <Outlet />
+              <SidebarProvider defaultOpen={true}>
+                <AppSidebar />
+                <SidebarInset>
+                  <Outlet />
+                </SidebarInset>
+              </SidebarProvider>
               <UpdateDialog />
             </MenuEventsProvider>
           </GlobalEventsProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
+        <Toaster />
       </ThemeProvider>
     </ErrorBoundary>
   );

@@ -4,8 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useSessions } from "@/hooks/use-sessions";
 import type { DesignFile } from "@/hooks/use-designs";
 import { cn } from "@/lib/utils";
-import { DilagLogo } from "@/components/ui/dilag-logo";
-import { ChevronRight, X, Search, Calendar, SortDesc } from "lucide-react";
+import { X, Search, Calendar, SortDesc } from "lucide-react";
 
 // Mini thumbnail constants
 const THUMB_RENDER_W = 393;
@@ -112,30 +111,6 @@ function ProjectsPage() {
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
       />
-
-      {/* Title bar drag region */}
-      <div
-        data-tauri-drag-region
-        className="h-[38px] shrink-0 flex items-center select-none relative"
-      >
-        {/* Breadcrumbs */}
-        <div className="absolute left-0 top-0 h-full flex items-center pl-3">
-          <div className="flex items-center gap-1 text-[12px]">
-            <button
-              onClick={() => navigate({ to: "/" })}
-              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-            >
-              <DilagLogo className="size-4" />
-              <span>Dilag</span>
-            </button>
-            <ChevronRight className="size-3 text-muted-foreground/50" />
-            <span className="font-medium text-foreground">Projects</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Border */}
-      <div className="h-px bg-border" />
 
       {/* Content */}
       <main className="relative flex-1 overflow-auto">

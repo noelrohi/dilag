@@ -22,7 +22,8 @@ export function DesignPreviewFrame({ design }: DesignPreviewFrameProps) {
   }
 
   // Set default viewport based on design type
-  const effectiveViewport = design.type === "mobile" && viewport === "desktop" ? "mobile" : viewport;
+  const effectiveViewport =
+    design.type === "mobile" && viewport === "desktop" ? "mobile" : viewport;
 
   const viewportConfig = {
     desktop: { width: "100%", maxWidth: "none", label: "Desktop" },
@@ -63,7 +64,9 @@ export function DesignPreviewFrame({ design }: DesignPreviewFrameProps) {
         >
           <Smartphone className="size-4" />
         </Button>
-        <span className="ml-2 text-xs text-muted-foreground">{config.label}</span>
+        <span className="ml-2 text-xs text-muted-foreground">
+          {config.label}
+        </span>
       </div>
 
       {/* Preview iframe */}
@@ -71,7 +74,8 @@ export function DesignPreviewFrame({ design }: DesignPreviewFrameProps) {
         <div
           className={cn(
             "mx-auto bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300",
-            effectiveViewport === "mobile" && "rounded-[2rem] border-[8px] border-zinc-800"
+            effectiveViewport === "mobile" &&
+              "rounded-[2rem] border-8 border-zinc-800",
           )}
           style={{
             width: config.width,
@@ -88,10 +92,11 @@ export function DesignPreviewFrame({ design }: DesignPreviewFrameProps) {
 
           <iframe
             srcDoc={design.html}
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts allow-same-origin allow-popups"
             className="w-full border-0"
             style={{
-              height: effectiveViewport === "mobile" ? "calc(100% - 24px)" : "100%",
+              height:
+                effectiveViewport === "mobile" ? "calc(100% - 24px)" : "100%",
               minHeight: effectiveViewport === "mobile" ? "643px" : "600px",
             }}
             title={design.title}

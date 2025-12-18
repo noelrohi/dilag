@@ -1,9 +1,8 @@
-import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ChevronRight, Sun, Moon, Monitor, ExternalLink, RotateCcw } from "lucide-react";
-import { DilagLogo } from "@/components/ui/dilag-logo";
+import { Sun, Moon, Monitor, ExternalLink, RotateCcw } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useModels } from "@/hooks/use-models";
 import { useUpdater } from "@/hooks/use-updater";
@@ -41,7 +40,6 @@ interface AppInfo {
 }
 
 function SettingsPage() {
-  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { models, selectedModel, selectModel, isLoading: modelsLoading } = useModels();
   const { checkForUpdates, checking, updateAvailable, updateInfo, installUpdate, downloading, downloadProgress } = useUpdater();
@@ -96,30 +94,6 @@ function SettingsPage() {
 
   return (
     <div className="h-dvh flex flex-col bg-background">
-      {/* Title bar drag region */}
-      <div
-        data-tauri-drag-region
-        className="h-[38px] shrink-0 flex items-center select-none relative"
-      >
-        {/* Breadcrumbs: Dilag > Settings */}
-        <div className="absolute left-0 top-0 h-full flex items-center pl-3">
-          <div className="flex items-center gap-1 text-[12px]">
-            <button
-              onClick={() => navigate({ to: "/" })}
-              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-            >
-              <DilagLogo className="size-4" />
-              <span>Dilag</span>
-            </button>
-            <ChevronRight className="size-3 text-muted-foreground/50" />
-            <span className="font-medium text-foreground">Settings</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Border */}
-      <div className="h-px bg-border" />
-
       {/* Content */}
       <main className="flex-1 overflow-auto">
         <div className="max-w-2xl mx-auto px-6 py-8 space-y-8">

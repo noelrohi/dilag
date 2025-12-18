@@ -1,4 +1,4 @@
-import { createLazyFileRoute, useParams, useNavigate } from "@tanstack/react-router";
+import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { useSessions } from "@/hooks/use-sessions";
 import { useDesigns } from "@/hooks/use-designs";
@@ -14,8 +14,7 @@ import { DesignCanvas } from "@/components/blocks/design-canvas";
 import { DraggableScreen } from "@/components/blocks/draggable-screen";
 import { MobileFrame } from "@/components/blocks/mobile-frame";
 import { ScreenPreview } from "@/components/blocks/screen-preview";
-import { PanelLeftClose, PanelLeftOpen, ChevronRight, Palette } from "lucide-react";
-import { DilagLogo } from "@/components/ui/dilag-logo";
+import { PanelLeftClose, PanelLeftOpen, Palette } from "lucide-react";
 
 export const Route = createLazyFileRoute("/studio/$sessionId")({
   component: StudioPage,
@@ -37,7 +36,6 @@ function getInitialPositions(screenIds: string[]): ScreenPosition[] {
 
 function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
-  const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(true);
 
   const { selectSession, sendMessage, sessions, isServerReady } = useSessions();
@@ -118,9 +116,8 @@ function StudioPage() {
         data-tauri-drag-region
         className="h-[38px] shrink-0 flex items-center select-none relative"
       >
-        {/* Left controls - sidebar trigger + breadcrumbs */}
+        {/* Left controls - chat toggle */}
         <div className="absolute left-0 top-0 h-full flex items-center pl-3 gap-2">
-          {/* Sidebar toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -133,25 +130,13 @@ function StudioPage() {
               <PanelLeftOpen className="size-3.5" />
             )}
           </Button>
-
-          {/* Breadcrumbs: Dilag > Session Name */}
-          <div className="flex items-center gap-1 text-[12px]">
-            <button
-              onClick={() => navigate({ to: "/" })}
-              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-            >
-              <DilagLogo className="size-4" />
-              <span>Dilag</span>
-            </button>
-            <ChevronRight className="size-3 text-muted-foreground/50" />
-            <span className="font-medium text-foreground truncate max-w-[180px]">
-              {currentSession?.name ?? "Untitled"}
-            </span>
-          </div>
+          <span className="text-sm font-medium truncate max-w-[200px]">
+            {currentSession?.name ?? "Untitled"}
+          </span>
         </div>
       </div>
 
-      {/* Toolbar with border */}
+      {/* Border */}
       <div className="h-px bg-border" />
 
       {/* Main content */}
@@ -216,8 +201,8 @@ function CanvasEmptyState() {
   return (
     <div className="h-full flex items-center justify-center">
       <div className="text-center space-y-3">
-        <div className="size-20 rounded-2xl bg-purple-500/10 mx-auto flex items-center justify-center mb-4">
-          <Palette className="size-10 text-purple-500/60" />
+        <div className="size-20 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center mb-4">
+          <Palette className="size-10 text-primary/60" />
         </div>
         <h3 className="font-semibold text-lg">No screens yet</h3>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">

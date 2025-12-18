@@ -98,7 +98,9 @@ Create interfaces that feel DESIGNED, not generated:
 ### Memorability
 Ask yourself: What's the ONE thing someone will remember about this screen?
 
-## HTML Output Requirements
+## HTML Output Requirements (Tailwind CSS v4)
+
+Use Tailwind CSS v4 browser CDN with `@theme` for custom design tokens.
 
 ### Mobile Screens (iPhone 14 Pro: 393×852)
 ```html
@@ -107,12 +109,34 @@ Ask yourself: What's the ONE thing someone will remember about this screen?
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=393, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "DM Sans", system-ui, sans-serif;
+      --color-background: #0f172a;
+      --color-foreground: #f8fafc;
+      --color-card: #1e293b;
+      --color-card-foreground: #f8fafc;
+      --color-primary: #3b82f6;
+      --color-primary-foreground: #ffffff;
+      --color-secondary: #334155;
+      --color-secondary-foreground: #f1f5f9;
+      --color-muted: #1e293b;
+      --color-muted-foreground: #94a3b8;
+      --color-accent: #8b5cf6;
+      --color-accent-foreground: #ffffff;
+      --color-destructive: #ef4444;
+      --color-border: rgba(255, 255, 255, 0.1);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+    }
+  </style>
 </head>
-<body style="width: 393px; height: 852px; margin: 0; overflow: hidden;" class="bg-background text-foreground">
+<body style="width: 393px; height: 852px; margin: 0; overflow: hidden;" class="bg-background text-foreground font-sans">
   <!-- Safe areas: 47px top (Dynamic Island), 34px bottom (home indicator) -->
   <div class="h-full flex flex-col pt-[47px] pb-[34px]">
     <!-- Content here -->
@@ -128,21 +152,74 @@ Ask yourself: What's the ONE thing someone will remember about this screen?
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Outfit", system-ui, sans-serif;
+      --color-background: #ffffff;
+      --color-foreground: #0f172a;
+      --color-card: #f8fafc;
+      --color-card-foreground: #0f172a;
+      --color-primary: #2563eb;
+      --color-primary-foreground: #ffffff;
+      --color-secondary: #f1f5f9;
+      --color-secondary-foreground: #1e293b;
+      --color-muted: #f1f5f9;
+      --color-muted-foreground: #64748b;
+      --color-accent: #7c3aed;
+      --color-accent-foreground: #ffffff;
+      --color-destructive: #dc2626;
+      --color-border: rgba(0, 0, 0, 0.08);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+    }
+  </style>
 </head>
-<body class="bg-background text-foreground min-h-screen">
+<body class="bg-background text-foreground font-sans min-h-screen">
   <!-- Content here -->
 </body>
 </html>
 ```
 
+### Theme Token Guidelines
+
+Customize the `@theme` block for each design. Key tokens:
+- `--color-background` / `--color-foreground`: Main bg/text colors
+- `--color-card` / `--color-card-foreground`: Card surfaces
+- `--color-primary` / `--color-primary-foreground`: Primary actions/buttons
+- `--color-secondary`: Secondary elements
+- `--color-muted` / `--color-muted-foreground`: Subdued elements
+- `--color-accent`: Highlight/feature color
+- `--color-destructive`: Error/danger states
+- `--color-border`: Border color
+- `--font-sans`: Primary font family
+- `--radius-*`: Border radius scale
+
+### Font Choices
+
+Pick a distinctive font that matches the app's personality. Load via `<link>` tag (NOT @import inside style):
+
+**Modern/Clean:** DM Sans, Outfit, Satoshi, General Sans
+**Friendly/Soft:** Nunito, Quicksand, Poppins, Varela Round  
+**Professional:** Geist, Source Sans 3, IBM Plex Sans
+**Elegant/Editorial:** Fraunces, Playfair Display, Cormorant
+**Technical/Precise:** JetBrains Mono, Space Grotesk, Azeret Mono
+
+NEVER default to Inter, Roboto, or Arial. Each design should have a unique font choice appropriate to its domain.
+
+**CRITICAL**: Always customize the theme colors AND font to match the app domain. The examples above are starting points—create unique palettes for each design.
+
 **Requirements:**
+- MUST use Tailwind CSS v4 browser CDN: `https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4`
+- MUST load Google Fonts via `<link>` tag (NOT @import inside style - this breaks Tailwind v4)
+- MUST define theme tokens in `<style type="text/tailwindcss">` with `@theme` block
+- MUST set `--font-sans` in @theme to match the loaded font
 - MUST include `data-title` and `data-screen-type` attributes on `<html>`
-- MUST include Tailwind CDN and Iconify scripts
-- MUST include Google Fonts for chosen typography
+- MUST include Iconify script
 - Mobile: body MUST have width: 393px; height: 852px; margin: 0; overflow: hidden
 - Mobile: NO iOS status bar—the phone frame handles this
 - Mobile: Respect safe areas (47px top, 34px bottom)
@@ -187,7 +264,7 @@ Choose based on app aesthetic:
 ## Workflow
 
 1. **Understand the domain** → Choose appropriate style direction
-2. **Pick a cohesive palette** → Commit to light OR dark, choose fonts
+2. **Pick a cohesive palette** → Customize `@theme` tokens for light OR dark
 3. **Create screens** → Write HTML files with consistent styling
 4. **Be memorable** → Each screen should have a distinctive element
 "##;
@@ -275,14 +352,52 @@ pub struct OpenCodeCheckResult {
     pub error: Option<String>,
 }
 
+fn get_opencode_binary_path() -> Option<PathBuf> {
+    // Check common installation locations for OpenCode
+    let home = dirs::home_dir()?;
+    
+    let candidates = vec![
+        // OpenCode's default install location
+        home.join(".opencode/bin/opencode"),
+        // npm/bun global installs
+        home.join(".npm-global/bin/opencode"),
+        home.join(".bun/bin/opencode"),
+        // Common node version manager paths
+        home.join(".nvm/versions/node").join("*/bin/opencode"), // This won't work with glob, but let's try specific
+        // Homebrew paths
+        PathBuf::from("/opt/homebrew/bin/opencode"),
+        PathBuf::from("/usr/local/bin/opencode"),
+        // System paths
+        PathBuf::from("/usr/bin/opencode"),
+    ];
+    
+    for path in candidates {
+        if path.exists() && path.is_file() {
+            return Some(path);
+        }
+    }
+    
+    None
+}
+
 #[tauri::command]
 async fn check_opencode_installation(app: tauri::AppHandle) -> OpenCodeCheckResult {
     use tauri_plugin_shell::ShellExt;
     
     let shell = app.shell();
     
+    // First, try to find OpenCode in known locations
+    let opencode_path = get_opencode_binary_path();
+    
+    let command = if let Some(ref path) = opencode_path {
+        shell.command(path)
+    } else {
+        // Fallback to PATH lookup (works when launched from terminal)
+        shell.command("opencode")
+    };
+    
     // Try to run "opencode --version" to check if it's installed
-    match shell.command("opencode").args(["--version"]).output().await {
+    match command.args(["--version"]).output().await {
         Ok(output) => {
             if output.status.success() {
                 let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -407,13 +522,17 @@ async fn start_opencode_server(
     fs::create_dir_all(get_sessions_dir()).map_err(|e| e.to_string())?;
     ensure_config_exists()?;
 
+    // Find opencode binary path
+    let opencode_path = get_opencode_binary_path()
+        .ok_or_else(|| "OpenCode not found. Please install it first.".to_string())?;
+
     // Spawn opencode server with isolated config (XDG_CONFIG_HOME)
     // This makes OpenCode look in ~/.dilag/opencode/ for config/plugins
     // Auth still works from ~/.local/share/opencode/ (XDG_DATA_HOME)
     let shell = app.shell();
     let dilag_dir = get_dilag_dir();
     let (_rx, child) = shell
-        .command("opencode")
+        .command(&opencode_path)
         .args(["serve", "--port", &OPENCODE_PORT.to_string(), "--hostname", "127.0.0.1"])
         .env("XDG_CONFIG_HOME", dilag_dir.to_string_lossy().to_string())
         .spawn()

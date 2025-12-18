@@ -34,7 +34,8 @@ import {
   ModelSelectorLogo,
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
-import { ArrowRight, ChevronDown, X, ChevronRight } from "lucide-react";
+import { ChevronDown, X, ChevronRight } from "lucide-react";
+import { ArrowRight } from "@phosphor-icons/react";
 
 // Mini thumbnail constants
 const THUMB_RENDER_W = 393;
@@ -359,11 +360,13 @@ function ComposerInput({
     <PromptInput
       onSubmit={async ({ text, files }) => onSubmit(text, files)}
       className={cn(
-        "rounded-xl bg-card/60 backdrop-blur-sm",
-        "border border-border/40 shadow-lg shadow-black/5",
-        "transition-all duration-300 ease-out",
-        "focus-within:border-border/60 focus-within:shadow-xl focus-within:shadow-black/10",
-        "dark:bg-card/40 dark:shadow-black/20 dark:focus-within:shadow-black/30"
+        "[&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border-border/40",
+        "[&_[data-slot=input-group]]:bg-card/60 [&_[data-slot=input-group]]:backdrop-blur-sm",
+        "[&_[data-slot=input-group]]:shadow-lg [&_[data-slot=input-group]]:shadow-black/5",
+        "[&_[data-slot=input-group]]:transition-all [&_[data-slot=input-group]]:duration-300",
+        "[&_[data-slot=input-group]]:focus-within:border-border/60 [&_[data-slot=input-group]]:focus-within:shadow-xl",
+        "[&_[data-slot=input-group]]:focus-within:ring-2 [&_[data-slot=input-group]]:focus-within:ring-primary/20",
+        "dark:[&_[data-slot=input-group]]:bg-card/40"
       )}
     >
       <PromptInputAttachments>
@@ -399,10 +402,10 @@ function ComposerInput({
           <PromptInputSubmit
             disabled={!hasInput || disabled}
             className={cn(
-              "size-8 rounded-lg transition-all duration-200",
+              "size-9 rounded-xl transition-all duration-200",
               hasInput && !disabled
-                ? "bg-foreground text-background shadow-sm"
-                : "bg-muted/50 text-muted-foreground/50"
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                : "bg-muted text-muted-foreground"
             )}
           >
             <ArrowRight className="size-4" />
@@ -437,23 +440,23 @@ function ModelSelectorButton() {
         <Button
           variant="outline"
           size="sm"
-          className="h-7 gap-1.5 px-2.5 text-[11px] text-muted-foreground hover:text-foreground border-border/60"
+          className="h-9 gap-2 px-3 text-xs text-muted-foreground hover:text-foreground border"
           disabled={isLoading}
         >
           {selectedModelInfo ? (
             <>
               <ModelSelectorLogo
                 provider={selectedModelInfo.providerID as any}
-                className="size-3"
+                className="size-4"
               />
-              <span className="max-w-[100px] truncate font-medium">
+              <span className="max-w-[120px] truncate font-medium">
                 {selectedModelInfo.name}
               </span>
             </>
           ) : (
             <span className="font-medium">Select model</span>
           )}
-          <ChevronDown className="size-3 opacity-40" />
+          <ChevronDown className="size-3.5 opacity-50" />
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent title="Select Model">

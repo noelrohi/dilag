@@ -42,10 +42,10 @@ import {
   Loader2Icon,
   MicIcon,
   PaperclipIcon,
-  PlusIcon,
   SquareIcon,
   XIcon,
 } from "lucide-react";
+import { Paperclip } from "@phosphor-icons/react";
 import { nanoid } from "nanoid";
 import {
   type ChangeEvent,
@@ -990,7 +990,7 @@ export const PromptInputActionMenuTrigger = ({
 }: PromptInputActionMenuTriggerProps) => (
   <DropdownMenuTrigger asChild>
     <PromptInputButton className={className} {...props}>
-      {children ?? <PlusIcon className="size-4" />}
+      {children ?? <Paperclip className="size-4" />}
     </PromptInputButton>
   </DropdownMenuTrigger>
 );
