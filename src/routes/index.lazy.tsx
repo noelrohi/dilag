@@ -35,7 +35,6 @@ import {
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
 import { ArrowRight, ChevronDown, X, ChevronRight } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar";
 
 // Mini thumbnail constants
 const THUMB_RENDER_W = 393;
@@ -152,12 +151,20 @@ function LandingPage() {
             style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
           >
             <div className="max-w-4xl mx-auto">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="h-px flex-1 bg-border/50" />
-                <span className="text-[10px] text-muted-foreground/50 uppercase tracking-[0.2em] font-medium">
-                  Recent work
-                </span>
-                <div className="h-px flex-1 bg-border/50" />
+              {/* Header row with title and view all */}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[13px] font-medium text-muted-foreground">
+                  Recent projects
+                </h2>
+                {sortedSessions.length > 4 && (
+                  <button
+                    onClick={() => navigate({ to: "/projects" })}
+                    className="flex items-center gap-1 text-[12px] text-muted-foreground/70 hover:text-foreground transition-colors duration-200 group"
+                  >
+                    <span>View all</span>
+                    <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -171,11 +178,6 @@ function LandingPage() {
                   />
                 ))}
               </div>
-
-              {/* View all link */}
-              {sortedSessions.length > 4 && (
-                <ViewAllButton count={sortedSessions.length} />
-              )}
             </div>
           </div>
         )}
@@ -487,24 +489,7 @@ function ModelSelectorButton() {
   );
 }
 
-function ViewAllButton({ count }: { count: number }) {
-  const { toggleSidebar } = useSidebar();
 
-  return (
-    <button
-      onClick={toggleSidebar}
-      className={cn(
-        "mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg",
-        "text-[12px] text-muted-foreground/70 font-medium",
-        "hover:text-muted-foreground hover:bg-muted/30",
-        "transition-colors duration-200"
-      )}
-    >
-      <span>View all {count} projects</span>
-      <ChevronRight className="size-3.5" />
-    </button>
-  );
-}
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
