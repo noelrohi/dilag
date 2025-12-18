@@ -43,6 +43,7 @@ jobs:
           rm certificate.p12
 
       - name: Build Tauri app
+        timeout-minutes: 30
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}

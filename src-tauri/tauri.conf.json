@@ -26,7 +26,6 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "-",
       "minimumSystemVersion": "10.15"
     }
   },
