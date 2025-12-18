@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useSessionStore,
   useCurrentSessionId,
@@ -15,8 +16,9 @@ import {
   useCurrentSession,
   useSessionMutations,
   createSessionDir,
+  sessionKeys,
 } from "@/hooks/use-session-data";
-import { useGlobalEvents, useSDK, type Event } from "@/context/global-events";
+import { useGlobalEvents, useSDK, useConnectionStatus, type Event } from "@/context/global-events";
 import { useModelStore } from "@/hooks/use-models";
 import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 import type { FileUIPart } from "ai";
@@ -49,6 +51,8 @@ function convertPart(part: Part, messageID: string, sessionID: string): MessageP
  */
 export function useSessions() {
   const sdk = useSDK();
+  const queryClient = useQueryClient();
+  const { connectionStatus } = useConnectionStatus();
 
   // React Query for sessions list
   const { data: sessions = [], isLoading: isLoadingSessions } = useSessionsList();
@@ -77,6 +81,7 @@ export function useSessions() {
     setError,
     setServerReady,
     clearSessionData,
+    resetRealtimeState,
   } = useSessionStore();
 
   const { subscribe, subscribeToSession, isServerReady: globalServerReady } = useGlobalEvents();
@@ -85,50 +90,7 @@ export function useSessions() {
   const handleEventRef = useRef(handleEvent);
   handleEventRef.current = handleEvent;
 
-  // Subscribe to global events (only once on mount)
-  useEffect(() => {
-    console.log("[useSessions] Setting up global event subscription");
-    const handler = (event: Event) => {
-      console.log("[useSessions] Received event:", event.type);
-      handleEventRef.current(event);
-    };
-    const unsubscribe = subscribe(handler);
-    console.log("[useSessions] Subscribed to global events");
-    return () => {
-      console.log("[useSessions] Unsubscribing from global events");
-      unsubscribe();
-    };
-  }, [subscribe]);
-
-  // Subscribe to current session events specifically
-  useEffect(() => {
-    if (!currentSessionId) return;
-    const handler = (event: Event) => {
-      handleEventRef.current(event);
-    };
-    return subscribeToSession(currentSessionId, handler);
-  }, [currentSessionId, subscribeToSession]);
-
-  // Track if initialized to prevent double init
-  const initializedRef = useRef(false);
-
-  // Initialize when server is ready - select most recent session and load its messages
-  useEffect(() => {
-    if (!globalServerReady || initializedRef.current) return;
-    initializedRef.current = true;
-
-    setError(null);
-    setServerReady(true);
-
-    // Auto-select most recent session if available and none selected
-    if (sessions.length > 0 && !currentSessionId) {
-      const mostRecent = sessions[sessions.length - 1];
-      setCurrentSessionId(mostRecent.id);
-      loadSessionMessages(mostRecent.id, mostRecent.cwd);
-    }
-  }, [globalServerReady, sessions, currentSessionId, setError, setServerReady, setCurrentSessionId]);
-
-  // Load messages for a session
+  // Load messages for a session - defined early so it can be used in effects
   const loadSessionMessages = useCallback(
     async (sessionId: string, directory?: string) => {
       try {
@@ -161,6 +123,73 @@ export function useSessions() {
     },
     [sdk, setMessages]
   );
+
+  // Subscribe to global events (only once on mount)
+  useEffect(() => {
+    console.log("[useSessions] Setting up global event subscription");
+    const handler = (event: Event) => {
+      console.log("[useSessions] Received event:", event.type);
+      handleEventRef.current(event);
+    };
+    const unsubscribe = subscribe(handler);
+    console.log("[useSessions] Subscribed to global events");
+    return () => {
+      console.log("[useSessions] Unsubscribing from global events");
+      unsubscribe();
+    };
+  }, [subscribe]);
+
+  // Handle reconnection bootstrap - refetch state after SSE reconnects
+  const hasBootstrappedRef = useRef(false);
+  useEffect(() => {
+    if (connectionStatus === "connected" && hasBootstrappedRef.current) {
+      console.log("[useSessions] SSE reconnected - running bootstrap");
+      
+      // Reset Zustand realtime state (messages, parts, status will be refetched)
+      resetRealtimeState();
+      
+      // Invalidate React Query cache to trigger refetch
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all });
+      
+      // If we have a current session, reload its messages
+      if (currentSessionId && currentSession) {
+        loadSessionMessages(currentSessionId, currentSession.cwd);
+      }
+    }
+    
+    // Mark as bootstrapped after first connection
+    if (connectionStatus === "connected") {
+      hasBootstrappedRef.current = true;
+    }
+  }, [connectionStatus, currentSessionId, currentSession, resetRealtimeState, queryClient, loadSessionMessages]);
+
+  // Subscribe to current session events specifically
+  useEffect(() => {
+    if (!currentSessionId) return;
+    const handler = (event: Event) => {
+      handleEventRef.current(event);
+    };
+    return subscribeToSession(currentSessionId, handler);
+  }, [currentSessionId, subscribeToSession]);
+
+  // Track if initialized to prevent double init
+  const initializedRef = useRef(false);
+
+  // Initialize when server is ready - select most recent session and load its messages
+  useEffect(() => {
+    if (!globalServerReady || initializedRef.current) return;
+    initializedRef.current = true;
+
+    setError(null);
+    setServerReady(true);
+
+    // Auto-select most recent session if available and none selected
+    if (sessions.length > 0 && !currentSessionId) {
+      const mostRecent = sessions[sessions.length - 1];
+      setCurrentSessionId(mostRecent.id);
+      loadSessionMessages(mostRecent.id, mostRecent.cwd);
+    }
+  }, [globalServerReady, sessions, currentSessionId, setError, setServerReady, setCurrentSessionId, loadSessionMessages]);
 
   const createSession = useCallback(
     async (name?: string): Promise<string | null> => {
@@ -338,6 +367,7 @@ export function useSessions() {
     error,
     debugEvents,
     sessionStatus,
+    connectionStatus,
     createSession,
     selectSession,
     deleteSession,

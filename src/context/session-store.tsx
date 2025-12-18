@@ -117,6 +117,9 @@ interface SessionState {
 
   // Event handler for SSE
   handleEvent: (event: Event) => void;
+
+  // Bootstrap/Reset - Called after SSE reconnection
+  resetRealtimeState: () => void;
 }
 
 // Binary search for efficient sorted insertions (by ID for lookups)
@@ -271,6 +274,19 @@ export const useSessionStore = create<SessionState>()(
           state.debugEvents = [];
         }),
 
+      // Reset realtime state - called after SSE reconnection to clear stale data
+      resetRealtimeState: () =>
+        set((state) => {
+          // Clear all real-time state but preserve client preferences
+          state.messages = {};
+          state.parts = {};
+          state.sessionStatus = {};
+          state.sessionDiffs = {};
+          state.debugEvents = [];
+          state.error = null;
+          // Note: currentSessionId and screenPositions are preserved
+        }),
+
       // Central event handler for SSE - handles real-time updates
       handleEvent: (event) => {
         const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs } = get();
@@ -379,3 +395,4 @@ export const useScreenPositions = (sessionId: string | null) =>
 export const useIsServerReady = () => useSessionStore((state) => state.isServerReady);
 export const useError = () => useSessionStore((state) => state.error);
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents);
+export const useResetRealtimeState = () => useSessionStore((state) => state.resetRealtimeState);

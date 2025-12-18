@@ -9,9 +9,13 @@ import {
   Archive,
   PanelLeft,
   Settings,
+  Wifi,
+  WifiOff,
+  Loader2,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useSessions } from "@/hooks/use-sessions";
+import { useConnectionStatus, type ConnectionStatus } from "@/context/global-events";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,6 +31,11 @@ import {
   SidebarGroupContent,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 type SessionMeta = {
@@ -73,6 +82,54 @@ function groupSessionsByTime(sessions: SessionMeta[]) {
   });
 
   return groups;
+}
+
+function ConnectionStatusIndicator() {
+  const { connectionStatus, reconnectAttempt } = useConnectionStatus();
+
+  const statusConfig: Record<ConnectionStatus, { color: string; icon: React.ReactNode; label: string }> = {
+    connected: {
+      color: "bg-green-500",
+      icon: <Wifi className="size-3" />,
+      label: "Connected",
+    },
+    connecting: {
+      color: "bg-yellow-500",
+      icon: <Loader2 className="size-3 animate-spin" />,
+      label: "Connecting...",
+    },
+    reconnecting: {
+      color: "bg-yellow-500",
+      icon: <Loader2 className="size-3 animate-spin" />,
+      label: reconnectAttempt > 1 ? `Reconnecting (attempt ${reconnectAttempt})` : "Reconnecting...",
+    },
+    disconnected: {
+      color: "bg-red-500",
+      icon: <WifiOff className="size-3" />,
+      label: "Disconnected",
+    },
+  };
+
+  const config = statusConfig[connectionStatus];
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-1.5 px-1.5 py-1 rounded text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-default">
+          <div className={cn("size-1.5 rounded-full", config.color)} />
+          <span className="text-[10px] font-mono uppercase tracking-wider">
+            {connectionStatus === "connected" ? "" : connectionStatus}
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        <div className="flex items-center gap-2">
+          {config.icon}
+          <span>{config.label}</span>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 function SessionGroup({
@@ -277,7 +334,7 @@ export function SessionSidebar() {
       </SidebarContent>
 
       {/* Footer with settings and stats */}
-      <div className="p-3 border-t border-sidebar-border/50">
+      <div className="p-3 border-t border-sidebar-border/50 space-y-2">
         <div className="flex items-center justify-between">
           <Link to="/settings">
             <Button
@@ -306,6 +363,9 @@ export function SessionSidebar() {
               </span>
             </div>
           )}
+        </div>
+        <div className="flex items-center justify-end">
+          <ConnectionStatusIndicator />
         </div>
       </div>
     </Sidebar>
