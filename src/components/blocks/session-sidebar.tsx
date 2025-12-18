@@ -8,7 +8,9 @@ import {
   Calendar,
   Archive,
   PanelLeft,
+  Settings,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useSessions } from "@/hooks/use-sessions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -274,26 +276,38 @@ export function SessionSidebar() {
         )}
       </SidebarContent>
 
-      {/* Footer with stats */}
-      {sessions.length > 0 && (
-        <div className="p-4 border-t border-sidebar-border/50">
-          <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground/40 uppercase tracking-wider">
-            <span>{sessions.length} sessions</span>
-            <span>
-              {sessions.filter((s) => {
-                const date = new Date(s.created_at);
-                const today = new Date();
-                return (
-                  date.getDate() === today.getDate() &&
-                  date.getMonth() === today.getMonth() &&
-                  date.getFullYear() === today.getFullYear()
-                );
-              }).length}{" "}
-              today
-            </span>
-          </div>
+      {/* Footer with settings and stats */}
+      <div className="p-3 border-t border-sidebar-border/50">
+        <div className="flex items-center justify-between">
+          <Link to="/settings">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-foreground"
+            >
+              <Settings className="size-4" />
+              <span className="sr-only">Settings</span>
+            </Button>
+          </Link>
+          {sessions.length > 0 && (
+            <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground/40 uppercase tracking-wider">
+              <span>{sessions.length} sessions</span>
+              <span>
+                {sessions.filter((s) => {
+                  const date = new Date(s.created_at);
+                  const today = new Date();
+                  return (
+                    date.getDate() === today.getDate() &&
+                    date.getMonth() === today.getMonth() &&
+                    date.getFullYear() === today.getFullYear()
+                  );
+                }).length}{" "}
+                today
+              </span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </Sidebar>
   );
 }

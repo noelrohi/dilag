@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon, AlertTriangleIcon } from "lucide-react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -70,27 +70,64 @@ interface DefaultErrorFallbackProps {
 
 function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
   return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-lg border border-destructive/20 bg-destructive/5 p-6 text-center">
-      <AlertTriangleIcon className="h-10 w-10 text-destructive" />
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-destructive">
-          Something went wrong
-        </h3>
-        {error && (
-          <p className="max-w-md text-sm text-muted-foreground">
-            {error.message}
-          </p>
-        )}
+    <div className="h-dvh flex flex-col bg-background">
+      {/* Title bar drag region */}
+      <div
+        data-tauri-drag-region
+        className="h-[38px] shrink-0 select-none"
+      />
+
+      {/* Error content - centered */}
+      <div className="flex-1 flex items-center justify-center px-8">
+        <div className="max-w-sm w-full text-center space-y-6">
+          {/* Subtle error indicator */}
+          <div className="mx-auto size-16 rounded-2xl bg-muted/50 flex items-center justify-center">
+            <svg
+              className="size-8 text-muted-foreground/60"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+
+          {/* Message */}
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium text-foreground">
+              Something went wrong
+            </h3>
+            {error && (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {error.message}
+              </p>
+            )}
+          </div>
+
+          {/* Action */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onReset}
+            className="gap-2"
+          >
+            <RefreshCwIcon className="size-3.5" />
+            Try again
+          </Button>
+
+          {/* Dev hint - only show in development */}
+          {error && (
+            <p className="text-[11px] text-muted-foreground/50 pt-4">
+              Check the console for more details
+            </p>
+          )}
+        </div>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onReset}
-        className="gap-2"
-      >
-        <RefreshCwIcon className="h-4 w-4" />
-        Try again
-      </Button>
     </div>
   );
 }

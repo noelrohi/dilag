@@ -10,17 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Dilag",
-        "width": 1000,
-        "height": 700,
-        "minWidth": 600,
-        "minHeight": 400,
-        "titleBarStyle": "Visible",
-        "backgroundColor": "#0E1014"
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

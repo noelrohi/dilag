@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::webview::WebviewWindowBuilder;
+use tauri::{AppHandle, Emitter, TitleBarStyle};
 
 const OPENCODE_PORT: u16 = 4096;
 
@@ -481,6 +484,164 @@ fn extract_html_attr(html: &str, attr: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
+// ============================================================================
+// App Info & Data Management Commands
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct AppInfo {
+    pub version: String,
+    pub data_dir: String,
+    pub data_size_bytes: u64,
+}
+
+fn calculate_dir_size(path: &PathBuf) -> u64 {
+    if !path.exists() {
+        return 0;
+    }
+    
+    fs::read_dir(path)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .map(|entry| {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        calculate_dir_size(&path)
+                    } else {
+                        entry.metadata().map(|m| m.len()).unwrap_or(0)
+                    }
+                })
+                .sum()
+        })
+        .unwrap_or(0)
+}
+
+#[tauri::command]
+fn get_app_info() -> AppInfo {
+    let dilag_dir = get_dilag_dir();
+    let data_size = calculate_dir_size(&dilag_dir);
+    
+    AppInfo {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        data_dir: dilag_dir.to_string_lossy().to_string(),
+        data_size_bytes: data_size,
+    }
+}
+
+#[tauri::command]
+async fn reset_all_data(app: AppHandle, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    // Stop the opencode server first
+    {
+        let mut pid_guard = state.opencode_pid.lock().unwrap();
+        pid_guard.take();
+    }
+    
+    // Delete the entire .dilag directory contents
+    let dilag_dir = get_dilag_dir();
+    if dilag_dir.exists() {
+        // Remove all contents but keep the directory
+        if let Ok(entries) = fs::read_dir(&dilag_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let _ = fs::remove_dir_all(&path);
+                } else {
+                    let _ = fs::remove_file(&path);
+                }
+            }
+        }
+    }
+    
+    // Restart the app
+    app.restart();
+
+    // This is unreachable but needed for the return type
+    #[allow(unreachable_code)]
+    Ok(())
+}
+
+// ============================================================================
+// Menu Setup
+// ============================================================================
+
+fn setup_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
+    // App menu (Dilag)
+    let app_menu = Submenu::with_items(
+        app,
+        "Dilag",
+        true,
+        &[
+            &PredefinedMenuItem::about(app, Some("About Dilag"), None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, "settings", "Settings...", true, Some("CmdOrCtrl+,"))?,
+            &MenuItem::with_id(app, "check-updates", "Check for Updates...", true, None::<&str>)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::hide(app, Some("Hide Dilag"))?,
+            &PredefinedMenuItem::hide_others(app, Some("Hide Others"))?,
+            &PredefinedMenuItem::show_all(app, Some("Show All"))?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::quit(app, Some("Quit Dilag"))?,
+        ],
+    )?;
+
+    // File menu
+    let file_menu = Submenu::with_items(
+        app,
+        "File",
+        true,
+        &[
+            &MenuItem::with_id(app, "new-session", "New Session", true, Some("CmdOrCtrl+N"))?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::close_window(app, Some("Close Window"))?,
+        ],
+    )?;
+
+    // Edit menu
+    let edit_menu = Submenu::with_items(
+        app,
+        "Edit",
+        true,
+        &[
+            &PredefinedMenuItem::undo(app, None)?,
+            &PredefinedMenuItem::redo(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::cut(app, None)?,
+            &PredefinedMenuItem::copy(app, None)?,
+            &PredefinedMenuItem::paste(app, None)?,
+            &PredefinedMenuItem::select_all(app, None)?,
+        ],
+    )?;
+
+    // View menu
+    let view_menu = Submenu::with_items(
+        app,
+        "View",
+        true,
+        &[
+            &MenuItem::with_id(app, "toggle-sidebar", "Toggle Sidebar", true, Some("CmdOrCtrl+B"))?,
+            &MenuItem::with_id(app, "toggle-chat", "Toggle Chat", true, Some("CmdOrCtrl+\\"))?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::fullscreen(app, Some("Enter Full Screen"))?,
+        ],
+    )?;
+
+    // Help menu
+    let help_menu = Submenu::with_items(
+        app,
+        "Help",
+        true,
+        &[
+            &MenuItem::with_id(app, "help-docs", "Dilag Help", true, None::<&str>)?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, "help-github", "GitHub Repository", true, None::<&str>)?,
+            &MenuItem::with_id(app, "help-issues", "Report an Issue", true, None::<&str>)?,
+        ],
+    )?;
+
+    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &view_menu, &help_menu])
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -490,6 +651,64 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(AppState {
             opencode_pid: Mutex::new(None),
+        })
+        .setup(|app| {
+            // Set up the menu
+            let menu = setup_menu(app.handle())?;
+            app.set_menu(menu)?;
+
+            // Create main window with transparent title bar
+            let win_builder = WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
+                .title("Dilag")
+                .inner_size(1000.0, 700.0)
+                .min_inner_size(600.0, 400.0)
+                .title_bar_style(TitleBarStyle::Transparent)
+                .hidden_title(true);
+
+            let window = win_builder.build()?;
+
+            // Set background color on macOS using cocoa
+            #[cfg(target_os = "macos")]
+            unsafe {
+                use cocoa::appkit::{NSColor, NSWindow};
+                use cocoa::base::id;
+
+                let ns_win = window.as_ref().window().ns_window().unwrap() as id;
+                // #16161c in normalized RGB (22/255, 22/255, 28/255)
+                let bg_color = NSColor::colorWithRed_green_blue_alpha_(
+                    cocoa::base::nil,
+                    0.086,  // 22/255
+                    0.086,  // 22/255
+                    0.110,  // 28/255
+                    1.0,
+                );
+                ns_win.setBackgroundColor_(bg_color);
+            }
+
+            #[cfg(not(target_os = "macos"))]
+            let _ = window;
+
+            Ok(())
+        })
+        .on_menu_event(|app, event| {
+            let event_id = event.id().as_ref();
+            
+            // Emit custom menu events to the frontend
+            match event_id {
+                "settings" | "new-session" | "toggle-sidebar" | "toggle-chat" | "check-updates" => {
+                    let _ = app.emit("menu-event", event_id);
+                }
+                "help-docs" => {
+                    let _ = tauri_plugin_opener::open_url("https://github.com/noelrohi/dilag#readme", None::<&str>);
+                }
+                "help-github" => {
+                    let _ = tauri_plugin_opener::open_url("https://github.com/noelrohi/dilag", None::<&str>);
+                }
+                "help-issues" => {
+                    let _ = tauri_plugin_opener::open_url("https://github.com/noelrohi/dilag/issues", None::<&str>);
+                }
+                _ => {}
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_opencode_port,
@@ -502,6 +721,8 @@ pub fn run() {
             stop_opencode_server,
             is_opencode_running,
             load_session_designs,
+            get_app_info,
+            reset_all_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

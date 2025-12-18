@@ -18,7 +18,8 @@ import {
 } from "@/hooks/use-session-data";
 import { useGlobalEvents, useSDK, type Event } from "@/context/global-events";
 import { useModelStore } from "@/hooks/use-models";
-import type { Part } from "@opencode-ai/sdk/v2/client";
+import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
+import type { FileUIPart } from "ai";
 
 // Convert SDK message format to our internal format
 function convertPart(part: Part, messageID: string, sessionID: string): MessagePart {
@@ -30,6 +31,10 @@ function convertPart(part: Part, messageID: string, sessionID: string): MessageP
     text: "text" in part ? part.text : undefined,
     tool: "tool" in part ? part.tool : undefined,
     state: "state" in part ? part.state : undefined,
+    // File part fields
+    mime: "mime" in part ? part.mime : undefined,
+    url: "url" in part ? part.url : undefined,
+    filename: "filename" in part ? part.filename : undefined,
   };
 }
 
@@ -239,7 +244,7 @@ export function useSessions() {
   );
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, files?: FileUIPart[]) => {
       if (!currentSessionId || !currentSession) return;
 
       // Get selected model from store
@@ -265,12 +270,31 @@ export function useSessions() {
         console.log("[sendMessage] model:", `${model.providerID}/${model.modelID}`);
         console.log("[sendMessage] directory:", directory);
 
+        // Build parts array with text and optional file attachments
+        const parts: (TextPartInput | FilePartInput)[] = [
+          { type: "text", text: content }
+        ];
+
+        // Add file parts if any
+        if (files && files.length > 0) {
+          for (const file of files) {
+            if (file.url) {
+              parts.push({
+                type: "file",
+                mime: file.mediaType || "application/octet-stream",
+                url: file.url,
+                filename: file.filename,
+              });
+            }
+          }
+        }
+
         sdk.session.prompt({
           sessionID: currentSessionId,
           directory,
           agent: "designer",
           model,
-          parts: [{ type: "text", text: content }],
+          parts,
         }).catch((err) => {
           setError(err instanceof Error ? err.message : "Failed to send message");
           setSessionStatus(currentSessionId, "error");

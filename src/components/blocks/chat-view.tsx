@@ -7,6 +7,7 @@ import {
   Plus,
   ChevronDown,
   Palette,
+  Paperclip,
 } from "lucide-react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
@@ -30,6 +31,12 @@ import {
   PromptInputFooter,
   PromptInputSubmit,
   PromptInputTools,
+  PromptInputActionMenu,
+  PromptInputActionMenuTrigger,
+  PromptInputActionMenuContent,
+  PromptInputActionAddAttachments,
+  PromptInputAttachments,
+  PromptInputAttachment,
   PromptInputProvider,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
@@ -85,6 +92,8 @@ function UserMessage({
   index: number;
 }) {
   const parts = useMessageParts(message.id);
+  const textContent = extractTextFromParts(parts);
+  const fileParts = parts.filter((p) => p.type === "file" && p.url);
 
   return (
     <Message
@@ -92,10 +101,37 @@ function UserMessage({
       className="animate-slide-up ml-0!"
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
-      <MessageContent className="ml-0!">
-        <p className="whitespace-pre-wrap leading-relaxed">
-          {extractTextFromParts(parts)}
-        </p>
+      <MessageContent className="ml-0! space-y-2">
+        {/* File attachments */}
+        {fileParts.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {fileParts.map((file) => (
+              <div
+                key={file.id}
+                className="relative rounded-lg overflow-hidden border border-border/50 bg-muted/30"
+              >
+                {file.mime?.startsWith("image/") ? (
+                  <img
+                    src={file.url}
+                    alt={file.filename || "Attached image"}
+                    className="max-w-[200px] max-h-[200px] object-contain"
+                  />
+                ) : (
+                  <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
+                    <Paperclip className="size-4" />
+                    <span className="truncate max-w-[150px]">
+                      {file.filename || "Attachment"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Text content */}
+        {textContent && (
+          <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
+        )}
       </MessageContent>
     </Message>
   );
@@ -242,9 +278,9 @@ function ModelSelectorButton() {
     <ModelSelector open={open} onOpenChange={setOpen}>
       <ModelSelectorTrigger asChild>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+          className="h-7 gap-1.5 px-2.5 text-[11px] text-muted-foreground hover:text-foreground border-border/60"
           disabled={isLoading}
         >
           {selectedModelInfo ? (
@@ -301,14 +337,14 @@ function ChatInputArea({
   sendMessage,
 }: {
   isLoading: boolean;
-  sendMessage: (message: string) => Promise<void>;
+  sendMessage: (message: string, files?: import("ai").FileUIPart[]) => Promise<void>;
 }) {
   const { textInput } = usePromptInputController();
   const hasInput = textInput.value.trim().length > 0;
 
-  const handleSubmit = async (text: string) => {
+  const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
     if (!text.trim() || isLoading) return;
-    await sendMessage(text.trim());
+    await sendMessage(text.trim(), files);
   };
 
   return (
@@ -318,13 +354,16 @@ function ChatInputArea({
         <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
         <PromptInput
-          onSubmit={async ({ text }) => handleSubmit(text)}
+          onSubmit={async ({ text, files }) => handleSubmit(text, files)}
           className={cn(
             "rounded-2xl bg-card/50 backdrop-blur-sm transition-all duration-300 ring-2 ring-purple-500/30",
             hasInput && "glow-ring",
             isLoading && "opacity-80",
           )}
         >
+          <PromptInputAttachments>
+            {(attachment) => <PromptInputAttachment data={attachment} />}
+          </PromptInputAttachments>
           <PromptInputBody>
             <PromptInputTextarea
               placeholder="Describe a design..."
@@ -333,25 +372,37 @@ function ChatInputArea({
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <div className="flex items-center gap-2">
+            {/* Left side - attachment action menu */}
+            <PromptInputTools>
+              <PromptInputActionMenu>
+                <PromptInputActionMenuTrigger />
+                <PromptInputActionMenuContent>
+                  <PromptInputActionAddAttachments />
+                </PromptInputActionMenuContent>
+              </PromptInputActionMenu>
+            </PromptInputTools>
+
+            <div className="flex-1" />
+
+            {/* Right side - model selector + submit */}
+            <div className="flex items-center gap-1">
               <ModelSelectorButton />
-              <PromptInputTools />
+              <PromptInputSubmit
+                disabled={!hasInput || isLoading}
+                className={cn(
+                  "size-9 rounded-xl transition-all duration-200",
+                  hasInput && !isLoading
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {isLoading ? (
+                  <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <ArrowUp className="size-4" />
+                )}
+              </PromptInputSubmit>
             </div>
-            <PromptInputSubmit
-              disabled={!hasInput || isLoading}
-              className={cn(
-                "size-9 rounded-xl transition-all duration-200",
-                hasInput && !isLoading
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {isLoading ? (
-                <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <ArrowUp className="size-4" />
-              )}
-            </PromptInputSubmit>
           </PromptInputFooter>
         </PromptInput>
       </div>

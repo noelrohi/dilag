@@ -2,6 +2,8 @@ import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { GlobalEventsProvider } from "@/context/global-events";
+import { MenuEventsProvider } from "@/context/menu-events";
+import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { UpdateDialog } from "@/components/blocks/update-dialog";
 
@@ -26,13 +28,17 @@ function RootLayout() {
   // TanStack Router handles lazy loading gracefully without Suspense at root.
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <GlobalEventsProvider>
-          <Outlet />
-          <UpdateDialog />
-        </GlobalEventsProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="dilag-theme">
+        <QueryClientProvider client={queryClient}>
+          <GlobalEventsProvider>
+            <MenuEventsProvider>
+              <Outlet />
+              <UpdateDialog />
+            </MenuEventsProvider>
+          </GlobalEventsProvider>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
