@@ -10,6 +10,7 @@ Technical documentation covering app initialization, data flow, and storage.
 2. [Storage & Persistence](#storage--persistence)
 3. [SSE Event System](#sse-event-system)
 4. [Session Lifecycle](#session-lifecycle)
+5. [State Management](#state-management)
 
 ---
 
@@ -20,21 +21,51 @@ Technical documentation covering app initialization, data flow, and storage.
 ```
 1. TAURI BACKEND INITIALIZES
    └── lib.rs: run()
-       ├── Registers plugins (shell, opener)
+       ├── Registers plugins (shell, opener, updater, process)
+       ├── Sets up native menu (App, File, Edit, View, Help)
        ├── Creates AppState { opencode_pid: None }
+       ├── Creates main window with transparent title bar
        └── Registers all Tauri commands
 
-2. REACT APP MOUNTS
-   └── main.tsx
-       └── RouterProvider mounts __root.tsx
+2. REACT BOOTSTRAP (main.tsx)
+   └── bootstrap() async function
+       │
+       ├── invoke("check_opencode_installation")
+       │   │
+       │   │   TAURI BACKEND searches for OpenCode in:
+       │   ├── ~/.opencode/bin/opencode
+       │   ├── ~/.npm-global/bin/opencode
+       │   ├── ~/.bun/bin/opencode
+       │   ├── /opt/homebrew/bin/opencode
+       │   └── /usr/local/bin/opencode
+       │
+       ├── IF installed:
+       │   └── Render full app with RouterProvider
+       │
+       └── IF NOT installed:
+           └── Render SetupWizard
+               ├── Shows installation instructions
+               └── On complete: re-runs bootstrap()
 
-3. ROOT LAYOUT MOUNTS
+3. ROUTER MOUNTS (if OpenCode installed)
+   └── RouterProvider mounts __root.tsx
+
+4. ROOT LAYOUT MOUNTS
    └── __root.tsx: RootLayout()
        ├── Creates QueryClient (React Query)
-       ├── Wraps app in QueryClientProvider
-       └── Wraps app in GlobalEventsProvider  ← TRIGGERS BACKEND INIT
+       │   └── Default: staleTime=1min, retry=1, no refetchOnWindowFocus
+       │
+       ├── Provider hierarchy (outer to inner):
+       │   ├── ErrorBoundary
+       │   ├── ThemeProvider (storageKey: "dilag-theme")
+       │   ├── QueryClientProvider
+       │   ├── GlobalEventsProvider  ← TRIGGERS BACKEND INIT
+       │   ├── MenuEventsProvider    ← Listens to native menu events
+       │   └── SidebarProvider
+       │
+       └── Also renders: UpdateDialog, Toaster, ReactQueryDevtools
 
-4. GLOBAL EVENTS PROVIDER INITIALIZES
+5. GLOBAL EVENTS PROVIDER INITIALIZES
    └── global-events.tsx: GlobalEventsProvider()
        │
        ├── Creates OpenCode SDK client (baseUrl: http://127.0.0.1:4096)
@@ -64,7 +95,7 @@ Technical documentation covering app initialization, data flow, and storage.
            └── Start event loop (for await...of events.stream)
                └── Dispatches events to all subscribers
 
-5. HOME PAGE LOADS
+6. HOME PAGE LOADS
    └── index.lazy.tsx: LandingPage()
        │
        └── useSessions() hook initializes
@@ -78,7 +109,7 @@ Technical documentation covering app initialization, data flow, and storage.
            │
            └── useEffect: no sessions to auto-select
 
-6. UI RENDERS
+7. UI RENDERS
    └── Home screen displays:
        ├── Header: "dilag" + "connecting..." (briefly)
        ├── Composer: Empty textarea, model selector
@@ -100,9 +131,9 @@ Technical documentation covering app initialization, data flow, and storage.
 ### Existing User (Returning)
 
 ```
-1-3. SAME AS NEW USER
+1-4. SAME AS NEW USER (OpenCode already installed)
 
-4. GLOBAL EVENTS PROVIDER INITIALIZES
+5. GLOBAL EVENTS PROVIDER INITIALIZES
    └── useEffect runs init():
        │
        ├── invoke("start_opencode_server")
@@ -116,9 +147,9 @@ Technical documentation covering app initialization, data flow, and storage.
        │
        ├── setIsServerReady(true)
        ├── Connect to SSE stream
-       └── setIsConnected(true)
+       └── setConnectionStatus("connected")
 
-5. HOME PAGE LOADS
+6. HOME PAGE LOADS
    └── useSessions() hook initializes
        │
        ├── useSessionsList() → fetches sessions
@@ -133,12 +164,13 @@ Technical documentation covering app initialization, data flow, and storage.
            ├── Auto-select most recent session
            └── Load messages: sdk.session.messages()
 
-6. ZUSTAND HYDRATES FROM LOCALSTORAGE
+7. ZUSTAND HYDRATES FROM LOCALSTORAGE
    └── Restores persisted state:
        ├── currentSessionId (last selected)
-       └── screenPositions (canvas positions per session)
+       ├── screenPositions (canvas positions per session)
+       └── selectedModel (from dilag-model-store)
 
-7. UI RENDERS
+8. UI RENDERS
    └── Home screen with Recent Projects
        │
        └── For each project card:
@@ -247,20 +279,41 @@ This separation allows Dilag to use isolated config while sharing auth across Op
 ```
 GlobalEventsProvider mounts
     │
-    ├── sdk.global.event()
-    │   └── GET http://127.0.0.1:4096/events (SSE)
+    ├── Create SDK client (http://127.0.0.1:4096)
     │
-    └── Async iterator processes events:
-        │
-        for await (const event of events.stream) {
-            │
-            ├── Notify global handlers (all subscribers)
-            │   └── handlersRef.current.forEach(h => h(event))
-            │
-            └── Notify session-specific handlers
-                └── sessionHandlersRef.current.get(sessionId)?.forEach(h => h(event))
-        }
+    ├── connectToSSE() with reconnection loop:
+    │   │
+    │   └── while (mounted):
+    │       │
+    │       ├── setConnectionStatus("connecting" | "reconnecting")
+    │       │
+    │       ├── sdk.global.event()
+    │       │   └── GET http://127.0.0.1:4096/events (SSE)
+    │       │
+    │       ├── On success:
+    │       │   ├── Reset attempt counter
+    │       │   ├── setConnectionStatus("connected")
+    │       │   └── If reconnection: trigger bootstrap()
+    │       │
+    │       ├── Process event stream:
+    │       │   for await (const event of events.stream) {
+    │       │       ├── Notify global handlers
+    │       │       └── Notify session-specific handlers
+    │       │   }
+    │       │
+    │       └── On disconnect/error:
+    │           ├── Exponential backoff: 3s → 6s → 12s → ... → 30s max
+    │           └── Retry indefinitely
 ```
+
+### Connection States
+
+| State | Description |
+|-------|-------------|
+| `disconnected` | No connection, not attempting |
+| `connecting` | First connection attempt |
+| `connected` | Active SSE stream |
+| `reconnecting` | Lost connection, retrying |
 
 ### Event Types
 
@@ -371,4 +424,98 @@ User clicks delete on project card
     │   └── Delete ~/.dilag/sessions/{id}/ directory
     │
     └── Clear Zustand state for session
+```
+
+---
+
+## State Management
+
+Dilag uses a hybrid approach (TkDodo/KCD pattern):
+- **React Query**: Server state (sessions list, provider data)
+- **Zustand**: Client state (UI preferences) and real-time state (SSE data)
+
+### Zustand Stores
+
+#### Session Store (`session-store.tsx`)
+
+```typescript
+interface SessionState {
+  // Persisted (localStorage: dilag-session-store)
+  currentSessionId: string | null;
+  screenPositions: Record<string, ScreenPosition[]>;
+
+  // Real-time (from SSE, not persisted)
+  messages: Record<string, Message[]>;      // sessionId → messages
+  parts: Record<string, MessagePart[]>;     // messageId → parts
+  sessionStatus: Record<string, SessionStatus>;
+  sessionDiffs: Record<string, FileDiff[]>;
+
+  // Connection state
+  isServerReady: boolean;
+  error: string | null;
+}
+```
+
+**Persistence:** Only `currentSessionId` and `screenPositions` are persisted.
+Real-time data is cleared on page reload and refetched via SSE.
+
+#### Model Store (`use-models.ts`)
+
+```typescript
+interface ModelState {
+  selectedModel: { providerID: string; modelID: string } | null;
+}
+```
+
+**Persistence:** Stored in `localStorage` as `dilag-model-store`.
+Default: `{ providerID: "anthropic", modelID: "big-pickle" }`
+
+### React Query Keys
+
+```typescript
+// Sessions
+sessionKeys.all      // ["sessions"]
+sessionKeys.list()   // ["sessions", "list"]
+sessionKeys.detail(id) // ["sessions", "detail", id]
+
+// Designs
+designKeys.all       // ["designs"]
+designKeys.session(cwd) // ["designs", "session", cwd]
+
+// Models/Providers
+modelKeys.all        // ["models"]
+modelKeys.providers() // ["models", "providers"]
+```
+
+### Data Flow Summary
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     FRONTEND (React)                        │
+│                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐ │
+│  │ React Query │    │   Zustand   │    │  localStorage   │ │
+│  │             │    │             │    │                 │ │
+│  │ - sessions  │◄───│ - messages  │───►│ - session-store │ │
+│  │ - providers │    │ - parts     │    │ - model-store   │ │
+│  │ - designs   │    │ - status    │    │ - theme         │ │
+│  └──────┬──────┘    └──────▲──────┘    └─────────────────┘ │
+│         │                  │                                │
+│         │ invoke()         │ SSE events                     │
+└─────────┼──────────────────┼────────────────────────────────┘
+          │                  │
+          ▼                  │
+┌─────────────────────────────────────────────────────────────┐
+│                   TAURI (Rust Backend)                      │
+│                                                             │
+│  ┌─────────────────────┐    ┌─────────────────────────────┐ │
+│  │ Tauri Commands      │    │ OpenCode Server (port 4096) │ │
+│  │                     │    │                             │ │
+│  │ - sessions.json     │    │ - SDK API calls             │ │
+│  │ - design files      │    │ - SSE event stream          │ │
+│  │ - server lifecycle  │    │ - Session management        │ │
+│  └─────────────────────┘    └─────────────────────────────┘ │
+│                                                             │
+│  Storage: ~/.dilag/                                         │
+└─────────────────────────────────────────────────────────────┘
 ```

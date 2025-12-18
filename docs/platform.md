@@ -1,67 +1,277 @@
 # Dilag Platform Documentation
 
-Dilag is a Tauri-based desktop application for AI-powered mobile UI design. It integrates with OpenCode to provide an AI coding assistant that generates mobile screen designs through natural language prompts.
+> Dilag is an AI-powered mobile UI design studio built as a native desktop app. It leverages OpenCode's AI coding capabilities to transform natural language prompts into production-ready mobile screen designs, rendered live on an infinite canvas workspace. Users describe their app ideas in a chat interface, and the AI generates Tailwind CSS-styled HTML screens that appear as draggable iPhone frames on the design canvas.
 
 ---
 
 ## Table of Contents
 
 1. [Application Overview](#application-overview)
-2. [Screens & Navigation](#screens--navigation)
-3. [Core Components](#core-components)
-4. [State Management](#state-management)
-5. [Data Flow & Logic](#data-flow--logic)
-6. [Backend Integration](#backend-integration)
-7. [Tool Registry](#tool-registry)
+2. [Visual Sitemap](#visual-sitemap)
+3. [Screens & Navigation](#screens--navigation)
+4. [Core Components](#core-components)
+5. [State Management](#state-management)
+6. [Data Flow & Logic](#data-flow--logic)
+7. [Backend Integration](#backend-integration)
+8. [Tool Registry](#tool-registry)
 
 ---
 
 ## Application Overview
 
-**Tech Stack:**
-- **Frontend:** React 18 + TypeScript + Vite
-- **Desktop Runtime:** Tauri (Rust backend)
-- **Routing:** TanStack Router (file-based)
-- **State:** Zustand (client/real-time) + React Query (server state)
-- **Styling:** Tailwind CSS + shadcn/ui components
-- **AI Backend:** OpenCode SDK (SSE event streaming)
+### Tech Stack at a Glance
 
-**Key Files:**
-- `src/routes/index.lazy.tsx` - Home/Landing page
-- `src/routes/studio.$sessionId.lazy.tsx` - Studio workspace
-- `src/context/session-store.tsx` - Zustand store for real-time state
-- `src/context/global-events.tsx` - SSE event provider
-- `src/hooks/use-sessions.ts` - Session management hook
+```
++---------------------------------------------------------------------+
+|                        PRESENTATION LAYER                            |
++---------------------------------------------------------------------+
+|  React 19        |  Tailwind CSS v4    |  Radix UI / shadcn        |
+|  TanStack Router |  Motion (Framer)    |  Lucide + Phosphor Icons  |
++---------------------------------------------------------------------+
+|                         STATE LAYER                                  |
++---------------------------------------------------------------------+
+|  Zustand         |  React Query        |  Immer (immutable)        |
+|  (real-time)     |  (server state)     |  (state updates)          |
++---------------------------------------------------------------------+
+|                        RUNTIME LAYER                                 |
++---------------------------------------------------------------------+
+|  Vite 7          |  Tauri 2            |  OpenCode SDK             |
+|  (bundler)       |  (desktop runtime)  |  (AI backend via SSE)     |
++---------------------------------------------------------------------+
+```
+
+### Key Files Map
+
+```
+dilag/
+|
++-- src/
+|   +-- main.tsx -------------------- Application entry point (bootstrap)
+|   +-- router.tsx ------------------ TanStack Router configuration
+|   |
+|   +-- routes/
+|   |   +-- __root.tsx -------------- Root layout (providers, sidebar)
+|   |   +-- index.lazy.tsx ---------- Home/Landing screen
+|   |   +-- studio.$sessionId.lazy.tsx -- Studio workspace
+|   |   +-- projects.lazy.tsx ------- All projects view
+|   |   +-- settings.lazy.tsx ------- Settings page
+|   |
+|   +-- components/
+|   |   +-- ui/ --------------------- Base UI primitives (shadcn/ui)
+|   |   +-- blocks/ ----------------- Composed page sections
+|   |   +-- ai-elements/ ------------ AI/chat-specific components
+|   |
+|   +-- context/
+|   |   +-- session-store.tsx ------- Zustand store for real-time state
+|   |   +-- global-events.tsx ------- SSE event provider & SDK client
+|   |   +-- menu-events.tsx --------- Native menu event handlers
+|   |
+|   +-- hooks/
+|   |   +-- use-sessions.ts --------- Main session management hook
+|   |   +-- use-designs.ts ---------- Design file polling hook
+|   |   +-- use-models.ts ----------- AI model selection hook
+|   |   +-- use-session-data.ts ----- React Query data layer
+|   |   +-- use-updater.ts ---------- App auto-update hook
+|   |
+|   +-- lib/
+|       +-- tool-registry.tsx ------- Tool display configurations
+|       +-- utils.ts ---------------- cn() and utility functions
+|
++-- src-tauri/
+    +-- src/lib.rs ------------------ Rust backend commands & agent config
+    +-- tauri.conf.json ------------- Tauri configuration
+```
+
+---
+
+## Visual Sitemap
+
+### Application Navigation Structure
+
+```
+                                    +---------------+
+                                    |   main.tsx    |
+                                    |  (Bootstrap)  |
+                                    +-------+-------+
+                                            |
+                            +---------------+---------------+
+                            |                               |
+                            v                               v
+                    +---------------+               +---------------+
+                    | OpenCode OK?  |               | SetupWizard   |
+                    |     Yes       |               | (Not Installed)|
+                    +-------+-------+               +---------------+
+                            |
+                            v
+                    +---------------+
+                    |  __root.tsx   |
+                    | (RootLayout)  |
+                    +-------+-------+
+                            |
+        +-------------------+-------------------+-------------------+
+        |                   |                   |                   |
+        v                   v                   v                   v
++---------------+   +---------------+   +---------------+   +---------------+
+|   /           |   | /studio/:id   |   | /projects     |   | /settings     |
+|   Home        |   | Studio        |   | All Projects  |   | Settings      |
++---------------+   +---------------+   +---------------+   +---------------+
+```
+
+### User Journey Overview
+
+```
++-------------------------------------------------------------------------+
+|                           USER JOURNEY                                   |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   +-----------+      +-----------+      +-----------+      +-----------+ |
+|   |   App     |      |  OpenCode |      |   Home    |      |  Studio   | |
+|   |  Launch   | ---> |   Check   | ---> |  Screen   | ---> | Workspace | |
+|   +-----------+      +-----------+      +-----------+      +-----------+ |
+|        |                   |                  |                  |       |
+|        |                   |                  |                  v       |
+|        |                   v                  |           +-----------+  |
+|        |           +-----------+              |           |  Design   |  |
+|        |           |  Setup    |              |           |  Canvas   |  |
+|        |           |  Wizard   |              |           +-----------+  |
+|        |           +-----------+              |                  |       |
+|        |                                      |                  v       |
+|        |                                      |           +-----------+  |
+|        +---- (returning user) --------------->+           | Generated |  |
+|                                                           |  Screens  |  |
+|                                                           +-----------+  |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
 
 ---
 
 ## Screens & Navigation
 
+### Screen Overview Table
+
+| # | Screen | Route | File | Purpose |
+|---|--------|-------|------|---------|
+| 1 | Home | `/` | `routes/index.lazy.tsx` | Landing page with prompt composer and recent projects |
+| 2 | Studio | `/studio/$sessionId` | `routes/studio.$sessionId.lazy.tsx` | Main design workspace with chat and canvas |
+| 3 | Projects | `/projects` | `routes/projects.lazy.tsx` | Browse all projects with search and filtering |
+| 4 | Settings | `/settings` | `routes/settings.lazy.tsx` | App configuration, theme, model selection, updates |
+| 5 | Setup Wizard | (modal) | `blocks/setup-wizard.tsx` | OpenCode installation check/guidance |
+
+---
+
 ### 1. Home Screen (`/`)
 
 **File:** `src/routes/index.lazy.tsx`
 
-The landing page users see when launching the app.
+> The landing page presents a clean, focused interface for starting new design sessions. Users enter natural language prompts describing their app idea, select an AI model, and are taken directly to the studio workspace. Recent projects appear at the bottom for quick access.
 
-**UI Elements:**
-- **Header:** App name "dilag" (top-left), connection status indicator
-- **Composer:** Centered prompt input with:
-  - Textarea placeholder: "A dashboard for tracking daily habits..."
-  - Model selector dropdown (Claude, GPT, Gemini, etc.)
-  - Submit button (arrow icon, activates when text is entered)
-- **Recent Projects:** Grid of up to 4 project cards showing:
-  - Thumbnail previews of screens (horizontally scrollable)
-  - Project title and date
-  - Delete button (X) on hover
+#### Visual Layout
 
-**Behavior:**
-1. User types a design prompt in the composer
-2. On submit:
-   - Prompt is saved to `localStorage` key: `dilag-initial-prompt`
-   - A new session is created via `createSession()`
-   - Navigation to `/studio/$sessionId`
-3. Clicking a project card navigates to its studio view
-4. Delete button removes the session
+```
++-------------------------------------------------------------------------+
+|  +-----------------------------------------------------------------+    |
+|  |                      TITLE BAR (drag region)                     |    |
+|  |                                         [connection status]      |    |
+|  +-----------------------------------------------------------------+    |
+|                                                                          |
+|                                                                          |
+|                                                                          |
+|                   +-------------------------------------+                 |
+|                   |                                     |                 |
+|                   |     "What would you like           |                 |
+|                   |           to design?"               |                 |
+|                   |                                     |                 |
+|                   +-------------------------------------+                 |
+|                                                                          |
+|                   +-------------------------------------+                 |
+|                   |  +-------------------------------+  |                 |
+|                   |  |   Describe your app idea...   |  |                 |
+|                   |  |                               |  |                 |
+|                   |  |                               |  |                 |
+|                   |  +-------------------------------+  |                 |
+|                   |  [+] [attachment]      [Model v] [>]|                 |
+|                   +-------------------------------------+                 |
+|                                                                          |
+|                                                                          |
+|  +-- Recent projects -----------------------------------------------+    |
+|  |                                                           [View all]  |
+|  |  +-------------+  +-------------+  +-------------+  +-------------+   |
+|  |  | [thumbnails]|  | [thumbnails]|  | [thumbnails]|  | [thumbnails]|   |
+|  |  | Project 1   |  | Project 2   |  | Project 3   |  | Project 4   |   |
+|  |  | Today     [x]| | Yesterday [x]| | 3 days ago[x]| | Last week[x]|   |
+|  |  +-------------+  +-------------+  +-------------+  +-------------+   |
+|  +-------------------------------------------------------------------+   |
++-------------------------------------------------------------------------+
+```
+
+#### UI Components Breakdown
+
+| Section | Component | Description |
+|---------|-----------|-------------|
+| Title Bar | Native Tauri | macOS transparent title bar with drag region |
+| Hero | Typography | Animated heading with gradient text |
+| Composer | `<PromptInput>` | Multi-line input with attachment support |
+| Model Selector | `<ModelSelector>` | Dropdown for Claude/GPT/Gemini selection |
+| Submit | `<Button>` | Purple arrow button, enabled when input present |
+| Projects Grid | `<ProjectCard>` | Clickable cards with screen thumbnails |
+
+#### User Interactions
+
+```
++-------------------------------------------------------------------------+
+|                        INTERACTION FLOW                                  |
++-------------------------------------------------------------------------+
+|                                                                          |
+|  [User Types Prompt]                                                     |
+|       |                                                                  |
+|       v                                                                  |
+|  +-----------------+     +-----------------+     +-----------------+     |
+|  | Submit Button   | --> | Save to         | --> | Create Session  |     |
+|  | Activates       |     | localStorage    |     | via SDK         |     |
+|  +-----------------+     +-----------------+     +-----------------+     |
+|                                                         |                |
+|                                                         v                |
+|                                                  +-----------------+     |
+|                                                  | Navigate to     |     |
+|                                                  | /studio/:id     |     |
+|                                                  +-----------------+     |
+|                                                                          |
+|  [User Clicks Project Card]                                              |
+|       |                                                                  |
+|       v                                                                  |
+|  +-----------------+                                                     |
+|  | Navigate to     |                                                     |
+|  | /studio/:id     |                                                     |
+|  +-----------------+                                                     |
+|                                                                          |
+|  [User Clicks Delete (X)]                                                |
+|       |                                                                  |
+|       v                                                                  |
+|  +-----------------+     +-----------------+                             |
+|  | Confirm Delete  | --> | Remove Session  |                             |
+|  | (immediate)     |     | from Tauri + RQ |                             |
+|  +-----------------+     +-----------------+                             |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
+
+**Detailed Behaviors:**
+
+1. **Prompt Submission:** When user enters text and clicks submit:
+   - Saves prompt to `localStorage` key `dilag-initial-prompt`
+   - Optionally saves attachments to `dilag-initial-files`
+   - Calls `createSession()` which creates a Tauri directory + OpenCode session
+   - Navigates to `/studio/$sessionId`
+   - Triggers: `handleSubmit()` in `index.lazy.tsx:54`
+
+2. **Model Selection:** User can pick from available AI models:
+   - Models fetched via `useModels()` hook
+   - Selection persisted in Zustand `useModelStore`
+   - Grouped by provider (Anthropic, Google, OpenAI)
+
+3. **Project Card Click:** Opens existing session in studio workspace
+   - Triggers: `handleOpenProject()` in `index.lazy.tsx:68`
 
 ---
 
@@ -69,147 +279,521 @@ The landing page users see when launching the app.
 
 **File:** `src/routes/studio.$sessionId.lazy.tsx`
 
-The main workspace for designing and viewing screens.
+> The studio is the main workspace where design happens. A collapsible chat pane on the left handles conversation with the AI, while an infinite canvas on the right displays generated screen designs as draggable iPhone frames. Users can pan, zoom, and rearrange screens freely.
 
-**Layout:**
+#### Visual Layout
+
 ```
-+------------------+----------------------------------------+
-|  Home | Title    |                          Hide Chat    |
-+------------------+----------------------------------------+
-|                  |                                        |
-|  Chat Pane       |         Design Canvas                  |
-|  (360px width)   |         (remaining space)              |
-|                  |                                        |
-|  - Messages      |   [Screen 1]  [Screen 2]  [Screen 3]   |
-|  - Tool outputs  |                                        |
-|  - Composer      |                                        |
-|                  |                                        |
-+------------------+----------------------------------------+
-                   |     [Zoom Controls: Reset | -/+ | %]   |
-                   +----------------------------------------+
++-------------------------------------------------------------------------+
+|  +-----------------------------------------------------------------+    |
+|  |[<] [Chat Toggle] Session Title                                   |    |
+|  +-----------------------------------------------------------------+    |
+|  +---------------+ +-----------------------------------------------+    |
+|  |               | |                                               |    |
+|  |  CHAT PANE    | |              DESIGN CANVAS                    |    |
+|  |  (360px)      | |              (flex-1)                         |    |
+|  |               | |                                               |    |
+|  | +----------+  | |    +--------+   +--------+   +--------+      |    |
+|  | | User     |  | |    |iPhone  |   |iPhone  |   |iPhone  |      |    |
+|  | | Message  |  | |    |Frame 1 |   |Frame 2 |   |Frame 3 |      |    |
+|  | +----------+  | |    |        |   |        |   |        |      |    |
+|  |               | |    |[HTML   |   |[HTML   |   |[HTML   |      |    |
+|  | +----------+  | |    |Preview]|   |Preview]|   |Preview]|      |    |
+|  | |*Thinking*|  | |    |        |   |        |   |        |      |    |
+|  | |Assistant |  | |    +--------+   +--------+   +--------+      |    |
+|  | |Response  |  | |                                               |    |
+|  | |[tools]   |  | |              . . . . . . . . . . . .         |    |
+|  | +----------+  | |              . . . . . . . . . . . .         |    |
+|  |               | |              . . . . . . . . . . . .         |    |
+|  | +----------+  | |                                               |    |
+|  | |Composer  |  | | +-------------------------------------------+ |    |
+|  | |[+][Model][>]| | | [Reset] [Fit]  | [-] 75% [+] | Drag/Zoom  | |    |
+|  | +----------+  | | +-------------------------------------------+ |    |
+|  +---------------+ +-----------------------------------------------+    |
++-------------------------------------------------------------------------+
 ```
 
-**Header Elements:**
-- Home button (navigates to `/`)
-- Session title
-- Toggle button: "Hide Chat" / "Show Chat"
+#### UI Components Breakdown
 
-**Chat Pane (Left - 360px, collapsible):**
-- Conversation area with user/assistant messages
-- Each message displays parts (text, tools, reasoning)
-- Thinking indicator during AI processing
-- Composer at bottom with:
-  - Model selector
-  - Text input
-  - Submit button (purple when active)
+| Section | Component | Description |
+|---------|-----------|-------------|
+| Title Bar | `<div data-tauri-drag-region>` | Session title + chat toggle button |
+| Chat Pane | `<ChatView>` | Collapsible 360px pane with messages |
+| Messages | `<Message>` | User/assistant message bubbles |
+| Tool Display | `<MessagePart>` + `<ToolPart>` | Collapsible tool call details |
+| Composer | `<PromptInput>` | Input with model selector |
+| Canvas | `<DesignCanvas>` | DnD-enabled infinite canvas |
+| Screen Frames | `<DraggableScreen>` + `<MobileFrame>` | iPhone frames with live previews |
+| Controls | Canvas toolbar | Zoom (25%-200%), pan, reset |
 
-**Design Canvas (Right - flexible):**
-- Dotted grid background
-- Draggable mobile screen frames
-- Pan: Click and drag on background, or scroll
-- Zoom: Ctrl+scroll (25% to 200%)
-- Control bar at bottom:
-  - Reset view button
-  - Fit to screen button
-  - Zoom controls (-/+) with percentage display
+#### User Interactions
 
-**Screen Frames:**
-- iPhone 14 frame (280x572px visual)
-- Title bar with status indicator (generating/streaming/success/error)
-- Grip handle for drag positioning
-- Live HTML preview rendered in iframe
+```
++-------------------------------------------------------------------------+
+|                        CHAT INTERACTION FLOW                             |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   User enters prompt                                                     |
+|        |                                                                 |
+|        v                                                                 |
+|   +----------------+     +----------------+     +----------------+       |
+|   | sendMessage()  | --> | Set status     | --> | SDK prompt     |       |
+|   | from hook      |     | to "running"   |     | fire & forget  |       |
+|   +----------------+     +----------------+     +----------------+       |
+|                                                        |                 |
+|                                                        v                 |
+|   +----------------+     +----------------+     +----------------+       |
+|   | message.updated| <-- | SSE events     | <-- | OpenCode       |       |
+|   | message.part   |     | stream back    |     | processes      |       |
+|   +----------------+     +----------------+     +----------------+       |
+|          |                                                               |
+|          v                                                               |
+|   +----------------+     +----------------+                              |
+|   | Zustand store  | --> | React re-render|                              |
+|   | updates        |     | messages       |                              |
+|   +----------------+     +----------------+                              |
+|                                                                          |
++-------------------------------------------------------------------------+
+
++-------------------------------------------------------------------------+
+|                        CANVAS INTERACTION FLOW                           |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   [Drag Screen]                                                          |
+|        |                                                                 |
+|        v                                                                 |
+|   +----------------+     +----------------+     +----------------+       |
+|   | DnD sensors    | --> | Calculate new  | --> | Update Zustand |       |
+|   | detect move    |     | position/zoom  |     | screenPositions|       |
+|   +----------------+     +----------------+     +----------------+       |
+|                                                                          |
+|   [Ctrl + Scroll]                                                        |
+|        |                                                                 |
+|        v                                                                 |
+|   +----------------+     +----------------+                              |
+|   | Update zoom    | --> | Re-render      |                              |
+|   | (0.25 - 2.0)   |     | canvas scale   |                              |
+|   +----------------+     +----------------+                              |
+|                                                                          |
+|   [Pan (drag background)]                                                |
+|        |                                                                 |
+|        v                                                                 |
+|   +----------------+     +----------------+                              |
+|   | Update         | --> | Translate      |                              |
+|   | viewOffset     |     | canvas origin  |                              |
+|   +----------------+     +----------------+                              |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
+
+**Detailed Behaviors:**
+
+1. **Initial Prompt:** On mount, reads `dilag-initial-prompt` from localStorage, sends it via `sendMessage()` after 500ms delay, then clears localStorage
+   - Triggers: `useEffect` in `studio.$sessionId.lazy.tsx:54`
+
+2. **Chat Toggle:** Button toggles 360px chat pane visibility
+   - Chat width animates via CSS transition
+
+3. **Message Streaming:** Parts appear in real-time as SSE events arrive
+   - Thinking indicator shows when streaming with no parts yet
+
+4. **Design Detection:** `useDesigns()` polls every 2 seconds for new HTML files
+   - New screens automatically get initial canvas positions
+
+---
+
+### 3. Projects Screen (`/projects`)
+
+**File:** `src/routes/projects.lazy.tsx`
+
+> A comprehensive view of all design projects, organized by time period with search and sorting capabilities. Provides a gallery-style overview of all work.
+
+#### Visual Layout
+
+```
++-------------------------------------------------------------------------+
+|  +-----------------------------------------------------------------+    |
+|  |                      TITLE BAR (drag region)                     |    |
+|  +-----------------------------------------------------------------+    |
+|                                                                          |
+|     All projects                                                         |
+|     X projects total                                                     |
+|                                                                          |
+|     +---------------------------+  +------------------+                  |
+|     | [Search icon] Search...   |  | [Recent] [Name]  |                  |
+|     +---------------------------+  +------------------+                  |
+|                                                                          |
+|     -- Today --------------------------------------------------------    |
+|     +-------------+  +-------------+  +-------------+  +-------------+   |
+|     | [thumbnails]|  | [thumbnails]|  |             |  |             |   |
+|     | Project A   |  | Project B   |  |             |  |             |   |
+|     | Today     [x]| | Today     [x]| |             |  |             |   |
+|     +-------------+  +-------------+  +-------------+  +-------------+   |
+|                                                                          |
+|     -- Yesterday ----------------------------------------------------    |
+|     +-------------+  +-------------+  +-------------+  +-------------+   |
+|     | [thumbnails]|  |             |  |             |  |             |   |
+|     | Project C   |  |             |  |             |  |             |   |
+|     | Yesterday [x]| |             |  |             |  |             |   |
+|     +-------------+  +-------------+  +-------------+  +-------------+   |
+|                                                                          |
+|     -- Last 7 days --------------------------------------------------    |
+|     ...                                                                  |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
+
+#### User Interactions
+
+1. **Search:** Filters projects by name (real-time)
+2. **Sort Toggle:** Switch between "Recent" (grouped by time) and "Name" (alphabetical)
+3. **Project Click:** Navigate to studio workspace
+4. **Delete:** Remove project with immediate feedback
+
+---
+
+### 4. Settings Screen (`/settings`)
+
+**File:** `src/routes/settings.lazy.tsx`
+
+> Application settings organized into clear sections for appearance, AI model configuration, data management, and app information including update controls.
+
+#### Visual Layout
+
+```
++-------------------------------------------------------------------------+
+|  +-----------------------------------------------------------------+    |
+|  |                      TITLE BAR (drag region)                     |    |
+|  +-----------------------------------------------------------------+    |
+|                                                                          |
+|     APPEARANCE                                                           |
+|     +---------------------------------------------------------------+   |
+|     | Theme                                                          |   |
+|     | Choose your preferred color scheme                             |   |
+|     |                                                                |   |
+|     | +----------+  +----------+  +----------+                       |   |
+|     | |   Light  |  |   Dark   |  |  System  |                       |   |
+|     | +----------+  +----------+  +----------+                       |   |
+|     +---------------------------------------------------------------+   |
+|                                                                          |
+|     MODEL                                                                |
+|     +---------------------------------------------------------------+   |
+|     | Default Model                   +------------------------+     |   |
+|     | Used when starting new sessions | [logo] Claude Sonnet v |     |   |
+|     |                                 +------------------------+     |   |
+|     +---------------------------------------------------------------+   |
+|                                                                          |
+|     DATA                                                                 |
+|     +---------------------------------------------------------------+   |
+|     | Storage Location               ~/.dilag                        |   |
+|     | Storage Used                   12.4 MB                         |   |
+|     | +------------------+                                           |   |
+|     | | Reset All Data   |   Deletes all sessions, designs, settings |   |
+|     | +------------------+                                           |   |
+|     +---------------------------------------------------------------+   |
+|                                                                          |
+|     ABOUT                                                                |
+|     +---------------------------------------------------------------+   |
+|     | Version                         0.2.0                          |   |
+|     | Updates           +------------------------+                   |   |
+|     |                   | Check for Updates      |                   |   |
+|     |                   +------------------------+                   |   |
+|     | +----------+  +----------------+                               |   |
+|     | | GitHub   |  | Documentation  |                               |   |
+|     | +----------+  +----------------+                               |   |
+|     +---------------------------------------------------------------+   |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
+
+#### User Interactions
+
+1. **Theme Selection:** Click Light/Dark/System buttons
+2. **Model Selection:** Opens model picker dropdown
+3. **Reset Data:** Opens confirmation dialog, resets and restarts app
+4. **Check Updates:** Queries Tauri updater plugin
+5. **External Links:** Open GitHub/docs via `openUrl()`
 
 ---
 
 ## Core Components
 
-### UI Components (`src/components/ui/`)
+### Component Architecture Overview
 
-shadcn/ui primitives built on Radix UI:
-- `button.tsx` - Button with variants
-- `card.tsx` - Container component
-- `dialog.tsx` - Modal dialogs
-- `dropdown-menu.tsx` - Dropdown menus
-- `command.tsx` - Command palette
-- `collapsible.tsx` - Collapsible sections
-- `scroll-area.tsx` - Custom scrollbars
-- `tooltip.tsx` - Hover tooltips
+```
++-------------------------------------------------------------------------+
+|                        COMPONENT HIERARCHY                               |
++-------------------------------------------------------------------------+
+|                                                                          |
+|                           +---------------+                              |
+|                           |   main.tsx    |                              |
+|                           |  (Bootstrap)  |                              |
+|                           +-------+-------+                              |
+|                                   |                                      |
+|                                   v                                      |
+|                           +---------------+                              |
+|                           |  __root.tsx   |                              |
+|                           |  (Providers)  |                              |
+|                           +-------+-------+                              |
+|                                   |                                      |
+|              +--------------------+--------------------+                 |
+|              |                    |                    |                 |
+|              v                    v                    v                 |
+|       +------------+       +------------+       +------------+           |
+|       | AppSidebar |       | SidebarInset|      | Toaster    |           |
+|       +------------+       +------+------+       +------------+           |
+|                                   |                                      |
+|                            +------+------+                               |
+|                            |   Outlet    |                               |
+|                            | (Routes)    |                               |
+|                            +------+------+                               |
+|                                   |                                      |
+|       +---------------+-----------+-----------+---------------+          |
+|       |               |                       |               |          |
+|       v               v                       v               v          |
+|  +----------+   +----------+           +----------+     +----------+    |
+|  | Home     |   | Studio   |           | Projects |     | Settings |    |
+|  | (index)  |   | (studio) |           |          |     |          |    |
+|  +----+-----+   +----+-----+           +----------+     +----------+    |
+|       |              |                                                   |
+|       v              v                                                   |
+|  +---------+    +---------+    +---------+                              |
+|  |Prompt   |    |ChatView |    |Design   |                              |
+|  |Input    |    |         |    |Canvas   |                              |
+|  +---------+    +---------+    +---------+                              |
+|       |              |              |                                    |
+|       v              v              v                                    |
+|   [UI Primitives: Button, Input, Card, Dialog, etc.]                     |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
+
+### UI Primitives (`src/components/ui/`)
+
+> Base-level, atomic components from shadcn/ui built on Radix UI primitives.
+
+| Component | File | Props | Description |
+|-----------|------|-------|-------------|
+| `Button` | `button.tsx` | `variant`, `size` | Primary action trigger with variants (default, outline, ghost, destructive) |
+| `Input` | `input.tsx` | `type`, `placeholder` | Text input field with border styling |
+| `Card` | `card.tsx` | `children` | Container with header, content, footer slots |
+| `Dialog` | `dialog.tsx` | `open`, `onOpenChange` | Modal overlay dialog |
+| `DropdownMenu` | `dropdown-menu.tsx` | `children` | Popover menu with items |
+| `ScrollArea` | `scroll-area.tsx` | `className` | Custom scrollbar wrapper |
+| `Select` | `select.tsx` | `value`, `onValueChange` | Dropdown selection |
+| `Sidebar` | `sidebar.tsx` | `collapsible` | Collapsible navigation sidebar |
+| `Tooltip` | `tooltip.tsx` | `content` | Hover information tooltip |
+| `Tabs` | `tabs.tsx` | `value`, `onValueChange` | Tab panel switcher |
+| `Collapsible` | `collapsible.tsx` | `open`, `onOpenChange` | Expandable content section |
+| `Badge` | `badge.tsx` | `variant` | Small label/tag component |
 
 ### Block Components (`src/components/blocks/`)
 
-Composed page sections:
-- `chat-view.tsx` - Full chat interface with messages and composer
-- `design-canvas.tsx` - Zoomable, pannable canvas with DnD support
-- `mobile-frame.tsx` - iPhone frame wrapper with status
-- `screen-preview.tsx` - Iframe-based HTML preview
-- `draggable-screen.tsx` - DnD wrapper for screens
-- `message-part.tsx` - Renders different message part types
-- `tool-part.tsx` - Collapsible tool call display
+> Composed components that combine UI primitives into reusable page sections.
+
+```
++-------------------------------------------------------------------------+
+|  BLOCK: ChatView                                                         |
+|  File: src/components/blocks/chat-view.tsx                              |
++-------------------------------------------------------------------------+
+|                                                                          |
+|  +-------------------------------------------------------------------+  |
+|  |  +--------------------------------------------------------------+ |  |
+|  |  |  CONVERSATION AREA (scrollable)                              | |  |
+|  |  |                                                              | |  |
+|  |  |  +----------------------------------------------------------+| |  |
+|  |  |  | User Message                                             || |  |
+|  |  |  | "Design a fitness tracking app"                          || |  |
+|  |  |  +----------------------------------------------------------+| |  |
+|  |  |                                                              | |  |
+|  |  |  +----------------------------------------------------------+| |  |
+|  |  |  | [Sparkles] Assistant                                     || |  |
+|  |  |  | [Tool: write screens/home.html]                          || |  |
+|  |  |  | [Tool: write screens/workout.html]                       || |  |
+|  |  |  | "I've created two screens for your fitness app..."       || |  |
+|  |  |  +----------------------------------------------------------+| |  |
+|  |  +--------------------------------------------------------------+ |  |
+|  |                                                                   |  |
+|  |  +--------------------------------------------------------------+ |  |
+|  |  |  COMPOSER (PromptInput)                                      | |  |
+|  |  |  +----------------------------------------------------------+| |  |
+|  |  |  | [Attachments preview bar]                                || |  |
+|  |  |  +----------------------------------------------------------+| |  |
+|  |  |  | "Describe a design..."                                   || |  |
+|  |  |  +----------------------------------------------------------+| |  |
+|  |  |  | [+] Attach    |    spacer    | [Model v] [Submit ->]     || |  |
+|  |  +--------------------------------------------------------------+ |  |
+|  +-------------------------------------------------------------------+  |
+|                                                                          |
+|  Composed of: Conversation + Message + MessagePart + PromptInput        |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
+
+| Block | File | Purpose |
+|-------|------|---------|
+| `ChatView` | `chat-view.tsx` | Full chat interface with messages and composer |
+| `DesignCanvas` | `design-canvas.tsx` | Infinite canvas with DnD, pan, zoom |
+| `MobileFrame` | `mobile-frame.tsx` | iPhone frame wrapper with status indicators |
+| `ScreenPreview` | `screen-preview.tsx` | Iframe-based HTML preview renderer |
+| `DraggableScreen` | `draggable-screen.tsx` | DnD wrapper for canvas screens |
+| `MessagePart` | `message-part.tsx` | Renders different message part types (text, tool, reasoning) |
+| `ToolPart` | `tool-part.tsx` | Collapsible tool call display with icons |
+| `AppSidebar` | `app-sidebar.tsx` | Main navigation sidebar with links |
+| `SetupWizard` | `setup-wizard.tsx` | OpenCode installation check UI |
+| `UpdateDialog` | `update-dialog.tsx` | App update notification/download |
+| `AuthSettings` | `auth-settings.tsx` | Provider connection dialog |
 
 ### AI Components (`src/components/ai-elements/`)
 
-Chat and AI-specific components:
-- `prompt-input.tsx` - Composable prompt input system
-- `model-selector.tsx` - AI model selection dropdown
-- `conversation.tsx` - Conversation container with scroll
-- `message.tsx` - Message bubble with role styling
-- `reasoning.tsx` - Collapsible reasoning display
-- `shimmer.tsx` - Loading shimmer effect
-- `tool.tsx` - Tool call visualization
+> Chat and AI-specific components for conversation UI.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `PromptInput` | `prompt-input.tsx` | Composable input with attachments, tools, footer |
+| `ModelSelector` | `model-selector.tsx` | AI model picker with provider logos |
+| `Conversation` | `conversation.tsx` | Scrollable conversation container |
+| `Message` | `message.tsx` | Message bubble with role-based styling |
+| `Loader` | `loader.tsx` | Animated loading indicators |
+| `Reasoning` | `reasoning.tsx` | Collapsible chain-of-thought display |
+| `CodeBlock` | `code-block.tsx` | Syntax-highlighted code with Shiki |
 
 ---
 
 ## State Management
 
-### Architecture
+### State Architecture Overview
 
-Hybrid approach following TkDodo/KCD patterns:
-- **Zustand:** Client-only and real-time state
-- **React Query:** Server state fetching and caching
+```
++-------------------------------------------------------------------------+
+|                        STATE MANAGEMENT FLOW                             |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   +-------------+                                                        |
+|   |  Component  |                                                        |
+|   +------+------+                                                        |
+|          |                                                               |
+|          | useStore() / useQuery()                                       |
+|          v                                                               |
+|   +-------------------------------------------------------------------+ |
+|   |                         STATE LAYER                                | |
+|   +-------------------------------------------------------------------+ |
+|   |                                                                     | |
+|   |  +---------------+  +---------------+  +---------------+           | |
+|   |  |  Session      |  |    Model      |  |  React Query  |           | |
+|   |  |  Store        |  |    Store      |  |  Cache        |           | |
+|   |  | (Zustand)     |  |  (Zustand)    |  |               |           | |
+|   |  +-------+-------+  +-------+-------+  +-------+-------+           | |
+|   |          |                  |                  |                    | |
+|   |          | Persisted        | Persisted        | Cached             | |
+|   |          v                  v                  v                    | |
+|   |  +------------------------------------------------------------+   | |
+|   |  |                   PERSISTENCE LAYER                         |   | |
+|   |  |   localStorage    |   localStorage   |   Memory + Tauri     |   | |
+|   |  +------------------------------------------------------------+   | |
+|   |                                                                     | |
+|   +-------------------------------------------------------------------+ |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
 
-### Zustand Store (`src/context/session-store.tsx`)
+### Session Store (`src/context/session-store.tsx`)
+
+> Zustand store for client-only and real-time state. Handles SSE event updates.
+
+**State Shape:**
 
 ```typescript
 interface SessionState {
-  // Client state (persisted to localStorage)
-  currentSessionId: string | null;
-  screenPositions: Record<string, ScreenPosition[]>;
+  // ================================================================
+  // Client State (persisted to localStorage)
+  // ================================================================
+  currentSessionId: string | null;     // Active session
+  screenPositions: Record<string, ScreenPosition[]>; // Canvas layout
 
-  // Real-time state (from SSE events)
-  messages: Record<string, Message[]>;
-  parts: Record<string, MessagePart[]>;
-  sessionStatus: Record<string, SessionStatus>;
-  sessionDiffs: Record<string, FileDiff[]>;
+  // ================================================================
+  // Real-time State (from SSE events)
+  // ================================================================
+  messages: Record<string, Message[]>; // Keyed by sessionId
+  parts: Record<string, MessagePart[]>;// Keyed by messageId
+  sessionStatus: Record<string, SessionStatus>; // idle/running/error
+  sessionDiffs: Record<string, FileDiff[]>;     // File changes
 
-  // Server connection
-  isServerReady: boolean;
-  error: string | null;
+  // ================================================================
+  // Server Connection
+  // ================================================================
+  isServerReady: boolean;              // OpenCode server status
+  error: string | null;                // Last error message
+
+  // ================================================================
+  // Debug
+  // ================================================================
+  debugEvents: Event[];                // Last 500 SSE events
+
+  // ================================================================
+  // Actions
+  // ================================================================
+  setCurrentSessionId: (id: string | null) => void;
+  setScreenPositions: (sessionId: string, positions: ScreenPosition[]) => void;
+  setMessages: (sessionId: string, messages: Message[]) => void;
+  addMessage: (sessionId: string, message: Message) => void;
+  updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
+  updatePart: (messageId: string, part: MessagePart) => void;
+  setSessionStatus: (sessionId: string, status: SessionStatus) => void;
+  handleEvent: (event: Event) => void;
+  resetRealtimeState: () => void;
 }
 ```
 
-**Key Selectors:**
-- `useCurrentSessionId()` - Current session ID
-- `useSessionMessages(sessionId)` - Messages for session
-- `useMessageParts(messageId)` - Parts for a message
-- `useSessionStatus(sessionId)` - Session status (idle/running/error)
-- `useScreenPositions(sessionId)` - Canvas positions
+**Selectors & Hooks:**
 
-### React Query Usage
+| Hook | Returns | Usage |
+|------|---------|-------|
+| `useCurrentSessionId()` | `string \| null` | Get active session ID |
+| `useSessionMessages(sessionId)` | `Message[]` | Get messages for session |
+| `useMessageParts(messageId)` | `MessagePart[]` | Get parts for message |
+| `useSessionStatus(sessionId)` | `SessionStatus` | Get session status |
+| `useScreenPositions(sessionId)` | `ScreenPosition[]` | Get canvas positions |
+| `useIsServerReady()` | `boolean` | Check if OpenCode ready |
 
-- `useSessionsList()` - Fetch all sessions (from Tauri)
-- `useSessionDesigns(cwd)` - Poll for design files (every 2s)
-- `useProviderData()` - Fetch available AI models
+**State Flow Diagram:**
+
+```
++------------+     +------------+     +------------+
+| SSE Event  | --> | handleEvent| --> | Update     |
+| Received   |     | (switch)   |     | Zustand    |
++------------+     +------------+     +------------+
+                         |
+         +---------------+---------------+
+         |               |               |
+         v               v               v
+  +------------+  +------------+  +------------+
+  | message.   |  | message.   |  | session.   |
+  | updated    |  | part.      |  | status     |
+  | addMessage |  | updated    |  | setStatus  |
+  +------------+  +------------+  +------------+
+```
 
 ### Model Store (`src/hooks/use-models.ts`)
 
-Separate Zustand store for model selection:
+> Separate Zustand store for AI model selection preference.
+
 ```typescript
 interface ModelState {
   selectedModel: { providerID: string; modelID: string } | null;
-  setSelectedModel: (model) => void;
+  setSelectedModel: (model: { providerID: string; modelID: string } | null) => void;
 }
 ```
-Default model: `anthropic/claude-sonnet-4-20250514`
+
+**Default:** `anthropic/big-pickle` (Claude Sonnet 4)
+
+### React Query Usage
+
+| Hook | Query Key | Purpose |
+|------|-----------|---------|
+| `useSessionsList()` | `["sessions", "list"]` | Fetch all sessions from Tauri |
+| `useSessionDesigns(cwd)` | `["designs", "session", cwd]` | Poll for design files (2s interval) |
+| `useProviderData()` | `["models", "providers"]` | Fetch available AI providers/models |
 
 ---
 
@@ -218,55 +802,143 @@ Default model: `anthropic/claude-sonnet-4-20250514`
 ### Session Creation Flow
 
 ```
-1. User enters prompt on Home screen
-2. handleSubmit() called:
-   - Save prompt to localStorage ("dilag-initial-prompt")
-   - Call createSession() from useSessions hook
-3. createSession():
-   - Generate UUID for session directory
-   - Create directory via Tauri: invoke("create_session_dir")
-   - Create session in OpenCode: sdk.session.create({ directory })
-   - Save session metadata to Tauri storage
-   - Update Zustand: setCurrentSessionId, setMessages
-4. Navigate to /studio/$sessionId
-5. Studio page mounts:
-   - useEffect reads localStorage for initial prompt
-   - Clears localStorage
-   - Calls sendMessage(initialPrompt) after 500ms delay
++-------------------------------------------------------------------------+
+|                    SESSION CREATION SEQUENCE                             |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   USER                    FRONTEND                    BACKEND            |
+|    |                         |                           |               |
+|    |   1. Enter Prompt       |                           |               |
+|    | ----------------------> |                           |               |
+|    |                         |                           |               |
+|    |   2. Click Submit       |                           |               |
+|    | ----------------------> |                           |               |
+|    |                         |                           |               |
+|    |                         |   3. Save to localStorage |               |
+|    |                         | -----------o              |               |
+|    |                         |                           |               |
+|    |                         |   4. Create Session Dir   |               |
+|    |                         | ------------------------> |               |
+|    |                         |                           |               |
+|    |                         |   5. invoke("create_      |               |
+|    |                         |      session_dir")        |               |
+|    |                         |                    <------|               |
+|    |                         |   Returns: /path/to/dir   |               |
+|    |                         |                           |               |
+|    |                         |   6. SDK session.create() |               |
+|    |                         | ------------------------> |  OpenCode     |
+|    |                         |                           |               |
+|    |                         |   7. Save metadata        |               |
+|    |                         | ------------------------> |  Tauri        |
+|    |                         |                           |               |
+|    |                         |   8. Update Zustand       |               |
+|    |                         | -----------o              |               |
+|    |                         |                           |               |
+|    |   9. Navigate           |                           |               |
+|    | <---------------------- |                           |               |
+|    |   /studio/$sessionId    |                           |               |
+|    |                         |                           |               |
++-------------------------------------------------------------------------+
 ```
+
+**Step-by-Step Breakdown:**
+
+| Step | Actor | Action | Details |
+|------|-------|--------|---------|
+| 1-2 | User | Enters prompt, clicks submit | Triggers `handleSubmit()` in `index.lazy.tsx:54` |
+| 3 | Frontend | Saves to localStorage | Keys: `dilag-initial-prompt`, `dilag-initial-files` |
+| 4-5 | Frontend | Creates session directory | Tauri command `create_session_dir` returns path |
+| 6 | Frontend | Creates OpenCode session | `sdk.session.create({ directory })` |
+| 7 | Frontend | Saves session metadata | Tauri command `save_session_metadata` |
+| 8 | Frontend | Updates Zustand | `setCurrentSessionId`, `setMessages([])` |
+| 9 | Frontend | Navigates | TanStack Router to `/studio/$sessionId` |
 
 ### Message Sending Flow
 
 ```
-1. User enters prompt in chat composer
-2. sendMessage(content) called:
-   - Get selected model from store
-   - Set session status to "running"
-   - Call sdk.session.prompt({
-       sessionID,
-       directory,
-       agent: "designer",
-       model,
-       parts: [{ type: "text", text: content }]
-     })
-3. SSE events stream back:
-   - message.updated: Add/update message in Zustand
-   - message.part.updated: Update message parts
-   - session.status: Update running/idle/error
-4. Parts render in real-time via useMessageParts(messageId)
-5. On first message, update session title after 2s delay
++-------------------------------------------------------------------------+
+|                    MESSAGE SENDING SEQUENCE                              |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   USER                    FRONTEND                    OPENCODE           |
+|    |                         |                           |               |
+|    |   1. Type message       |                           |               |
+|    | ----------------------> |                           |               |
+|    |                         |                           |               |
+|    |   2. Click send         |                           |               |
+|    | ----------------------> |                           |               |
+|    |                         |                           |               |
+|    |                         |   3. Set status="running" |               |
+|    |                         | -----------o              |               |
+|    |                         |                           |               |
+|    |                         |   4. SDK session.prompt() |               |
+|    |                         | ------------------------> |               |
+|    |                         |   (fire and forget)       |               |
+|    |                         |                           |               |
+|    |                         |   5. SSE: message.updated |               |
+|    |                         | <------------------------ |  (user msg)   |
+|    |                         |                           |               |
+|    |   6. Show user msg      |                           |               |
+|    | <---------------------- |                           |               |
+|    |                         |                           |               |
+|    |                         |   7. SSE: message.updated |               |
+|    |                         | <------------------------ | (assistant)   |
+|    |                         |                           |               |
+|    |   8. Show thinking      |                           |               |
+|    | <---------------------- |                           |               |
+|    |                         |                           |               |
+|    |                         |   9. SSE: message.part    |               |
+|    |                         | <------------------------ | (streaming)   |
+|    |                         |                           |               |
+|    |   10. Update parts      |                           |               |
+|    | <---------------------- |                           | (repeat)      |
+|    |                         |                           |               |
+|    |                         |  11. SSE: session.idle    |               |
+|    |                         | <------------------------ |               |
+|    |                         |                           |               |
+|    |   12. Status = idle     |                           |               |
+|    | <---------------------- |                           |               |
+|    |                         |                           |               |
++-------------------------------------------------------------------------+
 ```
 
 ### Design Detection Flow
 
 ```
-1. AI generates HTML files in session directory
-2. useSessionDesigns hook polls every 2s:
-   - Calls invoke("load_session_designs", { sessionCwd })
-   - Returns array of DesignFile objects
-3. Studio receives updated designs array
-4. New designs get initial canvas positions
-5. Each design renders in MobileFrame with ScreenPreview
++-------------------------------------------------------------------------+
+|                    DESIGN DETECTION SEQUENCE                             |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   OPENCODE              FILESYSTEM              FRONTEND                 |
+|       |                      |                      |                    |
+|       |   1. AI generates    |                      |                    |
+|       | -------------------> |                      |                    |
+|       |   write(screens/     |                      |                    |
+|       |     home.html)       |                      |                    |
+|       |                      |                      |                    |
+|       |                      |   2. Poll every 2s   |                    |
+|       |                      | <------------------- |                    |
+|       |                      |   load_session_      |                    |
+|       |                      |   designs            |                    |
+|       |                      |                      |                    |
+|       |                      |   3. Return designs  |                    |
+|       |                      | -------------------> |                    |
+|       |                      |   [{filename, html,  |                    |
+|       |                      |     title, type}]    |                    |
+|       |                      |                      |                    |
+|       |                      |                      |   4. Compare with  |
+|       |                      |                      |      existing      |
+|       |                      |                      | --------o          |
+|       |                      |                      |                    |
+|       |                      |                      |   5. Add new       |
+|       |                      |                      |      positions     |
+|       |                      |                      | --------o          |
+|       |                      |                      |                    |
+|       |                      |                      |   6. Render        |
+|       |                      |                      |      MobileFrames  |
+|       |                      |                      | --------o          |
+|       |                      |                      |                    |
++-------------------------------------------------------------------------+
 ```
 
 ### SSE Event Handling
@@ -274,24 +946,45 @@ Default model: `anthropic/claude-sonnet-4-20250514`
 **Provider:** `src/context/global-events.tsx`
 
 ```
-1. App mounts, GlobalEventsProvider initializes
-2. Start OpenCode server: invoke("start_opencode_server")
-3. Connect to SSE: sdk.global.event()
-4. Process events in async for-loop
-5. Dispatch to:
-   - Global handlers (all subscribers)
-   - Session-specific handlers (by sessionID)
-6. useSessions subscribes and routes to handleEvent()
-7. handleEvent updates Zustand based on event type
++-------------------------------------------------------------------------+
+|                    SSE CONNECTION SEQUENCE                               |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   1. App mounts, GlobalEventsProvider initializes                        |
+|                                                                          |
+|   2. Start OpenCode server:                                              |
+|      invoke("start_opencode_server") --> returns port 4096               |
+|                                                                          |
+|   3. Create SDK client:                                                  |
+|      createOpencodeClient({ baseUrl: "http://127.0.0.1:4096" })         |
+|                                                                          |
+|   4. Connect to SSE:                                                     |
+|      sdk.global.event() --> async iterator                               |
+|                                                                          |
+|   5. Process events in async for-loop:                                   |
+|      for await (const event of events.stream) {                          |
+|        handlersRef.current.forEach(h => h(event.payload))                |
+|      }                                                                   |
+|                                                                          |
+|   6. Reconnection on disconnect:                                         |
+|      - Exponential backoff (3s initial, 30s max)                         |
+|      - Unlimited retry attempts                                          |
+|      - Bootstrap callback on reconnect                                   |
+|                                                                          |
++-------------------------------------------------------------------------+
 ```
 
 **Event Types Handled:**
-- `message.part.updated` - Update part content/state
-- `message.updated` - Add or update message
-- `session.status` - Update session status
-- `session.diff` - File diff information
-- `session.idle` - Mark session as idle
-- `session.error` - Mark session as error
+
+| Event Type | Handler | Effect |
+|------------|---------|--------|
+| `message.updated` | `addMessage` / `updateMessage` | Add or complete message |
+| `message.part.updated` | `updatePart` | Update part content/state |
+| `session.status` | `setSessionStatus` | Update running/idle/error |
+| `session.diff` | `setSessionDiffs` | Store file diff info |
+| `session.idle` | `setSessionStatus("idle")` | Mark session complete |
+| `session.error` | `setSessionStatus("error")` | Mark session failed |
+| `global.disposed` | `bootstrap()` | Re-sync all state |
 
 ---
 
@@ -299,30 +992,59 @@ Default model: `anthropic/claude-sonnet-4-20250514`
 
 ### Tauri Commands (`src-tauri/src/lib.rs`)
 
-```rust
-#[tauri::command]
-fn start_opencode_server() -> Result<u16, String>
-// Starts the OpenCode server, returns port (4096)
-
-#[tauri::command]
-fn create_session_dir(dir_id: String) -> Result<String, String>
-// Creates session directory, returns full path
-
-#[tauri::command]
-fn load_session_designs(session_cwd: String) -> Result<Vec<DesignFile>, String>
-// Loads HTML design files from session's screens/ folder
-
-#[tauri::command]
-fn save_session_metadata(session: SessionMeta) -> Result<(), String>
-// Saves session metadata to JSON
-
-#[tauri::command]
-fn load_sessions() -> Result<Vec<SessionMeta>, String>
-// Loads all session metadata
-
-#[tauri::command]
-fn delete_session_metadata(session_id: String) -> Result<(), String>
-// Deletes session metadata and directory
+```
++-------------------------------------------------------------------------+
+|                        TAURI COMMANDS                                    |
++-------------------------------------------------------------------------+
+|                                                                          |
+|   +-- OpenCode Server --------------------------------------------------+|
+|   |                                                                      ||
+|   |  check_opencode_installation() -> OpenCodeCheckResult               ||
+|   |    Checks if OpenCode CLI is installed and returns version          ||
+|   |                                                                      ||
+|   |  start_opencode_server() -> Result<u16, String>                     ||
+|   |    Spawns opencode serve on port 4096, returns port number          ||
+|   |                                                                      ||
+|   |  stop_opencode_server() -> Result<(), String>                       ||
+|   |    Stops the running OpenCode server process                        ||
+|   |                                                                      ||
+|   +----------------------------------------------------------------------+|
+|                                                                          |
+|   +-- Session Management -----------------------------------------------+|
+|   |                                                                      ||
+|   |  create_session_dir(session_id: String) -> Result<String, String>   ||
+|   |    Creates ~/.dilag/sessions/{id}/ directory, returns full path     ||
+|   |                                                                      ||
+|   |  save_session_metadata(session: SessionMeta) -> Result<(), String>  ||
+|   |    Saves session to ~/.dilag/sessions.json                          ||
+|   |                                                                      ||
+|   |  load_sessions_metadata() -> Vec<SessionMeta>                       ||
+|   |    Loads all sessions from ~/.dilag/sessions.json                   ||
+|   |                                                                      ||
+|   |  delete_session_metadata(session_id: String) -> Result<(), String>  ||
+|   |    Removes session from JSON and deletes directory                  ||
+|   |                                                                      ||
+|   +----------------------------------------------------------------------+|
+|                                                                          |
+|   +-- Design Files -----------------------------------------------------+|
+|   |                                                                      ||
+|   |  load_session_designs(session_cwd: String) -> Vec<DesignFile>       ||
+|   |    Scans session dir + screens/ for .html files                     ||
+|   |    Extracts: filename, title, screen_type, html, modified_at        ||
+|   |                                                                      ||
+|   +----------------------------------------------------------------------+|
+|                                                                          |
+|   +-- App Management ---------------------------------------------------+|
+|   |                                                                      ||
+|   |  get_app_info() -> AppInfo                                          ||
+|   |    Returns { version, data_dir, data_size_bytes }                   ||
+|   |                                                                      ||
+|   |  reset_all_data() -> Result<(), String>                             ||
+|   |    Deletes ~/.dilag contents, restarts app                          ||
+|   |                                                                      ||
+|   +----------------------------------------------------------------------+|
+|                                                                          |
++-------------------------------------------------------------------------+
 ```
 
 ### OpenCode SDK Usage
@@ -331,17 +1053,31 @@ fn delete_session_metadata(session_id: String) -> Result<(), String>
 ```typescript
 const sdk = createOpencodeClient({
   baseUrl: "http://127.0.0.1:4096",
+  fetch: customFetch, // Disables timeout for SSE
 });
 ```
 
 **API Methods:**
-- `sdk.session.create({ directory })` - Create new session
-- `sdk.session.get({ sessionID, directory })` - Get session details
-- `sdk.session.delete({ sessionID, directory })` - Delete session
-- `sdk.session.messages({ sessionID, directory })` - Get message history
-- `sdk.session.prompt({ sessionID, directory, agent, model, parts })` - Send prompt
-- `sdk.provider.list()` - Get available providers and models
-- `sdk.global.event()` - SSE event stream
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `sdk.session.create` | `{ directory }` | `{ id }` | Create new session |
+| `sdk.session.get` | `{ sessionID, directory }` | Session details | Get session info |
+| `sdk.session.delete` | `{ sessionID, directory }` | - | Delete session |
+| `sdk.session.messages` | `{ sessionID, directory }` | `Message[]` | Get message history |
+| `sdk.session.prompt` | `{ sessionID, directory, agent, model, parts }` | - | Send prompt (fire & forget) |
+| `sdk.provider.list` | - | `{ all, connected }` | Get available providers |
+| `sdk.global.event` | - | AsyncIterator | SSE event stream |
+
+### Designer Agent Configuration
+
+The Rust backend embeds a `designer` agent configuration in `DESIGNER_AGENT_PROMPT`:
+
+- **Tools:** Write-only (bash disabled)
+- **Output:** HTML files in `screens/` directory
+- **Styling:** Tailwind CSS v4 with custom `@theme` tokens
+- **Templates:** iPhone 14 Pro (393x852) or web layouts
+- **Icons:** Iconify (Solar, Phosphor sets)
 
 ---
 
@@ -355,32 +1091,82 @@ Defines how OpenCode tools are displayed in the UI.
 
 | Tool | Icon | Description |
 |------|------|-------------|
-| `read` | Glasses | File read - shows preview with syntax highlighting |
-| `edit` | Code2 | File edit - shows diff with +/- counts |
-| `write` | FilePlus2 | File create - shows content with line count |
-| `bash` | Terminal | Shell command - shows command and output |
-| `glob` | FolderSearch | File pattern search - shows match count |
-| `grep` | Search | Content search - shows match count |
-| `list` | FolderSearch | Directory listing - shows item count |
-| `webfetch` | Globe | URL fetch - shows hostname and content |
-| `task` | Bot | Sub-agent task - shows tool summary |
-| `todowrite` | ListChecks | Todo list - shows completion progress |
-| `theme` | Paintbrush | Theme generation - shows color swatches |
+| `read` | `Glasses` | File read - shows preview with syntax highlighting |
+| `edit` | `Code2` | File edit - shows diff with +/- counts |
+| `write` | `FilePlus2` | File create - shows content with line count |
+| `bash` | `Terminal` | Shell command - shows command and output |
+| `glob` | `FolderSearch` | File pattern search - shows match count |
+| `grep` | `Search` | Content search - shows match count |
+| `list` | `FolderSearch` | Directory listing - shows item count |
+| `webfetch` | `Globe` | URL fetch - shows hostname and content |
+| `task` | `Bot` | Sub-agent task - shows tool summary |
+| `todowrite` | `ListChecks` | Todo list - shows completion progress |
+| `theme` | `Paintbrush` | Theme generation - shows color swatches |
 
 ### Tool State
 
-Each tool can be in one of these states:
+Each tool progresses through states:
 - `pending` - Waiting to execute
-- `running` - Currently executing (shows timer)
+- `running` - Currently executing (shows elapsed timer)
 - `completed` - Finished successfully
 - `error` - Failed with error message
 
-### Tool Display
+### Tool Display in `<ToolPart>`
 
-Tools render in `<ToolPart>` as collapsible rows:
-- Header: Icon, title, subtitle (file path, counts), elapsed time
-- Content: Expandable details (code preview, diff, output)
-- `todowrite` expands by default
+```
++-------------------------------------------------------------------+
+| [Icon] Tool Name - subtitle (path, counts)           [timer] [^v] |
++-------------------------------------------------------------------+
+| Expandable content area:                                          |
+| - Code preview with syntax highlighting                           |
+| - Diff view with +/- line counts                                  |
+| - Command output                                                  |
+| - Progress/completion status                                      |
++-------------------------------------------------------------------+
+```
+
+- Default collapsed except `todowrite`
+- Expandable via chevron button
+- Status badge colors: blue (running), green (complete), red (error)
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Context | Action |
+|----------|---------|--------|
+| `Cmd+N` | Global | New session |
+| `Cmd+,` | Global | Open settings |
+| `Cmd+B` | Global | Toggle sidebar |
+| `Cmd+\` | Studio | Toggle chat pane |
+| `Ctrl+Scroll` | Canvas | Zoom in/out |
+| `Enter` | Composer | Send message |
+| `Shift+Enter` | Composer | New line |
+
+---
+
+## Theme System
+
+```
++-------------------------------------------------------------------------+
+|                        THEME TOKENS                                      |
++-------------------------------------------------------------------------+
+|                                                                          |
+|  Token              | Light          | Dark                              |
+|  -------------------+----------------+----------------------------------  |
+|  --background       | oklch(1 0 0)   | oklch(0.145 0.02 285.69)         |
+|  --foreground       | oklch(0.2 0 0) | oklch(0.985 0 0)                 |
+|  --primary          | oklch(0.55...)  | oklch(0.646 0.222 264.44)       |
+|  --card             | oklch(1 0 0)   | oklch(0.205 0.015 285.69)        |
+|  --muted            | oklch(0.97...)  | oklch(0.269 0.015 285.69)       |
+|  --border           | oklch(0.92...)  | oklch(0.274 0.026 264.44)       |
+|                                                                          |
++-------------------------------------------------------------------------+
+```
+
+Theme managed via `next-themes` with `ThemeProvider`:
+- Stored in localStorage key: `dilag-theme`
+- Options: `light`, `dark`, `system`
 
 ---
 
@@ -389,34 +1175,44 @@ Tools render in `<ToolPart>` as collapsible rows:
 ```
 src/
   components/
-    ai-elements/       # AI/chat components
-    blocks/            # Page section components
-    ui/                # shadcn/ui primitives
+    ai-elements/        # AI/chat components (prompt, model, message)
+    blocks/             # Page section components (chat-view, canvas)
+    ui/                 # shadcn/ui primitives (button, card, dialog)
+    theme-provider.tsx  # next-themes wrapper
   context/
-    global-events.tsx  # SSE provider
-    session-store.tsx  # Zustand store
+    global-events.tsx   # SSE provider & SDK client
+    session-store.tsx   # Zustand store for real-time state
+    menu-events.tsx     # Native menu event handlers
   hooks/
-    use-designs.ts     # Design file polling
-    use-models.ts      # Model selection
-    use-sessions.ts    # Session management
-    use-session-data.ts # React Query data layer
+    use-designs.ts      # Design file polling (React Query)
+    use-models.ts       # Model selection (Zustand)
+    use-sessions.ts     # Main session management hook
+    use-session-data.ts # React Query data layer for sessions
+    use-updater.ts      # App auto-update hook
   lib/
-    tool-registry.tsx  # Tool display configs
-    utils.ts           # cn() and utilities
+    tool-registry.tsx   # Tool display configurations
+    utils.ts            # cn() and utilities
   routes/
-    __root.tsx         # Root layout
-    index.lazy.tsx     # Home page
-    studio.$sessionId.lazy.tsx # Studio page
+    __root.tsx          # Root layout with providers
+    index.lazy.tsx      # Home page
+    studio.$sessionId.lazy.tsx # Studio workspace
+    projects.lazy.tsx   # All projects view
+    settings.lazy.tsx   # Settings page
+
+src-tauri/
+  src/lib.rs            # Rust commands & designer agent config
+  tauri.conf.json       # Tauri app configuration
 ```
 
 ---
 
 ## Key Interactions Summary
 
-1. **Home -> Studio:** Prompt saved to localStorage, session created, navigate
-2. **Studio Load:** Read localStorage prompt, trigger sendMessage
-3. **Chat Submit:** SDK prompt call, SSE events update Zustand in real-time
-4. **Design Updates:** 2s polling detects new HTML files, renders in canvas
-5. **Canvas Drag:** DnD updates screen positions in Zustand (persisted)
-6. **Model Switch:** Updates model store, affects next prompt call
-7. **Session Switch:** Updates currentSessionId, loads messages from SDK
+1. **Home -> Studio:** Prompt saved to localStorage, session created via Tauri + OpenCode SDK, navigate to studio
+2. **Studio Load:** Read localStorage prompt, trigger `sendMessage()` after 500ms delay
+3. **Chat Submit:** SDK `session.prompt()` fires, SSE events update Zustand in real-time
+4. **Design Updates:** 2s polling via React Query detects new HTML files, renders in canvas
+5. **Canvas Drag:** DnD updates `screenPositions` in Zustand (persisted to localStorage)
+6. **Model Switch:** Updates `useModelStore`, affects next prompt call
+7. **Session Switch:** Updates `currentSessionId`, loads messages from SDK
+8. **Reconnection:** SSE auto-reconnects with backoff, bootstrap re-syncs state
