@@ -35,7 +35,7 @@ function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GlobalEventsProvider>
             <MenuEventsProvider>
-              <SidebarProvider defaultOpen={true}>
+              <SidebarProvider defaultOpen={false}>
                 <AppSidebar />
                 <SidebarInset>
                   <Outlet />

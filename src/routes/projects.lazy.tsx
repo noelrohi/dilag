@@ -4,13 +4,20 @@ import { invoke } from "@tauri-apps/api/core";
 import { useSessions } from "@/hooks/use-sessions";
 import type { DesignFile } from "@/hooks/use-designs";
 import { cn } from "@/lib/utils";
-import { X, Search, Calendar, SortDesc } from "lucide-react";
+import { Search, MoreHorizontal, Trash2, Smartphone } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// Mini thumbnail constants
-const THUMB_RENDER_W = 393;
-const THUMB_RENDER_H = 852;
-const THUMB_DISPLAY_H = 72;
+// Thumbnail constants for stacked preview
+const THUMB_RENDER_W = 375;
+const THUMB_RENDER_H = 812;
+const THUMB_DISPLAY_H = 140;
 const THUMB_SCALE = THUMB_DISPLAY_H / THUMB_RENDER_H;
+const THUMB_DISPLAY_W = THUMB_RENDER_W * THUMB_SCALE;
 
 export const Route = createLazyFileRoute("/projects")({
   component: ProjectsPage,
@@ -20,54 +27,44 @@ function ProjectsPage() {
   const navigate = useNavigate();
   const { sessions, deleteSession } = useSessions();
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
 
   const handleOpenProject = (sessionId: string) => {
     navigate({ to: "/studio/$sessionId", params: { sessionId } });
   };
 
-  const handleDeleteProject = async (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation();
+  const handleDeleteProject = async (sessionId: string) => {
     await deleteSession(sessionId);
   };
 
-  const filteredAndSortedSessions = useMemo(() => {
+  const filteredSessions = useMemo(() => {
     let filtered = sessions;
-    
-    // Filter by search query
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = sessions.filter(session => 
-        session.name?.toLowerCase().includes(query) || 
+      filtered = sessions.filter(session =>
+        session.name?.toLowerCase().includes(query) ||
         session.id.toLowerCase().includes(query)
       );
     }
 
-    // Sort
-    return [...filtered].sort((a, b) => {
-      if (sortBy === "recent") {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-      return (a.name || "Untitled").localeCompare(b.name || "Untitled");
-    });
-  }, [sessions, searchQuery, sortBy]);
+    return [...filtered].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [sessions, searchQuery]);
 
-  // Group sessions by time period
   const groupedSessions = useMemo(() => {
     const groups: { label: string; sessions: typeof sessions }[] = [];
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const todaySessions: typeof sessions = [];
     const yesterdaySessions: typeof sessions = [];
     const lastWeekSessions: typeof sessions = [];
-    const lastMonthSessions: typeof sessions = [];
     const olderSessions: typeof sessions = [];
 
-    for (const session of filteredAndSortedSessions) {
+    for (const session of filteredSessions) {
       const date = new Date(session.created_at);
       if (date >= today) {
         todaySessions.push(session);
@@ -75,8 +72,6 @@ function ProjectsPage() {
         yesterdaySessions.push(session);
       } else if (date >= lastWeek) {
         lastWeekSessions.push(session);
-      } else if (date >= lastMonth) {
-        lastMonthSessions.push(session);
       } else {
         olderSessions.push(session);
       }
@@ -84,51 +79,27 @@ function ProjectsPage() {
 
     if (todaySessions.length > 0) groups.push({ label: "Today", sessions: todaySessions });
     if (yesterdaySessions.length > 0) groups.push({ label: "Yesterday", sessions: yesterdaySessions });
-    if (lastWeekSessions.length > 0) groups.push({ label: "Last 7 days", sessions: lastWeekSessions });
-    if (lastMonthSessions.length > 0) groups.push({ label: "Last 30 days", sessions: lastMonthSessions });
+    if (lastWeekSessions.length > 0) groups.push({ label: "This Week", sessions: lastWeekSessions });
     if (olderSessions.length > 0) groups.push({ label: "Older", sessions: olderSessions });
 
     return groups;
-  }, [filteredAndSortedSessions]);
+  }, [filteredSessions]);
 
   return (
-    <div className="h-dvh flex flex-col bg-background relative overflow-hidden">
-      {/* Ambient background gradient */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20"
-        style={{
-          background: `
-            radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.7 0.1 255 / 15%), transparent),
-            radial-gradient(ellipse 60% 40% at 100% 100%, oklch(0.7 0.08 200 / 10%), transparent)
-          `,
-        }}
-      />
-
-      {/* Subtle noise texture overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.015] dark:opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-        }}
-      />
-
-      {/* Content */}
-      <main className="relative flex-1 overflow-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+    <div className="h-dvh flex flex-col bg-background">
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-5xl mx-auto px-4 py-8">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-foreground mb-2">
-              All projects
-            </h1>
-            <p className="text-[14px] text-muted-foreground">
-              {sessions.length} {sessions.length === 1 ? "project" : "projects"} total
-            </p>
-          </div>
+          <div className="flex items-center justify-between px-2 mb-6">
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Projects</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {sessions.length} {sessions.length === 1 ? "project" : "projects"}
+              </p>
+            </div>
 
-          {/* Filters bar */}
-          <div className="flex items-center gap-3 mb-6">
             {/* Search */}
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
               <input
                 type="text"
@@ -136,86 +107,44 @@ function ProjectsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
-                  "w-full h-9 pl-9 pr-3 rounded-lg text-[13px]",
-                  "bg-card/60 border border-border/50",
-                  "placeholder:text-muted-foreground/40",
-                  "focus:outline-none focus:border-border focus:ring-1 focus:ring-border/50",
-                  "transition-all duration-200"
+                  "w-full h-9 pl-9 pr-3 rounded-lg text-sm",
+                  "bg-muted/50 border-none",
+                  "placeholder:text-muted-foreground/50",
+                  "focus:outline-none focus:ring-2 focus:ring-ring/20",
+                  "transition-all"
                 )}
               />
             </div>
-
-            {/* Sort toggle */}
-            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-muted/30 border border-border/30">
-              <button
-                onClick={() => setSortBy("recent")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all",
-                  sortBy === "recent"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Calendar className="size-3" />
-                Recent
-              </button>
-              <button
-                onClick={() => setSortBy("name")}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all",
-                  sortBy === "name"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <SortDesc className="size-3" />
-                Name
-              </button>
-            </div>
           </div>
 
-          {/* Projects grid - grouped by time */}
-          {filteredAndSortedSessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <p className="text-muted-foreground text-[14px]">
-                {searchQuery ? "No projects match your search" : "No projects yet"}
+          {/* Projects */}
+          {filteredSessions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                <Smartphone className="size-5 text-muted-foreground/50" />
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {searchQuery ? "No matching projects" : "No projects yet"}
               </p>
             </div>
-          ) : sortBy === "recent" ? (
+          ) : (
             <div className="space-y-8">
-              {groupedSessions.map((group, groupIndex) => (
-                <div
-                  key={group.label}
-                  className="animate-in fade-in slide-in-from-bottom-2 duration-300"
-                  style={{ animationDelay: `${groupIndex * 50}ms`, animationFillMode: 'backwards' }}
-                >
-                  <h3 className="text-[11px] uppercase tracking-wider font-medium text-muted-foreground/60 mb-3">
+              {groupedSessions.map((group) => (
+                <section key={group.label}>
+                  <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2 mb-3">
                     {group.label}
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {group.sessions.map((session, i) => (
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {group.sessions.map((session) => (
                       <ProjectCard
                         key={session.id}
                         session={session}
                         onOpen={() => handleOpenProject(session.id)}
-                        onDelete={(e) => handleDeleteProject(e, session.id)}
-                        delay={i * 30}
+                        onDelete={() => handleDeleteProject(session.id)}
                       />
                     ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filteredAndSortedSessions.map((session, i) => (
-                <ProjectCard
-                  key={session.id}
-                  session={session}
-                  onOpen={() => handleOpenProject(session.id)}
-                  onDelete={(e) => handleDeleteProject(e, session.id)}
-                  delay={i * 20}
-                />
+                </section>
               ))}
             </div>
           )}
@@ -236,12 +165,10 @@ function ProjectCard({
   session,
   onOpen,
   onDelete,
-  delay = 0,
 }: {
   session: SessionMeta;
   onOpen: () => void;
-  onDelete: (e: React.MouseEvent) => void;
-  delay?: number;
+  onDelete: () => void;
 }) {
   const [designs, setDesigns] = useState<DesignFile[]>([]);
   const [isHovered, setIsHovered] = useState(false);
@@ -253,71 +180,206 @@ function ProjectCard({
       .catch(() => setDesigns([]));
   }, [session.cwd]);
 
-  const previewDesigns = designs;
+  // Get up to 3 screens for preview
+  const previewScreens = designs.slice(0, 3);
+  const screenCount = designs.length;
+  const extraCount = Math.max(0, screenCount - 3);
 
   return (
-    <button
+    <div
+      className={cn(
+        "group relative rounded-2xl overflow-hidden",
+        "bg-card border border-border/50",
+        "hover:border-border/80 hover:shadow-xl hover:shadow-black/5",
+        "dark:hover:shadow-black/20",
+        "transition-all duration-300 cursor-pointer"
+      )}
       onClick={onOpen}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={cn(
-        "group relative text-left p-3 rounded-xl transition-all duration-300 ease-out",
-        "bg-card/50 border border-border/50",
-        "hover:bg-card hover:border-border hover:shadow-lg hover:shadow-black/[0.03]",
-        "dark:hover:shadow-black/20",
-        "animate-in fade-in slide-in-from-bottom-2 duration-300"
-      )}
-      style={{ animationDelay: `${delay}ms`, animationFillMode: 'backwards' }}
     >
-      {/* Screen previews */}
-      <div className="flex gap-1 mb-3 h-[72px] overflow-x-auto overflow-y-hidden rounded-lg bg-muted/30 scrollbar-none p-1.5">
-        {previewDesigns.length > 0 ? (
-          previewDesigns.map((design, i) => (
-            <ScreenThumbnail key={i} html={design.html} isHovered={isHovered} index={i} />
-          ))
+      {/* Stacked Screen Previews */}
+      <div className="relative h-44 bg-gradient-to-b from-muted/40 to-muted/10 overflow-hidden">
+        {previewScreens.length > 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <StackedScreens screens={previewScreens} isHovered={isHovered} />
+          </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <span className="text-[10px] text-muted-foreground/50 font-medium">
-              No screens yet
-            </span>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <EmptyScreensPlaceholder />
+          </div>
+        )}
+
+        {/* Extra count badge */}
+        {extraCount > 0 && (
+          <div className={cn(
+            "absolute bottom-2 right-2 px-2 py-0.5 rounded-full",
+            "bg-foreground/90 text-background",
+            "text-[10px] font-semibold tabular-nums",
+            "shadow-lg"
+          )}>
+            +{extraCount}
           </div>
         )}
       </div>
 
-      {/* Title and meta */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-foreground truncate leading-tight">
-            {session.name || "Untitled"}
-          </p>
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            {formatDate(session.created_at)}
-          </p>
+      {/* Info */}
+      <div className="px-4 py-3 border-t border-border/30">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-medium text-foreground truncate">
+              {session.name || "Untitled"}
+            </h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[11px] text-muted-foreground">
+                {formatDate(session.created_at)}
+              </span>
+              {screenCount > 0 && (
+                <>
+                  <span className="text-muted-foreground/30">·</span>
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                    {screenCount} {screenCount === 1 ? "screen" : "screens"}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "p-1.5 rounded-lg -mr-1.5 -mt-0.5",
+                  "text-muted-foreground/40 hover:text-foreground hover:bg-muted",
+                  "opacity-0 group-hover:opacity-100",
+                  "transition-all duration-200"
+                )}
+              >
+                <MoreHorizontal className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+              >
+                <Trash2 className="size-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <button
-          onClick={onDelete}
-          className={cn(
-            "p-1.5 rounded-md transition-all duration-200 shrink-0",
-            "opacity-0 group-hover:opacity-100",
-            "hover:bg-destructive/10 hover:text-destructive"
-          )}
-        >
-          <X className="size-3" />
-        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
-function ScreenThumbnail({
-  html,
-  isHovered,
-  index
+function StackedScreens({
+  screens,
+  isHovered
 }: {
-  html: string;
+  screens: DesignFile[];
   isHovered: boolean;
-  index: number;
 }) {
+  // Calculate positioning for stacked effect
+  const getScreenStyle = (index: number, total: number): React.CSSProperties => {
+    const baseOffset = 22;
+    const hoverSpread = 32;
+
+    if (total === 1) {
+      return {
+        transform: 'translateX(0) rotate(0deg)',
+        zIndex: 1,
+      };
+    }
+
+    if (total === 2) {
+      const positions = isHovered ? [-hoverSpread, hoverSpread] : [-baseOffset / 2, baseOffset / 2];
+      const rotations = isHovered ? [-5, 5] : [-3, 3];
+      return {
+        transform: `translateX(${positions[index]}px) rotate(${rotations[index]}deg)`,
+        zIndex: index + 1,
+      };
+    }
+
+    // 3 screens
+    const positions = isHovered
+      ? [-hoverSpread * 1.4, 0, hoverSpread * 1.4]
+      : [-baseOffset, 0, baseOffset];
+    const rotations = isHovered ? [-8, 0, 8] : [-5, 0, 5];
+
+    return {
+      transform: `translateX(${positions[index]}px) rotate(${rotations[index]}deg)`,
+      zIndex: index === 1 ? 3 : index + 1,
+    };
+  };
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ height: THUMB_DISPLAY_H + 24 }}>
+      {screens.map((screen, index) => (
+        <div
+          key={index}
+          className={cn(
+            "absolute rounded-xl overflow-hidden",
+            "bg-white dark:bg-zinc-900",
+            "ring-1 ring-black/[0.08] dark:ring-white/10",
+            "transition-all duration-300 ease-out"
+          )}
+          style={{
+            width: THUMB_DISPLAY_W,
+            height: THUMB_DISPLAY_H,
+            boxShadow: '0 4px 20px -2px rgba(0,0,0,0.15), 0 2px 8px -2px rgba(0,0,0,0.1)',
+            ...getScreenStyle(index, screens.length),
+          }}
+        >
+          <ScreenPreview html={screen.html} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyScreensPlaceholder() {
+  return (
+    <div className="flex items-center justify-center">
+      <div className="relative" style={{ height: THUMB_DISPLAY_H }}>
+        {[0, 1, 2].map((i) => {
+          const offsets = [-20, 0, 20];
+          const rotations = [-6, 0, 6];
+          return (
+            <div
+              key={i}
+              className={cn(
+                "absolute rounded-xl border-2 border-dashed border-muted-foreground/15",
+                "bg-muted/20",
+                "flex items-center justify-center"
+              )}
+              style={{
+                width: THUMB_DISPLAY_W * 0.85,
+                height: THUMB_DISPLAY_H * 0.9,
+                left: '50%',
+                top: '50%',
+                transform: `translate(-50%, -50%) translateX(${offsets[i]}px) rotate(${rotations[i]}deg)`,
+                zIndex: i === 1 ? 3 : i + 1,
+              }}
+            >
+              {i === 1 && (
+                <Smartphone className="size-5 text-muted-foreground/25" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ScreenPreview({ html }: { html: string }) {
   const srcDoc = useMemo(() => {
     if (!html) return null;
 
@@ -354,33 +416,18 @@ ${html}
 
   if (!srcDoc) return null;
 
-  const displayW = THUMB_RENDER_W * THUMB_SCALE;
-
   return (
-    <div
-      className={cn(
-        "shrink-0 overflow-hidden rounded-md bg-card shadow-sm",
-        "ring-1 ring-border/30 transition-all duration-300 ease-out"
-      )}
+    <iframe
+      srcDoc={srcDoc}
+      className="border-0 origin-top-left pointer-events-none"
       style={{
-        width: displayW,
-        height: THUMB_DISPLAY_H,
-        transform: isHovered ? `translateY(-${index * 1}px)` : 'none',
-        transitionDelay: `${index * 30}ms`
+        width: THUMB_RENDER_W,
+        height: THUMB_RENDER_H,
+        transform: `scale(${THUMB_SCALE})`,
       }}
-    >
-      <iframe
-        srcDoc={srcDoc}
-        className="border-0 origin-top-left pointer-events-none"
-        style={{
-          width: THUMB_RENDER_W,
-          height: THUMB_RENDER_H,
-          transform: `scale(${THUMB_SCALE})`,
-        }}
-        sandbox="allow-scripts allow-same-origin"
-        tabIndex={-1}
-      />
-    </div>
+      sandbox="allow-scripts allow-same-origin"
+      tabIndex={-1}
+    />
   );
 }
 
@@ -388,10 +435,14 @@ function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "Today";
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   ModelSelector,
   ModelSelectorTrigger,
@@ -31,7 +32,11 @@ const PROVIDER_PRIORITY = [
   "openrouter",
 ];
 
-export function ModelSelectorButton() {
+interface ModelSelectorButtonProps {
+  variant?: "default" | "settings";
+}
+
+export function ModelSelectorButton({ variant = "default" }: ModelSelectorButtonProps) {
   const { models, connectedProviders, selectedModelInfo, selectModel, isLoading } = useModels();
   const [open, setOpen] = useState(false);
   const [providerDialogState, setProviderDialogState] =
@@ -124,29 +129,55 @@ export function ModelSelectorButton() {
     <>
       <ModelSelector open={open} onOpenChange={setOpen}>
         <ModelSelectorTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2.5 px-3 text-xs border-border/60 bg-card/50 hover:bg-card hover:border-border transition-all duration-200"
-            disabled={isLoading}
-          >
-            {selectedModelInfo ? (
-              <>
-                <div className="flex items-center justify-center size-5 rounded-md bg-muted/50 ring-1 ring-border/50">
+          {variant === "settings" ? (
+            <button
+              disabled={isLoading}
+              className={cn(
+                "flex items-center gap-2 px-2.5 py-1.5 -mr-2",
+                "rounded-lg hover:bg-muted/50 transition-colors",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
+              {selectedModelInfo ? (
+                <>
                   <ModelSelectorLogo
                     provider={selectedModelInfo.providerID as any}
-                    className="size-3.5"
+                    className="size-4"
                   />
-                </div>
-                <span className="max-w-[120px] truncate font-medium text-foreground/90">
-                  {selectedModelInfo.name}
-                </span>
-              </>
-            ) : (
-              <span className="font-medium text-muted-foreground">Select model</span>
-            )}
-            <ChevronDown className="size-3.5 text-muted-foreground/50" />
-          </Button>
+                  <span className="text-sm text-muted-foreground max-w-[140px] truncate">
+                    {selectedModelInfo.name}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">Select</span>
+              )}
+              <ChevronDown className="size-3.5 text-muted-foreground/50" />
+            </button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-2.5 px-3 text-xs border-border/60 bg-card/50 hover:bg-card hover:border-border transition-all duration-200"
+              disabled={isLoading}
+            >
+              {selectedModelInfo ? (
+                <>
+                  <div className="flex items-center justify-center size-5 rounded-md bg-muted/50 ring-1 ring-border/50">
+                    <ModelSelectorLogo
+                      provider={selectedModelInfo.providerID as any}
+                      className="size-3.5"
+                    />
+                  </div>
+                  <span className="max-w-[120px] truncate font-medium text-foreground/90">
+                    {selectedModelInfo.name}
+                  </span>
+                </>
+              ) : (
+                <span className="font-medium text-muted-foreground">Select model</span>
+              )}
+              <ChevronDown className="size-3.5 text-muted-foreground/50" />
+            </Button>
+          )}
         </ModelSelectorTrigger>
         <ModelSelectorContent title="Select Model" header={header}>
           <ModelSelectorInput placeholder="Search models..." />
