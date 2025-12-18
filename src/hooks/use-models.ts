@@ -4,39 +4,23 @@ import { useSDK } from "@/context/global-events";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-// Supported providers (OAuth + API key)
-const SUPPORTED_PROVIDERS = [
-  "anthropic",
-  "google",
-  "openai",
-  "github-copilot",
-  "zen",
+// Hot models to feature
+const HOT_MODELS = [
+  "gemini-3-pro-preview",
+  "claude-opus-4-5",
+  "gpt-5.2",
 ] as const;
-type SupportedProvider = (typeof SUPPORTED_PROVIDERS)[number];
-
-// Curated model whitelist per provider
-// null = allow all models from that provider
-const MODEL_WHITELIST: Record<SupportedProvider, string[] | null> = {
-  anthropic: ["claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5"],
-  google: ["gemini-3-pro", "gemini-3-flash"],
-  openai: ["gpt-5.2", "gpt-5.1-codex", "gpt-5.1-codex-mini"],
-  "github-copilot": [
-    "gpt-5.2",
-    "gpt-5.1-codex",
-    "gpt-5.1-codex-mini",
-    "claude-sonnet-4.5",
-    "claude-opus-4.5",
-    "claude-haiku-4.5",
-  ],
-  // Zen provider - allow all models it provides (uses API key)
-  zen: null,
-};
 
 export interface Model {
   id: string;
   name: string;
   providerID: string;
   providerName: string;
+  releaseDate?: string;
+  family?: string;
+  hot?: boolean;
+  free?: boolean;
+  latest?: boolean;
 }
 
 interface ModelState {
@@ -69,120 +53,100 @@ export const modelKeys = {
 };
 
 /**
- * Check if a model ID matches any pattern in the whitelist
+ * Check if a model is hot (featured)
  */
-function matchesWhitelist(modelID: string, whitelist: string[]): string | null {
-  // Exact match first
-  if (whitelist.includes(modelID)) return modelID;
-
-  // Partial match (model ID contains whitelist pattern)
-  for (const pattern of whitelist) {
-    if (modelID.includes(pattern) || modelID.startsWith(pattern)) {
-      return pattern;
-    }
-  }
-  return null;
+function isHotModel(modelID: string): boolean {
+  return HOT_MODELS.some(
+    (hot) => modelID.includes(hot) || modelID.startsWith(hot),
+  );
 }
 
 /**
- * Transform raw provider data into filtered, sorted Model array
+ * Check if a model is free
+ */
+function isFreeModel(modelID: string): boolean {
+  return modelID.includes("big-pickle");
+}
+
+/**
+ * Filter to latest models (within 6 months, most recent per provider+family)
+ */
+function filterLatestModels(models: Model[]): Model[] {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+  // Group by provider + family, keep most recent
+  const grouped = new Map<string, Model>();
+  for (const model of models) {
+    if (!model.releaseDate) continue;
+    const releaseDate = new Date(model.releaseDate);
+    if (releaseDate < sixMonthsAgo) continue;
+
+    const key = `${model.providerID}:${model.family || model.id}`;
+    const existing = grouped.get(key);
+    if (!existing || new Date(model.releaseDate) > new Date(existing.releaseDate!)) {
+      grouped.set(key, model);
+    }
+  }
+
+  // Mark filtered models as latest
+  const latestModels = Array.from(grouped.values());
+  return latestModels.map((m) => ({ ...m, latest: true }));
+}
+
+/**
+ * Transform raw provider data into Model array with hot/free flags
  */
 function transformProviderData(
   all: Array<{
     id: string;
     name: string;
-    models: Record<string, { id?: string; name: string }>;
+    models: Record<
+      string,
+      {
+        id?: string;
+        name: string;
+        release_date?: string;
+        family?: string;
+      }
+    >;
   }>,
-  connected: string[],
-): { models: Model[]; connectedProviders: string[] } {
-  const filteredModels: Model[] = [];
+): Model[] {
+  const models: Model[] = [];
   const seenModels = new Set<string>();
 
   for (const provider of all) {
-    // Only include supported providers
-    if (!SUPPORTED_PROVIDERS.includes(provider.id as SupportedProvider))
-      continue;
-
-    // Only include if connected
-    if (!connected.includes(provider.id)) continue;
-
-    const whitelist = MODEL_WHITELIST[provider.id as SupportedProvider];
-
-    // Extract models
+    // Extract all models from provider
     for (const [key, model] of Object.entries(provider.models)) {
       const modelID = model.id || key;
-
-      // If whitelist is null, allow all models from this provider
-      if (whitelist === null) {
-        const dedupeKey = `${provider.id}:${modelID}`;
-        if (seenModels.has(dedupeKey)) continue;
-        seenModels.add(dedupeKey);
-
-        filteredModels.push({
-          id: modelID,
-          name: model.name,
-          providerID: provider.id,
-          providerName: provider.name,
-        });
-        continue;
-      }
-
-      const matchedPattern = matchesWhitelist(modelID, whitelist);
-
-      if (!matchedPattern) continue;
-
-      // Dedupe by pattern (e.g., only one "claude-sonnet-4" variant)
-      const dedupeKey = `${provider.id}:${matchedPattern}`;
+      const dedupeKey = `${provider.id}:${modelID}`;
       if (seenModels.has(dedupeKey)) continue;
       seenModels.add(dedupeKey);
 
-      filteredModels.push({
+      models.push({
         id: modelID,
-        name: model.name.replace("(latest)", ""),
+        name: model.name.replace("(latest)", "").trim(),
         providerID: provider.id,
         providerName: provider.name,
+        releaseDate: model.release_date,
+        family: model.family,
+        hot: isHotModel(modelID),
+        free: isFreeModel(modelID),
       });
     }
   }
 
-  // Sort models by provider, then by model priority within provider
-  const modelOrder: Record<string, number> = {
-    "claude-opus-4": 1,
-    "claude-sonnet-4": 2,
-    "claude-haiku-4": 3,
-    "big-pickle": 4,
-    "gemini-3-pro": 1,
-    "gemini-3-flash": 2,
-    "gpt-5.2": 1,
-    "codex-5.2": 1,
-    "gpt-5.2-mini": 2,
-    "codex-5.2-mini": 2,
-    zen: 1,
-  };
+  // Filter to latest models only, then sort
+  const latestModels = filterLatestModels(models);
 
-  filteredModels.sort((a, b) => {
-    const providerOrder = [
-      "anthropic",
-      "google",
-      "openai",
-      "github-copilot",
-      "zen",
-    ];
-    const aProviderIdx = providerOrder.indexOf(a.providerID);
-    const bProviderIdx = providerOrder.indexOf(b.providerID);
-    if (aProviderIdx !== bProviderIdx) return aProviderIdx - bProviderIdx;
-
-    // Find matching pattern for ordering
-    const aPattern =
-      Object.keys(modelOrder).find((p) => a.id.includes(p)) || a.id;
-    const bPattern =
-      Object.keys(modelOrder).find((p) => b.id.includes(p)) || b.id;
-    const aOrder = modelOrder[aPattern] ?? 99;
-    const bOrder = modelOrder[bPattern] ?? 99;
-    return aOrder - bOrder;
+  // Sort: hot models first, then alphabetically by name
+  latestModels.sort((a, b) => {
+    if (a.hot && !b.hot) return -1;
+    if (!a.hot && b.hot) return 1;
+    return a.name.localeCompare(b.name);
   });
 
-  return { models: filteredModels, connectedProviders: connected };
+  return latestModels;
 }
 
 /**
@@ -198,7 +162,10 @@ export function useProviderData() {
       if (!response.data) {
         throw new Error("No provider data received");
       }
-      return transformProviderData(response.data.all, response.data.connected);
+      return {
+        models: transformProviderData(response.data.all),
+        connectedProviders: response.data.connected ?? [],
+      };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes - models don't change often
   });
@@ -225,7 +192,7 @@ export function useModels() {
     if (!selectedModel) return null;
     return (
       models.find(
-        (m) =>
+        (m: Model) =>
           m.providerID === selectedModel.providerID &&
           m.id === selectedModel.modelID,
       ) ?? null
@@ -234,11 +201,11 @@ export function useModels() {
 
   return {
     models,
+    connectedProviders,
     selectedModel,
     selectedModelInfo,
     isLoading,
     error: error?.message ?? null,
-    connectedProviders,
     selectModel,
     refreshModels: () => {
       refetch();

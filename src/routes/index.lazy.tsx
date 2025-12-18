@@ -2,10 +2,8 @@ import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSessions } from "@/hooks/use-sessions";
-import { useModels } from "@/hooks/use-models";
 import type { DesignFile } from "@/hooks/use-designs";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   PromptInput,
   PromptInputTextarea,
@@ -22,19 +20,8 @@ import {
   PromptInputAttachment,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
-import {
-  ModelSelector,
-  ModelSelectorTrigger,
-  ModelSelectorContent,
-  ModelSelectorInput,
-  ModelSelectorList,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorItem,
-  ModelSelectorLogo,
-  ModelSelectorName,
-} from "@/components/ai-elements/model-selector";
-import { ChevronDown, X, ChevronRight } from "lucide-react";
+import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
+import { X, ChevronRight } from "lucide-react";
 import { ArrowRight } from "@phosphor-icons/react";
 
 // Mini thumbnail constants
@@ -415,84 +402,6 @@ function ComposerInput({
     </PromptInput>
   );
 }
-
-function ModelSelectorButton() {
-  const { models, selectedModelInfo, selectModel, isLoading } = useModels();
-  const [open, setOpen] = useState(false);
-
-  const groupedModels = models.reduce(
-    (acc, model) => {
-      if (!acc[model.providerID]) {
-        acc[model.providerID] = {
-          name: model.providerName,
-          models: [],
-        };
-      }
-      acc[model.providerID].models.push(model);
-      return acc;
-    },
-    {} as Record<string, { name: string; models: typeof models }>
-  );
-
-  return (
-    <ModelSelector open={open} onOpenChange={setOpen}>
-      <ModelSelectorTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 gap-2 px-3 text-xs text-muted-foreground hover:text-foreground border"
-          disabled={isLoading}
-        >
-          {selectedModelInfo ? (
-            <>
-              <ModelSelectorLogo
-                provider={selectedModelInfo.providerID as any}
-                className="size-4"
-              />
-              <span className="max-w-[120px] truncate font-medium">
-                {selectedModelInfo.name}
-              </span>
-            </>
-          ) : (
-            <span className="font-medium">Select model</span>
-          )}
-          <ChevronDown className="size-3.5 opacity-50" />
-        </Button>
-      </ModelSelectorTrigger>
-      <ModelSelectorContent title="Select Model">
-        <ModelSelectorInput placeholder="Search models..." />
-        <ModelSelectorList>
-          <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-          {Object.entries(groupedModels).map(
-            ([providerID, { name, models: providerModels }]) => (
-              <ModelSelectorGroup key={providerID} heading={name}>
-                {providerModels.map((model) => (
-                  <ModelSelectorItem
-                    key={`${model.providerID}/${model.id}`}
-                    value={`${model.providerID}/${model.id}`}
-                    onSelect={() => {
-                      selectModel(model.providerID, model.id);
-                      setOpen(false);
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <ModelSelectorLogo
-                      provider={model.providerID as any}
-                      className="size-4"
-                    />
-                    <ModelSelectorName>{model.name}</ModelSelectorName>
-                  </ModelSelectorItem>
-                ))}
-              </ModelSelectorGroup>
-            )
-          )}
-        </ModelSelectorList>
-      </ModelSelectorContent>
-    </ModelSelector>
-  );
-}
-
-
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);

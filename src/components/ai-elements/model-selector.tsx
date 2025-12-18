@@ -32,17 +32,31 @@ export const ModelSelectorTrigger = (props: ModelSelectorTriggerProps) => (
 
 export type ModelSelectorContentProps = ComponentProps<typeof DialogContent> & {
   title?: ReactNode;
+  header?: ReactNode;
 };
 
 export const ModelSelectorContent = ({
   className,
   children,
   title = "Model Selector",
+  header,
   ...props
 }: ModelSelectorContentProps) => (
-  <DialogContent className={cn("p-0", className)} {...props}>
+  <DialogContent
+    className={cn(
+      "p-0 gap-0 overflow-hidden",
+      "border-border/40 shadow-2xl shadow-black/20",
+      "bg-gradient-to-b from-card to-card/95",
+      "backdrop-blur-xl",
+      "max-w-[420px]",
+      className
+    )}
+    showCloseButton={false}
+    {...props}
+  >
     <DialogTitle className="sr-only">{title}</DialogTitle>
-    <Command className="**:data-[slot=command-input-wrapper]:h-auto">
+    {header}
+    <Command className="bg-transparent **:data-[slot=command-input-wrapper]:h-auto">
       {children}
     </Command>
   </DialogContent>
@@ -60,31 +74,76 @@ export const ModelSelectorInput = ({
   className,
   ...props
 }: ModelSelectorInputProps) => (
-  <CommandInput className={cn("h-auto py-3.5", className)} {...props} />
+  <CommandInput
+    className={cn(
+      "h-auto py-3 px-4",
+      "placeholder:text-muted-foreground/40",
+      className
+    )}
+    {...props}
+  />
 );
 
 export type ModelSelectorListProps = ComponentProps<typeof CommandList>;
 
-export const ModelSelectorList = (props: ModelSelectorListProps) => (
-  <CommandList {...props} />
+export const ModelSelectorList = ({
+  className,
+  ...props
+}: ModelSelectorListProps) => (
+  <CommandList
+    className={cn("max-h-[360px] p-2", className)}
+    {...props}
+  />
 );
 
 export type ModelSelectorEmptyProps = ComponentProps<typeof CommandEmpty>;
 
-export const ModelSelectorEmpty = (props: ModelSelectorEmptyProps) => (
-  <CommandEmpty {...props} />
+export const ModelSelectorEmpty = ({
+  className,
+  ...props
+}: ModelSelectorEmptyProps) => (
+  <CommandEmpty
+    className={cn("py-8 text-center text-sm text-muted-foreground/60", className)}
+    {...props}
+  />
 );
 
 export type ModelSelectorGroupProps = ComponentProps<typeof CommandGroup>;
 
-export const ModelSelectorGroup = (props: ModelSelectorGroupProps) => (
-  <CommandGroup {...props} />
+export const ModelSelectorGroup = ({
+  className,
+  ...props
+}: ModelSelectorGroupProps) => (
+  <CommandGroup
+    className={cn(
+      "px-1 py-1.5",
+      "[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-2",
+      "[&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium",
+      "[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider",
+      "[&_[cmdk-group-heading]]:text-muted-foreground/50",
+      className
+    )}
+    {...props}
+  />
 );
 
 export type ModelSelectorItemProps = ComponentProps<typeof CommandItem>;
 
-export const ModelSelectorItem = (props: ModelSelectorItemProps) => (
-  <CommandItem {...props} />
+export const ModelSelectorItem = ({
+  className,
+  ...props
+}: ModelSelectorItemProps) => (
+  <CommandItem
+    className={cn(
+      "px-3 py-2.5 rounded-lg cursor-pointer",
+      "text-sm text-foreground/90",
+      "transition-all duration-150",
+      "data-[selected=true]:bg-accent/50",
+      "hover:bg-accent/30",
+      className
+    )}
+    {...props}
+  />
 );
 
 export type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;
