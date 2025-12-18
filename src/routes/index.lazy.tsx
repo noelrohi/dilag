@@ -34,7 +34,8 @@ import {
   ModelSelectorLogo,
   ModelSelectorName,
 } from "@/components/ai-elements/model-selector";
-import { ArrowRight, ChevronDown, X } from "lucide-react";
+import { ArrowRight, ChevronDown, X, ChevronRight } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar";
 
 // Mini thumbnail constants
 const THUMB_RENDER_W = 393;
@@ -170,6 +171,11 @@ function LandingPage() {
                   />
                 ))}
               </div>
+
+              {/* View all link */}
+              {sortedSessions.length > 4 && (
+                <ViewAllButton count={sortedSessions.length} />
+              )}
             </div>
           </div>
         )}
@@ -478,6 +484,25 @@ function ModelSelectorButton() {
         </ModelSelectorList>
       </ModelSelectorContent>
     </ModelSelector>
+  );
+}
+
+function ViewAllButton({ count }: { count: number }) {
+  const { toggleSidebar } = useSidebar();
+
+  return (
+    <button
+      onClick={toggleSidebar}
+      className={cn(
+        "mt-4 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg",
+        "text-[12px] text-muted-foreground/70 font-medium",
+        "hover:text-muted-foreground hover:bg-muted/30",
+        "transition-colors duration-200"
+      )}
+    >
+      <span>View all {count} projects</span>
+      <ChevronRight className="size-3.5" />
+    </button>
   );
 }
 
