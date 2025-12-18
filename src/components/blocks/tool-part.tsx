@@ -5,7 +5,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ChevronRightIcon } from "lucide-react";
-import { getToolConfig, type ToolRenderProps } from "@/lib/tool-registry";
+import { getToolConfig, isStructuredSubtitle, type ToolRenderProps } from "@/lib/tool-registry";
 import type { ToolState } from "@/context/session-store";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "@/components/ai-elements/shimmer";
@@ -76,7 +76,16 @@ export function ToolPart({ tool, state }: ToolPartProps) {
               </span>
             )}
             {subtitle && (
-              <span className="text-muted-foreground truncate">{subtitle}</span>
+              <span className="text-muted-foreground flex items-center gap-1.5 min-w-0">
+                {isStructuredSubtitle(subtitle) ? (
+                  <>
+                    <span className="truncate">{subtitle.text}</span>
+                    {subtitle.suffix && <span className="shrink-0">{subtitle.suffix}</span>}
+                  </>
+                ) : (
+                  <span className="truncate">{subtitle}</span>
+                )}
+              </span>
             )}
           </div>
           {state.status === "running" && elapsed > 0 && (

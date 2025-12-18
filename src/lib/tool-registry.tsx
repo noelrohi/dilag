@@ -29,13 +29,24 @@ export interface ToolRenderProps {
   metadata?: Record<string, unknown>;
 }
 
+// Structured subtitle with truncatable and fixed parts
+export interface StructuredSubtitle {
+  text: ReactNode;      // Truncatable part (filename, description)
+  suffix?: ReactNode;   // Fixed part (line counts, stats) - never truncated
+}
+
 // Tool registration config
 export interface ToolConfig {
   icon: LucideIcon;
   title: (props: ToolRenderProps) => string;
   chipLabel?: (props: ToolRenderProps) => string | undefined;
-  subtitle?: (props: ToolRenderProps) => ReactNode;
+  subtitle?: (props: ToolRenderProps) => ReactNode | StructuredSubtitle;
   content?: (props: ToolRenderProps) => ReactNode;
+}
+
+// Type guard for structured subtitle
+export function isStructuredSubtitle(value: unknown): value is StructuredSubtitle {
+  return typeof value === "object" && value !== null && "text" in value;
 }
 
 // Extract common input fields (try multiple possible keys)
@@ -156,7 +167,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       const lines =
         preview?.split("\n").length ?? p.output?.split("\n").length ?? 0;
       if (!file) return undefined;
-      return lines > 0 ? `${file} (${lines} lines)` : file;
+      return {
+        text: file,
+        suffix: lines > 0 ? <span className="text-muted-foreground/70">({lines} lines)</span> : undefined,
+      };
     },
     content: (p) => {
       const { filePath } = getInput(p);
@@ -190,17 +204,15 @@ export const TOOLS: Record<string, ToolConfig> = {
         | { additions?: number; deletions?: number }
         | undefined;
       if (!file && !filediff) return undefined;
-      return (
-        <>
-          {file}{" "}
-          {filediff && (
-            <>
-              <span className="text-green-500">+{filediff.additions ?? 0}</span>{" "}
-              <span className="text-red-500">-{filediff.deletions ?? 0}</span>
-            </>
-          )}
-        </>
-      );
+      return {
+        text: file,
+        suffix: filediff && (
+          <>
+            <span className="text-green-500">+{filediff.additions ?? 0}</span>{" "}
+            <span className="text-red-500">-{filediff.deletions ?? 0}</span>
+          </>
+        ),
+      };
     },
     content: (p) => {
       const diff = p.metadata?.diff as string | undefined;
@@ -233,14 +245,12 @@ export const TOOLS: Record<string, ToolConfig> = {
       const exit = p.metadata?.exit as number | null | undefined;
       const exitIndicator =
         exit !== undefined && exit !== null && exit !== 0 ? (
-          <span className="text-red-500 ml-1">(exit {exit})</span>
+          <span className="text-red-500">(exit {exit})</span>
         ) : null;
-      return (
-        <>
-          {desc || description || command?.slice(0, 50)}
-          {exitIndicator}
-        </>
-      );
+      return {
+        text: desc || description || command?.slice(0, 50),
+        suffix: exitIndicator,
+      };
     },
     content: (p) => {
       const { command } = getInput(p);
@@ -273,11 +283,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       const file = filename(filePath);
       const lines = content?.split("\n").length ?? 0;
       if (!file && lines === 0) return undefined;
-      return (
-        <>
-          {file || "file"} <span className="text-green-500">+{lines}</span>
-        </>
-      );
+      return {
+        text: file || "file",
+        suffix: <span className="text-green-500">+{lines}</span>,
+      };
     },
     content: (p) => {
       const { filePath, content } = getInput(p);
@@ -344,14 +353,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       const count = p.metadata?.count as number | undefined;
       const truncated = p.metadata?.truncated as boolean | undefined;
       if (count !== undefined) {
-        return (
-          <>
-            {pattern}{" "}
-            <span className="text-muted-foreground">
-              ({count} files{truncated ? "+" : ""})
-            </span>
-          </>
-        );
+        return {
+          text: pattern,
+          suffix: <span className="text-muted-foreground/70">({count} files{truncated ? "+" : ""})</span>,
+        };
       }
       return pattern;
     },
@@ -374,14 +379,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       const truncated = p.metadata?.truncated as boolean | undefined;
       const path = filePath ? filename(filePath) || filePath : "directory";
       if (count !== undefined) {
-        return (
-          <>
-            {path}{" "}
-            <span className="text-muted-foreground">
-              ({count} items{truncated ? "+" : ""})
-            </span>
-          </>
-        );
+        return {
+          text: path,
+          suffix: <span className="text-muted-foreground/70">({count} items{truncated ? "+" : ""})</span>,
+        };
       }
       return path;
     },
@@ -403,14 +404,10 @@ export const TOOLS: Record<string, ToolConfig> = {
       const matches = p.metadata?.matches as number | undefined;
       const truncated = p.metadata?.truncated as boolean | undefined;
       if (matches !== undefined) {
-        return (
-          <>
-            {pattern}{" "}
-            <span className="text-muted-foreground">
-              ({matches} matches{truncated ? "+" : ""})
-            </span>
-          </>
-        );
+        return {
+          text: pattern,
+          suffix: <span className="text-muted-foreground/70">({matches} matches{truncated ? "+" : ""})</span>,
+        };
       }
       return pattern;
     },
