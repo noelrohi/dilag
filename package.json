@@ -16,8 +16,14 @@
   "bumpp": {
     "files": [
       "package.json",
-      "src-tauri/tauri.conf.json",
-      "src-tauri/Cargo.toml"
+      {
+        "file": "src-tauri/tauri.conf.json",
+        "type": "json"
+      },
+      {
+        "file": "src-tauri/Cargo.toml",
+        "type": "toml"
+      }
     ]
   },
   "dependencies": {
