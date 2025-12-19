@@ -19,7 +19,7 @@ export interface UpdaterState {
 }
 
 interface UpdaterContextValue extends UpdaterState {
-  checkForUpdates: () => Promise<void>;
+  checkForUpdates: (silent?: boolean) => Promise<void>;
   installUpdate: () => Promise<void>;
   dismissUpdate: () => void;
 }
@@ -44,7 +44,9 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
   const updateRef = useRef<Update | null>(null);
   const hasCheckedRef = useRef(false);
 
-  const checkForUpdates = useCallback(async () => {
+  const installUpdateRef = useRef<(() => Promise<void>) | null>(null);
+
+  const checkForUpdates = useCallback(async (silent = false) => {
     setState((prev) => ({ ...prev, checking: true, error: null }));
 
     try {
@@ -70,37 +72,9 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
           duration: Infinity,
           action: {
             label: "Update Now",
-            onClick: async () => {
-              const currentUpdate = updateRef.current;
-              if (!currentUpdate) return;
-
-              try {
-                let downloaded = 0;
-                let contentLength = 0;
-
-                setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0 }));
-
-                await currentUpdate.downloadAndInstall((event: DownloadEvent) => {
-                  switch (event.event) {
-                    case "Started":
-                      contentLength = event.data.contentLength ?? 0;
-                      break;
-                    case "Progress":
-                      downloaded += event.data.chunkLength;
-                      const progress = contentLength > 0 ? (downloaded / contentLength) * 100 : 0;
-                      setState((prev) => ({ ...prev, downloadProgress: Math.round(progress) }));
-                      break;
-                    case "Finished":
-                      setState((prev) => ({ ...prev, downloadProgress: 100 }));
-                      break;
-                  }
-                });
-
-                await relaunch();
-              } catch (error) {
-                setState((prev) => ({ ...prev, downloading: false }));
-                toast.error("Failed to install update");
-              }
+            onClick: () => {
+              // Use ref to call the latest installUpdate function
+              installUpdateRef.current?.();
             },
           },
         });
@@ -110,13 +84,24 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
           checking: false,
           updateAvailable: false,
         }));
+        
+        // Show feedback only when manually checking (not silent)
+        if (!silent) {
+          toast.success("You're on the latest version");
+        }
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to check for updates";
       setState((prev) => ({
         ...prev,
         checking: false,
-        error: error instanceof Error ? error.message : "Failed to check for updates",
+        error: message,
       }));
+      
+      // Show error feedback only when manually checking (not silent)
+      if (!silent) {
+        toast.error(message);
+      }
     }
   }, []);
 
@@ -166,13 +151,19 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
     updateRef.current = null;
   }, []);
 
+  // Keep installUpdateRef in sync with installUpdate for toast callback
+  useEffect(() => {
+    installUpdateRef.current = installUpdate;
+  }, [installUpdate]);
+
   // Check for updates once on mount (with delay to not block app startup)
+  // Use silent mode to avoid showing "up to date" toast on every app launch
   useEffect(() => {
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
 
     const timer = setTimeout(() => {
-      checkForUpdates();
+      checkForUpdates(true); // silent = true for auto-check
     }, 3000);
 
     return () => clearTimeout(timer);

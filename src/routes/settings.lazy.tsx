@@ -141,7 +141,7 @@ function SettingsPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={checkForUpdates}
+                      onClick={() => checkForUpdates()}
                       disabled={checking}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-md",
