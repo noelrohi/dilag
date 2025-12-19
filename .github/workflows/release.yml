@@ -48,7 +48,9 @@ jobs:
         run: |
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
+          set -a
           source ~/sandbox/dilag/.env.local
+          set +a
           cargo tauri build --target ${{ matrix.target }}
 
       - name: Upload artifacts
