@@ -91,37 +91,38 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Generate latest.json for updater
+      - name: Generate dilag-latest.json for updater
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
           
-          # Read signatures
-          AARCH64_SIG=$(cat release/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")
-          X64_SIG=$(cat release/*x86_64*.app.tar.gz.sig 2>/dev/null || echo "")
+          # Read signature (universal build or aarch64)
+          SIG=$(cat release/*.app.tar.gz.sig 2>/dev/null | head -1 || echo "")
           
-          # Get filenames
-          AARCH64_FILE=$(ls release/*aarch64*.app.tar.gz 2>/dev/null | xargs -n1 basename || echo "")
-          X64_FILE=$(ls release/*x86_64*.app.tar.gz 2>/dev/null | xargs -n1 basename || echo "")
+          # Get the tar.gz filename
+          TAR_FILE=$(ls release/*.app.tar.gz 2>/dev/null | head -1 | xargs -n1 basename || echo "")
           
-          cat > release/latest.json << EOF
+          cat > release/dilag-latest.json << EOF
           {
             "version": "${VERSION}",
             "notes": "Release v${VERSION}",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
-                "signature": "${AARCH64_SIG}",
-                "url": "https://github.com/noelrohi/dilag/releases/download/v${VERSION}/${AARCH64_FILE}"
-              },
-              "darwin-x86_64": {
-                "signature": "${X64_SIG}",
-                "url": "https://github.com/noelrohi/dilag/releases/download/v${VERSION}/${X64_FILE}"
+                "signature": "${SIG}",
+                "url": "https://github.com/noelrohi/dilag/releases/download/v${VERSION}/${TAR_FILE}"
               }
             }
           }
           EOF
           
-          cat release/latest.json
+          echo "Generated dilag-latest.json:"
+          cat release/dilag-latest.json
+
+      - name: Update Gist with latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: |
+          gh gist edit 3f302aa878e51905595de327c16ea5c0 release/dilag-latest.json
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -133,4 +134,4 @@ jobs:
             release/*.dmg
             release/*.app.tar.gz
             release/*.app.tar.gz.sig
-            release/latest.json
+            release/dilag-latest.json
