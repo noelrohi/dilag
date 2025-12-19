@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Sun, Moon, Monitor, ExternalLink, Trash2, RefreshCw, HardDrive, Info, Palette } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import { useUpdater } from "@/hooks/use-updater";
+import { useUpdaterContext } from "@/context/updater-context";
 import { cn } from "@/lib/utils";
 import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
 import {
@@ -28,7 +28,7 @@ interface AppInfo {
 
 function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const { checkForUpdates, checking, updateAvailable, updateInfo, installUpdate, downloading, downloadProgress } = useUpdater();
+  const { checkForUpdates, checking, updateAvailable, updateInfo, installUpdate, downloading, downloadProgress } = useUpdaterContext();
 
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);

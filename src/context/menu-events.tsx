@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useCallback, type ReactNode } fro
 import { listen } from "@tauri-apps/api/event";
 import { useNavigate } from "@tanstack/react-router";
 import { useSessions } from "@/hooks/use-sessions";
-import { useUpdater } from "@/hooks/use-updater";
+import { useUpdaterContext } from "@/context/updater-context";
 
 type MenuEventHandler = {
   toggleSidebar: () => void;
@@ -45,7 +45,7 @@ export function unregisterSidebarToggle() {
 export function MenuEventsProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { createSession } = useSessions();
-  const { checkForUpdates } = useUpdater();
+  const { checkForUpdates } = useUpdaterContext();
 
   const toggleSidebar = useCallback(() => {
     if (sidebarToggleCallback) {

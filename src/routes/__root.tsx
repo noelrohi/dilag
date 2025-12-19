@@ -3,9 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { GlobalEventsProvider } from "@/context/global-events";
 import { MenuEventsProvider } from "@/context/menu-events";
+import { UpdaterProvider } from "@/context/updater-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { UpdateDialog } from "@/components/blocks/update-dialog";
 import { Toaster } from "@/components/ui/sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/blocks/app-sidebar";
@@ -34,15 +34,16 @@ function RootLayout() {
       <ThemeProvider defaultTheme="dark" storageKey="dilag-theme">
         <QueryClientProvider client={queryClient}>
           <GlobalEventsProvider>
-            <MenuEventsProvider>
-              <SidebarProvider defaultOpen={false}>
-                <AppSidebar />
-                <SidebarInset>
-                  <Outlet />
-                </SidebarInset>
-              </SidebarProvider>
-              <UpdateDialog />
-            </MenuEventsProvider>
+            <UpdaterProvider>
+              <MenuEventsProvider>
+                <SidebarProvider defaultOpen={false}>
+                  <AppSidebar />
+                  <SidebarInset>
+                    <Outlet />
+                  </SidebarInset>
+                </SidebarProvider>
+              </MenuEventsProvider>
+            </UpdaterProvider>
           </GlobalEventsProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>

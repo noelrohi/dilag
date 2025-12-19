@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { toast } from "sonner";
@@ -18,7 +18,19 @@ export interface UpdaterState {
   error: string | null;
 }
 
-export function useUpdater() {
+interface UpdaterContextValue extends UpdaterState {
+  checkForUpdates: () => Promise<void>;
+  installUpdate: () => Promise<void>;
+  dismissUpdate: () => void;
+}
+
+const UpdaterContext = createContext<UpdaterContextValue | null>(null);
+
+interface UpdaterProviderProps {
+  children: ReactNode;
+}
+
+export function UpdaterProvider({ children }: UpdaterProviderProps) {
   const [state, setState] = useState<UpdaterState>({
     checking: false,
     updateAvailable: false,
@@ -30,6 +42,7 @@ export function useUpdater() {
 
   const [update, setUpdate] = useState<Update | null>(null);
   const updateRef = useRef<Update | null>(null);
+  const hasCheckedRef = useRef(false);
 
   const checkForUpdates = useCallback(async () => {
     setState((prev) => ({ ...prev, checking: true, error: null }));
@@ -65,6 +78,8 @@ export function useUpdater() {
                 let downloaded = 0;
                 let contentLength = 0;
 
+                setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0 }));
+
                 await currentUpdate.downloadAndInstall((event: DownloadEvent) => {
                   switch (event.event) {
                     case "Started":
@@ -73,7 +88,7 @@ export function useUpdater() {
                     case "Progress":
                       downloaded += event.data.chunkLength;
                       const progress = contentLength > 0 ? (downloaded / contentLength) * 100 : 0;
-                      setState((prev) => ({ ...prev, downloading: true, downloadProgress: Math.round(progress) }));
+                      setState((prev) => ({ ...prev, downloadProgress: Math.round(progress) }));
                       break;
                     case "Finished":
                       setState((prev) => ({ ...prev, downloadProgress: 100 }));
@@ -83,6 +98,7 @@ export function useUpdater() {
 
                 await relaunch();
               } catch (error) {
+                setState((prev) => ({ ...prev, downloading: false }));
                 toast.error("Failed to install update");
               }
             },
@@ -129,7 +145,6 @@ export function useUpdater() {
         }
       });
 
-      // Relaunch the app after update
       await relaunch();
     } catch (error) {
       setState((prev) => ({
@@ -137,6 +152,7 @@ export function useUpdater() {
         downloading: false,
         error: error instanceof Error ? error.message : "Failed to install update",
       }));
+      toast.error("Failed to install update");
     }
   }, [update]);
 
@@ -147,21 +163,39 @@ export function useUpdater() {
       updateInfo: null,
     }));
     setUpdate(null);
+    updateRef.current = null;
   }, []);
 
-  // Check for updates on mount (with delay to not block app startup)
+  // Check for updates once on mount (with delay to not block app startup)
   useEffect(() => {
+    if (hasCheckedRef.current) return;
+    hasCheckedRef.current = true;
+
     const timer = setTimeout(() => {
       checkForUpdates();
-    }, 3000); // Check after 3 seconds
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [checkForUpdates]);
 
-  return {
+  const value: UpdaterContextValue = {
     ...state,
     checkForUpdates,
     installUpdate,
     dismissUpdate,
   };
+
+  return (
+    <UpdaterContext.Provider value={value}>
+      {children}
+    </UpdaterContext.Provider>
+  );
+}
+
+export function useUpdaterContext() {
+  const context = useContext(UpdaterContext);
+  if (!context) {
+    throw new Error("useUpdaterContext must be used within an UpdaterProvider");
+  }
+  return context;
 }
