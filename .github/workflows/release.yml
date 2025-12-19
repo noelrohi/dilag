@@ -16,34 +16,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Reinstall Bun for ARM64
+      - name: Setup Bun (if needed)
         run: |
-          curl -fsSL https://bun.sh/install | bash
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
+          if ! command -v bun &> /dev/null; then
+            curl -fsSL https://bun.sh/install | bash
+          fi
           bun --version
+
+      - name: Install Tauri CLI (if needed)
+        run: |
+          if ! command -v cargo-tauri &> /dev/null; then
+            cargo install tauri-cli --version "^2"
+          fi
 
       - name: Install dependencies
         run: |
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          rm -rf node_modules bun.lockb
           bun install
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2"
-
-      - name: Load environment and build Tauri app
+      - name: Build Tauri app
         timeout-minutes: 30
         run: |
           export BUN_INSTALL="$HOME/.bun"
