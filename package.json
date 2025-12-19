@@ -1,7 +1,7 @@
 {
   "name": "dilag",
   "private": true,
-  "version": "0.2.6",
+  "version": "0.2.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,20 +11,11 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "release": "bumpp"
+    "release": "bumpp",
+    "sync-version": "bun scripts/sync-version.ts"
   },
   "bumpp": {
-    "files": [
-      "package.json",
-      {
-        "file": "src-tauri/tauri.conf.json",
-        "type": "json"
-      },
-      {
-        "file": "src-tauri/Cargo.toml",
-        "type": "toml"
-      }
-    ]
+    "execute": "bun run sync-version %s"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
