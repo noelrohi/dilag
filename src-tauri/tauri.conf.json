@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Dilag",
-  "version": "0.2.5",
+  "version": "0.2.7",
   "identifier": "com.rohi.dilag",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
+    "beforeBuildCommand": "bun run sync-version-from-pkg && bun run build",
     "frontendDist": "../dist"
   },
   "app": {
