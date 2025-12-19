@@ -16,17 +16,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Update version from tag
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          # Update package.json
-          sed -i '' "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" package.json
-          # Update tauri.conf.json
-          sed -i '' "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
-          # Update Cargo.toml
-          sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
-          echo "Updated version to $VERSION"
-
       - name: Setup Bun (if needed)
         run: |
           export BUN_INSTALL="$HOME/.bun"
