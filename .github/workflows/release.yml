@@ -32,7 +32,7 @@ jobs:
       - name: Load environment and build Tauri app
         timeout-minutes: 30
         run: |
-          source .env.local
+          source ~/sandbox/dilag/.env.local
           bun run tauri build --target ${{ matrix.target }}
 
       - name: Upload artifacts
