@@ -114,12 +114,6 @@ jobs:
           echo "Generated dilag-latest.json:"
           cat release/dilag-latest.json
 
-      - name: Update Gist with latest.json
-        env:
-          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
-        run: |
-          gh gist edit 3f302aa878e51905595de327c16ea5c0 release/dilag-latest.json
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:

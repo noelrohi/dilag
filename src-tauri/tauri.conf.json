@@ -33,7 +33,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://gist.githubusercontent.com/noelrohi/3f302aa878e51905595de327c16ea5c0/raw/dilag-latest.json"
+        "https://github.com/noelrohi/dilag/releases/latest/download/dilag-latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJEQUUwMDEzQUMxQ0IyMEUKUldRT3NoeXNFd0N1dlRYYTJycHUrUFR4cVhnQXM2NXZCZFdwZVg1Umw1TmRBWEdvQ0hXR3N2Nm4K"
     }
