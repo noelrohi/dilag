@@ -79,16 +79,16 @@ jobs:
         run: |
           mkdir -p release
           
-          # Copy ARM64 files
-          cp artifacts/macos-aarch64-apple-darwin/*.dmg release/ 2>/dev/null || true
-          cp artifacts/macos-aarch64-apple-darwin/*.app.tar.gz release/ 2>/dev/null || true
-          cp artifacts/macos-aarch64-apple-darwin/*.app.tar.gz.sig release/ 2>/dev/null || true
+          # Debug: show artifact structure
+          echo "Artifact structure:"
+          find artifacts -type f
           
-          # Copy x64 files
-          cp artifacts/macos-x86_64-apple-darwin/*.dmg release/ 2>/dev/null || true
-          cp artifacts/macos-x86_64-apple-darwin/*.app.tar.gz release/ 2>/dev/null || true
-          cp artifacts/macos-x86_64-apple-darwin/*.app.tar.gz.sig release/ 2>/dev/null || true
+          # Copy all release files (handles nested paths)
+          find artifacts -name "*.dmg" -exec cp {} release/ \;
+          find artifacts -name "*.app.tar.gz" -exec cp {} release/ \;
+          find artifacts -name "*.app.tar.gz.sig" -exec cp {} release/ \;
           
+          echo "Release files:"
           ls -la release/
 
       - name: Get version from tag
