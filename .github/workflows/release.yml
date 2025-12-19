@@ -6,62 +6,71 @@ on:
       - 'v*.*.*'
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  publish-tauri:
+    permissions:
+      contents: write
     strategy:
+      fail-fast: false
       matrix:
-        target: [aarch64-apple-darwin, x86_64-apple-darwin]
-    
+        include:
+          - platform: macos-latest
+            args: --target aarch64-apple-darwin
+            target: aarch64-apple-darwin
+          - platform: macos-latest
+            args: --target x86_64-apple-darwin
+            target: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2"
-
-      - name: Install dependencies
-        run: bun install
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Import Apple Certificate
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
-          # Create temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
           
-          # Decode certificate
           echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
           
-          # Create and configure keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           
-          # Import certificate
           security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-      - name: Build Tauri app
-        timeout-minutes: 30
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build and release with Tauri Action
+        uses: tauri-apps/tauri-action@v1
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: cargo tauri build --target ${{ matrix.target }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Dilag ${{ github.ref_name }}"
+          releaseBody: "See the assets to download this version and install."
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -72,8 +81,8 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
 
-  release:
-    needs: build-macos
+  update-latest-json:
+    needs: publish-tauri
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -87,22 +96,6 @@ jobs:
         with:
           path: artifacts
 
-      - name: Prepare release files
-        run: |
-          mkdir -p release
-          
-          # Debug: show artifact structure
-          echo "Artifact structure:"
-          find artifacts -type f
-          
-          # Copy all release files (handles nested paths)
-          find artifacts -name "*.dmg" -exec cp {} release/ \;
-          find artifacts -name "*.app.tar.gz" -exec cp {} release/ \;
-          find artifacts -name "*.app.tar.gz.sig" -exec cp {} release/ \;
-          
-          echo "Release files:"
-          ls -la release/
-
       - name: Get version from tag
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -112,14 +105,14 @@ jobs:
           VERSION=${{ steps.version.outputs.VERSION }}
           
           # Read signatures
-          AARCH64_SIG=$(cat release/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")
-          X64_SIG=$(cat release/*x86_64*.app.tar.gz.sig 2>/dev/null || echo "")
+          AARCH64_SIG=$(cat artifacts/macos-aarch64-apple-darwin/*/*.app.tar.gz.sig 2>/dev/null || echo "")
+          X64_SIG=$(cat artifacts/macos-x86_64-apple-darwin/*/*.app.tar.gz.sig 2>/dev/null || echo "")
           
           # Get filenames
-          AARCH64_FILE=$(ls release/*aarch64*.app.tar.gz 2>/dev/null | xargs -n1 basename || echo "")
-          X64_FILE=$(ls release/*x86_64*.app.tar.gz 2>/dev/null | xargs -n1 basename || echo "")
+          AARCH64_FILE=$(find artifacts/macos-aarch64-apple-darwin -name "*.app.tar.gz" 2>/dev/null | head -1 | xargs -n1 basename || echo "")
+          X64_FILE=$(find artifacts/macos-x86_64-apple-darwin -name "*.app.tar.gz" 2>/dev/null | head -1 | xargs -n1 basename || echo "")
           
-          cat > release/dilag-latest.json << EOF
+          cat > dilag-latest.json << EOF
           {
             "version": "${VERSION}",
             "notes": "Release v${VERSION}",
@@ -138,16 +131,10 @@ jobs:
           EOF
           
           echo "Generated dilag-latest.json:"
-          cat release/dilag-latest.json
+          cat dilag-latest.json
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          files: |
-            release/*.dmg
-            release/*.app.tar.gz
-            release/*.app.tar.gz.sig
-            release/dilag-latest.json
+      - name: Upload latest.json to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} dilag-latest.json --clobber
