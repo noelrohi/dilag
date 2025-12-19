@@ -7,45 +7,35 @@ on:
 
 jobs:
   build-macos:
-    runs-on: self-hosted
+    runs-on: macos-latest
     strategy:
       matrix:
-        target: [aarch64-apple-darwin]
+        target: [aarch64-apple-darwin, x86_64-apple-darwin]
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun (if needed)
-        run: |
-          export BUN_INSTALL="$HOME/.bun"
-          export PATH="$BUN_INSTALL/bin:$PATH"
-          if ! command -v bun &> /dev/null; then
-            curl -fsSL https://bun.sh/install | bash
-          fi
-          bun --version
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
 
-      - name: Install Tauri CLI (if needed)
-        run: |
-          if ! command -v cargo-tauri &> /dev/null; then
-            cargo install tauri-cli --version "^2"
-          fi
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
 
       - name: Install dependencies
-        run: |
-          export BUN_INSTALL="$HOME/.bun"
-          export PATH="$BUN_INSTALL/bin:$PATH"
-          bun install
+        run: bun install
 
       - name: Build Tauri app
         timeout-minutes: 30
-        run: |
-          export BUN_INSTALL="$HOME/.bun"
-          export PATH="$BUN_INSTALL/bin:$PATH"
-          set -a
-          source ~/sandbox/dilag/.env.local
-          set +a
-          cargo tauri build --target ${{ matrix.target }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: cargo tauri build --target ${{ matrix.target }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -58,7 +48,7 @@ jobs:
 
   release:
     needs: build-macos
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     
@@ -95,11 +85,13 @@ jobs:
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
           
-          # Read signature (universal build or aarch64)
-          SIG=$(cat release/*.app.tar.gz.sig 2>/dev/null | head -1 || echo "")
+          # Read signatures
+          AARCH64_SIG=$(cat release/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")
+          X64_SIG=$(cat release/*x86_64*.app.tar.gz.sig 2>/dev/null || echo "")
           
-          # Get the tar.gz filename
-          TAR_FILE=$(ls release/*.app.tar.gz 2>/dev/null | head -1 | xargs -n1 basename || echo "")
+          # Get filenames
+          AARCH64_FILE=$(ls release/*aarch64*.app.tar.gz 2>/dev/null | xargs -n1 basename || echo "")
+          X64_FILE=$(ls release/*x86_64*.app.tar.gz 2>/dev/null | xargs -n1 basename || echo "")
           
           cat > release/dilag-latest.json << EOF
           {
@@ -108,8 +100,12 @@ jobs:
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
-                "signature": "${SIG}",
-                "url": "https://github.com/noelrohi/dilag/releases/download/v${VERSION}/${TAR_FILE}"
+                "signature": "${AARCH64_SIG}",
+                "url": "https://github.com/noelrohi/dilag/releases/download/v${VERSION}/${AARCH64_FILE}"
+              },
+              "darwin-x86_64": {
+                "signature": "${X64_SIG}",
+                "url": "https://github.com/noelrohi/dilag/releases/download/v${VERSION}/${X64_FILE}"
               }
             }
           }
