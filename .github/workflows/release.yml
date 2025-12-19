@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           rm -rf node_modules bun.lockb
-          bun install
+          arch -arm64 bun install
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2"
@@ -38,7 +38,7 @@ jobs:
         timeout-minutes: 30
         run: |
           source ~/sandbox/dilag/.env.local
-          cargo tauri build --target ${{ matrix.target }}
+          arch -arm64 cargo tauri build --target ${{ matrix.target }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
