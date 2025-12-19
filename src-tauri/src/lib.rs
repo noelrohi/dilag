@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::WebviewWindowBuilder;
-use tauri::{AppHandle, Emitter, TitleBarStyle};
+use tauri::{AppHandle, Emitter, Manager, TitleBarStyle};
 
 const OPENCODE_PORT: u16 = 4096;
 
@@ -764,6 +764,42 @@ async fn reset_all_data(app: AppHandle, state: tauri::State<'_, AppState>) -> Re
 }
 
 // ============================================================================
+// Theme Commands
+// ============================================================================
+
+#[tauri::command]
+fn set_titlebar_theme(app: AppHandle, is_dark: bool) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::{NSColor, NSWindow};
+        use objc2::rc::Retained;
+
+        let window = app
+            .get_webview_window("main")
+            .ok_or("Main window not found")?;
+
+        let ns_win: Retained<NSWindow> = unsafe {
+            let ptr = window.as_ref().window().ns_window().unwrap();
+            Retained::retain(ptr as *mut NSWindow).unwrap()
+        };
+
+        let bg_color = if is_dark {
+            // Dark: oklch(0.14 0.01 250) ≈ rgb(31, 32, 40)
+            NSColor::colorWithRed_green_blue_alpha(0.122, 0.125, 0.157, 1.0)
+        } else {
+            // Light: oklch(0.975 0.008 75) ≈ rgb(247, 245, 242)
+            NSColor::colorWithRed_green_blue_alpha(0.969, 0.961, 0.949, 1.0)
+        };
+        ns_win.setBackgroundColor(Some(&bg_color));
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, is_dark);
+
+    Ok(())
+}
+
+// ============================================================================
 // Menu Setup
 // ============================================================================
 
@@ -923,6 +959,7 @@ pub fn run() {
             load_session_designs,
             get_app_info,
             reset_all_data,
+            set_titlebar_theme,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { toast } from "sonner";
 
 export interface UpdateInfo {
   version: string;
@@ -28,6 +29,7 @@ export function useUpdater() {
   });
 
   const [update, setUpdate] = useState<Update | null>(null);
+  const updateRef = useRef<Update | null>(null);
 
   const checkForUpdates = useCallback(async () => {
     setState((prev) => ({ ...prev, checking: true, error: null }));
@@ -37,6 +39,7 @@ export function useUpdater() {
 
       if (updateResult) {
         setUpdate(updateResult);
+        updateRef.current = updateResult;
         setState((prev) => ({
           ...prev,
           checking: false,
@@ -47,6 +50,44 @@ export function useUpdater() {
             body: updateResult.body ?? undefined,
           },
         }));
+
+        // Show toast notification for available update
+        toast(`Update v${updateResult.version} available`, {
+          description: "A new version is ready to install",
+          duration: Infinity,
+          action: {
+            label: "Update Now",
+            onClick: async () => {
+              const currentUpdate = updateRef.current;
+              if (!currentUpdate) return;
+
+              try {
+                let downloaded = 0;
+                let contentLength = 0;
+
+                await currentUpdate.downloadAndInstall((event: DownloadEvent) => {
+                  switch (event.event) {
+                    case "Started":
+                      contentLength = event.data.contentLength ?? 0;
+                      break;
+                    case "Progress":
+                      downloaded += event.data.chunkLength;
+                      const progress = contentLength > 0 ? (downloaded / contentLength) * 100 : 0;
+                      setState((prev) => ({ ...prev, downloading: true, downloadProgress: Math.round(progress) }));
+                      break;
+                    case "Finished":
+                      setState((prev) => ({ ...prev, downloadProgress: 100 }));
+                      break;
+                  }
+                });
+
+                await relaunch();
+              } catch (error) {
+                toast.error("Failed to install update");
+              }
+            },
+          },
+        });
       } else {
         setState((prev) => ({
           ...prev,

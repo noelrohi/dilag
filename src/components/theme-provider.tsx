@@ -1,6 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react"
+import { invoke } from "@tauri-apps/api/core"
 
 type Theme = "dark" | "light" | "system"
+
+// Sync titlebar theme with native macOS window
+const syncTitlebarTheme = async (isDark: boolean) => {
+  try {
+    await invoke("set_titlebar_theme", { isDark })
+  } catch (e) {
+    console.warn("Failed to sync titlebar theme:", e)
+  }
+}
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -35,17 +45,17 @@ export function ThemeProvider({
 
     root.classList.remove("light", "dark")
 
+    let resolvedTheme: "light" | "dark"
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
+      resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light"
-
-      root.classList.add(systemTheme)
-      return
+    } else {
+      resolvedTheme = theme
     }
 
-    root.classList.add(theme)
+    root.classList.add(resolvedTheme)
+    syncTitlebarTheme(resolvedTheme === "dark")
   }, [theme])
 
   // Listen for system theme changes when in "system" mode
@@ -56,8 +66,10 @@ export function ThemeProvider({
     
     const handleChange = (e: MediaQueryListEvent) => {
       const root = window.document.documentElement
+      const isDark = e.matches
       root.classList.remove("light", "dark")
-      root.classList.add(e.matches ? "dark" : "light")
+      root.classList.add(isDark ? "dark" : "light")
+      syncTitlebarTheme(isDark)
     }
 
     mediaQuery.addEventListener("change", handleChange)
