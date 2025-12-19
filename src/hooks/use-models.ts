@@ -34,7 +34,7 @@ export const useModelStore = create<ModelState>()(
   persist(
     (set) => ({
       // Default to Big Pickle
-      selectedModel: { providerID: "anthropic", modelID: "big-pickle" },
+      selectedModel: { providerID: "opencode", modelID: "big-pickle" },
       setSelectedModel: (model) => set({ selectedModel: model }),
     }),
     {
