@@ -51,10 +51,10 @@ dilag/
 |   |
 |   +-- routes/
 |   |   +-- __root.tsx -------------- Root layout (providers, sidebar)
-|   |   +-- index.lazy.tsx ---------- Home/Landing screen
-|   |   +-- studio.$sessionId.lazy.tsx -- Studio workspace
-|   |   +-- projects.lazy.tsx ------- All projects view
-|   |   +-- settings.lazy.tsx ------- Settings page
+|   |   +-- index.tsx --------------- Home/Landing screen
+|   |   +-- studio.$sessionId.tsx --- Studio workspace
+|   |   +-- projects.tsx ------------ All projects view
+|   |   +-- settings.tsx ------------ Settings page
 |   |
 |   +-- components/
 |   |   +-- ui/ --------------------- Base UI primitives (shadcn/ui)
@@ -65,13 +65,14 @@ dilag/
 |   |   +-- session-store.tsx ------- Zustand store for real-time state
 |   |   +-- global-events.tsx ------- SSE event provider & SDK client
 |   |   +-- menu-events.tsx --------- Native menu event handlers
+|   |   +-- updater-context.tsx ----- App auto-update provider
 |   |
 |   +-- hooks/
 |   |   +-- use-sessions.ts --------- Main session management hook
 |   |   +-- use-designs.ts ---------- Design file polling hook
 |   |   +-- use-models.ts ----------- AI model selection hook
 |   |   +-- use-session-data.ts ----- React Query data layer
-|   |   +-- use-updater.ts ---------- App auto-update hook
+|   |   +-- use-mobile.ts ----------- Mobile viewport detection hook
 |   |
 |   +-- lib/
 |       +-- tool-registry.tsx ------- Tool display configurations
@@ -152,17 +153,17 @@ dilag/
 
 | # | Screen | Route | File | Purpose |
 |---|--------|-------|------|---------|
-| 1 | Home | `/` | `routes/index.lazy.tsx` | Landing page with prompt composer and recent projects |
-| 2 | Studio | `/studio/$sessionId` | `routes/studio.$sessionId.lazy.tsx` | Main design workspace with chat and canvas |
-| 3 | Projects | `/projects` | `routes/projects.lazy.tsx` | Browse all projects with search and filtering |
-| 4 | Settings | `/settings` | `routes/settings.lazy.tsx` | App configuration, theme, model selection, updates |
+| 1 | Home | `/` | `routes/index.tsx` | Landing page with prompt composer and recent projects |
+| 2 | Studio | `/studio/$sessionId` | `routes/studio.$sessionId.tsx` | Main design workspace with chat and canvas |
+| 3 | Projects | `/projects` | `routes/projects.tsx` | Browse all projects with search and filtering |
+| 4 | Settings | `/settings` | `routes/settings.tsx` | App configuration, theme, model selection, updates |
 | 5 | Setup Wizard | (modal) | `blocks/setup-wizard.tsx` | OpenCode installation check/guidance |
 
 ---
 
 ### 1. Home Screen (`/`)
 
-**File:** `src/routes/index.lazy.tsx`
+**File:** `src/routes/index.tsx`
 
 > The landing page presents a clean, focused interface for starting new design sessions. Users enter natural language prompts describing their app idea, select an AI model, and are taken directly to the studio workspace. Recent projects appear at the bottom for quick access.
 
@@ -263,7 +264,7 @@ dilag/
    - Optionally saves attachments to `dilag-initial-files`
    - Calls `createSession()` which creates a Tauri directory + OpenCode session
    - Navigates to `/studio/$sessionId`
-   - Triggers: `handleSubmit()` in `index.lazy.tsx:54`
+   - Triggers: `handleSubmit()` in `index.tsx:41`
 
 2. **Model Selection:** User can pick from available AI models:
    - Models fetched via `useModels()` hook
@@ -271,13 +272,13 @@ dilag/
    - Grouped by provider (Anthropic, Google, OpenAI)
 
 3. **Project Card Click:** Opens existing session in studio workspace
-   - Triggers: `handleOpenProject()` in `index.lazy.tsx:68`
+   - Triggers: `handleOpenProject()` in `index.tsx:55`
 
 ---
 
 ### 2. Studio Screen (`/studio/$sessionId`)
 
-**File:** `src/routes/studio.$sessionId.lazy.tsx`
+**File:** `src/routes/studio.$sessionId.tsx`
 
 > The studio is the main workspace where design happens. A collapsible chat pane on the left handles conversation with the AI, while an infinite canvas on the right displays generated screen designs as draggable iPhone frames. Users can pan, zoom, and rearrange screens freely.
 
@@ -389,7 +390,7 @@ dilag/
 **Detailed Behaviors:**
 
 1. **Initial Prompt:** On mount, reads `dilag-initial-prompt` from localStorage, sends it via `sendMessage()` after 500ms delay, then clears localStorage
-   - Triggers: `useEffect` in `studio.$sessionId.lazy.tsx:54`
+   - Triggers: `useEffect` in `studio.$sessionId.tsx:54`
 
 2. **Chat Toggle:** Button toggles 360px chat pane visibility
    - Chat width animates via CSS transition
@@ -404,7 +405,7 @@ dilag/
 
 ### 3. Projects Screen (`/projects`)
 
-**File:** `src/routes/projects.lazy.tsx`
+**File:** `src/routes/projects.tsx`
 
 > A comprehensive view of all design projects, organized by time period with search and sorting capabilities. Provides a gallery-style overview of all work.
 
@@ -454,7 +455,7 @@ dilag/
 
 ### 4. Settings Screen (`/settings`)
 
-**File:** `src/routes/settings.lazy.tsx`
+**File:** `src/routes/settings.tsx`
 
 > Application settings organized into clear sections for appearance, AI model configuration, data management, and app information including update controls.
 
@@ -785,7 +786,7 @@ interface ModelState {
 }
 ```
 
-**Default:** `anthropic/big-pickle` (Claude Sonnet 4)
+**Default:** `opencode/big-pickle` (Free OpenCode model)
 
 ### React Query Usage
 
@@ -845,7 +846,7 @@ interface ModelState {
 
 | Step | Actor | Action | Details |
 |------|-------|--------|---------|
-| 1-2 | User | Enters prompt, clicks submit | Triggers `handleSubmit()` in `index.lazy.tsx:54` |
+| 1-2 | User | Enters prompt, clicks submit | Triggers `handleSubmit()` in `index.tsx:41` |
 | 3 | Frontend | Saves to localStorage | Keys: `dilag-initial-prompt`, `dilag-initial-files` |
 | 4-5 | Frontend | Creates session directory | Tauri command `create_session_dir` returns path |
 | 6 | Frontend | Creates OpenCode session | `sdk.session.create({ directory })` |
@@ -1183,21 +1184,22 @@ src/
     global-events.tsx   # SSE provider & SDK client
     session-store.tsx   # Zustand store for real-time state
     menu-events.tsx     # Native menu event handlers
+    updater-context.tsx # App auto-update provider
   hooks/
     use-designs.ts      # Design file polling (React Query)
     use-models.ts       # Model selection (Zustand)
     use-sessions.ts     # Main session management hook
     use-session-data.ts # React Query data layer for sessions
-    use-updater.ts      # App auto-update hook
+    use-mobile.ts       # Mobile viewport detection hook
   lib/
     tool-registry.tsx   # Tool display configurations
     utils.ts            # cn() and utilities
   routes/
     __root.tsx          # Root layout with providers
-    index.lazy.tsx      # Home page
-    studio.$sessionId.lazy.tsx # Studio workspace
-    projects.lazy.tsx   # All projects view
-    settings.lazy.tsx   # Settings page
+    index.tsx           # Home page
+    studio.$sessionId.tsx # Studio workspace
+    projects.tsx        # All projects view
+    settings.tsx        # Settings page
 
 src-tauri/
   src/lib.rs            # Rust commands & designer agent config

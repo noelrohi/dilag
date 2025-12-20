@@ -692,7 +692,7 @@ dependencies = [
 
 [[package]]
 name = "dilag"
-version = "0.1.0"
+version = "0.2.7"
 dependencies = [
  "dirs 5.0.1",
  "objc2",

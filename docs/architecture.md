@@ -10,7 +10,8 @@ Technical documentation covering app initialization, data flow, and storage.
 2. [Storage & Persistence](#storage--persistence)
 3. [SSE Event System](#sse-event-system)
 4. [Session Lifecycle](#session-lifecycle)
-5. [State Management](#state-management)
+5. [Native Menu & Updater](#native-menu--updater)
+6. [State Management](#state-management)
 
 ---
 
@@ -233,6 +234,8 @@ Technical documentation covering app initialization, data flow, and storage.
 | `dilag-session-store` | Zustand | `{currentSessionId, screenPositions}` |
 | `dilag-model-store` | Zustand | `{selectedModel: {providerID, modelID}}` |
 | `dilag-initial-prompt` | Temporary | Prompt passed from home to studio (cleared after use) |
+| `dilag-initial-files` | Temporary | File attachments (JSON array) passed from home to studio |
+| `dilag-theme` | ThemeProvider | `"dark" \| "light" \| "system"` |
 
 **Session store schema:**
 ```json
@@ -251,11 +254,13 @@ Technical documentation covering app initialization, data flow, and storage.
 ```json
 {
   "selectedModel": {
-    "providerID": "anthropic",
-    "modelID": "claude-sonnet-4-20250514"
+    "providerID": "opencode",
+    "modelID": "big-pickle"
   }
 }
 ```
+
+Default is `opencode/big-pickle` (free tier model).
 
 ---
 
@@ -428,6 +433,83 @@ User clicks delete on project card
 
 ---
 
+## Native Menu & Updater
+
+### Menu Events Flow
+
+```
+Rust backend defines native menu (lib.rs: setup_menu())
+    │
+    ├── App menu: About, Settings (Cmd+,), Check Updates, Quit
+    ├── File menu: New Session (Cmd+N), Close Window
+    ├── Edit menu: Standard clipboard operations
+    ├── View menu: Toggle Sidebar (Cmd+B), Toggle Chat (Cmd+\), Fullscreen
+    └── Help menu: Docs, GitHub, Report Issue
+        │
+        └── Menu item clicked
+            │
+            ├── on_menu_event handler (lib.rs)
+            │   └── app.emit("menu-event", event_id)
+            │
+            └── MenuEventsProvider (menu-events.tsx)
+                │
+                ├── listen("menu-event")
+                │
+                └── Switch on event_id:
+                    ├── "settings" → navigate("/settings")
+                    ├── "new-session" → createSession() + navigate to studio
+                    ├── "toggle-sidebar" → callback from registered component
+                    ├── "toggle-chat" → callback from registered component
+                    └── "check-updates" → checkForUpdates()
+```
+
+### Updater Flow
+
+```
+UpdaterProvider mounts
+    │
+    └── useEffect (3s delay)
+        │
+        └── checkForUpdates(silent=true)
+            │
+            ├── check() from @tauri-apps/plugin-updater
+            │
+            ├── IF update available:
+            │   ├── Show toast with "Update Now" action
+            │   └── Set updateInfo state
+            │
+            └── IF no update: silent (no toast on auto-check)
+
+User clicks "Update Now" (toast or Settings)
+    │
+    └── installUpdate()
+        │
+        ├── update.downloadAndInstall()
+        │   └── Progress events update downloadProgress state
+        │
+        └── relaunch() from @tauri-apps/plugin-process
+```
+
+### Theme Synchronization (macOS)
+
+```
+ThemeProvider detects theme change
+    │
+    ├── Apply "dark" or "light" class to document.documentElement
+    │
+    └── invoke("set_titlebar_theme", { isDark })
+        │
+        └── Tauri command (lib.rs: set_titlebar_theme)
+            │
+            └── objc2 API to set NSWindow backgroundColor
+                ├── Dark: oklch(0.14 0.01 250) → rgb(31, 32, 40)
+                └── Light: oklch(0.975 0.008 75) → rgb(247, 245, 242)
+```
+
+This ensures the native macOS titlebar (transparent style) matches the app's theme.
+
+---
+
 ## State Management
 
 Dilag uses a hybrid approach (TkDodo/KCD pattern):
@@ -468,7 +550,7 @@ interface ModelState {
 ```
 
 **Persistence:** Stored in `localStorage` as `dilag-model-store`.
-Default: `{ providerID: "anthropic", modelID: "big-pickle" }`
+Default: `{ providerID: "opencode", modelID: "big-pickle" }`
 
 ### React Query Keys
 

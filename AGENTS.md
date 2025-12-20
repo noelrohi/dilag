@@ -2,7 +2,7 @@
 
 ## Documentation
 - `docs/platform.md` - UI screens, components, user flows, tool registry
-- `docs/architecture.md` - App startup, storage, SSE events, session lifecycle
+- `docs/architecture.md` - App startup, storage, SSE events, session lifecycle, native menu & updater
 
 ## Build & Run
 - `bun run dev` - Vite dev server (frontend only)
