@@ -4,11 +4,13 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { GlobalEventsProvider } from "@/context/global-events";
 import { MenuEventsProvider } from "@/context/menu-events";
 import { UpdaterProvider } from "@/context/updater-context";
+import { LicenseProvider } from "@/context/license-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { Toaster } from "@/components/ui/sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/blocks/app-sidebar";
+import { LicenseGate } from "@/components/blocks/license-gate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,18 +35,22 @@ function RootLayout() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark" storageKey="dilag-theme">
         <QueryClientProvider client={queryClient}>
-          <GlobalEventsProvider>
-            <UpdaterProvider>
-              <MenuEventsProvider>
-                <SidebarProvider defaultOpen={false}>
-                  <AppSidebar />
-                  <SidebarInset>
-                    <Outlet />
-                  </SidebarInset>
-                </SidebarProvider>
-              </MenuEventsProvider>
-            </UpdaterProvider>
-          </GlobalEventsProvider>
+          <LicenseProvider>
+            <LicenseGate>
+              <GlobalEventsProvider>
+                <UpdaterProvider>
+                  <MenuEventsProvider>
+                    <SidebarProvider defaultOpen={false}>
+                      <AppSidebar />
+                      <SidebarInset>
+                        <Outlet />
+                      </SidebarInset>
+                    </SidebarProvider>
+                  </MenuEventsProvider>
+                </UpdaterProvider>
+              </GlobalEventsProvider>
+            </LicenseGate>
+          </LicenseProvider>
           <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
         <Toaster />
