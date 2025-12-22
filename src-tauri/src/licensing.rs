@@ -15,8 +15,9 @@ const SANDBOX_ORG_ID: &str = "7a87a3ca-b5b5-4291-aa65-cf8ed697d0f3";
 const SANDBOX_PURCHASE_URL: &str = "https://sandbox-api.polar.sh/v1/checkout-links/polar_cl_YS7VmovgnexWMpw74Wm4LG14Cp4BkkgmSH6Vh1wUAAa/redirect";
 
 // Production credentials (polar.sh)
-const PROD_ORG_ID: &str = ""; // Your production organization ID
-const PROD_PURCHASE_URL: &str = ""; // e.g., "https://polar.sh/your-org/products/dilag"
+const PROD_ORG_ID: &str = "bd461e2b-b924-41e7-97d0-3523bd99a3d0"; // Your production organization ID
+const PROD_PURCHASE_URL: &str =
+    "https://buy.polar.sh/polar_cl_6SB0k022Or8r5hVCfL4TSrsrWRibVOeuV0u9u2uIOmd";
 
 const TRIAL_DAYS: i64 = 7;
 const GRACE_PERIOD_SECS: u64 = 3 * 24 * 60 * 60; // 3 days
