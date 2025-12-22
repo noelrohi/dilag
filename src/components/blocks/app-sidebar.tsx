@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { DilagLogo } from "@/components/ui/dilag-logo";
 import { AuthSettings } from "@/components/blocks/auth-settings";
+import { TrialBanner } from "@/components/blocks/trial-banner";
 import {
   Tooltip,
   TooltipContent,
@@ -86,6 +87,9 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        <div className="group-data-[collapsible=icon]:hidden">
+          <TrialBanner />
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <AuthSettings

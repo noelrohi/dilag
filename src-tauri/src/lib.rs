@@ -6,6 +6,8 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{AppHandle, Emitter, Manager, TitleBarStyle};
 
+mod licensing;
+
 const OPENCODE_PORT: u16 = 4096;
 
 const DESIGNER_AGENT_PROMPT: &str = r##"# UI Design Agent
@@ -960,6 +962,13 @@ pub fn run() {
             get_app_info,
             reset_all_data,
             set_titlebar_theme,
+            // Licensing commands
+            licensing::get_license_status,
+            licensing::start_trial,
+            licensing::activate_license,
+            licensing::validate_license,
+            licensing::get_purchase_url,
+            licensing::reset_license,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
