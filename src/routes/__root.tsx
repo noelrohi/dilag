@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/blocks/app-sidebar";
 import { LicenseGate } from "@/components/blocks/license-gate";
+import { NotificationProvider } from "@/context/notification";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ function RootLayout() {
           <LicenseProvider>
             <LicenseGate>
               <GlobalEventsProvider>
+                <NotificationProvider>
                 <UpdaterProvider>
                   <MenuEventsProvider>
                     <SidebarProvider defaultOpen={false}>
@@ -48,6 +50,7 @@ function RootLayout() {
                     </SidebarProvider>
                   </MenuEventsProvider>
                 </UpdaterProvider>
+                </NotificationProvider>
               </GlobalEventsProvider>
             </LicenseGate>
           </LicenseProvider>
