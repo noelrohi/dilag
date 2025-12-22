@@ -15,7 +15,7 @@ import type {
 export type { ToolState, FileDiff };
 
 // Our internal session status type (simpler than SDK's object type)
-export type SessionStatus = "idle" | "running" | "error" | "unknown";
+export type SessionStatus = "idle" | "running" | "busy" | "error" | "unknown";
 
 // Types
 export interface SessionMeta {

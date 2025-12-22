@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { consoleForwardPlugin } from "vite-console-forward-plugin";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -12,6 +13,7 @@ export default defineConfig(async () => ({
     TanStackRouterVite({ autoCodeSplitting: true }),
     react(),
     tailwindcss(),
+    consoleForwardPlugin(),
   ],
   resolve: {
     alias: {
