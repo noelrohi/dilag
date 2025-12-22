@@ -31,6 +31,8 @@ interface NotificationProviderProps {
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
   const { data: sessions = [] } = useSessionsList();
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
   const previousStatusRef = useRef<Record<string, SessionStatus>>({});
 
   // Subscribe to session status changes
@@ -50,7 +52,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         const previousStatus = previousStatusRef.current[sessionId];
 
         if (previousStatus === "running" || previousStatus === "busy") {
-          const session = sessions.find((s) => s.id === sessionId);
+          const session = sessionsRef.current.find((s) => s.id === sessionId);
           const sessionName = session?.name ?? "Session";
 
           if (status === "idle") {
@@ -71,7 +73,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     });
 
     return () => unsubscribe();
-  }, [sessions]);
+  }, []);
 
   const value: NotificationContextValue = {
     playComplete: () => completionAudio.play(),
