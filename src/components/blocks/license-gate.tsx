@@ -57,30 +57,6 @@ export function LicenseGate({ children }: LicenseGateProps) {
 
     return (
       <>
-        <style>{`
-          @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            25% { transform: translate(10px, -10px) rotate(1deg); }
-            50% { transform: translate(-5px, 5px) rotate(-1deg); }
-            75% { transform: translate(-10px, -5px) rotate(0.5deg); }
-          }
-
-          @keyframes gradient-shift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-          }
-
-          .animate-float { animation: float 20s ease-in-out infinite; }
-          .animate-float-delayed { animation: float 25s ease-in-out infinite; animation-delay: -5s; }
-          .animate-float-slow { animation: float 30s ease-in-out infinite; animation-delay: -10s; }
-          .animate-gradient { animation: gradient-shift 8s ease infinite; background-size: 200% 200%; }
-
-          .grain {
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-            opacity: 0.03;
-          }
-        `}</style>
-
         <div className="relative flex h-screen overflow-hidden bg-background">
           {/* Grain overlay */}
           <div className="grain absolute inset-0 pointer-events-none z-10" />

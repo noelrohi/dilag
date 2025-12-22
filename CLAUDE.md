@@ -27,3 +27,15 @@
 ## Tauri Commands
 - Define in `src-tauri/src/lib.rs` with `#[tauri::command]`
 - Call via `invoke("cmd", { args })` from `@tauri-apps/api/core`
+
+## Licensing
+- Licensing module: `src-tauri/src/licensing.rs`
+- Uses Polar.sh for license key validation
+- 7-day free trial with server-validated timestamps
+- Run tests: `cd src-tauri && cargo test`
+
+## Versioning
+- Version reset to 0.0.1 with licensing system introduction
+- Previous 0.2.x versions were pre-release/internal builds
+- Will follow semver after initial public release
+- Keep versions in sync: `package.json`, `Cargo.toml`, `tauri.conf.json`
