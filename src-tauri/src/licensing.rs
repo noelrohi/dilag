@@ -8,7 +8,7 @@ use std::path::PathBuf;
 // ============================================================================
 
 // Toggle this to switch between sandbox and production
-const USE_SANDBOX: bool = true;
+const USE_SANDBOX: bool = false;
 
 // Sandbox credentials (sandbox.polar.sh)
 const SANDBOX_ORG_ID: &str = "7a87a3ca-b5b5-4291-aa65-cf8ed697d0f3";
