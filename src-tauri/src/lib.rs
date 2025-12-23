@@ -652,9 +652,12 @@ fn kill_opencode_on_port() {
     #[cfg(windows)]
     {
         // On Windows, use netstat + taskkill
-        let _ = std::process::Command::new("cmd")
+        if let Err(e) = std::process::Command::new("cmd")
             .args(["/C", &format!("for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a", OPENCODE_PORT)])
-            .output();
+            .output()
+        {
+            eprintln!("[kill_opencode_on_port] Windows kill failed: {}", e);
+        }
     }
 }
 
