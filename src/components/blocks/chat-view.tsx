@@ -360,7 +360,10 @@ function ChatInputArea({
 function PendingPrompt() {
   const promptText = localStorage.getItem("dilag-initial-prompt") || "";
   const filesJson = localStorage.getItem("dilag-initial-files");
-  const files = filesJson ? JSON.parse(filesJson) as { url?: string; mediaType?: string; filename?: string }[] : [];
+  let files: { url?: string; mediaType?: string; filename?: string }[] = [];
+  try {
+    if (filesJson) files = JSON.parse(filesJson);
+  } catch { /* ignore malformed JSON */ }
 
   return (
     <>
