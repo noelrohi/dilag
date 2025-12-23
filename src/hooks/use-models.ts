@@ -226,8 +226,15 @@ export function useModels() {
       console.log("[useModels] Restarting OpenCode server...");
       const port = await invoke<number>("restart_opencode_server");
       console.log("[useModels] Server restarted on port:", port);
-      // Wait for server to be ready
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Poll for server readiness (up to 10s)
+      for (let i = 0; i < 20; i++) {
+        try {
+          const res = await fetch(`http://127.0.0.1:${port}/health`);
+          if (res.ok) break;
+        } catch {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
       // Force refetch by invalidating and refetching
       console.log("[useModels] Refetching models...");
       await queryClient.resetQueries({ queryKey: modelKeys.all });
