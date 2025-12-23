@@ -6,7 +6,7 @@
       "dependencies": {
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/utilities": "^3.2.2",
-        "@opencode-ai/sdk": "^1.0.162",
+        "@opencode-ai/sdk": "^1.0.190",
         "@phosphor-icons/react": "^2.1.10",
         "@radix-ui/react-collapsible": "^1.1.12",
         "@radix-ui/react-dialog": "^1.1.15",
@@ -264,7 +264,7 @@
 
     "@mermaid-js/parser": ["@mermaid-js/parser@0.6.3", "", { "dependencies": { "langium": "3.3.1" } }, "sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA=="],
 
-    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.0.162", "", {}, "sha512-+XqRErBUt9eb1m3i/7WkZc/QCKCCjTaGV3MvhLhs/CUwbUn767D/ugzcG/i2ec8j/4nQmjJbjPDRmrQfvF1Qjw=="],
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.0.190", "", {}, "sha512-/7YYnVGaR40TXh72rjBTS2slVFmhSKpWDl514drt0ToCLwpTR339SPgZpwvFA8bl8NHzzjhRYg2jnRVMALk2Mw=="],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
 
