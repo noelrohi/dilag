@@ -1,28 +1,36 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { useSessions } from "@/hooks/use-sessions";
-import type { DesignFile } from "@/hooks/use-designs";
-import { cn } from "@/lib/utils";
 import {
   PromptInput,
-  PromptInputTextarea,
+  PromptInputActionAddAttachments,
+  PromptInputActionMenu,
+  PromptInputActionMenuContent,
+  PromptInputActionMenuTrigger,
+  PromptInputAttachment,
+  PromptInputAttachments,
   PromptInputBody,
   PromptInputFooter,
-  PromptInputSubmit,
   PromptInputProvider,
+  PromptInputSubmit,
+  PromptInputTextarea,
   PromptInputTools,
-  PromptInputActionMenu,
-  PromptInputActionMenuTrigger,
-  PromptInputActionMenuContent,
-  PromptInputActionAddAttachments,
-  PromptInputAttachments,
-  PromptInputAttachment,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
-import { X, ChevronRight } from "lucide-react";
-import { ArrowRight } from "@phosphor-icons/react";
+import type { DesignFile } from "@/hooks/use-designs";
+import { useSessions } from "@/hooks/use-sessions";
+import { cn } from "@/lib/utils";
+import { ArrowUpIcon } from "@phosphor-icons/react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { invoke } from "@tauri-apps/api/core";
+import { ChevronRight, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+// Suggestion prompts
+const SUGGESTIONS = [
+  "Design a habit tracking app",
+  "Create a recipe finder",
+  "Build a workout timer",
+  "Make a notes app",
+];
 
 // Mini thumbnail constants
 const THUMB_RENDER_W = 393;
@@ -36,9 +44,13 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   const navigate = useNavigate();
-  const { sessions, createSession, deleteSession, isServerReady } = useSessions();
+  const { sessions, createSession, deleteSession, isServerReady } =
+    useSessions();
 
-  const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
+  const handleSubmit = async (
+    text: string,
+    files?: import("ai").FileUIPart[],
+  ) => {
     if (!text.trim() && (!files || files.length === 0)) return;
     localStorage.setItem("dilag-initial-prompt", text);
     if (files && files.length > 0) {
@@ -56,13 +68,17 @@ function LandingPage() {
     navigate({ to: "/studio/$sessionId", params: { sessionId } });
   };
 
-  const handleDeleteProject = async (e: React.MouseEvent, sessionId: string) => {
+  const handleDeleteProject = async (
+    e: React.MouseEvent,
+    sessionId: string,
+  ) => {
     e.stopPropagation();
     await deleteSession(sessionId);
   };
 
   const sortedSessions = [...sessions].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
 
   return (
@@ -110,7 +126,7 @@ function LandingPage() {
             {/* Hero heading */}
             <div
               className="animate-in fade-in slide-in-from-bottom-6 duration-700 text-center mb-10"
-              style={{ animationFillMode: 'backwards' }}
+              style={{ animationFillMode: "backwards" }}
             >
               <h1 className="text-[42px] md:text-[52px] font-medium text-foreground leading-[1.1] tracking-[-0.03em] mb-3">
                 What would you like
@@ -123,11 +139,37 @@ function LandingPage() {
             {/* Prompt input */}
             <div
               className="animate-in fade-in slide-in-from-bottom-6 duration-700"
-              style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}
+              style={{
+                animationDelay: "100ms",
+                animationFillMode: "backwards",
+              }}
             >
               <PromptInputProvider>
-                <ComposerInput onSubmit={handleSubmit} disabled={!isServerReady} />
+                <ComposerInput
+                  onSubmit={handleSubmit}
+                  disabled={!isServerReady}
+                />
               </PromptInputProvider>
+
+              {/* Suggestion chips */}
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => handleSubmit(suggestion)}
+                    disabled={!isServerReady}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[13px]",
+                      "bg-muted/50 hover:bg-muted border border-border/50",
+                      "text-muted-foreground hover:text-foreground",
+                      "transition-colors duration-200",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
+                    )}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -136,7 +178,7 @@ function LandingPage() {
         {sortedSessions.length > 0 && (
           <div
             className="px-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
-            style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}
+            style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
           >
             <div className="max-w-4xl mx-auto">
               {/* Header row with title and view all */}
@@ -214,15 +256,23 @@ function ProjectCard({
         "bg-card/50 border border-border/50",
         "hover:bg-card hover:border-border hover:shadow-lg hover:shadow-black/[0.03]",
         "dark:hover:shadow-black/20",
-        "animate-in fade-in slide-in-from-bottom-2 duration-300"
+        "animate-in fade-in slide-in-from-bottom-2 duration-300",
       )}
-      style={{ animationDelay: `${150 + delay}ms`, animationFillMode: 'backwards' }}
+      style={{
+        animationDelay: `${150 + delay}ms`,
+        animationFillMode: "backwards",
+      }}
     >
       {/* Screen previews */}
       <div className="flex gap-1 mb-3 h-[72px] overflow-x-auto overflow-y-hidden rounded-lg bg-muted/30 scrollbar-none p-1.5">
         {previewDesigns.length > 0 ? (
           previewDesigns.map((design, i) => (
-            <ScreenThumbnail key={i} html={design.html} isHovered={isHovered} index={i} />
+            <ScreenThumbnail
+              key={i}
+              html={design.html}
+              isHovered={isHovered}
+              index={i}
+            />
           ))
         ) : (
           <div className="flex-1 flex items-center justify-center">
@@ -248,7 +298,7 @@ function ProjectCard({
           className={cn(
             "p-1.5 rounded-md transition-all duration-200 shrink-0",
             "opacity-0 group-hover:opacity-100",
-            "hover:bg-destructive/10 hover:text-destructive"
+            "hover:bg-destructive/10 hover:text-destructive",
           )}
         >
           <X className="size-3" />
@@ -261,7 +311,7 @@ function ProjectCard({
 function ScreenThumbnail({
   html,
   isHovered,
-  index
+  index,
 }: {
   html: string;
   isHovered: boolean;
@@ -309,13 +359,13 @@ ${html}
     <div
       className={cn(
         "shrink-0 overflow-hidden rounded-md bg-card shadow-sm",
-        "ring-1 ring-border/30 transition-all duration-300 ease-out"
+        "ring-1 ring-border/30 transition-all duration-300 ease-out",
       )}
       style={{
         width: displayW,
         height: THUMB_DISPLAY_H,
-        transform: isHovered ? `translateY(-${index * 1}px)` : 'none',
-        transitionDelay: `${index * 30}ms`
+        transform: isHovered ? `translateY(-${index * 1}px)` : "none",
+        transitionDelay: `${index * 30}ms`,
       }}
     >
       <iframe
@@ -353,7 +403,7 @@ function ComposerInput({
         "[&_[data-slot=input-group]]:transition-all [&_[data-slot=input-group]]:duration-300",
         "[&_[data-slot=input-group]]:focus-within:border-border/60 [&_[data-slot=input-group]]:focus-within:shadow-xl",
         "[&_[data-slot=input-group]]:focus-within:ring-2 [&_[data-slot=input-group]]:focus-within:ring-primary/20",
-        "dark:[&_[data-slot=input-group]]:bg-card/40"
+        "dark:[&_[data-slot=input-group]]:bg-card/40",
       )}
     >
       <PromptInputAttachments>
@@ -366,7 +416,7 @@ function ComposerInput({
           className={cn(
             "min-h-[100px] max-h-[200px]",
             "text-[15px] leading-relaxed",
-            "placeholder:text-muted-foreground/30"
+            "placeholder:text-muted-foreground/30",
           )}
         />
       </PromptInputBody>
@@ -392,10 +442,10 @@ function ComposerInput({
               "size-9 rounded-xl transition-all duration-200",
               hasInput && !disabled
                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                : "bg-muted text-muted-foreground"
+                : "bg-muted text-muted-foreground",
             )}
           >
-            <ArrowRight className="size-4" />
+            <ArrowUpIcon className="size-4" />
           </PromptInputSubmit>
         </div>
       </PromptInputFooter>
