@@ -1,13 +1,15 @@
-import { createContext, useContext, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useNavigate } from "@tanstack/react-router";
 import { useSessions } from "@/hooks/use-sessions";
 import { useUpdaterContext } from "@/context/updater-context";
 
-type MenuEventHandler = {
+interface MenuEventHandler {
   toggleSidebar: () => void;
   toggleChat: () => void;
-};
+  registerChatToggle: (callback: () => void) => () => void;
+  registerSidebarToggle: (callback: () => void) => () => void;
+}
 
 const MenuEventsContext = createContext<MenuEventHandler | null>(null);
 
@@ -20,43 +22,40 @@ export function useMenuEvents() {
   return context;
 }
 
-// Store for chat toggle callback (set by StudioPage)
-let chatToggleCallback: (() => void) | null = null;
-
-export function registerChatToggle(callback: () => void) {
-  chatToggleCallback = callback;
-}
-
-export function unregisterChatToggle() {
-  chatToggleCallback = null;
-}
-
-// Store for sidebar toggle callback (set by pages with sidebar)
-let sidebarToggleCallback: (() => void) | null = null;
-
-export function registerSidebarToggle(callback: () => void) {
-  sidebarToggleCallback = callback;
-}
-
-export function unregisterSidebarToggle() {
-  sidebarToggleCallback = null;
-}
-
 export function MenuEventsProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { createSession } = useSessions();
   const { checkForUpdates } = useUpdaterContext();
 
+  // Store callbacks in refs inside the provider (not module-level globals)
+  const chatToggleRef = useRef<(() => void) | null>(null);
+  const sidebarToggleRef = useRef<(() => void) | null>(null);
+
   const toggleSidebar = useCallback(() => {
-    if (sidebarToggleCallback) {
-      sidebarToggleCallback();
-    }
+    sidebarToggleRef.current?.();
   }, []);
 
   const toggleChat = useCallback(() => {
-    if (chatToggleCallback) {
-      chatToggleCallback();
-    }
+    chatToggleRef.current?.();
+  }, []);
+
+  // Registration functions return cleanup functions
+  const registerChatToggle = useCallback((callback: () => void): (() => void) => {
+    chatToggleRef.current = callback;
+    return () => {
+      if (chatToggleRef.current === callback) {
+        chatToggleRef.current = null;
+      }
+    };
+  }, []);
+
+  const registerSidebarToggle = useCallback((callback: () => void): (() => void) => {
+    sidebarToggleRef.current = callback;
+    return () => {
+      if (sidebarToggleRef.current === callback) {
+        sidebarToggleRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -93,9 +92,11 @@ export function MenuEventsProvider({ children }: { children: ReactNode }) {
     };
   }, [navigate, createSession, toggleSidebar, toggleChat, checkForUpdates]);
 
-  const value = {
+  const value: MenuEventHandler = {
     toggleSidebar,
     toggleChat,
+    registerChatToggle,
+    registerSidebarToggle,
   };
 
   return (

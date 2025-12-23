@@ -1,15 +1,15 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import type {
-  Event,
-  EventMessagePartUpdated,
-  EventMessageUpdated,
-  EventSessionStatus,
-  EventSessionDiff,
-  FileDiff,
-  ToolState,
-} from "@opencode-ai/sdk/v2/client";
+import type { Event, FileDiff, ToolState } from "@opencode-ai/sdk/v2/client";
+import {
+  isEventMessagePartUpdated,
+  isEventMessageUpdated,
+  isEventSessionStatus,
+  isEventSessionDiff,
+  isEventSessionIdle,
+  isEventSessionError,
+} from "@/lib/event-guards";
 
 // Re-export SDK types
 export type { ToolState, FileDiff };
@@ -293,74 +293,77 @@ export const useSessionStore = create<SessionState>()(
 
         addDebugEvent(event);
 
-        switch (event.type) {
-          case "message.part.updated": {
-            const sdkPart = (event as EventMessagePartUpdated).properties.part;
-            if (sdkPart.messageID) {
-              const part: MessagePart = {
-                id: sdkPart.id,
-                messageID: sdkPart.messageID,
-                sessionID: sdkPart.sessionID,
-                type: sdkPart.type as MessagePart["type"],
-                text: "text" in sdkPart ? sdkPart.text : undefined,
-                tool: "tool" in sdkPart ? sdkPart.tool : undefined,
-                state: "state" in sdkPart ? sdkPart.state : undefined,
-              };
-              updatePart(sdkPart.messageID, part);
-            }
-            break;
+        // Use type guards for type-safe event handling
+        if (isEventMessagePartUpdated(event)) {
+          const sdkPart = event.properties.part;
+          if (sdkPart.messageID) {
+            const part: MessagePart = {
+              id: sdkPart.id,
+              messageID: sdkPart.messageID,
+              sessionID: sdkPart.sessionID,
+              type: sdkPart.type as MessagePart["type"],
+              text: "text" in sdkPart ? sdkPart.text : undefined,
+              tool: "tool" in sdkPart ? sdkPart.tool : undefined,
+              state: "state" in sdkPart ? sdkPart.state : undefined,
+            };
+            updatePart(sdkPart.messageID, part);
           }
-
-          case "message.updated": {
-            const { info } = (event as EventMessageUpdated).properties;
-            const state = get();
-            const messages = state.messages[info.sessionID];
-            const exists = messages?.some((m) => m.id === info.id);
-            const isCompleted = "completed" in info.time && !!info.time.completed;
-
-            if (!exists) {
-              const newMessage: Message = {
-                id: info.id,
-                sessionID: info.sessionID,
-                role: info.role,
-                time: info.time as { created: number; completed?: number },
-                isStreaming: !isCompleted,
-              };
-              addMessage(info.sessionID, newMessage);
-            } else if (isCompleted) {
-              updateMessage(info.sessionID, info.id, {
-                isStreaming: false,
-                time: info.time as { created: number; completed?: number },
-              });
-            }
-            break;
-          }
-
-          case "session.status": {
-            const { sessionID, status } = (event as EventSessionStatus).properties;
-            const statusType = status.type as SessionStatus;
-            setSessionStatus(sessionID, statusType);
-            break;
-          }
-
-          case "session.diff": {
-            const props = (event as EventSessionDiff).properties;
-            setSessionDiffs(props.sessionID, props.diff);
-            break;
-          }
-
-          case "session.idle": {
-            const e = event as { properties: { sessionID: string } };
-            setSessionStatus(e.properties.sessionID, "idle");
-            break;
-          }
-
-          case "session.error": {
-            const e = event as { properties: { sessionID: string } };
-            setSessionStatus(e.properties.sessionID, "error");
-            break;
-          }
+          return;
         }
+
+        if (isEventMessageUpdated(event)) {
+          const { info } = event.properties;
+          const state = get();
+          const messages = state.messages[info.sessionID];
+          const exists = messages?.some((m) => m.id === info.id);
+          const isCompleted = "completed" in info.time && !!info.time.completed;
+
+          if (!exists) {
+            const newMessage: Message = {
+              id: info.id,
+              sessionID: info.sessionID,
+              role: info.role,
+              time: info.time as { created: number; completed?: number },
+              isStreaming: !isCompleted,
+            };
+            addMessage(info.sessionID, newMessage);
+          } else if (isCompleted) {
+            updateMessage(info.sessionID, info.id, {
+              isStreaming: false,
+              time: info.time as { created: number; completed?: number },
+            });
+          }
+          return;
+        }
+
+        if (isEventSessionStatus(event)) {
+          const { sessionID, status } = event.properties;
+          const statusType = status.type as SessionStatus;
+          setSessionStatus(sessionID, statusType);
+          return;
+        }
+
+        if (isEventSessionDiff(event)) {
+          const { sessionID, diff } = event.properties;
+          setSessionDiffs(sessionID, diff);
+          return;
+        }
+
+        if (isEventSessionIdle(event)) {
+          setSessionStatus(event.properties.sessionID, "idle");
+          return;
+        }
+
+        if (isEventSessionError(event)) {
+          const sessionID = event.properties.sessionID;
+          if (sessionID) {
+            setSessionStatus(sessionID, "error");
+          }
+          return;
+        }
+
+        // Log unhandled event types for debugging
+        console.debug("[SessionStore] Unhandled event type:", event.type);
       },
     })),
     {
@@ -396,3 +399,4 @@ export const useIsServerReady = () => useSessionStore((state) => state.isServerR
 export const useError = () => useSessionStore((state) => state.error);
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents);
 export const useResetRealtimeState = () => useSessionStore((state) => state.resetRealtimeState);
+export const useAllSessionStatuses = () => useSessionStore((state) => state.sessionStatus);
