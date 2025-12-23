@@ -636,7 +636,9 @@ fn kill_opencode_on_port() {
                 if let Ok(pid) = pid_str.trim().parse::<i32>() {
                     println!("[kill_opencode_on_port] Killing PID {} on port {}", pid, OPENCODE_PORT);
                     unsafe {
-                        libc::kill(pid, libc::SIGTERM);
+                        if libc::kill(pid, 0) == 0 {
+                            libc::kill(pid, libc::SIGTERM);
+                        }
                     }
                 }
             }
