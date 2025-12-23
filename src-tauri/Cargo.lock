@@ -708,6 +708,7 @@ version = "0.0.2"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
+ "libc",
  "machine-uid",
  "objc2",
  "objc2-app-kit",

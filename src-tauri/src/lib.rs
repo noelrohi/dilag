@@ -555,10 +555,17 @@ async fn start_opencode_server(
 ) -> Result<u16, String> {
     use tauri_plugin_shell::ShellExt;
 
-    // Check if already running
+    // Check if we already have a tracked process
     if state.opencode_pid.lock().unwrap().is_some() {
         return Ok(OPENCODE_PORT);
     }
+
+    // Kill any existing process on the port to ensure we control the environment
+    // This is necessary because an externally started OpenCode won't have XDG_CONFIG_HOME set
+    kill_opencode_on_port();
+
+    // Wait a moment for the port to be released
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     // Ensure dilag directories and config exist
     fs::create_dir_all(get_sessions_dir()).map_err(|e| e.to_string())?;
@@ -573,6 +580,7 @@ async fn start_opencode_server(
     // Auth still works from ~/.local/share/opencode/ (XDG_DATA_HOME)
     let shell = app.shell();
     let dilag_dir = get_dilag_dir();
+    println!("[start_opencode_server] Starting with XDG_CONFIG_HOME={:?}", dilag_dir);
     let (_rx, child) = shell
         .command(&opencode_path)
         .args(["serve", "--port", &OPENCODE_PORT.to_string(), "--hostname", "127.0.0.1"])
@@ -589,14 +597,115 @@ async fn start_opencode_server(
     Ok(OPENCODE_PORT)
 }
 
+/// Helper to kill a process by PID
+fn kill_process(pid: u32) {
+    #[cfg(unix)]
+    {
+        unsafe {
+            libc::kill(pid as i32, libc::SIGTERM);
+        }
+    }
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/F"])
+            .output();
+    }
+}
+
 #[tauri::command]
 async fn stop_opencode_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let mut pid_guard = state.opencode_pid.lock().unwrap();
-    if let Some(_pid) = pid_guard.take() {
-        // The process will be killed when dropped, or we can explicitly kill it
-        // For now, just clear the state - the OS will clean up on app exit
+    if let Some(pid) = pid_guard.take() {
+        kill_process(pid);
     }
     Ok(())
+}
+
+/// Check if a port is currently in use
+fn is_port_in_use(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_err()
+}
+
+/// Find and kill any process listening on the opencode port
+fn kill_opencode_on_port() {
+    #[cfg(unix)]
+    {
+        // Use lsof to find process on port and kill it
+        if let Ok(output) = std::process::Command::new("lsof")
+            .args(["-ti", &format!(":{}", OPENCODE_PORT)])
+            .output()
+        {
+            let pids = String::from_utf8_lossy(&output.stdout);
+            for pid_str in pids.lines() {
+                if let Ok(pid) = pid_str.trim().parse::<i32>() {
+                    println!("[kill_opencode_on_port] Killing PID {} on port {}", pid, OPENCODE_PORT);
+                    unsafe {
+                        if libc::kill(pid, 0) == 0 {
+                            libc::kill(pid, libc::SIGTERM);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #[cfg(windows)]
+    {
+        // On Windows, use netstat + taskkill
+        if let Err(e) = std::process::Command::new("cmd")
+            .args(["/C", &format!("for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a", OPENCODE_PORT)])
+            .output()
+        {
+            eprintln!("[kill_opencode_on_port] Windows kill failed: {}", e);
+        }
+    }
+}
+
+#[tauri::command]
+async fn restart_opencode_server(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<u16, String> {
+    println!("[restart_opencode_server] Starting restart...");
+
+    // Stop the server first - try both tracked PID and port-based kill
+    {
+        let mut pid_guard = state.opencode_pid.lock().unwrap();
+        if let Some(pid) = pid_guard.take() {
+            println!("[restart_opencode_server] Killing tracked process {}", pid);
+            kill_process(pid);
+        } else {
+            println!("[restart_opencode_server] No tracked process, checking port...");
+        }
+    }
+
+    // Also kill any process on the port (in case it wasn't started by us)
+    kill_opencode_on_port();
+
+    // Wait for port to be released (poll with timeout)
+    println!("[restart_opencode_server] Waiting for port to be released...");
+    for _ in 0..20 {
+        tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
+        if !is_port_in_use(OPENCODE_PORT) {
+            break;
+        }
+    }
+
+    // Clear models cache for fresh fetch
+    let cache_path = dirs::cache_dir()
+        .map(|p| p.join("opencode").join("models.json"));
+    if let Some(ref path) = cache_path {
+        if path.exists() {
+            println!("[restart_opencode_server] Deleting cache: {:?}", path);
+            let _ = fs::remove_file(path);
+        } else {
+            println!("[restart_opencode_server] Cache not found: {:?}", path);
+        }
+    }
+
+    // Start again
+    println!("[restart_opencode_server] Starting server...");
+    start_opencode_server(app, state).await
 }
 
 #[tauri::command]
@@ -957,6 +1066,7 @@ pub fn run() {
             delete_session_metadata,
             start_opencode_server,
             stop_opencode_server,
+            restart_opencode_server,
             is_opencode_running,
             load_session_designs,
             get_app_info,
