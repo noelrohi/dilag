@@ -86,6 +86,7 @@ interface SessionState {
   parts: Record<string, MessagePart[]>; // Keyed by messageId
   sessionStatus: Record<string, SessionStatus>; // Keyed by sessionId
   sessionDiffs: Record<string, FileDiff[]>; // Keyed by sessionId
+  sessionErrors: Record<string, { name: string; message: string } | null>; // Keyed by sessionId
 
   // Server connection state
   isServerReady: boolean;
@@ -105,6 +106,7 @@ interface SessionState {
   updatePart: (messageId: string, part: MessagePart) => void;
   setSessionStatus: (sessionId: string, status: SessionStatus) => void;
   setSessionDiffs: (sessionId: string, diffs: FileDiff[]) => void;
+  setSessionError: (sessionId: string, error: { name: string; message: string } | null) => void;
   clearSessionData: (sessionId: string) => void;
 
   // Actions - Server state
@@ -169,6 +171,7 @@ export const useSessionStore = create<SessionState>()(
       parts: {},
       sessionStatus: {},
       sessionDiffs: {},
+      sessionErrors: {},
       isServerReady: false,
       error: null,
       debugEvents: [],
@@ -239,11 +242,17 @@ export const useSessionStore = create<SessionState>()(
           state.sessionDiffs[sessionId] = diffs;
         }),
 
+      setSessionError: (sessionId, error) =>
+        set((state) => {
+          state.sessionErrors[sessionId] = error;
+        }),
+
       clearSessionData: (sessionId) =>
         set((state) => {
           delete state.messages[sessionId];
           delete state.sessionStatus[sessionId];
           delete state.sessionDiffs[sessionId];
+          delete state.sessionErrors[sessionId];
           if (state.currentSessionId === sessionId) {
             state.currentSessionId = null;
           }
@@ -282,6 +291,7 @@ export const useSessionStore = create<SessionState>()(
           state.parts = {};
           state.sessionStatus = {};
           state.sessionDiffs = {};
+          state.sessionErrors = {};
           state.debugEvents = [];
           state.error = null;
           // Note: currentSessionId and screenPositions are preserved
@@ -289,7 +299,7 @@ export const useSessionStore = create<SessionState>()(
 
       // Central event handler for SSE - handles real-time updates
       handleEvent: (event) => {
-        const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs } = get();
+        const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs, setSessionError } = get();
 
         addDebugEvent(event);
 
@@ -355,9 +365,16 @@ export const useSessionStore = create<SessionState>()(
         }
 
         if (isEventSessionError(event)) {
-          const sessionID = event.properties.sessionID;
+          const { sessionID, error } = event.properties;
           if (sessionID) {
             setSessionStatus(sessionID, "error");
+            // Extract error message from typed error
+            if (error && "data" in error && error.data && typeof error.data === "object" && "message" in error.data) {
+              setSessionError(sessionID, {
+                name: error.name,
+                message: (error.data as { message: string }).message,
+              });
+            }
           }
           return;
         }
@@ -393,6 +410,8 @@ export const useSessionStatus = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.sessionStatus[sessionId] ?? "unknown" : "unknown"));
 export const useSessionDiffs = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.sessionDiffs[sessionId] ?? EMPTY_DIFFS : EMPTY_DIFFS));
+export const useSessionError = (sessionId: string | null) =>
+  useSessionStore((state) => (sessionId ? state.sessionErrors[sessionId] ?? null : null));
 export const useScreenPositions = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.screenPositions[sessionId] ?? EMPTY_POSITIONS : EMPTY_POSITIONS));
 export const useIsServerReady = () => useSessionStore((state) => state.isServerReady);
