@@ -3,12 +3,14 @@ import {
   AlertCircle,
   Palette,
   Paperclip,
+  OctagonAlert,
 } from "lucide-react";
 import { DilagIcon } from "@/components/ui/dilag-icon";
 import { ArrowUp, Sparkle } from "@phosphor-icons/react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
   useMessageParts,
+  useSessionError,
   type Message as SessionMessage,
 } from "@/context/session-store";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,28 @@ function ThinkingIndicator() {
           <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:300ms]" />
           <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:600ms]" />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function InlineErrorCard({ error }: { error: { name: string; message: string } }) {
+  // Format error name: "ProviderAuthError" -> "Provider Auth Error"
+  const formattedName = error.name
+    .replace(/Error$/, "")
+    .replace(/([A-Z])/g, " $1")
+    .trim();
+
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 animate-slide-up">
+      <OctagonAlert className="size-4 text-destructive shrink-0 mt-0.5" />
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-sm font-medium text-destructive">
+          {formattedName || "Error"}
+        </span>
+        <span className="text-sm text-destructive/80 break-words">
+          {error.message}
+        </span>
       </div>
     </div>
   );
@@ -127,11 +151,14 @@ function UserMessage({
 function AssistantMessage({
   message,
   index,
+  isLast,
 }: {
   message: SessionMessage;
   index: number;
+  isLast: boolean;
 }) {
   const parts = useMessageParts(message.id);
+  const sessionError = useSessionError(message.sessionID);
 
   return (
     <Message
@@ -154,6 +181,11 @@ function AssistantMessage({
 
         {/* Thinking indicator - show when streaming and no parts yet */}
         {message.isStreaming && parts.length === 0 && <ThinkingIndicator />}
+
+        {/* Inline error - show on last assistant message when session has error */}
+        {isLast && !message.isStreaming && sessionError && (
+          <InlineErrorCard error={sessionError} />
+        )}
 
         {/* Duration indicator */}
         <MessageDuration message={message} className="mt-2" />
@@ -360,8 +392,12 @@ export function ChatView() {
                 description="Describe a UI screen and it will appear in the preview"
               />
             ) : (
-              messages.map((message, index) =>
-                message.role === "user" ? (
+              messages.map((message, index) => {
+                // Check if this is the last assistant message
+                const isLastAssistant = message.role === "assistant" &&
+                  !messages.slice(index + 1).some((m) => m.role === "assistant");
+
+                return message.role === "user" ? (
                   <UserMessage
                     key={message.id}
                     message={message}
@@ -372,9 +408,10 @@ export function ChatView() {
                     key={message.id}
                     message={message}
                     index={index}
+                    isLast={isLastAssistant}
                   />
-                ),
-              )
+                );
+              })
             )}
           </ConversationContent>
           <ConversationScrollButton />

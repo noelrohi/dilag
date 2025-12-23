@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Howl } from "howler";
-import { useAllSessionStatuses, type SessionStatus } from "@/context/session-store";
+import { useAllSessionStatuses, useSessionStore, type SessionStatus } from "@/context/session-store";
 import { useSessionsList } from "@/hooks/use-session-data";
 import completeSound from "@/assets/audio/staplebops-01.aac";
 import errorSound from "@/assets/audio/nope-03.aac";
@@ -61,8 +61,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           });
         } else if (status === "error") {
           errorAudio.play();
+          // Get actual error message from session store
+          const errorInfo = useSessionStore.getState().sessionErrors[sessionId];
           toast.error("Session Error", {
-            description: `${sessionName} encountered an error`,
+            description: errorInfo?.message ?? `${sessionName} encountered an error`,
           });
         }
       }

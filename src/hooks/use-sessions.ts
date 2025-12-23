@@ -77,6 +77,7 @@ export function useSessions() {
     setCurrentSessionId,
     setMessages,
     setSessionStatus,
+    setSessionError,
     clearDebugEvents,
     handleEvent,
     setError,
@@ -302,6 +303,9 @@ export function useSessions() {
         // Set session status to running
         setSessionStatus(currentSessionId, "running");
 
+        // Clear any previous session error
+        setSessionError(currentSessionId, null);
+
         // Send message using SDK - fire and forget
         // User message will be added via server events (message.updated)
         const model = selectedModel ?? {
@@ -374,7 +378,7 @@ export function useSessions() {
         console.error("Failed to send message:", err);
       }
     },
-    [currentSessionId, currentSession, messages.length, setError, setSessionStatus, saveSessionUpdate, sdk]
+    [currentSessionId, currentSession, messages.length, setError, setSessionStatus, setSessionError, saveSessionUpdate, sdk]
   );
 
   return {
