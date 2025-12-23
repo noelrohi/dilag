@@ -341,3 +341,32 @@ pre,
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   opacity: 0.03;
 }
+
+/* Dilag icon animations */
+@keyframes morph-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@keyframes ghost-shimmer {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.animate-morph-breathe {
+  animation: morph-breathe 1.8s ease-in-out infinite;
+}
+
+.animate-ghost-shimmer {
+  animation: ghost-shimmer 1.8s ease-in-out infinite;
+}
