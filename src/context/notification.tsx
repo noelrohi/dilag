@@ -40,6 +40,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // React to session status changes
   useEffect(() => {
+    // Initialize previousStatus for all sessions on first run
+    if (Object.keys(previousStatusRef.current).length === 0) {
+      previousStatusRef.current = { ...sessionStatuses };
+      return;
+    }
+
     for (const [sessionId, status] of Object.entries(sessionStatuses)) {
       const previousStatus = previousStatusRef.current[sessionId];
 
