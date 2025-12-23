@@ -1,10 +1,10 @@
 import {
-  Sparkles,
   Terminal,
   AlertCircle,
   Palette,
   Paperclip,
 } from "lucide-react";
+import { DilagIcon } from "@/components/ui/dilag-icon";
 import { ArrowUp, Sparkle } from "@phosphor-icons/react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
@@ -21,6 +21,7 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
+import { MessageDuration } from "@/components/ai-elements/message-duration";
 import {
   PromptInput,
   PromptInputTextarea,
@@ -43,15 +44,15 @@ function ThinkingIndicator() {
   return (
     <div className="flex items-center gap-3 py-4 animate-slide-up">
       <div className="relative flex items-center justify-center size-8">
-        <div className="absolute inset-0 rounded-lg bg-primary/20 animate-thinking" />
-        <Sparkles className="size-4 text-primary animate-thinking" />
+        <div className="absolute inset-0 rounded-lg bg-primary/10" />
+        <DilagIcon animated className="size-5 text-primary" />
       </div>
       <div className="flex flex-col gap-1">
         <span className="text-sm font-medium text-foreground/90">Thinking</span>
         <div className="flex gap-1">
-          <span className="size-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:0ms]" />
-          <span className="size-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:150ms]" />
-          <span className="size-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:300ms]" />
+          <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:0ms]" />
+          <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:300ms]" />
+          <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:600ms]" />
         </div>
       </div>
     </div>
@@ -153,6 +154,9 @@ function AssistantMessage({
 
         {/* Thinking indicator - show when streaming and no parts yet */}
         {message.isStreaming && parts.length === 0 && <ThinkingIndicator />}
+
+        {/* Duration indicator */}
+        <MessageDuration message={message} className="mt-2" />
       </MessageContent>
     </Message>
   );
