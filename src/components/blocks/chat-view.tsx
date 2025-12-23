@@ -356,6 +356,63 @@ function ChatInputArea({
   );
 }
 
+// Component to show the pending prompt immediately (optimistic UI)
+function PendingPrompt() {
+  const promptText = localStorage.getItem("dilag-initial-prompt") || "";
+  const filesJson = localStorage.getItem("dilag-initial-files");
+  let files: { url?: string; mediaType?: string; filename?: string }[] = [];
+  try {
+    if (filesJson) files = JSON.parse(filesJson);
+  } catch { /* ignore malformed JSON */ }
+
+  return (
+    <>
+      {/* User message */}
+      <Message from="user" className="animate-slide-up ml-0!">
+        <MessageContent className="ml-0! space-y-2">
+          {/* File attachments */}
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {files.map((file, idx) => (
+                <div
+                  key={idx}
+                  className="relative rounded-lg overflow-hidden border border-border/50 bg-muted/30"
+                >
+                  {file.mediaType?.startsWith("image/") && file.url ? (
+                    <img
+                      src={file.url}
+                      alt={file.filename || "Attached image"}
+                      className="max-w-[200px] max-h-[200px] object-contain"
+                    />
+                  ) : (
+                    <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
+                      <Paperclip className="size-4" />
+                      <span className="truncate max-w-[150px]">
+                        {file.filename || "Attachment"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Text content */}
+          {promptText && (
+            <p className="whitespace-pre-wrap leading-relaxed">{promptText}</p>
+          )}
+        </MessageContent>
+      </Message>
+
+      {/* Thinking indicator for assistant */}
+      <Message from="assistant" className="animate-slide-up">
+        <MessageContent>
+          <ThinkingIndicator />
+        </MessageContent>
+      </Message>
+    </>
+  );
+}
+
 export function ChatView() {
   const {
     messages,
@@ -366,6 +423,12 @@ export function ChatView() {
     sendMessage,
     createSession,
   } = useSessions();
+
+  // Check if there's a pending initial prompt (from landing page navigation)
+  const hasPendingPrompt = Boolean(
+    localStorage.getItem("dilag-initial-prompt") ||
+    localStorage.getItem("dilag-initial-files")
+  );
 
   if (!isServerReady) {
     return <LoadingState />;
@@ -385,12 +448,14 @@ export function ChatView() {
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-4">
-            {messages.length === 0 ? (
+            {messages.length === 0 && !hasPendingPrompt ? (
               <ConversationEmptyState
                 icon={<Palette className="size-10 text-primary/60" />}
                 title="Design something"
                 description="Describe a UI screen and it will appear in the preview"
               />
+            ) : messages.length === 0 && hasPendingPrompt ? (
+              <PendingPrompt />
             ) : (
               messages.map((message, index) => {
                 // Check if this is the last assistant message

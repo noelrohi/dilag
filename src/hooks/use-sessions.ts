@@ -157,24 +157,30 @@ export function useSessions() {
 
   // Handle reconnection bootstrap - refetch state after SSE reconnects
   const hasBootstrappedRef = useRef(false);
+  const prevConnectionStatusRef = useRef(connectionStatus);
   useEffect(() => {
-    if (connectionStatus === "connected" && hasBootstrappedRef.current) {
+    const wasDisconnected = prevConnectionStatusRef.current !== "connected";
+    const isNowConnected = connectionStatus === "connected";
+    prevConnectionStatusRef.current = connectionStatus;
+
+    // Only run bootstrap on actual reconnection (was disconnected, now connected)
+    if (isNowConnected && wasDisconnected && hasBootstrappedRef.current) {
       console.log("[useSessions] SSE reconnected - running bootstrap");
-      
+
       // Reset Zustand realtime state (messages, parts, status will be refetched)
       resetRealtimeState();
-      
+
       // Invalidate React Query cache to trigger refetch
       queryClient.invalidateQueries({ queryKey: sessionKeys.all });
-      
+
       // If we have a current session, reload its messages
       if (currentSessionId && currentSession) {
         loadSessionMessages(currentSessionId, currentSession.cwd);
       }
     }
-    
+
     // Mark as bootstrapped after first connection
-    if (connectionStatus === "connected") {
+    if (isNowConnected) {
       hasBootstrappedRef.current = true;
     }
   }, [connectionStatus, currentSessionId, currentSession, resetRealtimeState, queryClient, loadSessionMessages]);
