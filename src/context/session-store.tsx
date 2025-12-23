@@ -369,10 +369,12 @@ export const useSessionStore = create<SessionState>()(
           if (sessionID) {
             setSessionStatus(sessionID, "error");
             // Extract error message from typed error
-            if (error && "data" in error && error.data && typeof error.data === "object" && "message" in error.data) {
+            if (error && "data" in error && error.data) {
+              const data = error.data as Record<string, unknown>;
+              const message = data.message || "Unknown error";
               setSessionError(sessionID, {
                 name: error.name,
-                message: (error.data as { message: string }).message,
+                message: typeof message === "string" ? message : "Unknown error",
               });
             }
           }
