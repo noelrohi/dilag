@@ -1,8 +1,9 @@
-import { useCallback, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSDK } from "@/context/global-events";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { invoke } from "@tauri-apps/api/core";
 
 // Hot models to feature
 const HOT_MODELS = [
@@ -62,10 +63,28 @@ function isHotModel(modelID: string): boolean {
 }
 
 /**
- * Check if a model is free
+ * Free model families from OpenCode Zen
  */
-function isFreeModel(modelID: string): boolean {
-  return modelID.includes("big-pickle");
+const FREE_MODEL_FAMILIES = [
+  "big-pickle",
+  "glm-free",
+  "gpt-5-nano",
+  "grok",
+  "minimax",
+] as const;
+
+/**
+ * Check if a model is free based on family or ID
+ */
+function isFreeModel(modelID: string, family?: string): boolean {
+  if (family && FREE_MODEL_FAMILIES.some((f) => family.includes(f))) {
+    return true;
+  }
+  // Fallback to ID check for models without family
+  return modelID.includes("big-pickle") ||
+         modelID.includes("glm-free") ||
+         modelID.includes("gpt-5-nano") ||
+         modelID.includes("grok-code");
 }
 
 /**
@@ -131,7 +150,7 @@ function transformProviderData(
         releaseDate: model.release_date,
         family: model.family,
         hot: isHotModel(modelID),
-        free: isFreeModel(modelID),
+        free: isFreeModel(modelID, model.family),
       });
     }
   }
@@ -177,6 +196,8 @@ export function useProviderData() {
 export function useModels() {
   const { data, isLoading, error, refetch } = useProviderData();
   const { selectedModel, setSelectedModel } = useModelStore();
+  const queryClient = useQueryClient();
+  const [isRestarting, setIsRestarting] = useState(false);
 
   const models = data?.models ?? [];
   const connectedProviders = data?.connectedProviders ?? [];
@@ -199,16 +220,38 @@ export function useModels() {
     );
   }, [selectedModel, models]);
 
+  const restartServerAndRefresh = useCallback(async () => {
+    setIsRestarting(true);
+    try {
+      console.log("[useModels] Restarting OpenCode server...");
+      const port = await invoke<number>("restart_opencode_server");
+      console.log("[useModels] Server restarted on port:", port);
+      // Wait for server to be ready
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Force refetch by invalidating and refetching
+      console.log("[useModels] Refetching models...");
+      await queryClient.resetQueries({ queryKey: modelKeys.all });
+      await refetch();
+      console.log("[useModels] Models refetched");
+    } catch (error) {
+      console.error("[useModels] Failed to restart server:", error);
+    } finally {
+      setIsRestarting(false);
+    }
+  }, [queryClient, refetch]);
+
   return {
     models,
     connectedProviders,
     selectedModel,
     selectedModelInfo,
     isLoading,
+    isRestarting,
     error: error?.message ?? null,
     selectModel,
     refreshModels: () => {
       refetch();
     },
+    restartServerAndRefresh,
   };
 }

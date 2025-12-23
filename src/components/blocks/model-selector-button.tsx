@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -37,7 +37,7 @@ interface ModelSelectorButtonProps {
 }
 
 export function ModelSelectorButton({ variant = "default" }: ModelSelectorButtonProps) {
-  const { models, connectedProviders, selectedModelInfo, selectModel, isLoading } = useModels();
+  const { models, connectedProviders, selectedModelInfo, selectModel, isLoading, isRestarting, restartServerAndRefresh } = useModels();
   const [open, setOpen] = useState(false);
   const [providerDialogState, setProviderDialogState] =
     useState<ProviderDialogState>({ type: "closed" });
@@ -110,18 +110,30 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
           {connectedProviders.length} provider{connectedProviders.length !== 1 ? 's' : ''} connected
         </p>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-8 gap-1.5 text-xs border-border/50 bg-transparent hover:bg-accent/50 transition-colors"
-        onClick={() => {
-          setOpen(false);
-          setProviderDialogState({ type: "select-provider" });
-        }}
-      >
-        <Plus className="size-3.5" />
-        Connect
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => restartServerAndRefresh()}
+          disabled={isRestarting}
+          title="Refresh models"
+        >
+          <RefreshCw className={cn("size-3.5", isRestarting && "animate-spin")} />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 text-xs border-border/50 bg-transparent hover:bg-accent/50 transition-colors"
+          onClick={() => {
+            setOpen(false);
+            setProviderDialogState({ type: "select-provider" });
+          }}
+        >
+          <Plus className="size-3.5" />
+          Connect
+        </Button>
+      </div>
     </div>
   );
 
