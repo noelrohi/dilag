@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Howl } from "howler";
-import { useSessionStore, type SessionStatus } from "@/context/session-store";
+import { useAllSessionStatuses, type SessionStatus } from "@/context/session-store";
 import { useSessionsList } from "@/hooks/use-session-data";
 import completeSound from "@/assets/audio/staplebops-01.aac";
 import errorSound from "@/assets/audio/nope-03.aac";
@@ -33,47 +33,38 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const { data: sessions = [] } = useSessionsList();
   const sessionsRef = useRef(sessions);
   sessionsRef.current = sessions;
+
+  // Use reactive selector hook instead of getState()
+  const sessionStatuses = useAllSessionStatuses();
   const previousStatusRef = useRef<Record<string, SessionStatus>>({});
 
-  // Subscribe to session status changes
+  // React to session status changes
   useEffect(() => {
-    // Initialize with current state
-    const initialState = useSessionStore.getState();
-    for (const [sessionId, status] of Object.entries(initialState.sessionStatus)) {
-      if (!previousStatusRef.current[sessionId]) {
-        previousStatusRef.current[sessionId] = status;
-      }
-    }
+    for (const [sessionId, status] of Object.entries(sessionStatuses)) {
+      const previousStatus = previousStatusRef.current[sessionId];
 
-    const unsubscribe = useSessionStore.subscribe((state) => {
-      const currentStatuses = state.sessionStatus;
+      // Only trigger notifications when transitioning from running/busy to idle/error
+      if (previousStatus === "running" || previousStatus === "busy") {
+        const session = sessionsRef.current.find((s) => s.id === sessionId);
+        const sessionName = session?.name ?? "Session";
 
-      for (const [sessionId, status] of Object.entries(currentStatuses)) {
-        const previousStatus = previousStatusRef.current[sessionId];
-
-        if (previousStatus === "running" || previousStatus === "busy") {
-          const session = sessionsRef.current.find((s) => s.id === sessionId);
-          const sessionName = session?.name ?? "Session";
-
-          if (status === "idle") {
-            completionAudio.play();
-            toast.success("Session Complete", {
-              description: `${sessionName} has finished`,
-            });
-          } else if (status === "error") {
-            errorAudio.play();
-            toast.error("Session Error", {
-              description: `${sessionName} encountered an error`,
-            });
-          }
+        if (status === "idle") {
+          completionAudio.play();
+          toast.success("Session Complete", {
+            description: `${sessionName} has finished`,
+          });
+        } else if (status === "error") {
+          errorAudio.play();
+          toast.error("Session Error", {
+            description: `${sessionName} encountered an error`,
+          });
         }
-
-        previousStatusRef.current[sessionId] = status;
       }
-    });
 
-    return () => unsubscribe();
-  }, []);
+      // Update previous status after processing
+      previousStatusRef.current[sessionId] = status;
+    }
+  }, [sessionStatuses]);
 
   const value: NotificationContextValue = {
     playComplete: () => completionAudio.play(),

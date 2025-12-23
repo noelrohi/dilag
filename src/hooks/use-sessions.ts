@@ -20,6 +20,7 @@ import {
 } from "@/hooks/use-session-data";
 import { useGlobalEvents, useSDK, useConnectionStatus, type Event } from "@/context/global-events";
 import { useModelStore } from "@/hooks/use-models";
+import { withErrorHandler, createManagedTimeout } from "@/lib/async-utils";
 import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 import type { FileUIPart } from "ai";
 
@@ -90,35 +91,49 @@ export function useSessions() {
   const handleEventRef = useRef(handleEvent);
   handleEventRef.current = handleEvent;
 
+  // Track cleanup functions for async operations
+  const cleanupRef = useRef<(() => void)[]>([]);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      cleanupRef.current.forEach((cleanup) => cleanup());
+      cleanupRef.current = [];
+    };
+  }, []);
+
   // Load messages for a session - defined early so it can be used in effects
   const loadSessionMessages = useCallback(
     async (sessionId: string, directory?: string) => {
+      let response;
       try {
-        const response = await sdk.session.messages({
-          sessionID: sessionId,
-          directory,
-        });
-
-        if (response.data) {
-          const msgs = response.data.map((msg) => ({
-            id: msg.info.id,
-            sessionID: msg.info.sessionID,
-            role: msg.info.role as "user" | "assistant",
-            time: msg.info.time,
-          }));
-          setMessages(sessionId, msgs);
-
-          // Set parts for each message
-          const state = useSessionStore.getState();
-          response.data.forEach((msg) => {
-            msg.parts?.forEach((part) => {
-              state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID));
-            });
-          });
-        }
-      } catch {
-        // Session might not exist in OpenCode yet
+        response = await sdk.session.messages({ sessionID: sessionId, directory });
+      } catch (err) {
+        // Session might not exist in OpenCode yet - this is expected
+        console.debug(`[loadSessionMessages(${sessionId})] Session may not exist yet:`, err);
         setMessages(sessionId, []);
+        return;
+      }
+
+      if (response?.data) {
+        const msgs = response.data.map((msg) => ({
+          id: msg.info.id,
+          sessionID: msg.info.sessionID,
+          role: msg.info.role as "user" | "assistant",
+          time: msg.info.time,
+        }));
+        setMessages(sessionId, msgs);
+
+        // Set parts for each message
+        const state = useSessionStore.getState();
+        response.data.forEach((msg) => {
+          msg.parts?.forEach((part) => {
+            state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID));
+          });
+        });
       }
     },
     [sdk, setMessages]
@@ -249,15 +264,12 @@ export function useSessions() {
         // Get session's directory
         const session = sessions.find((s) => s.id === sessionId);
 
-        // Delete from OpenCode
-        try {
-          await sdk.session.delete({
-            sessionID: sessionId,
-            directory: session?.cwd,
-          });
-        } catch {
-          // Might not exist in OpenCode, continue anyway
-        }
+        // Delete from OpenCode (may not exist if never sent a message)
+        await withErrorHandler(
+          () => sdk.session.delete({ sessionID: sessionId, directory: session?.cwd }),
+          `deleteSession(${sessionId})`,
+          undefined // Continue on error - session may not exist in OpenCode
+        );
 
         // Delete local metadata (React Query mutation)
         await removeSession(sessionId);
@@ -282,6 +294,7 @@ export function useSessions() {
       // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;
       const directory = currentSession.cwd;
+      const sessionIdForUpdate = currentSessionId; // Capture for closure
 
       try {
         setError(null);
@@ -318,6 +331,7 @@ export function useSessions() {
           }
         }
 
+        // Fire-and-forget with proper error handling (checks isMounted before state updates)
         sdk.session.prompt({
           sessionID: currentSessionId,
           directory,
@@ -325,6 +339,7 @@ export function useSessions() {
           model,
           parts,
         }).catch((err) => {
+          if (!isMountedRef.current) return; // Avoid state updates on unmounted component
           setError(err instanceof Error ? err.message : "Failed to send message");
           setSessionStatus(currentSessionId, "error");
           console.error("Failed to send message:", err);
@@ -332,20 +347,26 @@ export function useSessions() {
 
         // Update title from OpenCode after first response
         if (isFirstMessage) {
-          // Delay slightly to let the session process
-          setTimeout(() => {
-            sdk.session.get({
-              sessionID: currentSessionId,
-              directory,
-            }).then(async (response) => {
-              if (response.data?.title) {
+          // Use managed timeout with cleanup
+          const cancelTimeout = createManagedTimeout(async () => {
+            if (!isMountedRef.current) return; // Avoid operations on unmounted component
+            try {
+              const response = await sdk.session.get({
+                sessionID: sessionIdForUpdate,
+                directory,
+              });
+              if (response.data?.title && isMountedRef.current) {
                 await saveSessionUpdate({
-                  id: currentSessionId,
+                  id: sessionIdForUpdate,
                   updates: { name: response.data.title },
                 });
               }
-            });
+            } catch (err) {
+              // Log but don't set error state - title update is non-critical
+              console.error("[sendMessage] Failed to update title:", err);
+            }
           }, 2000);
+          cleanupRef.current.push(cancelTimeout);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message");

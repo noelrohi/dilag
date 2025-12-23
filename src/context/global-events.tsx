@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { createOpencodeClient, type Event, type OpencodeClient } from "@opencode-ai/sdk/v2/client";
+import { extractSessionId } from "@/lib/event-guards";
 
 // Re-export types from SDK for convenience
 export type { Event } from "@opencode-ai/sdk/v2/client";
@@ -99,22 +100,6 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Helper to extract sessionId from any event
-  const getSessionIdFromEvent = (event: Event): string | null => {
-    if ("properties" in event && event.properties) {
-      const props = event.properties as Record<string, unknown>;
-      if ("sessionID" in props) return props.sessionID as string;
-      if ("info" in props && typeof props.info === "object" && props.info !== null) {
-        const info = props.info as Record<string, unknown>;
-        if ("sessionID" in info) return info.sessionID as string;
-      }
-      if ("part" in props && typeof props.part === "object" && props.part !== null) {
-        const part = props.part as Record<string, unknown>;
-        if ("sessionID" in part) return part.sessionID as string;
-      }
-    }
-    return null;
-  };
 
   // Calculate retry delay with exponential backoff
   const calculateRetryDelay = (attempt: number, serverRetryDelay?: number): number => {
@@ -205,7 +190,7 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
           });
 
           // Notify session-specific handlers
-          const sessionId = getSessionIdFromEvent(payload);
+          const sessionId = extractSessionId(payload);
           if (sessionId) {
             const sessionHandlers = sessionHandlersRef.current.get(sessionId);
             sessionHandlers?.forEach((handler) => {
