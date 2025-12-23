@@ -622,6 +622,11 @@ async fn stop_opencode_server(state: tauri::State<'_, AppState>) -> Result<(), S
     Ok(())
 }
 
+/// Check if a port is currently in use
+fn is_port_in_use(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_err()
+}
+
 /// Find and kill any process listening on the opencode port
 fn kill_opencode_on_port() {
     #[cfg(unix)]
@@ -674,9 +679,14 @@ async fn restart_opencode_server(
     // Also kill any process on the port (in case it wasn't started by us)
     kill_opencode_on_port();
 
-    // Wait for process to fully terminate
-    println!("[restart_opencode_server] Waiting for process to terminate...");
-    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+    // Wait for port to be released (poll with timeout)
+    println!("[restart_opencode_server] Waiting for port to be released...");
+    for _ in 0..20 {
+        tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
+        if !is_port_in_use(OPENCODE_PORT) {
+            break;
+        }
+    }
 
     // Clear models cache for fresh fetch
     let cache_path = dirs::cache_dir()
