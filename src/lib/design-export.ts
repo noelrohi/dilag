@@ -10,6 +10,11 @@ export function copyToClipboard(html: string | undefined) {
   toast.success("Copied to clipboard");
 }
 
+export function copyFilePath(path: string) {
+  navigator.clipboard.writeText(path);
+  toast.success("Path copied to clipboard");
+}
+
 export function downloadHtml(design: DesignScreen | null) {
   if (!design) {
     toast.error("No design to download");

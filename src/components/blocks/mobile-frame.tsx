@@ -1,5 +1,13 @@
-import { GripVertical, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { GripVertical, Loader2, CheckCircle2, AlertCircle, MoreVertical, Copy, FileCode } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { copyToClipboard, copyFilePath } from "@/lib/design-export";
 
 export type FrameStatus = "generating" | "streaming" | "success" | "error";
 
@@ -8,23 +16,52 @@ interface MobileFrameProps {
   title: string;
   status?: FrameStatus;
   className?: string;
+  html?: string;
+  filePath?: string;
 }
 
-export function MobileFrame({ children, title, status, className }: MobileFrameProps) {
+export function MobileFrame({ children, title, status, className, html, filePath }: MobileFrameProps) {
+  const showMenu = html || filePath;
+
   return (
     <div className={cn("flex flex-col", className)}>
       <div className="flex items-center gap-2 mb-3 px-1">
         <GripVertical className="w-4 h-4 text-muted-foreground" />
         <span className="text-sm font-medium text-muted-foreground">{title}</span>
-        {(status === "generating" || status === "streaming") && (
-          <Loader2 className="w-3.5 h-3.5 text-chart-1 animate-spin ml-auto" />
-        )}
-        {status === "success" && (
-          <CheckCircle2 className="w-3.5 h-3.5 text-chart-2 ml-auto" />
-        )}
-        {status === "error" && (
-          <AlertCircle className="w-3.5 h-3.5 text-destructive ml-auto" />
-        )}
+        <div className="ml-auto flex items-center gap-1">
+          {(status === "generating" || status === "streaming") && (
+            <Loader2 className="w-3.5 h-3.5 text-chart-1 animate-spin" />
+          )}
+          {status === "success" && (
+            <CheckCircle2 className="w-3.5 h-3.5 text-chart-2" />
+          )}
+          {status === "error" && (
+            <AlertCircle className="w-3.5 h-3.5 text-destructive" />
+          )}
+          {showMenu && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-6">
+                  <MoreVertical className="size-3.5 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {html && (
+                  <DropdownMenuItem onClick={() => copyToClipboard(html)}>
+                    <Copy className="size-4 mr-2" />
+                    Copy HTML
+                  </DropdownMenuItem>
+                )}
+                {filePath && (
+                  <DropdownMenuItem onClick={() => copyFilePath(filePath)}>
+                    <FileCode className="size-4 mr-2" />
+                    Copy file path
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
       <IPhone14Frame status={status}>
         {status === "generating" ? (

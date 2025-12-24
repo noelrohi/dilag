@@ -14,7 +14,14 @@ import { DesignCanvas } from "@/components/blocks/design-canvas";
 import { DraggableScreen } from "@/components/blocks/draggable-screen";
 import { MobileFrame } from "@/components/blocks/mobile-frame";
 import { ScreenPreview } from "@/components/blocks/screen-preview";
-import { PanelLeftClose, PanelLeftOpen, Palette } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Palette, Copy, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { copyFilePath } from "@/lib/design-export";
 
 export const Route = createFileRoute("/studio/$sessionId")({
   component: StudioPage,
@@ -132,9 +139,23 @@ function StudioPage() {
               <PanelLeftOpen className="size-3.5" />
             )}
           </Button>
-          <span className="text-sm font-medium truncate max-w-[200px]">
-            {currentSession?.name ?? "Untitled"}
-          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 text-sm font-medium truncate max-w-[200px] hover:bg-muted rounded px-1.5 py-0.5 -ml-1.5">
+                {currentSession?.name ?? "Untitled"}
+                <ChevronDown className="size-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onClick={() => currentSession?.cwd && copyFilePath(currentSession.cwd)}
+                disabled={!currentSession?.cwd}
+              >
+                <Copy className="size-4 mr-2" />
+                Copy session path
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -171,6 +192,10 @@ function StudioPage() {
                 );
                 if (!position) return null;
 
+                const filePath = currentSession?.cwd
+                  ? `${currentSession.cwd}/${design.filename}`
+                  : design.filename;
+
                 return (
                   <DraggableScreen
                     key={design.filename}
@@ -178,7 +203,12 @@ function StudioPage() {
                     x={position.x}
                     y={position.y}
                   >
-                    <MobileFrame title={design.title} status="success">
+                    <MobileFrame
+                      title={design.title}
+                      status="success"
+                      html={design.html}
+                      filePath={filePath}
+                    >
                       <ScreenPreview
                         screen={{
                           id: design.filename,
