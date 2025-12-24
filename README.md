@@ -7,6 +7,8 @@
 [![React](https://img.shields.io/badge/React-18+-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6?logo=typescript)](https://www.typescriptlang.org)
 
+![Dilag - AI Mobile UI Design Studio](assets/screenshot.png)
+
 ## Overview
 
 Dilag is a desktop application that transforms design ideas into interactive HTML mockups. Simply describe what you want to build—"a meditation app dashboard," "an e-commerce checkout flow"—and AI generates beautiful, responsive mobile UI designs instantly. Iterate in real-time by chatting with the AI to refine and improve your designs.

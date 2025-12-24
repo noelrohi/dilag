@@ -10,8 +10,9 @@ Technical documentation covering app initialization, data flow, and storage.
 2. [Storage & Persistence](#storage--persistence)
 3. [SSE Event System](#sse-event-system)
 4. [Session Lifecycle](#session-lifecycle)
-5. [Native Menu & Updater](#native-menu--updater)
-6. [State Management](#state-management)
+5. [Licensing System](#licensing-system)
+6. [Native Menu & Updater](#native-menu--updater)
+7. [State Management](#state-management)
 
 ---
 
@@ -56,13 +57,17 @@ Technical documentation covering app initialization, data flow, and storage.
        ├── Creates QueryClient (React Query)
        │   └── Default: staleTime=1min, retry=1, no refetchOnWindowFocus
        │
-       ├── Provider hierarchy (outer to inner):
-       │   ├── ErrorBoundary
-       │   ├── ThemeProvider (storageKey: "dilag-theme")
-       │   ├── QueryClientProvider
-       │   ├── GlobalEventsProvider  ← TRIGGERS BACKEND INIT
-       │   ├── MenuEventsProvider    ← Listens to native menu events
-       │   └── SidebarProvider
+        ├── Provider hierarchy (outer to inner):
+        │   ├── ErrorBoundary
+        │   ├── ThemeProvider (storageKey: "dilag-theme")
+        │   ├── QueryClientProvider
+        │   ├── LicenseProvider       ← Checks license status
+        │   ├── LicenseGate           ← Blocks UI if unlicensed
+        │   ├── GlobalEventsProvider  ← TRIGGERS BACKEND INIT
+        │   ├── NotificationProvider  ← Audio alerts
+        │   ├── UpdaterProvider       ← Auto-update checks
+        │   ├── MenuEventsProvider    ← Listens to native menu events
+        │   └── SidebarProvider
        │
        └── Also renders: UpdateDialog, Toaster, ReactQueryDevtools
 
@@ -199,6 +204,7 @@ Technical documentation covering app initialization, data flow, and storage.
 ```
 ~/.dilag/
 ├── sessions.json                    # Session metadata index
+├── license.json                     # License/trial state (see Licensing System)
 ├── opencode/
 │   └── opencode.json               # OpenCode config (designer agent)
 └── sessions/
@@ -433,6 +439,124 @@ User clicks delete on project card
 
 ---
 
+## Licensing System
+
+### Overview
+
+Dilag uses Polar.sh for license management with a 7-day trial period and license key activation.
+
+### License States
+
+| Status | Description |
+|--------|-------------|
+| `NoLicense` | Fresh install, no trial started |
+| `Trial` | Trial active, includes `days_remaining` |
+| `TrialExpired` | Trial period ended |
+| `Activated` | Valid license key activated |
+| `RequiresValidation` | License needs revalidation (>7 days offline) |
+| `Error` | Error state with message |
+
+### State Machine
+
+```
+NoLicense
+    │
+    └── [start_trial] (requires internet for server time)
+            │
+            ▼
+Trial (7 days) ─────────────────────────────┐
+    │                                        │
+    │ days elapse                            │ [activate_license]
+    ▼                                        │
+TrialExpired ───────────────────────────────┼──► Activated
+                                             │       │
+                                             │       │ [validate_license every 24h]
+                                             │       │
+                                             │       ▼
+                                             │   Online: Stays Activated
+                                             │   Offline <7 days: Stays Activated (grace)
+                                             │   Offline >7 days: RequiresValidation
+                                             │
+RequiresValidation ◄────────────────────────┘
+    │
+    └── [validate_license] success → Activated
+```
+
+### Storage (`~/.dilag/license.json`)
+
+```json
+{
+  "license_key": "string|null",
+  "activation_id": "polar_activation_id",
+  "device_id": "machine_uid",
+  "trial_start_utc": 1700000000,
+  "last_validated_at": 1700000100,
+  "activated_at": 1700000050,
+  "is_activated": true,
+  "last_server_time_check": 1700000200
+}
+```
+
+### Trial Clock Manipulation Prevention
+
+To prevent users from extending trials by changing system clock:
+
+1. **Start trial**: Fetches server time from `worldtimeapi.org` (fallback: HTTP Date header from cloudflare.com/google.com)
+2. **Check trial**: Compares current server time to `trial_start_utc`
+3. **Offline fallback**: Uses `max(local_time, last_server_time_check)` to prevent clock rollback
+
+### License Validation Flow
+
+```
+LicenseProvider mounts
+    │
+    ├── invoke("get_license_status")
+    │   └── Returns current status
+    │
+    ├── invoke("get_purchase_url")
+    │   └── Returns Polar checkout URL
+    │
+    └── If Activated: Start 24-hour validation interval
+        │
+        └── Every 24h: invoke("validate_license")
+            │
+            ├── Polar API validates key
+            │   └── Updates last_validated_at
+            │
+            └── On failure: Check grace periods
+                ├── <3 days offline: Allow (normal grace)
+                ├── <7 days offline: Allow (extended grace)
+                └── >7 days offline: RequiresValidation
+```
+
+### Tauri Commands
+
+| Command | Purpose |
+|---------|---------|
+| `get_license_status` | Check current license state |
+| `start_trial` | Begin 7-day trial (fetches server time) |
+| `activate_license` | Activate with Polar API |
+| `validate_license` | Re-validate active license |
+| `get_purchase_url` | Get Polar checkout URL |
+| `reset_license` | Delete license.json (for debugging) |
+
+### Provider Integration
+
+The `LicenseProvider` wraps the app and gates access via `LicenseGate`:
+
+```
+LicenseProvider
+    └── LicenseGate
+        │
+        ├── NoLicense → Shows activation modal (start trial or enter key)
+        ├── Trial → Shows app with trial banner
+        ├── TrialExpired → Shows activation modal
+        ├── Activated → Shows app normally
+        └── RequiresValidation → Shows validation prompt
+```
+
+---
+
 ## Native Menu & Updater
 
 ### Menu Events Flow
@@ -531,10 +655,12 @@ interface SessionState {
   parts: Record<string, MessagePart[]>;     // messageId → parts
   sessionStatus: Record<string, SessionStatus>;
   sessionDiffs: Record<string, FileDiff[]>;
+  sessionErrors: Record<string, { name: string; message: string } | null>;
 
   // Connection state
   isServerReady: boolean;
   error: string | null;
+  debugEvents: Event[];  // Last 500 SSE events for debugging
 }
 ```
 
