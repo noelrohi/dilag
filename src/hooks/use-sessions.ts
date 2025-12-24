@@ -291,6 +291,22 @@ export function useSessions() {
     [sessions, removeSession, clearSessionData, setError, sdk]
   );
 
+  const stopSession = useCallback(async () => {
+    if (!currentSessionId || !currentSession) return;
+
+    try {
+      await sdk.session.abort({
+        sessionID: currentSessionId,
+        directory: currentSession.cwd,
+      });
+      setSessionStatus(currentSessionId, "idle");
+    } catch (err) {
+      console.error("Failed to stop session:", err);
+      // Still set to idle - abort may fail if session already stopped
+      setSessionStatus(currentSessionId, "idle");
+    }
+  }, [currentSessionId, currentSession, sdk, setSessionStatus]);
+
   const sendMessage = useCallback(
     async (content: string, files?: FileUIPart[]) => {
       if (!currentSessionId || !currentSession) return;
@@ -392,7 +408,7 @@ export function useSessions() {
     currentSessionId,
     currentSession,
     messages,
-    isLoading: sessionStatus === "running",
+    isLoading: sessionStatus === "running" || sessionStatus === "busy",
     isLoadingSessions,
     isServerReady,
     error,
@@ -403,6 +419,7 @@ export function useSessions() {
     selectSession,
     deleteSession,
     sendMessage,
+    stopSession,
     clearDebugEvents,
   };
 }

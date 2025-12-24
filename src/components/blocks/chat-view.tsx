@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import {
   Terminal,
   AlertCircle,
   Palette,
   Paperclip,
   OctagonAlert,
+  Square,
 } from "lucide-react";
 import { DilagIcon } from "@/components/ui/dilag-icon";
 import { ArrowUp, Sparkle } from "@phosphor-icons/react";
@@ -279,9 +281,11 @@ function ErrorState({ error }: { error: string }) {
 function ChatInputArea({
   isLoading,
   sendMessage,
+  stopSession,
 }: {
   isLoading: boolean;
   sendMessage: (message: string, files?: import("ai").FileUIPart[]) => Promise<void>;
+  stopSession: () => Promise<void>;
 }) {
   const { textInput } = usePromptInputController();
   const hasInput = textInput.value.trim().length > 0;
@@ -290,6 +294,25 @@ function ChatInputArea({
     if (!text.trim() || isLoading) return;
     await sendMessage(text.trim(), files);
   };
+
+  const handleButtonClick = () => {
+    if (isLoading) {
+      stopSession();
+    }
+  };
+
+  // ESC key handler to stop session
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isLoading) {
+        e.preventDefault();
+        stopSession();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isLoading, stopSession]);
 
   return (
     <div className="relative px-4 pb-4">
@@ -334,16 +357,20 @@ function ChatInputArea({
             <div className="flex items-center gap-1">
               <ModelSelectorButton />
               <PromptInputSubmit
-                disabled={!hasInput || isLoading}
+                disabled={!hasInput && !isLoading}
+                onClick={isLoading ? handleButtonClick : undefined}
+                type={isLoading ? "button" : "submit"}
                 className={cn(
                   "size-9 rounded-xl transition-all duration-200",
-                  hasInput && !isLoading
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "bg-muted text-muted-foreground",
+                  isLoading
+                    ? "bg-destructive/90 text-destructive-foreground hover:bg-destructive shadow-lg shadow-destructive/25"
+                    : hasInput
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                      : "bg-muted text-muted-foreground",
                 )}
               >
                 {isLoading ? (
-                  <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <Square className="size-3.5 fill-current" />
                 ) : (
                   <ArrowUp className="size-4" />
                 )}
@@ -421,6 +448,7 @@ export function ChatView() {
     isServerReady,
     error,
     sendMessage,
+    stopSession,
     createSession,
   } = useSessions();
 
@@ -487,6 +515,7 @@ export function ChatView() {
           <ChatInputArea
             isLoading={isLoading}
             sendMessage={sendMessage}
+            stopSession={stopSession}
           />
         </div>
       </div>
