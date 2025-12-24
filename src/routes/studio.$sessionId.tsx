@@ -20,17 +20,21 @@ export const Route = createFileRoute("/studio/$sessionId")({
   component: StudioPage,
 });
 
-// Initial positions for new screens - stagger horizontally
-function getInitialPositions(screenIds: string[]): ScreenPosition[] {
-  const SCREEN_WIDTH = 280;
-  const GAP = 60;
-  const START_X = 100;
-  const START_Y = 100;
+// Grid layout constants for 4-column arrangement
+const SCREEN_WIDTH = 280;
+const SCREEN_HEIGHT = 572;
+const GAP_X = 60;
+const GAP_Y = 40;
+const START_X = 100;
+const START_Y = 100;
+const COLUMNS = 4;
 
+// Initial positions for screens - 4 column grid, oldest to newest
+function getInitialPositions(screenIds: string[]): ScreenPosition[] {
   return screenIds.map((id, index) => ({
     id,
-    x: START_X + (SCREEN_WIDTH + GAP) * index,
-    y: START_Y,
+    x: START_X + (SCREEN_WIDTH + GAP_X) * (index % COLUMNS),
+    y: START_Y + (SCREEN_HEIGHT + GAP_Y) * Math.floor(index / COLUMNS),
   }));
 }
 
@@ -79,17 +83,15 @@ function StudioPage() {
     const newIds = designIds.filter((id) => !existingIds.includes(id));
 
     if (newIds.length > 0) {
-      // Calculate offset based on existing screens
-      const maxX = screenPositions.length > 0
-        ? Math.max(...screenPositions.map((p) => p.x))
-        : 0;
-
-      // Add positions for new screens
-      const newPositions = newIds.map((id, index) => ({
-        id,
-        x: maxX + 340 + (280 + 60) * index,
-        y: 100,
-      }));
+      // Position new screens in grid based on their index in the full design array
+      const newPositions = newIds.map((id) => {
+        const index = designIds.indexOf(id);
+        return {
+          id,
+          x: START_X + (SCREEN_WIDTH + GAP_X) * (index % COLUMNS),
+          y: START_Y + (SCREEN_HEIGHT + GAP_Y) * Math.floor(index / COLUMNS),
+        };
+      });
 
       setScreenPositions(sessionId, [...screenPositions, ...newPositions]);
     }

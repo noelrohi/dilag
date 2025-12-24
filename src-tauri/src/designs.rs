@@ -79,7 +79,7 @@ pub fn load_session_designs(session_cwd: String) -> Vec<DesignFile> {
     process_dir(&session_dir);
     process_dir(&screens_dir);
 
-    // Sort by modified time (newest first)
-    designs.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    // Sort by modified time (oldest first)
+    designs.sort_by(|a, b| a.modified_at.cmp(&b.modified_at));
     designs
 }
