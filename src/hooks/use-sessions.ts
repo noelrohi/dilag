@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useSessionStore,
   useCurrentSessionId,
-  useSessionMessages,
+  useFilteredSessionMessages,
   useSessionStatus,
   useIsServerReady,
   useError,
@@ -60,7 +60,7 @@ export function useSessions() {
 
   // Zustand for client state
   const currentSessionId = useCurrentSessionId();
-  const messages = useSessionMessages(currentSessionId);
+  const messages = useFilteredSessionMessages(currentSessionId);
   const sessionStatus = useSessionStatus(currentSessionId);
   const isServerReady = useIsServerReady();
   const error = useError();
@@ -78,6 +78,7 @@ export function useSessions() {
     setMessages,
     setSessionStatus,
     setSessionError,
+    setSessionRevert,
     clearDebugEvents,
     handleEvent,
     setError,
@@ -109,6 +110,19 @@ export function useSessions() {
   // Load messages for a session - defined early so it can be used in effects
   const loadSessionMessages = useCallback(
     async (sessionId: string, directory?: string) => {
+      // Load session info first to get revert state
+      try {
+        const sessionInfo = await sdk.session.get({ sessionID: sessionId, directory });
+        if (sessionInfo?.data?.revert) {
+          setSessionRevert(sessionId, sessionInfo.data.revert);
+        } else {
+          setSessionRevert(sessionId, null);
+        }
+      } catch (err) {
+        console.debug(`[loadSessionMessages(${sessionId})] Failed to get session info:`, err);
+      }
+
+      // Load messages
       let response;
       try {
         response = await sdk.session.messages({ sessionID: sessionId, directory });
@@ -137,7 +151,7 @@ export function useSessions() {
         });
       }
     },
-    [sdk, setMessages]
+    [sdk, setMessages, setSessionRevert]
   );
 
   // Subscribe to global events (only once on mount)
@@ -307,6 +321,165 @@ export function useSessions() {
     }
   }, [currentSessionId, currentSession, sdk, setSessionStatus]);
 
+  // Fork session from a specific message - creates a new session with history up to that message
+  // Uses parent's directory so OpenCode can find the forked messages
+  const forkSession = useCallback(
+    async (messageId: string): Promise<string | null> => {
+      if (!currentSessionId || !currentSession) return null;
+
+      try {
+        setError(null);
+
+        // Call SDK to fork the session - uses parent's directory
+        const response = await sdk.session.fork({
+          sessionID: currentSessionId,
+          messageID: messageId,
+          directory: currentSession.cwd,
+        });
+
+        if (!response.data) {
+          throw new Error("Failed to fork session");
+        }
+
+        const forkedSession = response.data;
+
+        // Use parent's directory - OpenCode associates the forked session with this directory
+        // This means screens will persist, but chat history is properly forked
+        const sessionMeta: SessionMeta = {
+          id: forkedSession.id,
+          name: `Fork of ${currentSession.name}`,
+          created_at: new Date().toISOString(),
+          cwd: currentSession.cwd,
+          parentID: currentSessionId,
+        };
+
+        // Save to Tauri + update React Query cache
+        await saveSession(sessionMeta);
+
+        // Switch to the forked session
+        setCurrentSessionId(forkedSession.id);
+        await loadSessionMessages(forkedSession.id, currentSession.cwd);
+
+        return forkedSession.id;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fork session");
+        console.error("Failed to fork session:", err);
+        return null;
+      }
+    },
+    [currentSessionId, currentSession, sdk, saveSession, setCurrentSessionId, loadSessionMessages, setError]
+  );
+
+  // Revert session to a specific message - hides this message and all after it
+  // Messages are NOT deleted - just filtered out based on session.revert state
+  // Actual deletion happens when user sends a new message (server handles cleanup)
+  const revertToMessage = useCallback(
+    async (messageId: string): Promise<boolean> => {
+      if (!currentSessionId || !currentSession) return false;
+
+      try {
+        setError(null);
+
+        // Call SDK to revert the session - returns updated session with revert state
+        const response = await sdk.session.revert({
+          sessionID: currentSessionId,
+          messageID: messageId,
+          directory: currentSession.cwd,
+        });
+
+        // Set revert state from response (also updated via SSE, but set immediately for responsiveness)
+        if (response?.data?.revert) {
+          setSessionRevert(currentSessionId, response.data.revert);
+        }
+
+        return true;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to revert session");
+        console.error("Failed to revert session:", err);
+        return false;
+      }
+    },
+    [currentSessionId, currentSession, sdk, setError, setSessionRevert]
+  );
+
+  // Unrevert session - restores visibility of reverted messages
+  // Messages are NOT reloaded - they're already in state, just filtered by revert state
+  const unrevertSession = useCallback(async (): Promise<boolean> => {
+    if (!currentSessionId || !currentSession) return false;
+
+    try {
+      setError(null);
+
+      // Call SDK to unrevert the session
+      await sdk.session.unrevert({
+        sessionID: currentSessionId,
+        directory: currentSession.cwd,
+      });
+
+      // Clear local revert state - messages will now be unfiltered
+      // (also updated via SSE, but set immediately for responsiveness)
+      setSessionRevert(currentSessionId, null);
+
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to unrevert session");
+      console.error("Failed to unrevert session:", err);
+      return false;
+    }
+  }, [currentSessionId, currentSession, sdk, setError, setSessionRevert]);
+
+  // Fork session with designs only - creates a new session and copies screen designs (no chat history)
+  const forkSessionDesignsOnly = useCallback(
+    async (): Promise<string | null> => {
+      if (!currentSessionId || !currentSession?.cwd) return null;
+
+      try {
+        setError(null);
+
+        // Create a new session directory
+        const dirId = crypto.randomUUID();
+        const cwd = await createSessionDir(dirId);
+
+        // Create session in OpenCode with the new directory
+        const response = await sdk.session.create({ directory: cwd });
+        if (!response.data) {
+          throw new Error("Failed to create session");
+        }
+        const newSessionId = response.data.id;
+
+        // Copy designs from current session to new session
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("copy_session_designs", {
+          sourceCwd: currentSession.cwd,
+          destCwd: cwd,
+        });
+
+        // Create session metadata with parentID reference
+        const sessionMeta: SessionMeta = {
+          id: newSessionId,
+          name: `Fork of ${currentSession.name}`,
+          created_at: new Date().toISOString(),
+          cwd,
+          parentID: currentSessionId,
+        };
+
+        // Save to Tauri + update React Query cache
+        await saveSession(sessionMeta);
+
+        // Switch to the new session
+        setCurrentSessionId(newSessionId);
+        setMessages(newSessionId, []);
+
+        return newSessionId;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fork session");
+        console.error("Failed to fork session with designs:", err);
+        return null;
+      }
+    },
+    [currentSessionId, currentSession, sdk, saveSession, setCurrentSessionId, setMessages, setError]
+  );
+
   const sendMessage = useCallback(
     async (content: string, files?: FileUIPart[]) => {
       if (!currentSessionId || !currentSession) return;
@@ -420,6 +593,10 @@ export function useSessions() {
     deleteSession,
     sendMessage,
     stopSession,
+    forkSession,
+    forkSessionDesignsOnly,
+    revertToMessage,
+    unrevertSession,
     clearDebugEvents,
   };
 }

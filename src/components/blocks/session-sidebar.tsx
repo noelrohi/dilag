@@ -12,6 +12,7 @@ import {
   Wifi,
   WifiOff,
   Loader2,
+  GitFork,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useSessions } from "@/hooks/use-sessions";
@@ -43,6 +44,7 @@ type SessionMeta = {
   name: string;
   created_at: string;
   cwd: string;
+  parentID?: string; // Reference to parent session if forked
 };
 
 function groupSessionsByTime(sessions: SessionMeta[]) {
@@ -168,9 +170,14 @@ function SessionGroup({
                     "bg-sidebar-accent/80 border-l-2 border-primary"
                 )}
               >
-                <span className="truncate text-sm font-medium">
-                  {session.name}
-                </span>
+                <div className="flex items-center gap-2 min-w-0">
+                  {session.parentID && (
+                    <GitFork className="size-3 text-muted-foreground shrink-0" />
+                  )}
+                  <span className="truncate text-sm font-medium">
+                    {session.name}
+                  </span>
+                </div>
               </SidebarMenuButton>
               <SidebarMenuAction
                 onClick={(e) => onDelete(e, session.id)}

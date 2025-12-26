@@ -13,6 +13,30 @@ import type {
   EventSessionError,
 } from "@opencode-ai/sdk/v2/client";
 
+// Custom event types not in SDK (or with additional properties we need)
+export interface EventMessageRemovedCustom {
+  type: "message.removed";
+  properties: {
+    sessionID: string;
+    messageID: string;
+  };
+}
+
+export interface EventSessionUpdatedCustom {
+  type: "session.updated";
+  properties: {
+    info: {
+      id: string;
+      revert?: {
+        messageID: string;
+        partID?: string;
+        snapshot?: string;
+        diff?: string;
+      } | null;
+    };
+  };
+}
+
 /**
  * Type guard for message.part.updated events
  */
@@ -100,6 +124,37 @@ export function isEventSessionError(event: Event): event is EventSessionError {
 }
 
 /**
+ * Type guard for message.removed events
+ */
+export function isEventMessageRemoved(
+  event: Event
+): event is Event & EventMessageRemovedCustom {
+  return (
+    event.type === "message.removed" &&
+    "properties" in event &&
+    event.properties !== null &&
+    typeof event.properties === "object" &&
+    "sessionID" in event.properties &&
+    "messageID" in event.properties
+  );
+}
+
+/**
+ * Type guard for session.updated events
+ */
+export function isEventSessionUpdated(
+  event: Event
+): event is Event & EventSessionUpdatedCustom {
+  return (
+    event.type === "session.updated" &&
+    "properties" in event &&
+    event.properties !== null &&
+    typeof event.properties === "object" &&
+    "info" in event.properties
+  );
+}
+
+/**
  * Extracts session ID from any event type in a type-safe manner.
  * Searches through common property locations.
  *
@@ -129,6 +184,14 @@ export function extractSessionId(event: Event): string | null {
 
   if (isEventSessionError(event)) {
     return event.properties.sessionID ?? null;
+  }
+
+  if (isEventMessageRemoved(event)) {
+    return event.properties.sessionID ?? null;
+  }
+
+  if (isEventSessionUpdated(event)) {
+    return event.properties.info.id ?? null;
   }
 
   // Fallback: check for sessionID in properties for unknown event types

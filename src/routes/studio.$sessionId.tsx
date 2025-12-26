@@ -1,4 +1,4 @@
-import { createFileRoute, useParams } from "@tanstack/react-router";
+import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { useSessions } from "@/hooks/use-sessions";
 import { useDesigns } from "@/hooks/use-designs";
@@ -14,7 +14,7 @@ import { DesignCanvas } from "@/components/blocks/design-canvas";
 import { DraggableScreen } from "@/components/blocks/draggable-screen";
 import { MobileFrame } from "@/components/blocks/mobile-frame";
 import { ScreenPreview } from "@/components/blocks/screen-preview";
-import { PanelLeftClose, PanelLeftOpen, Palette, Copy, ChevronDown } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Palette, Copy, ChevronDown, GitFork } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,9 +47,10 @@ function getInitialPositions(screenIds: string[]): ScreenPosition[] {
 
 function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
+  const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(true);
 
-  const { selectSession, sendMessage, sessions, isServerReady } = useSessions();
+  const { selectSession, sendMessage, sessions, isServerReady, forkSessionDesignsOnly } = useSessions();
   const { designs } = useDesigns();
   const screenPositions = useScreenPositions(sessionId);
   const setScreenPositions = useSessionStore((s) => s.setScreenPositions);
@@ -116,6 +117,13 @@ function StudioPage() {
     setScreenPositions(sessionId, getInitialPositions(designIds));
   }, [designs, sessionId, setScreenPositions]);
 
+  const handleForkSession = useCallback(async () => {
+    const newSessionId = await forkSessionDesignsOnly();
+    if (newSessionId) {
+      navigate({ to: "/studio/$sessionId", params: { sessionId: newSessionId } });
+    }
+  }, [forkSessionDesignsOnly, navigate]);
+
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
 
   return (
@@ -139,14 +147,23 @@ function StudioPage() {
               <PanelLeftOpen className="size-3.5" />
             )}
           </Button>
+          <span className="text-sm font-medium truncate max-w-[200px]">
+            {currentSession?.name ?? "Untitled"}
+          </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-sm font-medium truncate max-w-[200px] hover:bg-muted rounded px-1.5 py-0.5 -ml-1.5">
-                {currentSession?.name ?? "Untitled"}
-                <ChevronDown className="size-3 text-muted-foreground" />
+              <button className="flex items-center justify-center size-6 hover:bg-muted rounded">
+                <ChevronDown className="size-3.5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onClick={handleForkSession}
+                disabled={designs.length === 0}
+              >
+                <GitFork className="size-4 mr-2" />
+                Fork to new session
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => currentSession?.cwd && copyFilePath(currentSession.cwd)}
                 disabled={!currentSession?.cwd}

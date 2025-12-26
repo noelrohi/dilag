@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Terminal,
   AlertCircle,
@@ -13,6 +14,8 @@ import { useSessions } from "@/hooks/use-sessions";
 import {
   useMessageParts,
   useSessionError,
+  useSessionRevert,
+  useSessionStore,
   type Message as SessionMessage,
 } from "@/context/session-store";
 import { Button } from "@/components/ui/button";
@@ -24,7 +27,7 @@ import {
   ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { Message, MessageContent } from "@/components/ai-elements/message";
+import { Message, MessageContent, MessageActions, MessageAction } from "@/components/ai-elements/message";
 import { MessageDuration } from "@/components/ai-elements/message-duration";
 import {
   PromptInput,
@@ -43,6 +46,9 @@ import {
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { ModelSelectorButton } from "./model-selector-button";
+import { TimelineDialog } from "@/components/blocks/dialog-timeline";
+import { RevertBanner } from "@/components/blocks/revert-banner";
+import { GitFork, Undo2, History, Copy } from "lucide-react";
 
 function ThinkingIndicator() {
   return (
@@ -99,9 +105,17 @@ function extractTextFromParts(
 function UserMessage({
   message,
   index,
+  onFork,
+  onRevert,
+  onCopyText,
+  onOpenTimeline,
 }: {
   message: SessionMessage;
   index: number;
+  onFork: (messageId: string) => void;
+  onRevert: (messageId: string) => void;
+  onCopyText: (messageId: string) => void;
+  onOpenTimeline: () => void;
 }) {
   const parts = useMessageParts(message.id);
   const textContent = extractTextFromParts(parts);
@@ -145,6 +159,20 @@ function UserMessage({
           <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
         )}
       </MessageContent>
+      <MessageActions className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
+          <Copy className="size-3.5" />
+        </MessageAction>
+        <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
+          <GitFork className="size-3.5" />
+        </MessageAction>
+        <MessageAction tooltip="Revert to here" onClick={() => onRevert(message.id)}>
+          <Undo2 className="size-3.5" />
+        </MessageAction>
+        <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
+          <History className="size-3.5" />
+        </MessageAction>
+      </MessageActions>
     </Message>
   );
 }
@@ -154,10 +182,16 @@ function AssistantMessage({
   message,
   index,
   isLast,
+  onFork,
+  onCopyText,
+  onOpenTimeline,
 }: {
   message: SessionMessage;
   index: number;
   isLast: boolean;
+  onFork: (messageId: string) => void;
+  onCopyText: (messageId: string) => void;
+  onOpenTimeline: () => void;
 }) {
   const parts = useMessageParts(message.id);
   const sessionError = useSessionError(message.sessionID);
@@ -192,6 +226,19 @@ function AssistantMessage({
         {/* Duration indicator */}
         <MessageDuration message={message} className="mt-2" />
       </MessageContent>
+      {!message.isStreaming && (
+        <MessageActions className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
+            <Copy className="size-3.5" />
+          </MessageAction>
+          <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
+            <GitFork className="size-3.5" />
+          </MessageAction>
+          <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
+            <History className="size-3.5" />
+          </MessageAction>
+        </MessageActions>
+      )}
     </Message>
   );
 }
@@ -450,7 +497,53 @@ export function ChatView() {
     sendMessage,
     stopSession,
     createSession,
+    forkSession,
+    revertToMessage,
+    unrevertSession,
   } = useSessions();
+
+  const navigate = useNavigate();
+
+  // Timeline dialog state
+  const [timelineOpen, setTimelineOpen] = useState(false);
+
+  // Get revert state for current session
+  const sessionRevert = useSessionRevert(currentSessionId);
+
+  // Handler for forking from a message
+  const handleFork = useCallback(
+    async (messageId: string) => {
+      const newSessionId = await forkSession(messageId);
+      if (newSessionId) {
+        navigate({ to: "/studio/$sessionId", params: { sessionId: newSessionId } });
+      }
+    },
+    [forkSession, navigate]
+  );
+
+  // Handler for reverting to a message
+  const handleRevert = useCallback(
+    async (messageId: string) => {
+      await revertToMessage(messageId);
+    },
+    [revertToMessage]
+  );
+
+  // Handler for copying message text
+  const handleCopyText = useCallback(async (messageId: string) => {
+    const state = useSessionStore.getState();
+    const parts = state.parts[messageId] || [];
+    const text = parts
+      .filter((p) => p.type === "text" && p.text)
+      .map((p) => p.text!)
+      .join("");
+    await navigator.clipboard.writeText(text);
+  }, []);
+
+  // Handler for opening the timeline
+  const handleOpenTimeline = useCallback(() => {
+    setTimelineOpen(true);
+  }, []);
 
   // Check if there's a pending initial prompt (from landing page navigation)
   const hasPendingPrompt = Boolean(
@@ -473,6 +566,11 @@ export function ChatView() {
   return (
     <PromptInputProvider>
       <div className="flex flex-col h-full">
+        {/* Revert banner - shown when session is in revert state */}
+        {sessionRevert && (
+          <RevertBanner onUnrevert={unrevertSession} />
+        )}
+
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-4">
@@ -495,6 +593,10 @@ export function ChatView() {
                     key={message.id}
                     message={message}
                     index={index}
+                    onFork={handleFork}
+                    onRevert={handleRevert}
+                    onCopyText={handleCopyText}
+                    onOpenTimeline={handleOpenTimeline}
                   />
                 ) : (
                   <AssistantMessage
@@ -502,6 +604,9 @@ export function ChatView() {
                     message={message}
                     index={index}
                     isLast={isLastAssistant}
+                    onFork={handleFork}
+                    onCopyText={handleCopyText}
+                    onOpenTimeline={handleOpenTimeline}
                   />
                 );
               })
@@ -518,6 +623,15 @@ export function ChatView() {
             stopSession={stopSession}
           />
         </div>
+
+        {/* Timeline dialog */}
+        <TimelineDialog
+          open={timelineOpen}
+          onOpenChange={setTimelineOpen}
+          messages={messages}
+          onFork={handleFork}
+          onRevert={handleRevert}
+        />
       </div>
     </PromptInputProvider>
   );
