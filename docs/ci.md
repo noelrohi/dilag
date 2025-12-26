@@ -101,43 +101,38 @@ We use the official [tauri-action](https://github.com/tauri-apps/tauri-action) w
 
 ## Versioning
 
-### Single Source of Truth
+### Multi-File Version Bump
 
-**`package.json`** is the single source of truth for versioning.
-
-### Version Sync at Build Time
-
-The `beforeBuildCommand` in `tauri.conf.json` runs a sync script:
+`bumpp` is configured to update all version files in a single commit:
 
 ```json
-"beforeBuildCommand": "bun run sync-version-from-pkg && bun run build"
+// package.json
+"bumpp": {
+  "files": [
+    "package.json",
+    { "path": "src-tauri/tauri.conf.json", "type": "json" },
+    { "path": "src-tauri/Cargo.toml", "type": "toml" }
+  ]
+}
 ```
-
-This script (`scripts/sync-version-from-pkg.ts`):
-1. Reads version from `package.json`
-2. Updates `src-tauri/tauri.conf.json`
-3. Updates `src-tauri/Cargo.toml`
-
-This ensures all config files have the correct version at build time, regardless of what's committed.
 
 ### Files Involved
 
 | File | Role |
 |------|------|
-| `package.json` | Source of truth, bumped by `bumpp` |
-| `src-tauri/tauri.conf.json` | Synced at build time, used by Tauri |
-| `src-tauri/Cargo.toml` | Synced at build time, used by Rust/Cargo |
+| `package.json` | Primary, bumped by `bumpp` |
+| `src-tauri/tauri.conf.json` | Bumped by `bumpp`, used by Tauri |
+| `src-tauri/Cargo.toml` | Bumped by `bumpp`, used by Rust/Cargo |
 
-### Why This Approach?
+### Fallback Sync
 
-The problem with bumping all files in the commit:
-- `bumpp`'s execute hook runs but changes aren't staged
-- CI checks out the code before those changes are committed
+The `beforeBuildCommand` still runs a sync script as a safety net:
 
-The solution:
-- Only commit `package.json` version bump
-- Sync other files at build time (in CI)
-- Build always uses correct version
+```json
+"beforeBuildCommand": "bun run sync-version-from-pkg && bun run build"
+```
+
+This ensures versions stay in sync if someone manually edits `package.json` without using `bumpp`.
 
 ---
 
