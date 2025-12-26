@@ -193,7 +193,7 @@ function StudioPage() {
                 if (!position) return null;
 
                 const filePath = currentSession?.cwd
-                  ? `${currentSession.cwd}/${design.filename}`
+                  ? `${currentSession.cwd}/screens/${design.filename}`
                   : design.filename;
 
                 return (
