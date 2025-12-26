@@ -15,10 +15,6 @@
     "sync-version": "bun scripts/sync-version.ts",
     "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts"
   },
-  "bump": {
-    "execute": "bun run sync-version-from-pkg",
-    "all": true
-  },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",

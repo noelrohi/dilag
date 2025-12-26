@@ -103,19 +103,25 @@ We use the official [tauri-action](https://github.com/tauri-apps/tauri-action) w
 
 ### Multi-File Version Bump
 
-`bumpp` is configured with an `execute` hook to sync all version files:
+`bumpp` is configured via `bump.config.ts` to sync all version files:
 
-```json
-// package.json
-"bump": {
-  "execute": "bun run sync-version-from-pkg"
-}
+```ts
+// bump.config.ts
+import { defineConfig } from "bumpp";
+import { execSync } from "child_process";
+
+export default defineConfig({
+  execute: () => {
+    execSync("bun run sync-version-from-pkg", { stdio: "inherit" });
+  },
+  all: true,
+});
 ```
 
 When you run `bun release`, bumpp:
 1. Bumps `package.json` version
 2. Runs the sync script to update other files
-3. Commits all changes together
+3. Commits all changes together (via `all: true`)
 4. Creates git tag and pushes
 
 ### Files Involved
