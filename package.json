@@ -15,18 +15,8 @@
     "sync-version": "bun scripts/sync-version.ts",
     "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts"
   },
-  "bumpp": {
-    "files": [
-      "package.json",
-      {
-        "path": "src-tauri/tauri.conf.json",
-        "type": "json"
-      },
-      {
-        "path": "src-tauri/Cargo.toml",
-        "type": "toml"
-      }
-    ]
+  "bump": {
+    "execute": "bun run sync-version-from-pkg"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
