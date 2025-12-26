@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
@@ -5,10 +6,12 @@ import type { Event, FileDiff, ToolState } from "@opencode-ai/sdk/v2/client";
 import {
   isEventMessagePartUpdated,
   isEventMessageUpdated,
+  isEventMessageRemoved,
   isEventSessionStatus,
   isEventSessionDiff,
   isEventSessionIdle,
   isEventSessionError,
+  isEventSessionUpdated,
 } from "@/lib/event-guards";
 
 // Re-export SDK types
@@ -23,6 +26,15 @@ export interface SessionMeta {
   name: string;
   created_at: string;
   cwd: string;
+  parentID?: string; // Reference to parent session if forked
+}
+
+// Revert state for a session
+export interface SessionRevertState {
+  messageID: string;
+  partID?: string;
+  snapshot?: string;
+  diff?: string;
 }
 
 export interface MessagePart {
@@ -87,6 +99,7 @@ interface SessionState {
   sessionStatus: Record<string, SessionStatus>; // Keyed by sessionId
   sessionDiffs: Record<string, FileDiff[]>; // Keyed by sessionId
   sessionErrors: Record<string, { name: string; message: string } | null>; // Keyed by sessionId
+  sessionRevert: Record<string, SessionRevertState | null>; // Keyed by sessionId - tracks revert state
 
   // Server connection state
   isServerReady: boolean;
@@ -107,6 +120,9 @@ interface SessionState {
   setSessionStatus: (sessionId: string, status: SessionStatus) => void;
   setSessionDiffs: (sessionId: string, diffs: FileDiff[]) => void;
   setSessionError: (sessionId: string, error: { name: string; message: string } | null) => void;
+  setSessionRevert: (sessionId: string, revert: SessionRevertState | null) => void;
+  removeMessage: (sessionId: string, messageId: string) => void;
+  removeMessagesAfter: (sessionId: string, messageId: string) => void;
   clearSessionData: (sessionId: string) => void;
 
   // Actions - Server state
@@ -172,6 +188,7 @@ export const useSessionStore = create<SessionState>()(
       sessionStatus: {},
       sessionDiffs: {},
       sessionErrors: {},
+      sessionRevert: {},
       isServerReady: false,
       error: null,
       debugEvents: [],
@@ -247,12 +264,47 @@ export const useSessionStore = create<SessionState>()(
           state.sessionErrors[sessionId] = error;
         }),
 
+      setSessionRevert: (sessionId, revert) =>
+        set((state) => {
+          state.sessionRevert[sessionId] = revert;
+        }),
+
+      removeMessage: (sessionId, messageId) =>
+        set((state) => {
+          const messages = state.messages[sessionId];
+          if (messages) {
+            state.messages[sessionId] = messages.filter((m) => m.id !== messageId);
+          }
+          // Also remove parts for this message
+          delete state.parts[messageId];
+        }),
+
+      removeMessagesAfter: (sessionId, messageId) =>
+        set((state) => {
+          const messages = state.messages[sessionId];
+          if (!messages) return;
+
+          // Find the index of the target message
+          const targetIndex = messages.findIndex((m) => m.id === messageId);
+          if (targetIndex === -1) return;
+
+          // Remove all messages after the target (keep target and before)
+          const removedMessages = messages.slice(targetIndex + 1);
+          state.messages[sessionId] = messages.slice(0, targetIndex + 1);
+
+          // Remove parts for all removed messages
+          for (const msg of removedMessages) {
+            delete state.parts[msg.id];
+          }
+        }),
+
       clearSessionData: (sessionId) =>
         set((state) => {
           delete state.messages[sessionId];
           delete state.sessionStatus[sessionId];
           delete state.sessionDiffs[sessionId];
           delete state.sessionErrors[sessionId];
+          delete state.sessionRevert[sessionId];
           if (state.currentSessionId === sessionId) {
             state.currentSessionId = null;
           }
@@ -292,6 +344,7 @@ export const useSessionStore = create<SessionState>()(
           state.sessionStatus = {};
           state.sessionDiffs = {};
           state.sessionErrors = {};
+          state.sessionRevert = {};
           state.debugEvents = [];
           state.error = null;
           // Note: currentSessionId and screenPositions are preserved
@@ -299,7 +352,7 @@ export const useSessionStore = create<SessionState>()(
 
       // Central event handler for SSE - handles real-time updates
       handleEvent: (event) => {
-        const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs, setSessionError } = get();
+        const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs, setSessionError, setSessionRevert, removeMessage } = get();
 
         addDebugEvent(event);
 
@@ -343,6 +396,19 @@ export const useSessionStore = create<SessionState>()(
               time: info.time as { created: number; completed?: number },
             });
           }
+          return;
+        }
+
+        if (isEventMessageRemoved(event)) {
+          const { sessionID, messageID } = event.properties;
+          removeMessage(sessionID, messageID);
+          return;
+        }
+
+        if (isEventSessionUpdated(event)) {
+          const { info } = event.properties;
+          // Update revert state from session info
+          setSessionRevert(info.id, info.revert ?? null);
           return;
         }
 
@@ -421,3 +487,24 @@ export const useError = () => useSessionStore((state) => state.error);
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents);
 export const useResetRealtimeState = () => useSessionStore((state) => state.resetRealtimeState);
 export const useAllSessionStatuses = () => useSessionStore((state) => state.sessionStatus);
+export const useSessionRevert = (sessionId: string | null) =>
+  useSessionStore((state) => (sessionId ? state.sessionRevert[sessionId] ?? null : null));
+
+// Hook that returns messages filtered by revert state
+// If session is reverted, only shows messages BEFORE the revert point (matching OpenCode's pattern)
+// The revert messageID is the FIRST message to be hidden
+export function useFilteredSessionMessages(sessionId: string | null) {
+  const messages = useSessionStore((state) =>
+    sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES
+  );
+  const revertMessageID = useSessionStore((state) =>
+    sessionId ? state.sessionRevert[sessionId]?.messageID ?? null : null
+  );
+
+  // Memoize the filtered result to avoid creating new arrays on every render
+  return useMemo(() => {
+    if (!revertMessageID) return messages;
+    // Filter to show only messages BEFORE the revert point (id < revertID)
+    return messages.filter((m) => m.id < revertMessageID);
+  }, [messages, revertMessageID]);
+}

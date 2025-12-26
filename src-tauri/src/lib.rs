@@ -99,6 +99,7 @@ pub fn run() {
             sessions::delete_session_metadata,
             // Design commands
             designs::load_session_designs,
+            designs::copy_session_designs,
             // App info commands
             app_info::get_app_info,
             app_info::reset_all_data,

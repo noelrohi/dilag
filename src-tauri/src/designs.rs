@@ -1,3 +1,4 @@
+use crate::error::AppResult;
 use crate::state::DesignFile;
 use std::fs;
 use std::path::PathBuf;
@@ -82,4 +83,34 @@ pub fn load_session_designs(session_cwd: String) -> Vec<DesignFile> {
     // Sort by modified time (oldest first)
     designs.sort_by(|a, b| a.modified_at.cmp(&b.modified_at));
     designs
+}
+
+/// Copy all design files from one session to another
+#[tauri::command]
+pub fn copy_session_designs(source_cwd: String, dest_cwd: String) -> AppResult<u32> {
+    let source_screens = PathBuf::from(&source_cwd).join("screens");
+    let dest_screens = PathBuf::from(&dest_cwd).join("screens");
+
+    // Create destination screens directory
+    fs::create_dir_all(&dest_screens).map_err(|e| format!("Failed to create screens dir: {}", e))?;
+
+    let mut copied = 0u32;
+
+    if source_screens.exists() {
+        if let Ok(entries) = fs::read_dir(&source_screens) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_some_and(|e| e == "html") {
+                    if let Some(filename) = path.file_name() {
+                        let dest_path = dest_screens.join(filename);
+                        fs::copy(&path, &dest_path)
+                            .map_err(|e| format!("Failed to copy {}: {}", path.display(), e))?;
+                        copied += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(copied)
 }
