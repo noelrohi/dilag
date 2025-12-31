@@ -1,10 +1,11 @@
-import { GripVertical, Loader2, CheckCircle2, AlertCircle, MoreVertical, Copy, FileCode } from "lucide-react";
+import { GripVertical, Loader2, CheckCircle2, AlertCircle, MoreVertical, Copy, FileCode, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { copyToClipboard, copyFilePath } from "@/lib/design-export";
@@ -18,10 +19,11 @@ interface MobileFrameProps {
   className?: string;
   html?: string;
   filePath?: string;
+  onDelete?: () => void;
 }
 
-export function MobileFrame({ children, title, status, className, html, filePath }: MobileFrameProps) {
-  const showMenu = html || filePath;
+export function MobileFrame({ children, title, status, className, html, filePath, onDelete }: MobileFrameProps) {
+  const showMenu = html || filePath || onDelete;
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -57,6 +59,15 @@ export function MobileFrame({ children, title, status, className, html, filePath
                     <FileCode className="size-4 mr-2" />
                     Copy file path
                   </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                      <Trash2 className="size-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
