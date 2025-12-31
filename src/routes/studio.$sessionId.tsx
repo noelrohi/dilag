@@ -1,5 +1,6 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useSessions } from "@/hooks/use-sessions";
 import { useDesigns } from "@/hooks/use-designs";
 import {
@@ -126,6 +127,24 @@ function StudioPage() {
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
 
+  const handleDeleteScreen = useCallback(
+    async (filename: string) => {
+      if (!currentSession?.cwd) return;
+      const filePath = `${currentSession.cwd}/screens/${filename}`;
+      try {
+        await invoke("delete_design", { filePath });
+        // Remove the screen position immediately for responsive UI
+        setScreenPositions(
+          sessionId,
+          screenPositions.filter((p) => p.id !== filename)
+        );
+      } catch (error) {
+        console.error("Failed to delete screen:", error);
+      }
+    },
+    [currentSession?.cwd, sessionId, screenPositions, setScreenPositions]
+  );
+
   return (
     <div className="h-dvh flex flex-col bg-background">
       {/* Title bar drag region */}
@@ -225,6 +244,7 @@ function StudioPage() {
                       status="success"
                       html={design.html}
                       filePath={filePath}
+                      onDelete={() => handleDeleteScreen(design.filename)}
                     >
                       <ScreenPreview
                         screen={{

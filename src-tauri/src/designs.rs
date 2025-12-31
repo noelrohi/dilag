@@ -85,6 +85,17 @@ pub fn load_session_designs(session_cwd: String) -> Vec<DesignFile> {
     designs
 }
 
+/// Delete a design file from disk
+#[tauri::command]
+pub fn delete_design(file_path: String) -> AppResult<()> {
+    let path = PathBuf::from(&file_path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path).into());
+    }
+    fs::remove_file(&path).map_err(|e| format!("Failed to delete {}: {}", file_path, e))?;
+    Ok(())
+}
+
 /// Copy all design files from one session to another
 #[tauri::command]
 pub fn copy_session_designs(source_cwd: String, dest_cwd: String) -> AppResult<u32> {

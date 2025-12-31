@@ -100,6 +100,7 @@ pub fn run() {
             // Design commands
             designs::load_session_designs,
             designs::copy_session_designs,
+            designs::delete_design,
             // App info commands
             app_info::get_app_info,
             app_info::reset_all_data,
