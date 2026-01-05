@@ -55,8 +55,8 @@ fn ensure_config_exists() -> AppResult<()> {
                 "mode": "primary",
                 "prompt": DESIGNER_AGENT_PROMPT,
                 "description": "UI design agent for creating production-grade screens",
-                "tools": {
-                    "bash": false
+                "permission": {
+                    "bash": "deny"
                 }
             }
         }
