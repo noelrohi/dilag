@@ -1,15 +1,20 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 
-/// Application state managed by Tauri
 pub struct AppState {
     pub opencode_pid: Mutex<Option<u32>>,
+    pub opencode_port: Mutex<Option<u16>>,
+    pub vite_pid: Mutex<Option<u32>>,
+    pub vite_session_cwd: Mutex<Option<String>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
             opencode_pid: Mutex::new(None),
+            opencode_port: Mutex::new(None),
+            vite_pid: Mutex::new(None),
+            vite_session_cwd: Mutex::new(None),
         }
     }
 }
