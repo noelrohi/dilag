@@ -26,6 +26,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {
+      "templates/web-project/**/*": "templates/web-project/"
+    },
     "macOS": {
       "minimumSystemVersion": "10.15"
     }

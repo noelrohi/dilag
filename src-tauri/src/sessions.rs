@@ -1,7 +1,10 @@
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::paths::{get_sessions_dir, get_sessions_file};
 use crate::state::{SessionMeta, SessionsStore};
 use std::fs;
+use std::path::Path;
+use tauri::AppHandle;
+use tauri::Manager;
 
 /// Load the sessions store from disk
 fn load_sessions_store() -> SessionsStore {
@@ -70,11 +73,61 @@ pub fn delete_session_metadata(session_id: String) -> AppResult<()> {
     let json = serde_json::to_string_pretty(&store)?;
     fs::write(&file_path, json)?;
 
-    // Also remove the session directory
     let session_dir = get_sessions_dir().join(&session_id);
     if session_dir.exists() {
         fs::remove_dir_all(&session_dir)?;
     }
+
+    Ok(())
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> AppResult<()> {
+    if !dst.exists() {
+        fs::create_dir_all(dst)?;
+    }
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn initialize_web_project(app: AppHandle, session_cwd: String) -> AppResult<()> {
+    let template_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| AppError::Custom(e.to_string()))?
+        .join("templates")
+        .join("web-project");
+
+    let template_dir = if template_dir.exists() {
+        template_dir
+    } else {
+        let dev_template = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("templates")
+            .join("web-project");
+        if dev_template.exists() {
+            dev_template
+        } else {
+            return Err(AppError::Custom(format!(
+                "Web project template not found at {:?} or {:?}",
+                template_dir, dev_template
+            )));
+        }
+    };
+
+    let dest_dir = Path::new(&session_cwd);
+    copy_dir_recursive(&template_dir, dest_dir)?;
 
     Ok(())
 }
