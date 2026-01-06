@@ -183,6 +183,7 @@ pub async fn start_vite_server(
     let pid = child.pid();
     println!("[start_vite_server] Spawned process with PID: {}", pid);
     *state.vite_pid.lock().unwrap() = Some(pid);
+    *state.vite_session_cwd.lock().unwrap() = Some(session_cwd.clone());
 
     tokio::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -214,7 +215,6 @@ pub async fn start_vite_server(
     Ok(VITE_PORT)
 }
 
-/// Stop the Vite dev server
 #[tauri::command]
 pub async fn stop_vite_server(state: tauri::State<'_, AppState>) -> AppResult<()> {
     let mut pid_guard = state.vite_pid.lock().unwrap();
@@ -222,23 +222,24 @@ pub async fn stop_vite_server(state: tauri::State<'_, AppState>) -> AppResult<()
         println!("[stop_vite_server] Killing Vite process {}", pid);
         kill_process(pid);
     }
+    *state.vite_session_cwd.lock().unwrap() = None;
 
-    // Also kill any orphaned process on the port
     kill_vite_on_port();
 
     Ok(())
 }
 
-/// Get the current status of the Vite dev server
 #[tauri::command]
 pub fn get_vite_status(state: tauri::State<'_, AppState>) -> ViteStatus {
     let pid = *state.vite_pid.lock().unwrap();
+    let session_cwd = state.vite_session_cwd.lock().unwrap().clone();
     let running = pid.is_some() && is_port_in_use(VITE_PORT);
 
     ViteStatus {
         running,
         pid,
         port: VITE_PORT,
+        session_cwd,
     }
 }
 

@@ -56,6 +56,29 @@ export function BrowserFrame({ sessionCwd, className }: BrowserFrameProps) {
     return () => clearInterval(interval);
   }, [checkProjectReady, checkViteStatus]);
 
+  const isCurrentSession = viteStatus?.session_cwd === sessionCwd;
+
+  useEffect(() => {
+    if (viteStatus?.running && !isCurrentSession && projectReady) {
+      handleSwitchProject();
+    }
+  }, [sessionCwd, viteStatus?.running, isCurrentSession, projectReady]);
+
+  const handleSwitchProject = async () => {
+    setStarting(true);
+    setError(null);
+    try {
+      await invoke("stop_vite_server");
+      await invoke("start_vite_server", { sessionCwd });
+      await checkViteStatus();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+    } finally {
+      setStarting(false);
+    }
+  };
+
   const handleStart = async () => {
     setStarting(true);
     setError(null);
@@ -119,7 +142,7 @@ export function BrowserFrame({ sessionCwd, className }: BrowserFrameProps) {
   }, [currentSize.width, currentSize.height]);
 
   const renderContent = () => {
-    if (viteStatus?.running) {
+    if (viteStatus?.running && isCurrentSession) {
       return (
         <div
           className="bg-background rounded-lg shadow-2xl overflow-hidden transition-all duration-300 border border-border/50"
@@ -139,6 +162,15 @@ export function BrowserFrame({ sessionCwd, className }: BrowserFrameProps) {
             }}
             title="Web Preview"
           />
+        </div>
+      );
+    }
+
+    if (viteStatus?.running && !isCurrentSession) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
+          <Loader2 className="size-8 animate-spin" />
+          <p className="text-sm">Switching to this project...</p>
         </div>
       );
     }
