@@ -74,27 +74,30 @@ Technical documentation covering app initialization, data flow, and storage.
 5. GLOBAL EVENTS PROVIDER INITIALIZES
    └── global-events.tsx: GlobalEventsProvider()
        │
-       ├── Creates OpenCode SDK client (baseUrl: http://127.0.0.1:4096)
+       ├── Reads dynamic port from window.__DILAG__.port (injected by Rust setup)
+       │
+       ├── Creates OpenCode SDK client (baseUrl: http://127.0.0.1:${port})
        │
        └── useEffect runs init():
            │
-           ├── invoke("start_opencode_server")
-           │   │
-           │   │   TAURI BACKEND (lib.rs):
-           │   ├── Check if already running (no)
-           │   ├── Create ~/.dilag/ directory
-           │   ├── Create ~/.dilag/sessions/ directory
-           │   ├── Create ~/.dilag/opencode/opencode.json config
-           │   │   └── Contains "designer" agent with system prompt
-           │   ├── Spawn: opencode serve --port 4096 --hostname 127.0.0.1
+            ├── invoke("start_opencode_server")
+            │   │
+            │   │   TAURI BACKEND (lib.rs):
+            │   ├── Check if already running (no)
+            │   ├── Create ~/.dilag/ directory
+            │   ├── Create ~/.dilag/sessions/ directory
+            │   ├── Create ~/.dilag/opencode/opencode.json config
+            │   │   └── Contains "designer" and "web-designer" agents with system prompts
+            │   ├── Spawn: opencode serve --port ${port} --hostname 127.0.0.1
+
            │   │   └── With XDG_CONFIG_HOME=~/.dilag (isolated config)
            │   ├── Wait 500ms for server to start
-           │   └── Return port 4096
+           │   └── Return dynamic port
            │
            ├── setIsServerReady(true)
            │
            ├── Connect to SSE: sdk.global.event()
-           │   └── Opens persistent connection to http://127.0.0.1:4096/events
+           │   └── Opens persistent connection to http://127.0.0.1:${port}/events
            │
            ├── setIsConnected(true)
            │
@@ -148,8 +151,8 @@ Technical documentation covering app initialization, data flow, and storage.
        │   ├── ~/.dilag/ already exists ✓
        │   ├── ~/.dilag/sessions/ already exists ✓
        │   ├── Overwrites opencode.json (ensures agent prompt is current)
-       │   ├── Spawn OpenCode server
-       │   └── Return port 4096
+       │   ├── Spawn OpenCode server on dynamic port
+       │   └── Return dynamic port
        │
        ├── setIsServerReady(true)
        ├── Connect to SSE stream
@@ -206,14 +209,20 @@ Technical documentation covering app initialization, data flow, and storage.
 ├── sessions.json                    # Session metadata index
 ├── license.json                     # License/trial state (see Licensing System)
 ├── opencode/
-│   └── opencode.json               # OpenCode config (designer agent)
+│   └── opencode.json               # OpenCode config (designer & web-designer agents)
 └── sessions/
     └── {session-uuid}/             # Per-session working directory
-        └── screens/
-            ├── home-screen.html    # Generated design files
-            ├── profile.html
+        ├── screens/                # Mobile design files (HTML)
+        │   ├── home-screen.html
+        │   └── ...
+        └── web-project/            # Web design project (Vite + React)
+            ├── src/
+            ├── package.json
             └── ...
 ```
+
+**Bundled Resources:**
+The app bundles a Vite + React template in `src-tauri/templates/web-project/`, which is copied to the session directory when initializing a web project.
 
 **sessions.json schema:**
 ```json
@@ -290,7 +299,9 @@ This separation allows Dilag to use isolated config while sharing auth across Op
 ```
 GlobalEventsProvider mounts
     │
-    ├── Create SDK client (http://127.0.0.1:4096)
+    ├── Read port from window.__DILAG__.port (injected by Rust)
+    │
+    ├── Create SDK client (http://127.0.0.1:${port})
     │
     ├── connectToSSE() with reconnection loop:
     │   │
@@ -299,7 +310,7 @@ GlobalEventsProvider mounts
     │       ├── setConnectionStatus("connecting" | "reconnecting")
     │       │
     │       ├── sdk.global.event()
-    │       │   └── GET http://127.0.0.1:4096/events (SSE)
+    │       │   └── GET http://127.0.0.1:${port}/events (SSE)
     │       │
     │       ├── On success:
     │       │   ├── Reset attempt counter
@@ -387,7 +398,7 @@ sendMessage(content)
     ├── sdk.session.prompt({
     │     sessionID,
     │     directory,
-    │     agent: "designer",
+    │     agent: designMode === "web" ? "web-designer" : "designer",
     │     model: { providerID, modelID },
     │     parts: [{ type: "text", text: content }]
     │   })
@@ -540,6 +551,16 @@ LicenseProvider mounts
 | `get_purchase_url` | Get Polar checkout URL |
 | `reset_license` | Delete license.json (for debugging) |
 
+### Web Design Commands (Vite)
+
+| Command | Purpose |
+|---------|---------|
+| `start_vite_server` | Starts Vite dev server for a session |
+| `stop_vite_server` | Stops the running Vite server |
+| `get_vite_status` | Checks if Vite server is running |
+| `get_vite_port` | Returns the port Vite is listening on |
+| `initialize_web_project` | Copies web template to session directory |
+
 ### Provider Integration
 
 The `LicenseProvider` wraps the app and gates access via `LicenseGate`:
@@ -678,6 +699,18 @@ interface ModelState {
 **Persistence:** Stored in `localStorage` as `dilag-model-store`.
 Default: `{ providerID: "opencode", modelID: "big-pickle" }`
 
+#### Design Mode Store (`design-mode-store.ts`)
+
+```typescript
+interface DesignModeState {
+  mode: "mobile" | "web";
+  webViewport: "desktop" | "tablet" | "mobile";
+}
+```
+
+**Persistence:** Stored in `localStorage` as `dilag-design-mode`.
+- **Viewport Sizes:** Desktop (1280×800), Tablet (768×1024), Mobile (390×844)
+
 ### React Query Keys
 
 ```typescript
@@ -717,7 +750,7 @@ modelKeys.providers() // ["models", "providers"]
 │                   TAURI (Rust Backend)                      │
 │                                                             │
 │  ┌─────────────────────┐    ┌─────────────────────────────┐ │
-│  │ Tauri Commands      │    │ OpenCode Server (port 4096) │ │
+│  │ Tauri Commands      │    │ OpenCode Server (dynamic)   │ │
 │  │                     │    │                             │ │
 │  │ - sessions.json     │    │ - SDK API calls             │ │
 │  │ - design files      │    │ - SSE event stream          │ │

@@ -1,6 +1,6 @@
 # Dilag Platform Documentation
 
-> Dilag is an AI-powered mobile UI design studio built as a native desktop app. It leverages OpenCode's AI coding capabilities to transform natural language prompts into production-ready mobile screen designs, rendered live on an infinite canvas workspace. Users describe their app ideas in a chat interface, and the AI generates Tailwind CSS-styled HTML screens that appear as draggable iPhone frames on the design canvas.
+> Dilag is an AI-powered design studio built as a native desktop app. It leverages OpenCode's AI coding capabilities to transform natural language prompts into production-ready UI designs. It supports two main modes: **Mobile Mode** (iPhone frames on an infinite canvas) and **Web Mode** (full Vite-powered web project with live preview).
 
 ---
 
@@ -63,6 +63,7 @@ dilag/
 |   |
 |   +-- context/
 |   |   +-- session-store.tsx ------- Zustand store for real-time state
+|   |   +-- design-mode-store.ts ---- Design mode (mobile/web) state
 |   |   +-- global-events.tsx ------- SSE event provider & SDK client
 |   |   +-- menu-events.tsx --------- Native menu event handlers
 |   |   +-- updater-context.tsx ----- App auto-update provider
@@ -280,7 +281,9 @@ dilag/
 
 **File:** `src/routes/studio.$sessionId.tsx`
 
-> The studio is the main workspace where design happens. A collapsible chat pane on the left handles conversation with the AI, while an infinite canvas on the right displays generated screen designs as draggable iPhone frames. Users can pan, zoom, and rearrange screens freely.
+> The studio is the main workspace where design happens. A collapsible chat pane on the left handles conversation with the AI. On the right, the interface adapts based on the active **Design Mode**:
+> - **Mobile Mode**: An infinite canvas displays generated screens as draggable iPhone frames.
+> - **Web Mode**: A browser frame renders a live Vite dev server preview of a React web project.
 
 #### Visual Layout
 
@@ -323,8 +326,9 @@ dilag/
 | Messages | `<Message>` | User/assistant message bubbles |
 | Tool Display | `<MessagePart>` + `<ToolPart>` | Collapsible tool call details |
 | Composer | `<PromptInput>` | Input with model selector |
-| Canvas | `<DesignCanvas>` | DnD-enabled infinite canvas |
-| Screen Frames | `<DraggableScreen>` + `<MobileFrame>` | iPhone frames with live previews |
+| Canvas | `<DesignCanvas>` | DnD-enabled infinite canvas (Mobile Mode) |
+| Browser Frame | `<BrowserFrame>` | Iframe with Vite dev server preview (Web Mode) |
+| Screen Frames | `<DraggableScreen>` + `<MobileFrame>` | iPhone frames with live previews (Mobile Mode) |
 | Controls | Canvas toolbar | Zoom (25%-200%), pan, reset |
 
 #### User Interactions
@@ -475,6 +479,16 @@ dilag/
 |     | +----------+  +----------+  +----------+                       |   |
 |     | |   Light  |  |   Dark   |  |  System  |                       |   |
 |     | +----------+  +----------+  +----------+                       |   |
+|     +---------------------------------------------------------------+   |
+|                                                                          |
+|     DESIGN MODE                                                          |
+|     +---------------------------------------------------------------+   |
+|     | Default Mode                                                   |   |
+|     | Choose between mobile and web design                          |   |
+|     |                                                                |   |
+|     | +------------+  +------------+                                 |   |
+|     | |   Mobile   |  |     Web    |                                 |   |
+|     | +------------+  +------------+                                 |   |
 |     +---------------------------------------------------------------+   |
 |                                                                          |
 |     MODEL                                                                |
@@ -634,8 +648,9 @@ dilag/
 | Block | File | Purpose |
 |-------|------|---------|
 | `ChatView` | `chat-view.tsx` | Full chat interface with messages and composer |
-| `DesignCanvas` | `design-canvas.tsx` | Infinite canvas with DnD, pan, zoom |
+| `DesignCanvas` | `design-canvas.tsx` | Infinite canvas with DnD, pan, zoom (Mobile) |
 | `MobileFrame` | `mobile-frame.tsx` | iPhone frame wrapper with status indicators |
+| `BrowserFrame` | `browser-frame.tsx` | Browser frame with Vite iframe (Web) |
 | `ScreenPreview` | `screen-preview.tsx` | Iframe-based HTML preview renderer |
 | `DraggableScreen` | `draggable-screen.tsx` | DnD wrapper for canvas screens |
 | `MessagePart` | `message-part.tsx` | Renders different message part types (text, tool, reasoning) |
@@ -711,6 +726,8 @@ interface SessionState {
   // ================================================================
   currentSessionId: string | null;     // Active session
   screenPositions: Record<string, ScreenPosition[]>; // Canvas layout
+  designMode: "mobile" | "web";        // Active design mode
+  webViewport: "desktop" | "tablet" | "mobile"; // Web preview viewport
 
   // ================================================================
   // Real-time State (from SSE events)
@@ -953,21 +970,23 @@ interface ModelState {
 |                                                                          |
 |   1. App mounts, GlobalEventsProvider initializes                        |
 |                                                                          |
-|   2. Start OpenCode server:                                              |
-|      invoke("start_opencode_server") --> returns port 4096               |
+|   2. Read dynamic port from window.__DILAG__.port (injected by Rust)     |
 |                                                                          |
-|   3. Create SDK client:                                                  |
-|      createOpencodeClient({ baseUrl: "http://127.0.0.1:4096" })         |
+|   3. Start OpenCode server:                                              |
+|      invoke("start_opencode_server") --> returns dynamic port            |
 |                                                                          |
-|   4. Connect to SSE:                                                     |
+|   4. Create SDK client:                                                  |
+|      createOpencodeClient({ baseUrl: `http://127.0.0.1:${port}` })         |
+|                                                                          |
+|   5. Connect to SSE:                                                     |
 |      sdk.global.event() --> async iterator                               |
 |                                                                          |
-|   5. Process events in async for-loop:                                   |
+|   6. Process events in async for-loop:                                   |
 |      for await (const event of events.stream) {                          |
 |        handlersRef.current.forEach(h => h(event.payload))                |
 |      }                                                                   |
 |                                                                          |
-|   6. Reconnection on disconnect:                                         |
+|   7. Reconnection on disconnect:                                         |
 |      - Exponential backoff (3s initial, 30s max)                         |
 |      - Unlimited retry attempts                                          |
 |      - Bootstrap callback on reconnect                                   |
@@ -1004,7 +1023,7 @@ interface ModelState {
 |   |    Checks if OpenCode CLI is installed and returns version          ||
 |   |                                                                      ||
 |   |  start_opencode_server() -> Result<u16, String>                     ||
-|   |    Spawns opencode serve on port 4096, returns port number          ||
+|   |    Spawns opencode serve on dynamic free port, returns port number  ||
 |   |                                                                      ||
 |   |  stop_opencode_server() -> Result<(), String>                       ||
 |   |    Stops the running OpenCode server process                        ||
@@ -1035,6 +1054,19 @@ interface ModelState {
 |   |                                                                      ||
 |   +----------------------------------------------------------------------+|
 |                                                                          |
+|   +-- Vite Server -----------------------------------------------------+|
+|   |                                                                      ||
+|   |  start_vite_server(session_cwd: String) -> Result<u16, String>      ||
+|   |    Starts Vite dev server for a session, returns port               ||
+|   |                                                                      ||
+|   |  stop_vite_server() -> Result<(), String>                           ||
+|   |    Stops the running Vite server process                            ||
+|   |                                                                      ||
+|   |  initialize_web_project(session_cwd: String) -> Result<(), String>  ||
+|   |    Copies web template to session directory                         ||
+|   |                                                                      ||
+|   +----------------------------------------------------------------------+|
+|                                                                          |
 |   +-- App Management ---------------------------------------------------+|
 |   |                                                                      ||
 |   |  get_app_info() -> AppInfo                                          ||
@@ -1052,8 +1084,10 @@ interface ModelState {
 
 **Client Creation:**
 ```typescript
+// Port injected by Rust via window.__DILAG__ = { port }
+const port = window.__DILAG__?.port ?? 4096;
 const sdk = createOpencodeClient({
-  baseUrl: "http://127.0.0.1:4096",
+  baseUrl: `http://127.0.0.1:${port}`,
   fetch: customFetch, // Disables timeout for SSE
 });
 ```
@@ -1070,15 +1104,25 @@ const sdk = createOpencodeClient({
 | `sdk.provider.list` | - | `{ all, connected }` | Get available providers |
 | `sdk.global.event` | - | AsyncIterator | SSE event stream |
 
-### Designer Agent Configuration
+### AI Agent Configuration
 
-The Rust backend embeds a `designer` agent configuration in `DESIGNER_AGENT_PROMPT`:
+The Rust backend embeds two agent configurations:
 
+#### 1. Designer Agent (`designer`)
+- **Focus:** Mobile UI generation
 - **Tools:** Write-only (bash disabled)
 - **Output:** HTML files in `screens/` directory
 - **Styling:** Tailwind CSS v4 with custom `@theme` tokens
-- **Templates:** iPhone 14 Pro (393x852) or web layouts
+- **Templates:** iPhone 14 Pro (393x852)
 - **Icons:** Iconify (Solar, Phosphor sets)
+
+#### 2. Web Designer Agent (`web-designer`)
+- **Focus:** Web application generation
+- **Tools:** Full file system access (read/write/edit/bash)
+- **Project Structure:** Vite + React + TanStack Router
+- **Output:** Source code in `web-project/` directory
+- **Styling:** Tailwind CSS v4
+- **Icons:** Lucide React
 
 ---
 
