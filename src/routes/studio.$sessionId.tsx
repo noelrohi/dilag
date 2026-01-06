@@ -1,21 +1,11 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { useSessions } from "@/hooks/use-sessions";
-import { useDesigns } from "@/hooks/use-designs";
-import {
-  useSessionStore,
-  useScreenPositions,
-  type ScreenPosition,
-} from "@/context/session-store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChatView } from "@/components/blocks/chat-view";
-import { DesignCanvas } from "@/components/blocks/design-canvas";
-import { DraggableScreen } from "@/components/blocks/draggable-screen";
-import { MobileFrame } from "@/components/blocks/mobile-frame";
-import { ScreenPreview } from "@/components/blocks/screen-preview";
-import { PanelLeftClose, PanelLeftOpen, Palette, Copy, ChevronDown, GitFork } from "lucide-react";
+import { BrowserFrame } from "@/components/blocks/browser-frame";
+import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,95 +18,17 @@ export const Route = createFileRoute("/studio/$sessionId")({
   component: StudioPage,
 });
 
-// Grid layout constants for 4-column arrangement
-const SCREEN_WIDTH = 280;
-const SCREEN_HEIGHT = 572;
-const GAP_X = 60;
-const GAP_Y = 40;
-const START_X = 100;
-const START_Y = 100;
-const COLUMNS = 4;
-
-// Initial positions for screens - 4 column grid, oldest to newest
-function getInitialPositions(screenIds: string[]): ScreenPosition[] {
-  return screenIds.map((id, index) => ({
-    id,
-    x: START_X + (SCREEN_WIDTH + GAP_X) * (index % COLUMNS),
-    y: START_Y + (SCREEN_HEIGHT + GAP_Y) * Math.floor(index / COLUMNS),
-  }));
-}
-
 function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
   const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(true);
 
   const { selectSession, sendMessage, sessions, isServerReady, forkSessionDesignsOnly } = useSessions();
-  const { designs } = useDesigns();
-  const screenPositions = useScreenPositions(sessionId);
-  const setScreenPositions = useSessionStore((s) => s.setScreenPositions);
-  const setCurrentSessionId = useSessionStore((s) => s.setCurrentSessionId);
 
   // Initialize session on mount
   useEffect(() => {
-    setCurrentSessionId(sessionId);
     selectSession(sessionId);
-  }, [sessionId, selectSession, setCurrentSessionId]);
-
-  // Check for initial prompt from landing page
-  useEffect(() => {
-    if (!isServerReady) return;
-
-    const initialPrompt = localStorage.getItem("dilag-initial-prompt");
-    const initialFilesJson = localStorage.getItem("dilag-initial-files");
-    if (initialPrompt || initialFilesJson) {
-      localStorage.removeItem("dilag-initial-prompt");
-      localStorage.removeItem("dilag-initial-files");
-      
-      const files = initialFilesJson ? JSON.parse(initialFilesJson) : undefined;
-      // Small delay to ensure session is ready
-      setTimeout(() => {
-        sendMessage(initialPrompt || "", files);
-      }, 500);
-    }
-  }, [isServerReady, sendMessage]);
-
-  // Sync screen positions when designs change
-  useEffect(() => {
-    if (designs.length === 0) return;
-
-    const designIds = designs.map((d) => d.filename);
-    const existingIds = screenPositions.map((p) => p.id);
-
-    // Find new screens that need positions
-    const newIds = designIds.filter((id) => !existingIds.includes(id));
-
-    if (newIds.length > 0) {
-      // Position new screens in grid based on their index in the full design array
-      const newPositions = newIds.map((id) => {
-        const index = designIds.indexOf(id);
-        return {
-          id,
-          x: START_X + (SCREEN_WIDTH + GAP_X) * (index % COLUMNS),
-          y: START_Y + (SCREEN_HEIGHT + GAP_Y) * Math.floor(index / COLUMNS),
-        };
-      });
-
-      setScreenPositions(sessionId, [...screenPositions, ...newPositions]);
-    }
-  }, [designs, screenPositions, sessionId, setScreenPositions]);
-
-  const handlePositionsChange = useCallback(
-    (positions: ScreenPosition[]) => {
-      setScreenPositions(sessionId, positions);
-    },
-    [sessionId, setScreenPositions]
-  );
-
-  const handleReset = useCallback(() => {
-    const designIds = designs.map((d) => d.filename);
-    setScreenPositions(sessionId, getInitialPositions(designIds));
-  }, [designs, sessionId, setScreenPositions]);
+  }, [sessionId, selectSession]);
 
   const handleForkSession = useCallback(async () => {
     const newSessionId = await forkSessionDesignsOnly();
@@ -127,23 +39,20 @@ function StudioPage() {
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
 
-  const handleDeleteScreen = useCallback(
-    async (filename: string) => {
-      if (!currentSession?.cwd) return;
-      const filePath = `${currentSession.cwd}/screens/${filename}`;
-      try {
-        await invoke("delete_design", { filePath });
-        // Remove the screen position immediately for responsive UI
-        setScreenPositions(
-          sessionId,
-          screenPositions.filter((p) => p.id !== filename)
-        );
-      } catch (error) {
-        console.error("Failed to delete screen:", error);
-      }
-    },
-    [currentSession?.cwd, sessionId, screenPositions, setScreenPositions]
-  );
+  // Auto-send initial prompt if stored
+  useEffect(() => {
+    if (!isServerReady || !currentSession) return;
+
+    const initialPrompt = localStorage.getItem("dilag-initial-prompt");
+    const initialFilesJson = localStorage.getItem("dilag-initial-files");
+    if (initialPrompt || initialFilesJson) {
+      localStorage.removeItem("dilag-initial-prompt");
+      localStorage.removeItem("dilag-initial-files");
+      
+      const files = initialFilesJson ? JSON.parse(initialFilesJson) : undefined;
+      sendMessage(initialPrompt || "", files);
+    }
+  }, [isServerReady, currentSession, sendMessage]);
 
   return (
     <div className="h-dvh flex flex-col bg-background">
@@ -176,10 +85,7 @@ function StudioPage() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem
-                onClick={handleForkSession}
-                disabled={designs.length === 0}
-              >
+              <DropdownMenuItem onClick={handleForkSession}>
                 <GitFork className="size-4 mr-2" />
                 Fork to new session
               </DropdownMenuItem>
@@ -212,53 +118,12 @@ function StudioPage() {
           </div>
         </div>
 
-        {/* Canvas area */}
+        {/* Preview area - always BrowserFrame */}
         <div className="flex-1 bg-muted/20">
-          {designs.length === 0 ? (
-            <CanvasEmptyState />
+          {currentSession?.cwd ? (
+            <BrowserFrame sessionCwd={currentSession.cwd} />
           ) : (
-            <DesignCanvas
-              screenPositions={screenPositions}
-              onPositionsChange={handlePositionsChange}
-              onReset={handleReset}
-            >
-              {designs.map((design) => {
-                const position = screenPositions.find(
-                  (p) => p.id === design.filename
-                );
-                if (!position) return null;
-
-                const filePath = currentSession?.cwd
-                  ? `${currentSession.cwd}/screens/${design.filename}`
-                  : design.filename;
-
-                return (
-                  <DraggableScreen
-                    key={design.filename}
-                    id={design.filename}
-                    x={position.x}
-                    y={position.y}
-                  >
-                    <MobileFrame
-                      title={design.title}
-                      status="success"
-                      html={design.html}
-                      filePath={filePath}
-                      onDelete={() => handleDeleteScreen(design.filename)}
-                    >
-                      <ScreenPreview
-                        screen={{
-                          id: design.filename,
-                          name: design.title,
-                          html: design.html,
-                          status: "success",
-                        }}
-                      />
-                    </MobileFrame>
-                  </DraggableScreen>
-                );
-              })}
-            </DesignCanvas>
+            <EmptyState />
           )}
         </div>
       </div>
@@ -266,16 +131,28 @@ function StudioPage() {
   );
 }
 
-function CanvasEmptyState() {
+function EmptyState() {
   return (
     <div className="h-full flex items-center justify-center">
       <div className="text-center space-y-3">
         <div className="size-20 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center mb-4">
-          <Palette className="size-10 text-primary/60" />
+          <svg
+            className="size-10 text-primary/60"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"
+            />
+          </svg>
         </div>
-        <h3 className="font-semibold text-lg">No screens yet</h3>
+        <h3 className="font-semibold text-lg">Web Preview</h3>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-          Describe what you want to design in the chat and screens will appear here
+          Describe your app in the chat to start generating web pages
         </p>
       </div>
     </div>

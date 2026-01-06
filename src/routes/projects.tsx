@@ -1,23 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState, useMemo } from "react";
 import { useSessions } from "@/hooks/use-sessions";
-import type { DesignFile } from "@/hooks/use-designs";
 import { cn } from "@/lib/utils";
-import { Search, MoreHorizontal, Trash2, Smartphone } from "lucide-react";
+import { Search, MoreHorizontal, Trash2, Globe } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Thumbnail constants for stacked preview
-const THUMB_RENDER_W = 375;
-const THUMB_RENDER_H = 812;
-const THUMB_DISPLAY_H = 140;
-const THUMB_SCALE = THUMB_DISPLAY_H / THUMB_RENDER_H;
-const THUMB_DISPLAY_W = THUMB_RENDER_W * THUMB_SCALE;
 
 export const Route = createFileRoute("/projects")({
   component: ProjectsPage,
@@ -89,7 +80,6 @@ function ProjectsPage() {
     <div className="h-dvh flex flex-col bg-background">
       <main className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-4 py-8">
-          {/* Header */}
           <div className="flex items-center justify-between px-2 mb-6">
             <div>
               <h1 className="text-xl font-semibold text-foreground">Projects</h1>
@@ -98,7 +88,6 @@ function ProjectsPage() {
               </p>
             </div>
 
-            {/* Search */}
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
               <input
@@ -117,11 +106,10 @@ function ProjectsPage() {
             </div>
           </div>
 
-          {/* Projects */}
           {filteredSessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                <Smartphone className="size-5 text-muted-foreground/50" />
+                <Globe className="size-5 text-muted-foreground/50" />
               </div>
               <p className="text-muted-foreground text-sm">
                 {searchQuery ? "No matching projects" : "No projects yet"}
@@ -170,21 +158,6 @@ function ProjectCard({
   onOpen: () => void;
   onDelete: () => void;
 }) {
-  const [designs, setDesigns] = useState<DesignFile[]>([]);
-  const [isHovered, setIsHovered] = useState(false);
-
-  useEffect(() => {
-    if (!session.cwd) return;
-    invoke<DesignFile[]>("load_session_designs", { sessionCwd: session.cwd })
-      .then(setDesigns)
-      .catch(() => setDesigns([]));
-  }, [session.cwd]);
-
-  // Get up to 3 screens for preview
-  const previewScreens = designs.slice(0, 3);
-  const screenCount = designs.length;
-  const extraCount = Math.max(0, screenCount - 3);
-
   return (
     <div
       className={cn(
@@ -195,57 +168,24 @@ function ProjectCard({
         "transition-all duration-300 cursor-pointer"
       )}
       onClick={onOpen}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Stacked Screen Previews */}
-      <div className="relative h-44 bg-gradient-to-b from-muted/40 to-muted/10 overflow-hidden">
-        {previewScreens.length > 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <StackedScreens screens={previewScreens} isHovered={isHovered} />
-          </div>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <EmptyScreensPlaceholder />
-          </div>
-        )}
-
-        {/* Extra count badge */}
-        {extraCount > 0 && (
-          <div className={cn(
-            "absolute bottom-2 right-2 px-2 py-0.5 rounded-full",
-            "bg-foreground/90 text-background",
-            "text-[10px] font-semibold tabular-nums",
-            "shadow-lg"
-          )}>
-            +{extraCount}
-          </div>
-        )}
+      <div className="relative h-32 bg-gradient-to-br from-primary/5 via-muted/30 to-accent/5 overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Globe className="size-10 text-muted-foreground/20" />
+        </div>
       </div>
 
-      {/* Info */}
       <div className="px-4 py-3 border-t border-border/30">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-medium text-foreground truncate">
               {session.name || "Untitled"}
             </h3>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[11px] text-muted-foreground">
-                {formatDate(session.created_at)}
-              </span>
-              {screenCount > 0 && (
-                <>
-                  <span className="text-muted-foreground/30">·</span>
-                  <span className="text-[11px] text-muted-foreground tabular-nums">
-                    {screenCount} {screenCount === 1 ? "screen" : "screens"}
-                  </span>
-                </>
-              )}
-            </div>
+            <span className="text-[11px] text-muted-foreground">
+              {formatDate(session.created_at)}
+            </span>
           </div>
 
-          {/* Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -276,158 +216,6 @@ function ProjectCard({
         </div>
       </div>
     </div>
-  );
-}
-
-function StackedScreens({
-  screens,
-  isHovered
-}: {
-  screens: DesignFile[];
-  isHovered: boolean;
-}) {
-  // Calculate positioning for stacked effect
-  const getScreenStyle = (index: number, total: number): React.CSSProperties => {
-    const baseOffset = 22;
-    const hoverSpread = 32;
-
-    if (total === 1) {
-      return {
-        transform: 'translateX(0) rotate(0deg)',
-        zIndex: 1,
-      };
-    }
-
-    if (total === 2) {
-      const positions = isHovered ? [-hoverSpread, hoverSpread] : [-baseOffset / 2, baseOffset / 2];
-      const rotations = isHovered ? [-5, 5] : [-3, 3];
-      return {
-        transform: `translateX(${positions[index]}px) rotate(${rotations[index]}deg)`,
-        zIndex: index + 1,
-      };
-    }
-
-    // 3 screens
-    const positions = isHovered
-      ? [-hoverSpread * 1.4, 0, hoverSpread * 1.4]
-      : [-baseOffset, 0, baseOffset];
-    const rotations = isHovered ? [-8, 0, 8] : [-5, 0, 5];
-
-    return {
-      transform: `translateX(${positions[index]}px) rotate(${rotations[index]}deg)`,
-      zIndex: index === 1 ? 3 : index + 1,
-    };
-  };
-
-  return (
-    <div className="relative flex items-center justify-center" style={{ height: THUMB_DISPLAY_H + 24 }}>
-      {screens.map((screen, index) => (
-        <div
-          key={index}
-          className={cn(
-            "absolute rounded-xl overflow-hidden",
-            "bg-white dark:bg-zinc-900",
-            "ring-1 ring-black/[0.08] dark:ring-white/10",
-            "transition-all duration-300 ease-out"
-          )}
-          style={{
-            width: THUMB_DISPLAY_W,
-            height: THUMB_DISPLAY_H,
-            boxShadow: '0 4px 20px -2px rgba(0,0,0,0.15), 0 2px 8px -2px rgba(0,0,0,0.1)',
-            ...getScreenStyle(index, screens.length),
-          }}
-        >
-          <ScreenPreview html={screen.html} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyScreensPlaceholder() {
-  return (
-    <div className="flex items-center justify-center">
-      <div className="relative" style={{ height: THUMB_DISPLAY_H }}>
-        {[0, 1, 2].map((i) => {
-          const offsets = [-20, 0, 20];
-          const rotations = [-6, 0, 6];
-          return (
-            <div
-              key={i}
-              className={cn(
-                "absolute rounded-xl border-2 border-dashed border-muted-foreground/15",
-                "bg-muted/20",
-                "flex items-center justify-center"
-              )}
-              style={{
-                width: THUMB_DISPLAY_W * 0.85,
-                height: THUMB_DISPLAY_H * 0.9,
-                left: '50%',
-                top: '50%',
-                transform: `translate(-50%, -50%) translateX(${offsets[i]}px) rotate(${rotations[i]}deg)`,
-                zIndex: i === 1 ? 3 : i + 1,
-              }}
-            >
-              {i === 1 && (
-                <Smartphone className="size-5 text-muted-foreground/25" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ScreenPreview({ html }: { html: string }) {
-  const srcDoc = useMemo(() => {
-    if (!html) return null;
-
-    const sizingCSS = `
-      <style>
-        html, body {
-          width: ${THUMB_RENDER_W}px !important;
-          height: ${THUMB_RENDER_H}px !important;
-          overflow: hidden !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-      </style>
-    `;
-
-    if (html.includes("<!DOCTYPE") || html.includes("<html")) {
-      if (html.includes("</head>")) {
-        return html.replace("</head>", `${sizingCSS}</head>`);
-      }
-      return sizingCSS + html;
-    }
-
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  ${sizingCSS}
-</head>
-<body>
-${html}
-</body>
-</html>`;
-  }, [html]);
-
-  if (!srcDoc) return null;
-
-  return (
-    <iframe
-      srcDoc={srcDoc}
-      className="border-0 origin-top-left pointer-events-none"
-      style={{
-        width: THUMB_RENDER_W,
-        height: THUMB_RENDER_H,
-        transform: `scale(${THUMB_SCALE})`,
-      }}
-      sandbox="allow-scripts allow-same-origin"
-      tabIndex={-1}
-    />
   );
 }
 

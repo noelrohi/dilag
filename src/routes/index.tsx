@@ -15,28 +15,18 @@ import {
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
-import type { DesignFile } from "@/hooks/use-designs";
 import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
 import { ArrowUpIcon } from "@phosphor-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { invoke } from "@tauri-apps/api/core";
 import { ChevronRight, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 
-// Suggestion prompts
 const SUGGESTIONS = [
   "Design a habit tracking app",
   "Create a recipe finder",
   "Build a workout timer",
   "Make a notes app",
 ];
-
-// Mini thumbnail constants
-const THUMB_RENDER_W = 393;
-const THUMB_RENDER_H = 852;
-const THUMB_DISPLAY_H = 72;
-const THUMB_SCALE = THUMB_DISPLAY_H / THUMB_RENDER_H;
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -83,7 +73,6 @@ function LandingPage() {
 
   return (
     <div className="h-dvh flex flex-col bg-background relative overflow-hidden">
-      {/* Ambient background gradient */}
       <div
         className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20"
         style={{
@@ -94,7 +83,6 @@ function LandingPage() {
         }}
       />
 
-      {/* Subtle noise texture overlay */}
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.015] dark:opacity-[0.03]"
         style={{
@@ -102,12 +90,10 @@ function LandingPage() {
         }}
       />
 
-      {/* Title bar drag region */}
       <div
         data-tauri-drag-region
         className="h-[38px] shrink-0 flex items-center select-none relative"
       >
-        {/* Connection status */}
         {!isServerReady && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
             <div className="size-1.5 rounded-full bg-amber-500/80 animate-pulse" />
@@ -118,12 +104,9 @@ function LandingPage() {
         )}
       </div>
 
-      {/* Main content */}
       <main className="relative flex-1 flex flex-col overflow-auto">
-        {/* Hero section - centered prompt */}
         <div className="flex-1 flex items-center justify-center px-6 py-16">
           <div className="w-full max-w-2xl">
-            {/* Hero heading */}
             <div
               className="animate-in fade-in slide-in-from-bottom-6 duration-700 text-center mb-10"
               style={{ animationFillMode: "backwards" }}
@@ -136,7 +119,6 @@ function LandingPage() {
               </h1>
             </div>
 
-            {/* Prompt input */}
             <div
               className="animate-in fade-in slide-in-from-bottom-6 duration-700"
               style={{
@@ -151,7 +133,6 @@ function LandingPage() {
                 />
               </PromptInputProvider>
 
-              {/* Suggestion chips */}
               <div className="flex flex-wrap justify-center gap-2 mt-4">
                 {SUGGESTIONS.map((suggestion) => (
                   <button
@@ -174,14 +155,12 @@ function LandingPage() {
           </div>
         </div>
 
-        {/* Recent projects - bottom section */}
         {sortedSessions.length > 0 && (
           <div
             className="px-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
             style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
           >
             <div className="max-w-4xl mx-auto">
-              {/* Header row with title and view all */}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[13px] font-medium text-muted-foreground">
                   Recent projects
@@ -234,23 +213,9 @@ function ProjectCard({
   onDelete: (e: React.MouseEvent) => void;
   delay?: number;
 }) {
-  const [designs, setDesigns] = useState<DesignFile[]>([]);
-  const [isHovered, setIsHovered] = useState(false);
-
-  useEffect(() => {
-    if (!session.cwd) return;
-    invoke<DesignFile[]>("load_session_designs", { sessionCwd: session.cwd })
-      .then(setDesigns)
-      .catch(() => setDesigns([]));
-  }, [session.cwd]);
-
-  const previewDesigns = designs;
-
   return (
     <button
       onClick={onOpen}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "group relative text-left p-3 rounded-xl transition-all duration-300 ease-out",
         "bg-card/50 border border-border/50",
@@ -263,27 +228,14 @@ function ProjectCard({
         animationFillMode: "backwards",
       }}
     >
-      {/* Screen previews */}
-      <div className="flex gap-1 mb-3 h-[72px] overflow-x-auto overflow-y-hidden rounded-lg bg-muted/30 scrollbar-none p-1.5">
-        {previewDesigns.length > 0 ? (
-          previewDesigns.map((design, i) => (
-            <ScreenThumbnail
-              key={i}
-              html={design.html}
-              isHovered={isHovered}
-              index={i}
-            />
-          ))
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <span className="text-[10px] text-muted-foreground/50 font-medium">
-              No screens yet
-            </span>
-          </div>
-        )}
+      <div className="flex gap-1 mb-3 h-[72px] overflow-hidden rounded-lg bg-muted/30 p-1.5">
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-[10px] text-muted-foreground/50 font-medium">
+            {session.name || "Untitled"}
+          </span>
+        </div>
       </div>
 
-      {/* Title and meta */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-medium text-foreground truncate leading-tight">
@@ -305,81 +257,6 @@ function ProjectCard({
         </button>
       </div>
     </button>
-  );
-}
-
-function ScreenThumbnail({
-  html,
-  isHovered,
-  index,
-}: {
-  html: string;
-  isHovered: boolean;
-  index: number;
-}) {
-  const srcDoc = useMemo(() => {
-    if (!html) return null;
-
-    const sizingCSS = `
-      <style>
-        html, body {
-          width: ${THUMB_RENDER_W}px !important;
-          height: ${THUMB_RENDER_H}px !important;
-          overflow: hidden !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-      </style>
-    `;
-
-    if (html.includes("<!DOCTYPE") || html.includes("<html")) {
-      if (html.includes("</head>")) {
-        return html.replace("</head>", `${sizingCSS}</head>`);
-      }
-      return sizingCSS + html;
-    }
-
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  ${sizingCSS}
-</head>
-<body>
-${html}
-</body>
-</html>`;
-  }, [html]);
-
-  if (!srcDoc) return null;
-
-  const displayW = THUMB_RENDER_W * THUMB_SCALE;
-
-  return (
-    <div
-      className={cn(
-        "shrink-0 overflow-hidden rounded-md bg-card shadow-sm",
-        "ring-1 ring-border/30 transition-all duration-300 ease-out",
-      )}
-      style={{
-        width: displayW,
-        height: THUMB_DISPLAY_H,
-        transform: isHovered ? `translateY(-${index * 1}px)` : "none",
-        transitionDelay: `${index * 30}ms`,
-      }}
-    >
-      <iframe
-        srcDoc={srcDoc}
-        className="border-0 origin-top-left pointer-events-none"
-        style={{
-          width: THUMB_RENDER_W,
-          height: THUMB_RENDER_H,
-          transform: `scale(${THUMB_SCALE})`,
-        }}
-        sandbox="allow-scripts allow-same-origin"
-        tabIndex={-1}
-      />
-    </div>
   );
 }
 
@@ -421,7 +298,6 @@ function ComposerInput({
         />
       </PromptInputBody>
       <PromptInputFooter className="border-t-0">
-        {/* Left side - attachment action menu */}
         <PromptInputTools>
           <PromptInputActionMenu>
             <PromptInputActionMenuTrigger />
@@ -433,7 +309,6 @@ function ComposerInput({
 
         <div className="flex-1" />
 
-        {/* Right side - model selector + submit */}
         <div className="flex items-center gap-1">
           <ModelSelectorButton />
           <PromptInputSubmit
