@@ -2,8 +2,8 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, ty
 import { invoke } from "@tauri-apps/api/core";
 import { createOpencodeClient, type Event, type OpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { extractSessionId } from "@/lib/event-guards";
+import { useSessionStore } from "@/context/session-store";
 
-// Re-export types from SDK for convenience
 export type { Event } from "@opencode-ai/sdk/v2/client";
 export type {
   EventMessagePartUpdated,
@@ -19,7 +19,15 @@ export type {
   FileDiff,
 } from "@opencode-ai/sdk/v2/client";
 
-const OPENCODE_PORT = 4096;
+declare global {
+  interface Window {
+    __DILAG__?: { port: number };
+  }
+}
+
+function getOpenCodePort(): number {
+  return window.__DILAG__?.port ?? 4096;
+}
 
 // SSE Reconnection Configuration
 const SSE_CONFIG = {
@@ -59,11 +67,10 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const bootstrapCallbacksRef = useRef<Set<() => void>>(new Set());
 
-  // Create SDK client with timeout disabled for SSE
   const sdkRef = useRef<OpencodeClient | null>(null);
   if (!sdkRef.current) {
+    const port = getOpenCodePort();
     const customFetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      // Disable timeout for SSE connections
       if (init && typeof input === "string" && input.includes("/event")) {
         // @ts-expect-error - timeout is a non-standard property
         if (init) init.timeout = false;
@@ -72,9 +79,10 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
     };
     
     sdkRef.current = createOpencodeClient({
-      baseUrl: `http://127.0.0.1:${OPENCODE_PORT}`,
+      baseUrl: `http://127.0.0.1:${port}`,
       fetch: customFetch,
     });
+    console.log("[GlobalEvents] SDK created with port:", port);
   }
   const sdk = sdkRef.current;
 
@@ -175,12 +183,10 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
           if (!mountedRef.current) break;
 
           const payload = event.payload;
-          console.log("[SSE] Event received:", payload.type);
 
-          // Handle disposal events first
           handleDisposalEvent(payload);
+          useSessionStore.getState().handleEvent(payload);
 
-          // Notify all global handlers
           handlersRef.current.forEach((handler) => {
             try {
               handler(payload);

@@ -18,7 +18,7 @@ import {
   createSessionDir,
   sessionKeys,
 } from "@/hooks/use-session-data";
-import { useGlobalEvents, useSDK, useConnectionStatus, type Event } from "@/context/global-events";
+import { useGlobalEvents, useSDK, useConnectionStatus } from "@/context/global-events";
 import { useModelStore } from "@/hooks/use-models";
 import { withErrorHandler, createManagedTimeout } from "@/lib/async-utils";
 import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
@@ -80,18 +80,13 @@ export function useSessions() {
     setSessionError,
     setSessionRevert,
     clearDebugEvents,
-    handleEvent,
     setError,
     setServerReady,
     clearSessionData,
     resetRealtimeState,
   } = useSessionStore();
 
-  const { subscribe, subscribeToSession, isServerReady: globalServerReady } = useGlobalEvents();
-
-  // Use ref for handleEvent to avoid infinite loops
-  const handleEventRef = useRef(handleEvent);
-  handleEventRef.current = handleEvent;
+  const { isServerReady: globalServerReady } = useGlobalEvents();
 
   // Track cleanup functions for async operations
   const cleanupRef = useRef<(() => void)[]>([]);
@@ -154,21 +149,6 @@ export function useSessions() {
     [sdk, setMessages, setSessionRevert]
   );
 
-  // Subscribe to global events (only once on mount)
-  useEffect(() => {
-    console.log("[useSessions] Setting up global event subscription");
-    const handler = (event: Event) => {
-      console.log("[useSessions] Received event:", event.type);
-      handleEventRef.current(event);
-    };
-    const unsubscribe = subscribe(handler);
-    console.log("[useSessions] Subscribed to global events");
-    return () => {
-      console.log("[useSessions] Unsubscribing from global events");
-      unsubscribe();
-    };
-  }, [subscribe]);
-
   // Handle reconnection bootstrap - refetch state after SSE reconnects
   const hasBootstrappedRef = useRef(false);
   const prevConnectionStatusRef = useRef(connectionStatus);
@@ -177,11 +157,7 @@ export function useSessions() {
     const isNowConnected = connectionStatus === "connected";
     prevConnectionStatusRef.current = connectionStatus;
 
-    // Only run bootstrap on actual reconnection (was disconnected, now connected)
     if (isNowConnected && wasDisconnected && hasBootstrappedRef.current) {
-      console.log("[useSessions] SSE reconnected - running bootstrap");
-
-      // Reset Zustand realtime state (messages, parts, status will be refetched)
       resetRealtimeState();
 
       // Invalidate React Query cache to trigger refetch
@@ -198,15 +174,6 @@ export function useSessions() {
       hasBootstrappedRef.current = true;
     }
   }, [connectionStatus, currentSessionId, currentSession, resetRealtimeState, queryClient, loadSessionMessages]);
-
-  // Subscribe to current session events specifically
-  useEffect(() => {
-    if (!currentSessionId) return;
-    const handler = (event: Event) => {
-      handleEventRef.current(event);
-    };
-    return subscribeToSession(currentSessionId, handler);
-  }, [currentSessionId, subscribeToSession]);
 
   // Track if initialized to prevent double init
   const initializedRef = useRef(false);
@@ -232,11 +199,11 @@ export function useSessions() {
       try {
         setError(null);
 
-        // Create session directory first
         const dirId = crypto.randomUUID();
         const cwd = await createSessionDir(dirId);
 
-        // Create session in OpenCode with the directory for isolation
+        const { invoke } = await import("@tauri-apps/api/core");
+        await invoke("initialize_web_project", { sessionCwd: cwd });
         const response = await sdk.session.create({ directory: cwd });
         if (!response.data) {
           throw new Error("Failed to create session");
@@ -482,10 +449,15 @@ export function useSessions() {
 
   const sendMessage = useCallback(
     async (content: string, files?: FileUIPart[]) => {
-      if (!currentSessionId || !currentSession) return;
+      console.log("[sendMessage] called with:", { content: content?.slice(0, 50), currentSessionId, hasCurrentSession: !!currentSession });
+      if (!currentSessionId || !currentSession) {
+        console.warn("[sendMessage] early return - missing session", { currentSessionId, currentSession });
+        return;
+      }
 
       // Get selected model from store
       const { selectedModel } = useModelStore.getState();
+      const agentName = "designer";
 
       // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;
@@ -507,7 +479,7 @@ export function useSessions() {
           providerID: "anthropic",
           modelID: "claude-sonnet-4-20250514",
         };
-        console.log("[sendMessage] agent:", "designer");
+        console.log("[sendMessage] agent:", agentName);
         console.log("[sendMessage] model:", `${model.providerID}/${model.modelID}`);
         console.log("[sendMessage] directory:", directory);
 
@@ -530,18 +502,20 @@ export function useSessions() {
           }
         }
 
-        // Fire-and-forget with proper error handling (checks isMounted before state updates)
+        console.log("[sendMessage] calling sdk.session.prompt with:", { sessionID: currentSessionId, agent: agentName, model, partsCount: parts.length });
         sdk.session.prompt({
           sessionID: currentSessionId,
           directory,
-          agent: "designer",
+          agent: agentName,
           model,
           parts,
+        }).then((response) => {
+          console.log("[sendMessage] prompt response:", response);
         }).catch((err) => {
-          if (!isMountedRef.current) return; // Avoid state updates on unmounted component
+          if (!isMountedRef.current) return;
           setError(err instanceof Error ? err.message : "Failed to send message");
           setSessionStatus(currentSessionId, "error");
-          console.error("Failed to send message:", err);
+          console.error("[sendMessage] Failed to send message:", err);
         });
 
         // Update title from OpenCode after first response
