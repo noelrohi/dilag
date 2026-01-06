@@ -3,17 +3,33 @@ use crate::paths::{get_dilag_dir, get_opencode_config_dir, get_sessions_dir};
 use crate::state::AppState;
 use serde::Serialize;
 use std::fs;
+use std::net::TcpListener;
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
-pub const OPENCODE_PORT: u16 = 4096;
+pub const VITE_PORT: u16 = 5173;
 
-/// The designer agent system prompt, loaded from assets at compile time
-pub const DESIGNER_AGENT_PROMPT: &str = include_str!("../assets/designer-prompt.md");
+/// Find a free port by binding to port 0
+pub fn get_free_port() -> u16 {
+    TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to bind to find free port")
+        .local_addr()
+        .expect("Failed to get local address")
+        .port()
+}
+
+pub const DESIGNER_AGENT_PROMPT: &str = include_str!("../assets/web-designer-prompt.md");
 
 #[derive(Debug, Serialize)]
 pub struct OpenCodeCheckResult {
+    pub installed: bool,
+    pub version: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BunCheckResult {
     pub installed: bool,
     pub version: Option<String>,
     pub error: Option<String>,
@@ -39,7 +55,6 @@ pub fn get_opencode_binary_path() -> Option<PathBuf> {
     candidates.into_iter().find(|path| path.exists() && path.is_file())
 }
 
-/// Ensure the OpenCode config file exists with our designer agent
 fn ensure_config_exists() -> AppResult<()> {
     let config_dir = get_opencode_config_dir();
     fs::create_dir_all(&config_dir)?;
@@ -54,7 +69,7 @@ fn ensure_config_exists() -> AppResult<()> {
             "designer": {
                 "mode": "primary",
                 "prompt": DESIGNER_AGENT_PROMPT,
-                "description": "UI design agent for creating production-grade screens",
+                "description": "Web UI design agent for creating React/TanStack Router pages",
                 "permission": {
                     "bash": "deny"
                 }
@@ -68,7 +83,6 @@ fn ensure_config_exists() -> AppResult<()> {
     Ok(())
 }
 
-/// Kill a process by PID
 fn kill_process(pid: u32) {
     #[cfg(unix)]
     {
@@ -80,49 +94,6 @@ fn kill_process(pid: u32) {
     {
         let _ = std::process::Command::new("taskkill")
             .args(["/PID", &pid.to_string(), "/F"])
-            .output();
-    }
-}
-
-/// Check if a port is currently in use
-fn is_port_in_use(port: u16) -> bool {
-    std::net::TcpListener::bind(("127.0.0.1", port)).is_err()
-}
-
-/// Find and kill any process listening on the OpenCode port
-fn kill_opencode_on_port() {
-    #[cfg(unix)]
-    {
-        if let Ok(output) = std::process::Command::new("lsof")
-            .args(["-ti", &format!(":{}", OPENCODE_PORT)])
-            .output()
-        {
-            let pids = String::from_utf8_lossy(&output.stdout);
-            for pid_str in pids.lines() {
-                if let Ok(pid) = pid_str.trim().parse::<i32>() {
-                    println!(
-                        "[kill_opencode_on_port] Killing PID {} on port {}",
-                        pid, OPENCODE_PORT
-                    );
-                    unsafe {
-                        if libc::kill(pid, 0) == 0 {
-                            libc::kill(pid, libc::SIGTERM);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(windows)]
-    {
-        let _ = std::process::Command::new("cmd")
-            .args([
-                "/C",
-                &format!(
-                    "for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :{} ^| findstr LISTENING') do taskkill /F /PID %a",
-                    OPENCODE_PORT
-                ),
-            ])
             .output();
     }
 }
@@ -173,8 +144,8 @@ pub async fn check_opencode_installation(app: AppHandle) -> OpenCodeCheckResult 
 }
 
 #[tauri::command]
-pub fn get_opencode_port() -> u16 {
-    OPENCODE_PORT
+pub fn get_opencode_port(state: tauri::State<'_, AppState>) -> Option<u16> {
+    *state.opencode_port.lock().unwrap()
 }
 
 #[tauri::command]
@@ -182,29 +153,28 @@ pub async fn start_opencode_server(
     app: AppHandle,
     state: tauri::State<'_, AppState>,
 ) -> AppResult<u16> {
-    // Check if we already have a tracked process
     if state.opencode_pid.lock().unwrap().is_some() {
-        return Ok(OPENCODE_PORT);
+        if let Some(port) = *state.opencode_port.lock().unwrap() {
+            return Ok(port);
+        }
     }
 
-    // Kill any existing process on the port
-    kill_opencode_on_port();
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    let port = state
+        .opencode_port
+        .lock()
+        .unwrap()
+        .ok_or_else(|| AppError::Custom("OpenCode port not initialized".to_string()))?;
 
-    // Ensure directories and config exist
     fs::create_dir_all(get_sessions_dir())?;
     ensure_config_exists()?;
 
-    // Find opencode binary
-    let opencode_path =
-        get_opencode_binary_path().ok_or(AppError::OpenCodeNotFound)?;
+    let opencode_path = get_opencode_binary_path().ok_or(AppError::OpenCodeNotFound)?;
 
-    // Spawn server with isolated config
     let shell = app.shell();
     let dilag_dir = get_dilag_dir();
     println!(
-        "[start_opencode_server] Starting with XDG_CONFIG_HOME={:?}",
-        dilag_dir
+        "[start_opencode_server] Starting on port {} with XDG_CONFIG_HOME={:?}",
+        port, dilag_dir
     );
 
     let (_rx, child) = shell
@@ -212,7 +182,7 @@ pub async fn start_opencode_server(
         .args([
             "serve",
             "--port",
-            &OPENCODE_PORT.to_string(),
+            &port.to_string(),
             "--hostname",
             "127.0.0.1",
         ])
@@ -222,10 +192,9 @@ pub async fn start_opencode_server(
 
     *state.opencode_pid.lock().unwrap() = Some(child.pid());
 
-    // Give server time to start
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-    Ok(OPENCODE_PORT)
+    Ok(port)
 }
 
 #[tauri::command]
@@ -244,7 +213,6 @@ pub async fn restart_opencode_server(
 ) -> AppResult<u16> {
     println!("[restart_opencode_server] Starting restart...");
 
-    // Stop the server first
     {
         let mut pid_guard = state.opencode_pid.lock().unwrap();
         if let Some(pid) = pid_guard.take() {
@@ -253,18 +221,12 @@ pub async fn restart_opencode_server(
         }
     }
 
-    kill_opencode_on_port();
+    tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
 
-    // Wait for port to be released
-    println!("[restart_opencode_server] Waiting for port to be released...");
-    for _ in 0..20 {
-        tokio::time::sleep(tokio::time::Duration::from_millis(250)).await;
-        if !is_port_in_use(OPENCODE_PORT) {
-            break;
-        }
-    }
+    let new_port = get_free_port();
+    *state.opencode_port.lock().unwrap() = Some(new_port);
+    println!("[restart_opencode_server] New port: {}", new_port);
 
-    // Clear models cache
     if let Some(cache_path) = dirs::cache_dir().map(|p| p.join("opencode").join("models.json")) {
         if cache_path.exists() {
             println!("[restart_opencode_server] Deleting cache: {:?}", cache_path);
@@ -272,11 +234,45 @@ pub async fn restart_opencode_server(
         }
     }
 
-    println!("[restart_opencode_server] Starting server...");
     start_opencode_server(app, state).await
 }
 
 #[tauri::command]
 pub fn is_opencode_running(state: tauri::State<'_, AppState>) -> bool {
     state.opencode_pid.lock().unwrap().is_some()
+}
+
+/// Check if Bun is installed and get its version
+#[tauri::command]
+pub async fn check_bun_installation(app: AppHandle) -> BunCheckResult {
+    let shell = app.shell();
+
+    match shell.command("bun").args(["--version"]).output().await {
+        Ok(output) => {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                BunCheckResult {
+                    installed: true,
+                    version: if version.is_empty() {
+                        None
+                    } else {
+                        Some(version)
+                    },
+                    error: None,
+                }
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                BunCheckResult {
+                    installed: false,
+                    version: None,
+                    error: if stderr.is_empty() { None } else { Some(stderr) },
+                }
+            }
+        }
+        Err(e) => BunCheckResult {
+            installed: false,
+            version: None,
+            error: Some(format!("Bun not found: {}", e)),
+        },
+    }
 }

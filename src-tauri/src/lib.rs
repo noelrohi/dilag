@@ -8,9 +8,10 @@ mod paths;
 mod sessions;
 mod state;
 mod theme;
+mod vite;
 
 use tauri::webview::WebviewWindowBuilder;
-use tauri::{Emitter, TitleBarStyle};
+use tauri::{Emitter, Manager, TitleBarStyle};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,18 +22,27 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(state::AppState::new())
         .setup(|app| {
-            // Set up the menu
             let menu = menu::setup_menu(app.handle())?;
             app.set_menu(menu)?;
 
-            // Create main window with transparent title bar
+            let port = opencode::get_free_port();
+            {
+                let app_state = app.state::<state::AppState>();
+                *app_state.opencode_port.lock().unwrap() = Some(port);
+            }
+            println!("[setup] OpenCode port: {}", port);
+
             let win_builder =
                 WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
                     .title("Dilag")
                     .inner_size(1000.0, 700.0)
                     .min_inner_size(600.0, 400.0)
                     .title_bar_style(TitleBarStyle::Transparent)
-                    .hidden_title(true);
+                    .hidden_title(true)
+                    .initialization_script(&format!(
+                        r#"window.__DILAG__ = {{ port: {} }};"#,
+                        port
+                    ));
 
             let window = win_builder.build()?;
 
@@ -86,6 +96,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // OpenCode commands
             opencode::check_opencode_installation,
+            opencode::check_bun_installation,
             opencode::get_opencode_port,
             opencode::start_opencode_server,
             opencode::stop_opencode_server,
@@ -97,6 +108,7 @@ pub fn run() {
             sessions::save_session_metadata,
             sessions::load_sessions_metadata,
             sessions::delete_session_metadata,
+            sessions::initialize_web_project,
             // Design commands
             designs::load_session_designs,
             designs::copy_session_designs,
@@ -106,6 +118,12 @@ pub fn run() {
             app_info::reset_all_data,
             // Theme commands
             theme::set_titlebar_theme,
+            // Vite commands
+            vite::start_vite_server,
+            vite::stop_vite_server,
+            vite::get_vite_status,
+            vite::get_vite_port,
+            vite::check_project_ready,
             // Licensing commands
             licensing::get_license_status,
             licensing::start_trial,
