@@ -114,13 +114,13 @@ export function LicenseGate({ children }: LicenseGateProps) {
                 )}
               >
                 <h1 className="font-serif text-5xl md:text-6xl text-foreground leading-[1.1] tracking-tight">
-                  Design interfaces<br />
+                  Build web apps<br />
                   <span className="italic text-primary">
                     at the speed of thought
                   </span>
                 </h1>
                 <p className="font-sans text-base text-muted-foreground max-w-md leading-relaxed">
-                  Transform ideas into production-ready mobile UI with AI.
+                  Transform ideas into production-ready web apps with AI.
                   No templates, no constraints—just your vision, realized.
                 </p>
               </div>

@@ -3,7 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Terminal,
   AlertCircle,
-  Palette,
   Paperclip,
   OctagonAlert,
   Square,
@@ -382,7 +381,7 @@ function ChatInputArea({
           </PromptInputAttachments>
           <PromptInputBody>
             <PromptInputTextarea
-              placeholder="Describe a design..."
+              placeholder="Describe what to build..."
               disabled={isLoading}
               className="min-h-[56px] max-h-[200px]"
             />
@@ -575,11 +574,11 @@ export function ChatView() {
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-4">
             {messages.length === 0 && !hasPendingPrompt ? (
-              <ConversationEmptyState
-                icon={<Palette className="size-10 text-primary/60" />}
-                title="Design something"
-                description="Describe a UI screen and it will appear in the preview"
-              />
+              <ConversationEmptyState>
+                <p className="text-[13px] text-muted-foreground/50">
+                  Describe your app to get started
+                </p>
+              </ConversationEmptyState>
             ) : messages.length === 0 && hasPendingPrompt ? (
               <PendingPrompt />
             ) : (
