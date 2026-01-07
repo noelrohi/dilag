@@ -209,20 +209,18 @@ Technical documentation covering app initialization, data flow, and storage.
 ├── sessions.json                    # Session metadata index
 ├── license.json                     # License/trial state (see Licensing System)
 ├── opencode/
-│   └── opencode.json               # OpenCode config (designer & web-designer agents)
+│   └── opencode.json               # OpenCode config (build agent)
 └── sessions/
-    └── {session-uuid}/             # Per-session working directory
-        ├── screens/                # Mobile design files (HTML)
-        │   ├── home-screen.html
-        │   └── ...
-        └── web-project/            # Web design project (Vite + React)
-            ├── src/
-            ├── package.json
-            └── ...
+    └── {session-uuid}/             # Per-session working directory (Vite + React project)
+        ├── src/                    # React source code
+        │   ├── routes/
+        │   └── components/
+        ├── package.json
+        └── vite.config.ts
 ```
 
 **Bundled Resources:**
-The app bundles a Vite + React template in `src-tauri/templates/web-project/`, which is copied to the session directory when initializing a web project.
+The app bundles a Vite + React template in `src-tauri/templates/web-project/`, which is copied to the session directory when creating a new project.
 
 **sessions.json schema:**
 ```json
@@ -238,7 +236,7 @@ The app bundles a Vite + React template in `src-tauri/templates/web-project/`, w
 }
 ```
 
-**opencode.json** - Created/updated on each launch with the designer agent configuration including the full system prompt for UI generation.
+**opencode.json** - Created/updated on each launch with the build agent configuration including the frontend-design skill for web app generation.
 
 ---
 
@@ -398,7 +396,7 @@ sendMessage(content)
     ├── sdk.session.prompt({
     │     sessionID,
     │     directory,
-    │     agent: designMode === "web" ? "web-designer" : "designer",
+    │     agent: "build",
     │     model: { providerID, modelID },
     │     parts: [{ type: "text", text: content }]
     │   })
@@ -409,29 +407,26 @@ sendMessage(content)
         ├── message.updated (assistant message created)
         ├── message.part.updated (text streaming)
         ├── message.part.updated (tool calls)
-        │   └── write tool creates ~/.dilag/sessions/{id}/screens/*.html
+        │   └── edit/write tools modify ~/.dilag/sessions/{id}/src/*
         ├── session.status (running → idle)
         └── session.idle
 ```
 
-### Design Detection
+### Live Preview
 
 ```
-useSessionDesigns hook (polling every 2s)
+Vite Dev Server (per-session)
     │
-    └── invoke("load_session_designs", { sessionCwd })
+    ├── Started via invoke("start_vite_server", { sessionCwd })
+    │   └── Returns dynamic port number
+    │
+    ├── BrowserFrame embeds iframe pointing to http://localhost:{port}
+    │
+    └── File changes trigger HMR:
         │
-        └── Tauri scans:
-            ├── {cwd}/*.html
-            └── {cwd}/screens/*.html
-                │
-                └── For each HTML file:
-                    ├── Extract data-title attribute
-                    ├── Extract data-screen-type attribute
-                    ├── Read file content
-                    └── Return DesignFile object
-        │
-        └── Returns array sorted by modified_at (newest first)
+        ├── AI writes/edits files in {cwd}/src/
+        ├── Vite detects file change
+        └── HMR updates preview instantly (no page reload)
 ```
 
 ### Deletion
@@ -703,7 +698,6 @@ Default: `{ providerID: "opencode", modelID: "big-pickle" }`
 
 ```typescript
 interface DesignModeState {
-  mode: "mobile" | "web";
   webViewport: "desktop" | "tablet" | "mobile";
 }
 ```

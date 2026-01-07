@@ -1,6 +1,6 @@
 # Dilag Platform Documentation
 
-> Dilag is an AI-powered design studio built as a native desktop app. It leverages OpenCode's AI coding capabilities to transform natural language prompts into production-ready UI designs. It supports two main modes: **Mobile Mode** (iPhone frames on an infinite canvas) and **Web Mode** (full Vite-powered web project with live preview).
+> Dilag is an AI-powered web app builder built as a native desktop app. It leverages OpenCode's AI coding capabilities to transform natural language prompts into production-ready React applications with live Vite-powered preview.
 
 ---
 
@@ -166,7 +166,7 @@ dilag/
 
 **File:** `src/routes/index.tsx`
 
-> The landing page presents a clean, focused interface for starting new design sessions. Users enter natural language prompts describing their app idea, select an AI model, and are taken directly to the studio workspace. Recent projects appear at the bottom for quick access.
+> The landing page presents a clean, focused interface for starting new projects. Users enter natural language prompts describing their app idea, select an AI model, and are taken directly to the studio workspace. Recent projects appear at the bottom for quick access.
 
 #### Visual Layout
 
@@ -182,7 +182,7 @@ dilag/
 |                   +-------------------------------------+                 |
 |                   |                                     |                 |
 |                   |     "What would you like           |                 |
-|                   |           to design?"               |                 |
+|                   |           to build?"                |                 |
 |                   |                                     |                 |
 |                   +-------------------------------------+                 |
 |                                                                          |
@@ -281,9 +281,7 @@ dilag/
 
 **File:** `src/routes/studio.$sessionId.tsx`
 
-> The studio is the main workspace where design happens. A collapsible chat pane on the left handles conversation with the AI. On the right, the interface adapts based on the active **Design Mode**:
-> - **Mobile Mode**: An infinite canvas displays generated screens as draggable iPhone frames.
-> - **Web Mode**: A browser frame renders a live Vite dev server preview of a React web project.
+> The studio is the main workspace where development happens. A collapsible chat pane on the left handles conversation with the AI. On the right, a browser frame renders a live Vite dev server preview of the React web project with hot module replacement.
 
 #### Visual Layout
 
@@ -294,25 +292,25 @@ dilag/
 |  +-----------------------------------------------------------------+    |
 |  +---------------+ +-----------------------------------------------+    |
 |  |               | |                                               |    |
-|  |  CHAT PANE    | |              DESIGN CANVAS                    |    |
+|  |  CHAT PANE    | |              BROWSER FRAME                    |    |
 |  |  (360px)      | |              (flex-1)                         |    |
 |  |               | |                                               |    |
-|  | +----------+  | |    +--------+   +--------+   +--------+      |    |
-|  | | User     |  | |    |iPhone  |   |iPhone  |   |iPhone  |      |    |
-|  | | Message  |  | |    |Frame 1 |   |Frame 2 |   |Frame 3 |      |    |
-|  | +----------+  | |    |        |   |        |   |        |      |    |
-|  |               | |    |[HTML   |   |[HTML   |   |[HTML   |      |    |
-|  | +----------+  | |    |Preview]|   |Preview]|   |Preview]|      |    |
-|  | |*Thinking*|  | |    |        |   |        |   |        |      |    |
-|  | |Assistant |  | |    +--------+   +--------+   +--------+      |    |
-|  | |Response  |  | |                                               |    |
-|  | |[tools]   |  | |              . . . . . . . . . . . .         |    |
-|  | +----------+  | |              . . . . . . . . . . . .         |    |
-|  |               | |              . . . . . . . . . . . .         |    |
-|  | +----------+  | |                                               |    |
-|  | |Composer  |  | | +-------------------------------------------+ |    |
-|  | |[+][Model][>]| | | [Reset] [Fit]  | [-] 75% [+] | Drag/Zoom  | |    |
 |  | +----------+  | | +-------------------------------------------+ |    |
+|  | | User     |  | | | [Desktop] [Tablet] [Mobile]    [Refresh] | |    |
+|  | | Message  |  | | +-------------------------------------------+ |    |
+|  | +----------+  | | |                                           | |    |
+|  |               | | |         VITE DEV SERVER IFRAME            | |    |
+|  | +----------+  | | |                                           | |    |
+|  | |*Thinking*|  | | |         (React App Preview)               | |    |
+|  | |Assistant |  | | |                                           | |    |
+|  | |Response  |  | | |         Hot Module Replacement            | |    |
+|  | |[tools]   |  | | |                                           | |    |
+|  | +----------+  | | +-------------------------------------------+ |    |
+|  |               | |                                               |    |
+|  | +----------+  | |                                               |    |
+|  | |Composer  |  | |                                               |    |
+|  | |[+][Model][>]| |                                               |    |
+|  | +----------+  | |                                               |    |
 |  +---------------+ +-----------------------------------------------+    |
 +-------------------------------------------------------------------------+
 ```
@@ -326,10 +324,9 @@ dilag/
 | Messages | `<Message>` | User/assistant message bubbles |
 | Tool Display | `<MessagePart>` + `<ToolPart>` | Collapsible tool call details |
 | Composer | `<PromptInput>` | Input with model selector |
-| Canvas | `<DesignCanvas>` | DnD-enabled infinite canvas (Mobile Mode) |
-| Browser Frame | `<BrowserFrame>` | Iframe with Vite dev server preview (Web Mode) |
-| Screen Frames | `<DraggableScreen>` + `<MobileFrame>` | iPhone frames with live previews (Mobile Mode) |
-| Controls | Canvas toolbar | Zoom (25%-200%), pan, reset |
+| Browser Frame | `<BrowserFrame>` | Iframe with Vite dev server preview |
+| Web Preview | `<WebPreview>` | Viewport controls and iframe container |
+| Controls | Viewport toolbar | Desktop/Tablet/Mobile viewport toggles, refresh |
 
 #### User Interactions
 
@@ -361,31 +358,31 @@ dilag/
 +-------------------------------------------------------------------------+
 
 +-------------------------------------------------------------------------+
-|                        CANVAS INTERACTION FLOW                           |
+|                     BROWSER FRAME INTERACTION FLOW                       |
 +-------------------------------------------------------------------------+
 |                                                                          |
-|   [Drag Screen]                                                          |
+|   [Click Viewport Button]                                                |
 |        |                                                                 |
 |        v                                                                 |
 |   +----------------+     +----------------+     +----------------+       |
-|   | DnD sensors    | --> | Calculate new  | --> | Update Zustand |       |
-|   | detect move    |     | position/zoom  |     | screenPositions|       |
+|   | Desktop/Tablet | --> | Update design  | --> | Resize iframe  |       |
+|   | /Mobile click  |     | mode store     |     | container      |       |
 |   +----------------+     +----------------+     +----------------+       |
 |                                                                          |
-|   [Ctrl + Scroll]                                                        |
+|   [Click Refresh]                                                        |
 |        |                                                                 |
 |        v                                                                 |
 |   +----------------+     +----------------+                              |
-|   | Update zoom    | --> | Re-render      |                              |
-|   | (0.25 - 2.0)   |     | canvas scale   |                              |
+|   | Reload iframe  | --> | Vite HMR       |                              |
+|   | src            |     | reconnects     |                              |
 |   +----------------+     +----------------+                              |
 |                                                                          |
-|   [Pan (drag background)]                                                |
+|   [File Change (via AI)]                                                 |
 |        |                                                                 |
 |        v                                                                 |
 |   +----------------+     +----------------+                              |
-|   | Update         | --> | Translate      |                              |
-|   | viewOffset     |     | canvas origin  |                              |
+|   | Vite detects   | --> | HMR updates    |                              |
+|   | file change    |     | preview live   |                              |
 |   +----------------+     +----------------+                              |
 |                                                                          |
 +-------------------------------------------------------------------------+
@@ -394,7 +391,7 @@ dilag/
 **Detailed Behaviors:**
 
 1. **Initial Prompt:** On mount, reads `dilag-initial-prompt` from localStorage, sends it via `sendMessage()` after 500ms delay, then clears localStorage
-   - Triggers: `useEffect` in `studio.$sessionId.tsx:54`
+   - Triggers: `useEffect` in `studio.$sessionId.tsx`
 
 2. **Chat Toggle:** Button toggles 360px chat pane visibility
    - Chat width animates via CSS transition
@@ -402,8 +399,8 @@ dilag/
 3. **Message Streaming:** Parts appear in real-time as SSE events arrive
    - Thinking indicator shows when streaming with no parts yet
 
-4. **Design Detection:** `useDesigns()` polls every 2 seconds for new HTML files
-   - New screens automatically get initial canvas positions
+4. **Live Preview:** Vite dev server runs on dynamic port, iframe displays the app
+   - Hot module replacement updates preview automatically on file changes
 
 ---
 
@@ -648,15 +645,12 @@ dilag/
 | Block | File | Purpose |
 |-------|------|---------|
 | `ChatView` | `chat-view.tsx` | Full chat interface with messages and composer |
-| `DesignCanvas` | `design-canvas.tsx` | Infinite canvas with DnD, pan, zoom (Mobile) |
-| `MobileFrame` | `mobile-frame.tsx` | iPhone frame wrapper with status indicators |
-| `BrowserFrame` | `browser-frame.tsx` | Browser frame with Vite iframe (Web) |
-| `ScreenPreview` | `screen-preview.tsx` | Iframe-based HTML preview renderer |
-| `DraggableScreen` | `draggable-screen.tsx` | DnD wrapper for canvas screens |
+| `BrowserFrame` | `browser-frame.tsx` | Browser frame with Vite iframe preview |
+| `WebPreview` | `web-preview.tsx` | Viewport controls and iframe container |
 | `MessagePart` | `message-part.tsx` | Renders different message part types (text, tool, reasoning) |
 | `ToolPart` | `tool-part.tsx` | Collapsible tool call display with icons |
 | `AppSidebar` | `app-sidebar.tsx` | Main navigation sidebar with links |
-| `SetupWizard` | `setup-wizard.tsx` | OpenCode installation check UI |
+| `SetupWizard` | `setup-wizard.tsx` | OpenCode and Bun installation check UI |
 | `UpdateDialog` | `update-dialog.tsx` | App update notification/download |
 | `AuthSettings` | `auth-settings.tsx` | Provider connection dialog |
 
@@ -1106,23 +1100,15 @@ const sdk = createOpencodeClient({
 
 ### AI Agent Configuration
 
-The Rust backend embeds two agent configurations:
+The Rust backend configures the build agent:
 
-#### 1. Designer Agent (`designer`)
-- **Focus:** Mobile UI generation
-- **Tools:** Write-only (bash disabled)
-- **Output:** HTML files in `screens/` directory
-- **Styling:** Tailwind CSS v4 with custom `@theme` tokens
-- **Templates:** iPhone 14 Pro (393x852)
-- **Icons:** Iconify (Solar, Phosphor sets)
-
-#### 2. Web Designer Agent (`web-designer`)
+#### Build Agent (`build`)
 - **Focus:** Web application generation
-- **Tools:** Full file system access (read/write/edit/bash)
+- **Tools:** Full file system access via skill system
 - **Project Structure:** Vite + React + TanStack Router
-- **Output:** Source code in `web-project/` directory
+- **Output:** Source code in session directory
 - **Styling:** Tailwind CSS v4
-- **Icons:** Lucide React
+- **Icons:** Solar Icons React
 
 ---
 
@@ -1255,10 +1241,10 @@ src-tauri/
 ## Key Interactions Summary
 
 1. **Home -> Studio:** Prompt saved to localStorage, session created via Tauri + OpenCode SDK, navigate to studio
-2. **Studio Load:** Read localStorage prompt, trigger `sendMessage()` after 500ms delay
+2. **Studio Load:** Read localStorage prompt, start Vite server, trigger `sendMessage()` after delay
 3. **Chat Submit:** SDK `session.prompt()` fires, SSE events update Zustand in real-time
-4. **Design Updates:** 2s polling via React Query detects new HTML files, renders in canvas
-5. **Canvas Drag:** DnD updates `screenPositions` in Zustand (persisted to localStorage)
+4. **Live Preview:** Vite dev server runs per-session, HMR updates preview on file changes
+5. **Viewport Switch:** Updates design mode store, resizes iframe container
 6. **Model Switch:** Updates `useModelStore`, affects next prompt call
-7. **Session Switch:** Updates `currentSessionId`, loads messages from SDK
+7. **Session Switch:** Updates `currentSessionId`, switches Vite server, loads messages from SDK
 8. **Reconnection:** SSE auto-reconnects with backoff, bootstrap re-syncs state

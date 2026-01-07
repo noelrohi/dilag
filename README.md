@@ -1,38 +1,38 @@
 # Dilag
 
-> AI-powered mobile UI design studio. Describe your app in natural language and watch AI generate stunning mobile interfaces in real-time.
+> AI-powered web app builder. Describe your app in natural language and watch AI build production-ready web applications in real-time.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri-24c8db?logo=tauri)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18+-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6?logo=typescript)](https://www.typescriptlang.org)
 
-![Dilag - AI Mobile UI Design Studio](assets/screenshot.png)
+![Dilag - AI Web App Builder](assets/screenshot.png)
 
 ## Overview
 
-Dilag is a desktop application that transforms design ideas into interactive HTML mockups. Simply describe what you want to build—"a meditation app dashboard," "an e-commerce checkout flow"—and AI generates beautiful, responsive mobile UI designs instantly. Iterate in real-time by chatting with the AI to refine and improve your designs.
+Dilag is a desktop application that transforms ideas into production-ready web applications. Simply describe what you want to build—"a habit tracking app," "a recipe finder with search"—and AI generates a complete React application with live preview. Iterate in real-time by chatting with the AI to refine and improve your app.
 
 Perfect for:
-- 🎨 Rapid prototyping and design exploration
-- 💡 Turning ideas into visual mockups without design tools
-- 🔄 Iterating on designs through conversation
-- 📱 Mobile-first UI generation
-- 🚀 Accelerating the design-to-development workflow
+- 🚀 Rapid prototyping and app development
+- 💡 Turning ideas into working web apps without boilerplate
+- 🔄 Iterating on features through conversation
+- 🌐 Full-stack web application generation
+- ⚡ Accelerating the idea-to-production workflow
 
 ## Features
 
-✨ **Natural Language Design Generation** – Describe your mobile app and get instant HTML mockups
+✨ **Natural Language App Generation** – Describe your app and get a complete React project
 
-🎯 **Interactive Design Canvas** – Pan, zoom, drag-and-drop your designs with smooth interactions
+🖥️ **Live Web Preview** – See your app running in real-time with hot reload via Vite
 
-💬 **Iterative Refinement** – Chat with AI to iterate and perfect your designs in real-time
+💬 **Iterative Development** – Chat with AI to add features and refine your app
 
 🤖 **Multi-Model Support** – Choose from Claude, GPT, Gemini, and more
 
-📚 **Design History** – Save, organize, and revisit all your design projects
+📚 **Project History** – Save, organize, and revisit all your projects
 
-🖼️ **Live Preview** – See designs rendered in iPhone 14 frames with pixel-perfect preview
+🎨 **Production-Ready Code** – Generated apps use React, TanStack Router, and Tailwind CSS
 
 ## Quick Start
 
@@ -138,24 +138,24 @@ dilag/
 
 ## Usage
 
-### Creating Your First Design
+### Creating Your First App
 
 1. **Launch the app** and land on the home screen
-2. **Describe your design** in the prompt box:
+2. **Describe your app** in the prompt box:
    ```
-   A meditation app with a homepage showing daily habits,
-   a timer screen, and user profile
+   A habit tracking app with a dashboard showing daily streaks,
+   a habit list, and settings page
    ```
 3. **Select your AI model** (Claude, GPT, etc.)
-4. **Hit submit** and watch designs generate in real-time
-5. **Refine** by chatting with the AI to iterate
+4. **Hit submit** and watch your app build in real-time
+5. **Iterate** by chatting with the AI to add features
 
-### Managing Designs
+### Working with Projects
 
-- **Pan & Zoom** – Scroll to pan, Ctrl/Cmd+scroll to zoom (25%-200%)
-- **Arrange Screens** – Drag screens on the canvas to reposition
-- **Iterate** – Type in the chat pane to refine designs
-- **Save Sessions** – All designs are automatically saved locally
+- **Live Preview** – Your app runs in an embedded browser with hot reload
+- **Viewport Modes** – Switch between desktop, tablet, and mobile views
+- **Iterate** – Type in the chat pane to add features or fix issues
+- **Auto-Save** – All projects are automatically saved locally
 
 ## Data Storage
 
@@ -163,15 +163,16 @@ Dilag stores everything locally on your machine:
 
 ```
 ~/.dilag/
-├── sessions/                    # Design project directories
+├── sessions/                    # Project directories
 │   └── {project-uuid}/
-│       └── screens/            # Generated HTML files
+│       └── src/                # React source code
+│       └── package.json        # Project dependencies
 ├── sessions.json               # Project metadata
 └── opencode/
     └── opencode.json          # AI agent config
 ```
 
-Sensitive data (API keys, tokens) is stored in `~/.local/share/opencode/` and isolated from your designs.
+Sensitive data (API keys, tokens) is stored in `~/.local/share/opencode/` and isolated from your projects.
 
 ## Development
 
@@ -226,19 +227,19 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Roadmap
 
-- [ ] Export designs to React components
-- [ ] Figma integration
-- [ ] Design template library
+- [ ] Export to deployable packages
+- [ ] GitHub integration
+- [ ] Project template library
 - [ ] Team collaboration features
-- [ ] Mobile app companion
-- [ ] Advanced design constraints
+- [ ] Database integration
+- [ ] API endpoint generation
 
 ## Troubleshooting
 
 ### Server won't start
 
 ```bash
-# Ensure no other instance is running on port 4096
+# Ensure no other instance is running
 lsof -i :4096
 
 # Clear cached data
@@ -246,10 +247,10 @@ rm -rf ~/.dilag/opencode
 bun run tauri dev
 ```
 
-### Designs not appearing
+### Preview not loading
 
-1. Check `~/.dilag/sessions/{id}/screens/` for HTML files
-2. Ensure the AI model has sufficient context
+1. Check that Bun is installed (`bun --version`)
+2. Check `~/.dilag/sessions/{id}/` for project files
 3. Check browser console for errors (DevTools in Tauri dev mode)
 
 ## License
