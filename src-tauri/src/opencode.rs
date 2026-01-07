@@ -10,6 +10,9 @@ use tauri_plugin_shell::ShellExt;
 
 pub const VITE_PORT: u16 = 5173;
 
+/// Frontend design skill content - embedded from assets
+const FRONTEND_DESIGN_SKILL: &str = include_str!("../assets/frontend-design-skill.md");
+
 /// Find a free port by binding to port 0
 pub fn get_free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -18,8 +21,6 @@ pub fn get_free_port() -> u16 {
         .expect("Failed to get local address")
         .port()
 }
-
-pub const DESIGNER_AGENT_PROMPT: &str = include_str!("../assets/web-designer-prompt.md");
 
 #[derive(Debug, Serialize)]
 pub struct OpenCodeCheckResult {
@@ -59,20 +60,27 @@ fn ensure_config_exists() -> AppResult<()> {
     let config_dir = get_opencode_config_dir();
     fs::create_dir_all(&config_dir)?;
 
-    let config_file = config_dir.join("opencode.json");
+    // Create skill directory and file
+    let skill_dir = config_dir.join("skill").join("frontend-design");
+    fs::create_dir_all(&skill_dir)?;
+    fs::write(skill_dir.join("SKILL.md"), FRONTEND_DESIGN_SKILL)?;
 
+    // Create opencode config
+    let config_file = config_dir.join("opencode.json");
     let config = serde_json::json!({
         "$schema": "https://opencode.ai/config.json",
         "autoupdate": false,
         "share": "disabled",
+        "default_agent": "build",
         "agent": {
-            "designer": {
-                "mode": "primary",
-                "prompt": DESIGNER_AGENT_PROMPT,
-                "description": "Web UI design agent for creating React/TanStack Router pages",
-                "permission": {
-                    "bash": "deny"
-                }
+            "build": {
+                "prompt": "You are a web UI design assistant. IMPORTANT: Always invoke the `frontend-design` skill before creating any UI components or pages. Use the skill tool with skill name 'frontend-design' to load design guidelines first."
+            }
+        },
+        "permission": {
+            "bash": "deny",
+            "skill": {
+                "frontend-design": "allow"
             }
         }
     });
