@@ -368,24 +368,41 @@ pub async fn get_license_status() -> LicenseStatus {
 
     // Check trial status
     if let Some(trial_start) = state.trial_start_utc {
-        // Try to get server time to prevent clock manipulation
-        // If we can't reach any server, use stored last_server_time_check or local time as fallback
-        let now = match get_server_time().await {
-            Ok(server_time) => {
-                // Update the last server time check
-                let mut updated_state = state.clone();
-                updated_state.last_server_time_check = Some(server_time);
-                let _ = save_license_state(&updated_state); // Best effort, don't fail on this
-                server_time
+        // Use cached server time to prevent slow network requests on every check
+        // Only fetch server time if we haven't checked in the last hour
+        let local_time = Utc::now().timestamp();
+        let should_check_server = match state.last_server_time_check {
+            Some(last_check) => {
+                // Check if more than 1 hour since last server time check
+                (local_time - last_check).abs() > 3600
             }
-            Err(_) => {
-                // Fallback: use the most recent of local time or last server check
-                // This prevents extending trial by setting clock back
-                let local_time = Utc::now().timestamp();
-                match state.last_server_time_check {
-                    Some(last_check) if last_check > local_time => last_check,
-                    _ => local_time,
+            None => true, // Never checked, should check
+        };
+
+        let now = if should_check_server {
+            // Try to get server time to prevent clock manipulation
+            match get_server_time().await {
+                Ok(server_time) => {
+                    // Update the last server time check
+                    let mut updated_state = state.clone();
+                    updated_state.last_server_time_check = Some(server_time);
+                    let _ = save_license_state(&updated_state); // Best effort, don't fail on this
+                    server_time
                 }
+                Err(_) => {
+                    // Fallback: use the most recent of local time or last server check
+                    match state.last_server_time_check {
+                        Some(last_check) if last_check > local_time => last_check,
+                        _ => local_time,
+                    }
+                }
+            }
+        } else {
+            // Use cached value - take max of local time and last server check
+            // This prevents extending trial by setting clock back
+            match state.last_server_time_check {
+                Some(last_check) if last_check > local_time => last_check,
+                _ => local_time,
             }
         };
 
