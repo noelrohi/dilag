@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.93.0",
-    "lucide-react": "^0.468.0",
+    "@solar-icons/react": "^1.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
