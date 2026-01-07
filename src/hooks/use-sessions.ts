@@ -18,9 +18,9 @@ import {
   createSessionDir,
   sessionKeys,
 } from "@/hooks/use-session-data";
-import { useGlobalEvents, useSDK, useConnectionStatus } from "@/context/global-events";
+import { useGlobalEvents, useSDK, useConnectionStatus, type Event } from "@/context/global-events";
 import { useModelStore } from "@/hooks/use-models";
-import { withErrorHandler, createManagedTimeout } from "@/lib/async-utils";
+import { withErrorHandler } from "@/lib/async-utils";
 import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 import type { FileUIPart } from "ai";
 
@@ -86,7 +86,7 @@ export function useSessions() {
     resetRealtimeState,
   } = useSessionStore();
 
-  const { isServerReady: globalServerReady } = useGlobalEvents();
+  const { isServerReady: globalServerReady, subscribeToSession } = useGlobalEvents();
 
   // Track cleanup functions for async operations
   const cleanupRef = useRef<(() => void)[]>([]);
@@ -193,6 +193,34 @@ export function useSessions() {
       loadSessionMessages(mostRecent.id, mostRecent.cwd);
     }
   }, [globalServerReady, sessions, currentSessionId, setError, setServerReady, setCurrentSessionId, loadSessionMessages]);
+
+  // Listen for session.updated events to sync OpenCode title to dilag
+  useEffect(() => {
+    if (!currentSessionId) return;
+
+    // Helper to check if title is the default format (e.g., "New session - 2024-01-07T...")
+    const isDefaultTitle = (title: string) => {
+      return /^(New session - |Child session - )\d{4}-\d{2}-\d{2}T/.test(title);
+    };
+
+    const unsubscribe = subscribeToSession(currentSessionId, async (event: Event) => {
+      if (event.type === "session.updated" && "properties" in event) {
+        const info = (event.properties as { info?: { id?: string; title?: string } })?.info;
+        if (info?.id === currentSessionId && info?.title && !isDefaultTitle(info.title)) {
+          // OpenCode generated a real title, update dilag's session name
+          console.log("[useSessions] Title from OpenCode:", info.title);
+          if (isMountedRef.current) {
+            await saveSessionUpdate({
+              id: currentSessionId,
+              updates: { name: info.title },
+            });
+          }
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [currentSessionId, subscribeToSession, saveSessionUpdate]);
 
   const createSession = useCallback(
     async (name?: string): Promise<string | null> => {
@@ -458,11 +486,7 @@ export function useSessions() {
       // Get selected model from store
       const { selectedModel } = useModelStore.getState();
       const agentName = "build";
-
-      // Check if this is the first message (for title update)
-      const isFirstMessage = messages.length === 0;
       const directory = currentSession.cwd;
-      const sessionIdForUpdate = currentSessionId; // Capture for closure
 
       try {
         setError(null);
@@ -517,37 +541,13 @@ export function useSessions() {
           setSessionStatus(currentSessionId, "error");
           console.error("[sendMessage] Failed to send message:", err);
         });
-
-        // Update title from OpenCode after first response
-        if (isFirstMessage) {
-          // Use managed timeout with cleanup
-          const cancelTimeout = createManagedTimeout(async () => {
-            if (!isMountedRef.current) return; // Avoid operations on unmounted component
-            try {
-              const response = await sdk.session.get({
-                sessionID: sessionIdForUpdate,
-                directory,
-              });
-              if (response.data?.title && isMountedRef.current) {
-                await saveSessionUpdate({
-                  id: sessionIdForUpdate,
-                  updates: { name: response.data.title },
-                });
-              }
-            } catch (err) {
-              // Log but don't set error state - title update is non-critical
-              console.error("[sendMessage] Failed to update title:", err);
-            }
-          }, 2000);
-          cleanupRef.current.push(cancelTimeout);
-        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send message");
         setSessionStatus(currentSessionId, "error");
         console.error("Failed to send message:", err);
       }
     },
-    [currentSessionId, currentSession, messages.length, setError, setSessionStatus, setSessionError, saveSessionUpdate, sdk]
+    [currentSessionId, currentSession, setError, setSessionStatus, setSessionError, sdk]
   );
 
   return {

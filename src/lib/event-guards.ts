@@ -27,6 +27,7 @@ export interface EventSessionUpdatedCustom {
   properties: {
     info: {
       id: string;
+      title?: string;
       revert?: {
         messageID: string;
         partID?: string;
