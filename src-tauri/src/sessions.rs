@@ -103,31 +103,38 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> AppResult<()> {
 
 #[tauri::command]
 pub fn initialize_web_project(app: AppHandle, session_cwd: String) -> AppResult<()> {
-    let template_dir = app
+    let resource_template = app
         .path()
         .resource_dir()
         .map_err(|e| AppError::Custom(e.to_string()))?
         .join("templates")
         .join("web-project");
 
-    let template_dir = if template_dir.exists() {
-        template_dir
+    let dev_template = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("templates")
+        .join("web-project");
+
+    println!("[initialize_web_project] Resource template: {:?} (exists: {})", resource_template, resource_template.exists());
+    println!("[initialize_web_project] Dev template: {:?} (exists: {})", dev_template, dev_template.exists());
+
+    let template_dir = if dev_template.exists() {
+        println!("[initialize_web_project] Using dev template");
+        dev_template
+    } else if resource_template.exists() {
+        println!("[initialize_web_project] Using resource template");
+        resource_template
     } else {
-        let dev_template = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("templates")
-            .join("web-project");
-        if dev_template.exists() {
-            dev_template
-        } else {
-            return Err(AppError::Custom(format!(
-                "Web project template not found at {:?} or {:?}",
-                template_dir, dev_template
-            )));
-        }
+        return Err(AppError::Custom(format!(
+            "Web project template not found at {:?} or {:?}",
+            resource_template, dev_template
+        )));
     };
 
+    println!("[initialize_web_project] Copying from {:?} to {:?}", template_dir, session_cwd);
+    
     let dest_dir = Path::new(&session_cwd);
     copy_dir_recursive(&template_dir, dest_dir)?;
 
+    println!("[initialize_web_project] Copy complete");
     Ok(())
 }
