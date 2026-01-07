@@ -1,17 +1,27 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { useSessions } from "@/hooks/use-sessions";
+import { useSessionMutations } from "@/hooks/use-session-data";
+import { useSDK } from "@/context/global-events";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ChatView } from "@/components/blocks/chat-view";
 import { BrowserFrame } from "@/components/blocks/browser-frame";
-import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { copyFilePath } from "@/lib/design-export";
 
 export const Route = createFileRoute("/studio/$sessionId")({
@@ -22,8 +32,12 @@ function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
   const navigate = useNavigate();
   const [chatOpen, setChatOpen] = useState(true);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const { selectSession, sendMessage, sessions, isServerReady, forkSessionDesignsOnly } = useSessions();
+  const { updateSession } = useSessionMutations();
+  const sdk = useSDK();
 
   // Initialize session on mount
   useEffect(() => {
@@ -38,6 +52,25 @@ function StudioPage() {
   }, [forkSessionDesignsOnly, navigate]);
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
+
+  const handleRename = useCallback(async () => {
+    if (!currentSession || !newName.trim()) return;
+
+    // Update local metadata
+    await updateSession({
+      id: sessionId,
+      updates: { name: newName.trim() },
+    });
+
+    // Sync to OpenCode
+    await sdk.session.update({
+      sessionID: sessionId,
+      title: newName.trim(),
+      directory: currentSession.cwd,
+    });
+
+    setRenameOpen(false);
+  }, [currentSession, newName, sessionId, updateSession, sdk]);
 
   // Auto-send initial prompt if stored
   useEffect(() => {
@@ -85,6 +118,15 @@ function StudioPage() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                onClick={() => {
+                  setNewName(currentSession?.name ?? "");
+                  setRenameOpen(true);
+                }}
+              >
+                <Pencil className="size-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleForkSession}>
                 <GitFork className="size-4 mr-2" />
                 Fork to new session
@@ -127,6 +169,36 @@ function StudioPage() {
           )}
         </div>
       </div>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Rename Session</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleRename();
+            }}
+          >
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Session name"
+              autoFocus
+            />
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="ghost" onClick={() => setRenameOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!newName.trim()}>
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
