@@ -72,6 +72,9 @@ fn ensure_config_exists() -> AppResult<()> {
         "autoupdate": false,
         "share": "disabled",
         "default_agent": "build",
+        "plugin": [
+            "opencode-antigravity-auth@1.2.7"
+        ],
         "agent": {
             "build": {
                 "prompt": "You are a web UI design assistant. IMPORTANT: Always invoke the `frontend-design` skill before creating any UI components or pages. Use the skill tool with skill name 'frontend-design' to load design guidelines first."
