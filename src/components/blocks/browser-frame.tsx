@@ -1,9 +1,29 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Monitor, Tablet, Smartphone, RefreshCw, Play, Square, Globe, Loader2, MessageSquare } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import {
+  Play,
+  Square,
+  Globe,
+  Loader2,
+  MessageSquare,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useWebViewport, useSetWebViewport, VIEWPORT_SIZES, type WebViewport } from "@/context/design-mode-store";
+import {
+  WebPreview,
+  WebPreviewNavigation,
+  WebPreviewNavigationButtons,
+  WebPreviewRefresh,
+  WebPreviewViewportSelector,
+  WebPreviewViewportInfo,
+  WebPreviewFullScreenToggle,
+  WebPreviewBody,
+  WebPreviewConsole,
+  WebPreviewNavigationButton,
+  useWebPreview,
+} from "@/components/ai-elements/web-preview";
 
 interface ViteStatus {
   running: boolean;
@@ -18,14 +38,11 @@ interface BrowserFrameProps {
 }
 
 export function BrowserFrame({ sessionCwd, className }: BrowserFrameProps) {
-  const viewport = useWebViewport();
-  const setViewport = useSetWebViewport();
   const [viteStatus, setViteStatus] = useState<ViteStatus | null>(null);
   const [projectReady, setProjectReady] = useState<boolean | null>(null);
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const checkProjectReady = useCallback(async () => {
     try {
@@ -58,6 +75,7 @@ export function BrowserFrame({ sessionCwd, className }: BrowserFrameProps) {
 
   const isCurrentSession = viteStatus?.session_cwd === sessionCwd;
 
+  // Auto-switch to this project if Vite is running for a different session
   useEffect(() => {
     if (viteStatus?.running && !isCurrentSession && projectReady) {
       handleSwitchProject();
@@ -107,257 +125,228 @@ export function BrowserFrame({ sessionCwd, className }: BrowserFrameProps) {
     }
   };
 
-  const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1);
+  const handleOpenExternal = async () => {
+    if (viteStatus?.running && viteStatus.port) {
+      await openUrl(`http://localhost:${viteStatus.port}`);
+    }
   };
 
-  const viewportOptions: { id: WebViewport; icon: typeof Monitor; label: string }[] = [
-    { id: "desktop", icon: Monitor, label: "Desktop" },
-    { id: "tablet", icon: Tablet, label: "Tablet" },
-    { id: "mobile", icon: Smartphone, label: "Mobile" },
-  ];
+  const iframeUrl = viteStatus?.running && isCurrentSession
+    ? `http://localhost:${viteStatus.port}`
+    : "";
 
-  const currentSize = VIEWPORT_SIZES[viewport];
-  const iframeUrl = viteStatus?.running ? `http://localhost:${viteStatus.port}` : "";
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-
-  const MAX_PREVIEW_WIDTH = 800;
-  const MAX_PREVIEW_HEIGHT = 600;
-
-  useEffect(() => {
-    const updateScale = () => {
-      if (!containerRef.current) return;
-      const padding = 48;
-      const maxWidth = Math.min(containerRef.current.clientWidth - padding, MAX_PREVIEW_WIDTH);
-      const maxHeight = Math.min(containerRef.current.clientHeight - padding, MAX_PREVIEW_HEIGHT);
-      const scaleX = maxWidth / currentSize.width;
-      const scaleY = maxHeight / currentSize.height;
-      setScale(Math.min(scaleX, scaleY, 1));
-    };
-
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
-  }, [currentSize.width, currentSize.height]);
-
-  const renderContent = () => {
-    if (viteStatus?.running && isCurrentSession) {
-      return (
-        <div
-          className="bg-background rounded-lg shadow-2xl overflow-hidden transition-all duration-300 border border-border/50"
-          style={{
-            width: currentSize.width * scale,
-            height: currentSize.height * scale,
-          }}
-        >
-          <iframe
-            key={refreshKey}
-            src={iframeUrl}
-            className="border-0 origin-top-left"
-            style={{
-              width: currentSize.width,
-              height: currentSize.height,
-              transform: `scale(${scale})`,
-            }}
-            title="Web Preview"
-          />
-        </div>
-      );
-    }
-
-    if (viteStatus?.running && !isCurrentSession) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-          <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm">Switching to this project...</p>
-        </div>
-      );
-    }
-
-    if (projectReady === null) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-          <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm">Checking project...</p>
-        </div>
-      );
-    }
-
-    if (!projectReady) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-          <div className="size-16 rounded-full bg-muted/50 flex items-center justify-center">
-            <MessageSquare className="size-8" />
-          </div>
-          <div className="text-center max-w-xs">
-            <p className="text-sm font-medium text-foreground mb-1">No project yet</p>
-            <p className="text-sm">
-              Describe your app in the chat and the AI will generate a React project for you
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-        <div className="size-16 rounded-full bg-muted/50 flex items-center justify-center">
-          <Globe className="size-8" />
-        </div>
-        <p className="text-sm">Start the dev server to preview your web app</p>
-        {error && (
-          <p className="text-sm text-destructive max-w-md text-center">{error}</p>
-        )}
-        <Button onClick={handleStart} disabled={starting} size="sm">
-          {starting ? (
-            <>
-              <Loader2 className="size-4 mr-2 animate-spin" />
-              Starting...
-            </>
-          ) : (
-            <>
-              <Play className="size-4 mr-2" />
-              Start Server
-            </>
-          )}
-        </Button>
-      </div>
-    );
-  };
+  const isRunning = !!(viteStatus?.running && isCurrentSession);
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <BrowserChrome
-        url={iframeUrl}
-        viewport={viewport}
-        viewportOptions={viewportOptions}
-        onViewportChange={setViewport}
-        onRefresh={handleRefresh}
-        viteRunning={viteStatus?.running ?? false}
-        projectReady={projectReady ?? false}
-        starting={starting}
-        stopping={stopping}
-        onStart={handleStart}
-        onStop={handleStop}
-      />
+      <WebPreview defaultUrl={iframeUrl} className="rounded-none border-0">
+        <WebPreviewNavigation className="gap-3">
+          {/* Traffic lights */}
+          <div className="flex items-center gap-1.5">
+            <div className="size-3 rounded-full bg-red-500/80" />
+            <div className="size-3 rounded-full bg-yellow-500/80" />
+            <div className="size-3 rounded-full bg-green-500/80" />
+          </div>
 
-      <div ref={containerRef} className="flex-1 overflow-hidden bg-muted/20 flex items-center justify-center">
-        {renderContent()}
-      </div>
+          {/* Navigation buttons */}
+          <WebPreviewNavigationButtons />
+          <WebPreviewRefresh />
+
+          {/* URL bar */}
+          <div className="flex-1 flex items-center">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-background/50 rounded-md border border-border/50 text-xs text-muted-foreground w-full max-w-md mx-auto">
+              <Globe className="size-3 shrink-0" />
+              <span className="font-mono truncate">
+                {iframeUrl || "Not running"}
+              </span>
+            </div>
+          </div>
+
+          {/* Viewport controls */}
+          <WebPreviewViewportSelector />
+          <WebPreviewViewportInfo />
+
+          {/* Server controls */}
+          <div className="flex items-center gap-1">
+            {isRunning && (
+              <WebPreviewNavigationButton
+                onClick={handleOpenExternal}
+                tooltip="Open in browser"
+              >
+                <ExternalLink className="size-4" />
+              </WebPreviewNavigationButton>
+            )}
+
+            {isRunning ? (
+              <WebPreviewNavigationButton
+                onClick={handleStop}
+                disabled={stopping}
+                tooltip="Stop server"
+                className="text-destructive hover:text-destructive"
+              >
+                {stopping ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Square className="size-4" />
+                )}
+              </WebPreviewNavigationButton>
+            ) : (
+              <WebPreviewNavigationButton
+                onClick={handleStart}
+                disabled={starting || !projectReady}
+                tooltip={projectReady ? "Start server" : "No project yet"}
+                className="text-green-600 hover:text-green-600"
+              >
+                {starting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Play className="size-4" />
+                )}
+              </WebPreviewNavigationButton>
+            )}
+
+            <WebPreviewFullScreenToggle />
+          </div>
+        </WebPreviewNavigation>
+
+        <PreviewContent
+          iframeUrl={iframeUrl}
+          isRunning={isRunning}
+          isCurrentSession={isCurrentSession}
+          projectReady={projectReady}
+          starting={starting}
+          error={error}
+          onStart={handleStart}
+        />
+
+        <WebPreviewConsole />
+      </WebPreview>
     </div>
   );
 }
 
-interface BrowserChromeProps {
-  url: string;
-  viewport: WebViewport;
-  viewportOptions: { id: WebViewport; icon: typeof Monitor; label: string }[];
-  onViewportChange: (viewport: WebViewport) => void;
-  onRefresh: () => void;
-  viteRunning: boolean;
-  projectReady: boolean;
-  starting: boolean;
-  stopping: boolean;
-  onStart: () => void;
-  onStop: () => void;
-}
-
-function BrowserChrome({
-  url,
-  viewport,
-  viewportOptions,
-  onViewportChange,
-  onRefresh,
-  viteRunning,
+// Separate component to use the WebPreview context
+function PreviewContent({
+  iframeUrl,
+  isRunning,
+  isCurrentSession,
   projectReady,
   starting,
-  stopping,
+  error,
   onStart,
-  onStop,
-}: BrowserChromeProps) {
-  const currentSize = VIEWPORT_SIZES[viewport];
+}: {
+  iframeUrl: string;
+  isRunning: boolean;
+  isCurrentSession: boolean;
+  projectReady: boolean | null;
+  starting: boolean;
+  error: string | null;
+  onStart: () => void;
+}) {
+  const { navigate } = useWebPreview();
 
-  return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-muted/50 border-b border-border/50">
-      <div className="flex items-center gap-1.5">
-        <div className="size-3 rounded-full bg-red-500/80" />
-        <div className="size-3 rounded-full bg-yellow-500/80" />
-        <div className="size-3 rounded-full bg-green-500/80" />
-      </div>
+  // Update WebPreview URL when Vite URL changes
+  useEffect(() => {
+    if (iframeUrl) {
+      navigate(iframeUrl);
+    }
+  }, [iframeUrl, navigate]);
 
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-background/50 rounded-md border border-border/50 text-xs text-muted-foreground">
-          <Globe className="size-3" />
-          <span className="font-mono">{url || "Not running"}</span>
-        </div>
-      </div>
+  // Loading: switching projects
+  if (!isCurrentSession && projectReady) {
+    return (
+      <WebPreviewBody
+        emptyState={
+          <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <Loader2 className="size-8 animate-spin" />
+            <p className="text-sm">Switching to this project...</p>
+          </div>
+        }
+      />
+    );
+  }
 
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 p-0.5 bg-muted rounded-md">
-          {viewportOptions.map(({ id, icon: Icon, label }) => (
-            <Button
-              key={id}
-              variant={viewport === id ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => onViewportChange(id)}
-              className="h-7 px-2"
-              title={label}
-            >
-              <Icon className="size-3.5" />
-            </Button>
-          ))}
-        </div>
+  // Loading: checking project
+  if (projectReady === null) {
+    return (
+      <WebPreviewBody
+        emptyState={
+          <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <Loader2 className="size-8 animate-spin" />
+            <p className="text-sm">Checking project...</p>
+          </div>
+        }
+      />
+    );
+  }
 
-        <span className="text-xs text-muted-foreground tabular-nums min-w-[80px]">
-          {currentSize.width} x {currentSize.height}
-        </span>
+  // No project yet
+  if (!projectReady) {
+    return (
+      <WebPreviewBody
+        emptyState={
+          <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <div className="size-16 rounded-full bg-muted/50 flex items-center justify-center">
+              <MessageSquare className="size-8" />
+            </div>
+            <div className="text-center max-w-xs">
+              <p className="text-sm font-medium text-foreground mb-1">
+                No project yet
+              </p>
+              <p className="text-sm">
+                Describe your app in the chat and the AI will generate a React
+                project for you
+              </p>
+            </div>
+          </div>
+        }
+      />
+    );
+  }
 
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onRefresh}
-            disabled={!viteRunning}
-            className="h-7 w-7 p-0"
-            title="Refresh"
-          >
-            <RefreshCw className="size-3.5" />
-          </Button>
-
-          {viteRunning ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onStop}
-              disabled={stopping}
-              className="h-7 px-2 text-destructive hover:text-destructive"
-              title="Stop server"
-            >
-              {stopping ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Square className="size-3.5" />
-              )}
-            </Button>
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onStart}
-              disabled={starting || !projectReady}
-              className="h-7 px-2 text-chart-2 hover:text-chart-2"
-              title={projectReady ? "Start server" : "No project yet"}
-            >
+  // Project ready but server not running
+  if (!isRunning) {
+    return (
+      <WebPreviewBody
+        emptyState={
+          <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            <div className="size-16 rounded-full bg-muted/50 flex items-center justify-center">
+              <Globe className="size-8" />
+            </div>
+            <p className="text-sm">Start the dev server to preview your web app</p>
+            {error && (
+              <p className="text-sm text-destructive max-w-md text-center">
+                {error}
+              </p>
+            )}
+            <Button onClick={onStart} disabled={starting} size="sm">
               {starting ? (
-                <Loader2 className="size-3.5 animate-spin" />
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Starting...
+                </>
               ) : (
-                <Play className="size-3.5" />
+                <>
+                  <Play className="size-4 mr-2" />
+                  Start Server
+                </>
               )}
             </Button>
-          )}
+          </div>
+        }
+      />
+    );
+  }
+
+  // Server running - show iframe
+  return (
+    <WebPreviewBody
+      src={iframeUrl}
+      loading={
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 }
