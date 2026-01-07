@@ -457,7 +457,7 @@ export function useSessions() {
 
       // Get selected model from store
       const { selectedModel } = useModelStore.getState();
-      const agentName = "designer";
+      const agentName = "build";
 
       // Check if this is the first message (for title update)
       const isFirstMessage = messages.length === 0;

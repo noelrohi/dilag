@@ -140,7 +140,7 @@ describe("use-sessions", () => {
       );
     });
 
-    it("should always use designer agent", async () => {
+    it("should always use build agent", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() });
 
       await act(async () => {
@@ -149,7 +149,7 @@ describe("use-sessions", () => {
 
       expect(mockSDK.session.prompt).toHaveBeenCalledWith(
         expect.objectContaining({
-          agent: "designer",
+          agent: "build",
         })
       );
     });
