@@ -14,6 +14,7 @@ import {
   CheckSquare,
   Square,
   Paintbrush,
+  Wand2,
   type LucideIcon,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
@@ -615,6 +616,32 @@ export const TOOLS: Record<string, ToolConfig> = {
           </div>
         </div>
       );
+    },
+  },
+
+  skill: {
+    icon: Wand2,
+    title: (p) => {
+      // Try different possible input keys for skill name
+      const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined;
+      if (!name) return "Skill";
+      // Convert kebab-case to Title Case
+      return name
+        .split("-")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    },
+    content: (p) => {
+      // Show input for debugging if no recognized keys
+      const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined;
+      if (!name && Object.keys(p.input).length > 0) {
+        return (
+          <pre className="text-xs text-muted-foreground">
+            {JSON.stringify(p.input, null, 2)}
+          </pre>
+        );
+      }
+      return null;
     },
   },
 };
