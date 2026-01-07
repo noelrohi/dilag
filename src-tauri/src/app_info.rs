@@ -35,9 +35,14 @@ fn calculate_dir_size(path: &PathBuf) -> u64 {
 }
 
 #[tauri::command]
-pub fn get_app_info() -> AppInfo {
+pub async fn get_app_info() -> AppInfo {
     let dilag_dir = get_dilag_dir();
-    let data_size = calculate_dir_size(&dilag_dir);
+    let dir_path = dilag_dir.clone();
+
+    // Offload directory size calculation to blocking task
+    let data_size = tokio::task::spawn_blocking(move || calculate_dir_size(&dir_path))
+        .await
+        .unwrap_or(0);
 
     AppInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
