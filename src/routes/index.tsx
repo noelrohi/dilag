@@ -19,13 +19,13 @@ import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
 import { ArrowUpIcon } from "@phosphor-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, X } from "lucide-react";
+import { X } from "lucide-react";
 
 const SUGGESTIONS = [
-  "Design a habit tracking app",
-  "Create a recipe finder",
-  "Build a workout timer",
-  "Make a notes app",
+  { text: "A habit tracking app", color: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 hover:border-emerald-400/50" },
+  { text: "A recipe finder with search", color: "from-amber-500/20 to-amber-600/10 border-amber-500/30 hover:border-amber-400/50" },
+  { text: "A workout timer", color: "from-rose-500/20 to-rose-600/10 border-rose-500/30 hover:border-rose-400/50" },
+  { text: "A notes app with markdown", color: "from-violet-500/20 to-violet-600/10 border-violet-500/30 hover:border-violet-400/50" },
 ];
 
 export const Route = createFileRoute("/")({
@@ -115,7 +115,7 @@ function LandingPage() {
                 What would you like
               </h1>
               <h1 className="text-[42px] md:text-[52px] font-medium text-muted-foreground/50 leading-[1.1] tracking-[-0.03em]">
-                to design?
+                to build?
               </h1>
             </div>
 
@@ -133,21 +133,23 @@ function LandingPage() {
                 />
               </PromptInputProvider>
 
-              <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <div className="flex flex-wrap justify-center gap-2 mt-6">
                 {SUGGESTIONS.map((suggestion) => (
                   <button
-                    key={suggestion}
-                    onClick={() => handleSubmit(suggestion)}
+                    key={suggestion.text}
+                    onClick={() => handleSubmit(suggestion.text)}
                     disabled={!isServerReady}
                     className={cn(
-                      "px-3 py-1.5 rounded-full text-[13px]",
-                      "bg-muted/50 hover:bg-muted border border-border/50",
-                      "text-muted-foreground hover:text-foreground",
-                      "transition-colors duration-200",
-                      "disabled:opacity-50 disabled:cursor-not-allowed",
+                      "px-3.5 py-1.5 text-[13px] font-medium",
+                      "bg-gradient-to-br border rounded-lg",
+                      "text-foreground/90 hover:text-foreground",
+                      "hover:scale-[1.02] active:scale-[0.98]",
+                      "transition-all duration-200",
+                      "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100",
+                      suggestion.color,
                     )}
                   >
-                    {suggestion}
+                    {suggestion.text}
                   </button>
                 ))}
               </div>
@@ -157,33 +159,30 @@ function LandingPage() {
 
         {sortedSessions.length > 0 && (
           <div
-            className="px-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
+            className="px-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500"
             style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
           >
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-3xl mx-auto">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[13px] font-medium text-muted-foreground">
-                  Recent projects
+                <h2 className="text-[13px] font-medium text-muted-foreground/70">
+                  Recent Projects
                 </h2>
-                {sortedSessions.length > 4 && (
+                {sortedSessions.length > 6 && (
                   <button
                     onClick={() => navigate({ to: "/projects" })}
-                    className="flex items-center gap-1 text-[12px] text-muted-foreground/70 hover:text-foreground transition-colors duration-200 group"
+                    className="text-[12px] text-muted-foreground/50 hover:text-foreground transition-colors duration-150"
                   >
-                    <span>View all</span>
-                    <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    View all ({sortedSessions.length})
                   </button>
                 )}
               </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {sortedSessions.slice(0, 4).map((session, i) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {sortedSessions.slice(0, 6).map((session) => (
                   <ProjectCard
                     key={session.id}
                     session={session}
                     onOpen={() => handleOpenProject(session.id)}
                     onDelete={(e) => handleDeleteProject(e, session.id)}
-                    delay={i * 50}
                   />
                 ))}
               </div>
@@ -206,58 +205,59 @@ function ProjectCard({
   session,
   onOpen,
   onDelete,
-  delay = 0,
 }: {
   session: SessionMeta;
   onOpen: () => void;
   onDelete: (e: React.MouseEvent) => void;
-  delay?: number;
 }) {
+  const date = new Date(session.created_at);
+  const timeAgo = getTimeAgo(date);
+
   return (
-    <button
+    <div
       onClick={onOpen}
       className={cn(
-        "group relative text-left p-3 rounded-xl transition-all duration-300 ease-out",
-        "bg-card/50 border border-border/50",
-        "hover:bg-card hover:border-border hover:shadow-lg hover:shadow-black/[0.03]",
-        "dark:hover:shadow-black/20",
-        "animate-in fade-in slide-in-from-bottom-2 duration-300",
+        "group relative text-left p-3 rounded-lg cursor-pointer",
+        "bg-card/40 border border-border/30",
+        "hover:bg-card/60 hover:border-border/50",
+        "transition-all duration-200",
       )}
-      style={{
-        animationDelay: `${150 + delay}ms`,
-        animationFillMode: "backwards",
-      }}
     >
-      <div className="flex gap-1 mb-3 h-[72px] overflow-hidden rounded-lg bg-muted/30 p-1.5">
-        <div className="flex-1 flex items-center justify-center">
-          <span className="text-[10px] text-muted-foreground/50 font-medium">
-            {session.name || "Untitled"}
-          </span>
-        </div>
+      <button
+        onClick={onDelete}
+        className={cn(
+          "absolute top-2 right-2 p-1 rounded-md",
+          "opacity-0 group-hover:opacity-100",
+          "text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10",
+          "transition-all duration-150",
+        )}
+      >
+        <X className="size-3" />
+      </button>
+      <div className="pr-6">
+        <h3 className="text-[13px] font-medium text-foreground/90 truncate">
+          {session.name || "Untitled"}
+        </h3>
+        <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+          {timeAgo}
+        </p>
       </div>
-
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-foreground truncate leading-tight">
-            {session.name || "Untitled"}
-          </p>
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            {formatDate(session.created_at)}
-          </p>
-        </div>
-        <button
-          onClick={onDelete}
-          className={cn(
-            "p-1.5 rounded-md transition-all duration-200 shrink-0",
-            "opacity-0 group-hover:opacity-100",
-            "hover:bg-destructive/10 hover:text-destructive",
-          )}
-        >
-          <X className="size-3" />
-        </button>
-      </div>
-    </button>
+    </div>
   );
+}
+
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function ComposerInput({
@@ -328,14 +328,3 @@ function ComposerInput({
   );
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
