@@ -110,23 +110,42 @@ pub fn initialize_web_project(app: AppHandle, session_cwd: String) -> AppResult<
         .join("templates")
         .join("web-project");
 
-    let dev_template = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("templates")
-        .join("web-project");
+    // In debug builds, prefer the dev template from source tree
+    // In release builds, always use bundled resources
+    #[cfg(debug_assertions)]
+    let dev_template = Some(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("templates")
+            .join("web-project"),
+    );
+    #[cfg(not(debug_assertions))]
+    let dev_template: Option<std::path::PathBuf> = None;
 
     println!("[initialize_web_project] Resource template: {:?} (exists: {})", resource_template, resource_template.exists());
-    println!("[initialize_web_project] Dev template: {:?} (exists: {})", dev_template, dev_template.exists());
+    if let Some(ref dev) = dev_template {
+        println!("[initialize_web_project] Dev template: {:?} (exists: {})", dev, dev.exists());
+    }
 
-    let template_dir = if dev_template.exists() {
-        println!("[initialize_web_project] Using dev template");
-        dev_template
+    let template_dir = if let Some(ref dev) = dev_template {
+        if dev.exists() {
+            println!("[initialize_web_project] Using dev template");
+            dev.clone()
+        } else if resource_template.exists() {
+            println!("[initialize_web_project] Using resource template");
+            resource_template
+        } else {
+            return Err(AppError::Custom(format!(
+                "Web project template not found at {:?} or {:?}",
+                resource_template, dev
+            )));
+        }
     } else if resource_template.exists() {
         println!("[initialize_web_project] Using resource template");
         resource_template
     } else {
         return Err(AppError::Custom(format!(
-            "Web project template not found at {:?} or {:?}",
-            resource_template, dev_template
+            "Web project template not found at {:?}",
+            resource_template
         )));
     };
 
