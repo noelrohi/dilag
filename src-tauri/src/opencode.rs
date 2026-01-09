@@ -13,9 +13,6 @@ pub const VITE_PORT: u16 = 5173;
 /// Frontend design skill content - embedded from assets
 const FRONTEND_DESIGN_SKILL: &str = include_str!("../assets/frontend-design-skill.md");
 
-/// Solar icons skill content - embedded from assets
-const SOLAR_ICONS_SKILL: &str = include_str!("../assets/solar-icons-skill.md");
-
 /// Find a free port by binding to port 0
 pub fn get_free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -68,11 +65,6 @@ fn ensure_config_exists() -> AppResult<()> {
     fs::create_dir_all(&frontend_skill_dir)?;
     fs::write(frontend_skill_dir.join("SKILL.md"), FRONTEND_DESIGN_SKILL)?;
 
-    // Create solar-icons skill directory and file
-    let solar_skill_dir = config_dir.join("skill").join("solar-icons");
-    fs::create_dir_all(&solar_skill_dir)?;
-    fs::write(solar_skill_dir.join("SKILL.md"), SOLAR_ICONS_SKILL)?;
-
     // Create opencode config
     let config_file = config_dir.join("opencode.json");
     let config = serde_json::json!({
@@ -85,24 +77,77 @@ fn ensure_config_exists() -> AppResult<()> {
         ],
         "agent": {
             "build": {
-                "prompt": "You are a web UI design assistant. IMPORTANT: Always invoke the `frontend-design` skill before creating any UI components or pages. Use the skill tool with skill name 'frontend-design' to load design guidelines first. When you need to find icons, use the `solar-icons` skill to search for the correct icon names."
+                "prompt": "You are a web UI design assistant. IMPORTANT: Always invoke the `frontend-design` skill before creating any UI components or pages. Use the skill tool with skill name 'frontend-design' to load design guidelines first."
             }
         },
         "permission": {
             "bash": {
                 "*": "ask",
+
+                "ls": "allow",
+                "ls *": "allow",
+                "pwd": "allow",
+                "which *": "allow",
+                "echo *": "allow",
+                "cat *": "allow",
+                "head *": "allow",
+                "tail *": "allow",
+                "wc *": "allow",
+                "find": "allow",
+                "find *": "allow",
+                "grep *": "allow",
+                "file *": "allow",
+                "stat *": "allow",
+                "tree *": "allow",
+                "du *": "allow",
+                "df *": "allow",
+
                 "git status": "allow",
-                "git push": "allow",
+                "git status *": "allow",
+                "git log": "allow",
+                "git log *": "allow",
+                "git diff": "allow",
+                "git diff *": "allow",
+                "git branch": "allow",
+                "git branch *": "allow",
+                "git show *": "allow",
+                "git remote *": "allow",
+                "git stash list": "allow",
+                "git rev-parse *": "allow",
+                "git config --get *": "allow",
+
                 "bun i": "allow",
-                "bun run dev": "allow",
-                "bun run build": "allow",
-                "bun run lint": "allow",
-                "tsc --noEmit": "allow"
+                "bun install": "allow",
+                "bun install *": "allow",
+                "bun add *": "allow",
+                "bun remove *": "allow",
+                "bun run *": "allow",
+                "bun pm ls": "allow",
+                "bun pm ls *": "allow",
+                "bun x *": "allow",
+                "bunx *": "allow",
+
+                "npm i": "allow",
+                "npm install": "allow",
+                "npm install *": "allow",
+                "npm ci": "allow",
+                "npm run *": "allow",
+                "npm ls": "allow",
+                "npm ls *": "allow",
+                "npm list": "allow",
+                "npm list *": "allow",
+                "npx *": "allow",
+
+                "tsc": "allow",
+                "tsc *": "allow",
+                "vitest *": "allow",
+                "jest *": "allow",
+                "eslint *": "allow",
+                "prettier *": "allow"
             },
             "task": "deny",
             "skill": {
-                "frontend-design": "allow",
-                "solar-icons": "allow"
+                "frontend-design": "allow"
             }
         }
     });
