@@ -27,7 +27,7 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageActions, MessageAction } from "@/components/ai-elements/message";
-import { MessageDuration } from "@/components/ai-elements/message-duration";
+import { useElapsedTime } from "@/hooks/use-elapsed-time";
 import {
   PromptInput,
   PromptInputTextarea,
@@ -45,6 +45,8 @@ import {
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { ModelSelectorButton } from "./model-selector-button";
+import { AgentSelectorButton } from "./agent-selector-button";
+import { ThinkingModeSelector } from "./thinking-mode-selector";
 import { TimelineDialog } from "@/components/blocks/dialog-timeline";
 import { RevertBanner } from "@/components/blocks/revert-banner";
 import { GitFork, Undo2, History, Copy } from "lucide-react";
@@ -86,6 +88,42 @@ function InlineErrorCard({ error }: { error: { name: string; message: string } }
           {error.message}
         </span>
       </div>
+    </div>
+  );
+}
+
+// Component to show aggregated total duration at the end of the conversation
+function TotalDuration({ messages }: { messages: SessionMessage[] }) {
+  const assistantMessages = messages.filter((m) => m.role === "assistant");
+  const isAnyStreaming = assistantMessages.some((m) => m.isStreaming);
+
+  // Get earliest start time and latest end time
+  const startTime =
+    assistantMessages.length > 0
+      ? Math.min(...assistantMessages.map((m) => m.time.created))
+      : undefined;
+
+  const endTime =
+    !isAnyStreaming && assistantMessages.length > 0
+      ? Math.max(
+          ...assistantMessages
+            .filter((m) => m.time.completed)
+            .map((m) => m.time.completed!)
+        )
+      : undefined;
+
+  const elapsed = useElapsedTime(startTime, endTime);
+
+  if (assistantMessages.length === 0) return null;
+
+  return (
+    <div className="flex justify-start py-2">
+      <span className="inline-flex items-center gap-1.5 text-muted-foreground/60">
+        <DilagIcon animated={isAnyStreaming} className="size-3.5" />
+        <span className="font-mono text-xs tabular-nums tracking-tight">
+          {endTime ? `Total: ${elapsed}` : elapsed}
+        </span>
+      </span>
     </div>
   );
 }
@@ -158,7 +196,7 @@ function UserMessage({
           <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
         )}
       </MessageContent>
-      <MessageActions className="opacity-0 group-hover:opacity-100 transition-opacity">
+      <MessageActions>
         <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
           <Copy className="size-3.5" />
         </MessageAction>
@@ -221,12 +259,9 @@ function AssistantMessage({
         {isLast && !message.isStreaming && sessionError && (
           <InlineErrorCard error={sessionError} />
         )}
-
-        {/* Duration indicator */}
-        <MessageDuration message={message} className="mt-2" />
       </MessageContent>
-      {!message.isStreaming && (
-        <MessageActions className="opacity-0 group-hover:opacity-100 transition-opacity">
+      {!message.isStreaming && isLast && (
+        <MessageActions>
           <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
             <Copy className="size-3.5" />
           </MessageAction>
@@ -368,13 +403,7 @@ function ChatInputArea({
 
         <PromptInput
           onSubmit={async ({ text, files }) => handleSubmit(text, files)}
-          className={cn(
-            "[&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border-border/50",
-            "[&_[data-slot=input-group]]:bg-card/50 [&_[data-slot=input-group]]:backdrop-blur-sm",
-            "[&_[data-slot=input-group]]:focus-within:border-primary/50 [&_[data-slot=input-group]]:focus-within:ring-2 [&_[data-slot=input-group]]:focus-within:ring-primary/20",
-            "transition-all duration-300",
-            isLoading && "opacity-80",
-          )}
+          className={cn(isLoading && "opacity-80")}
         >
           <PromptInputAttachments>
             {(attachment) => <PromptInputAttachment data={attachment} />}
@@ -387,21 +416,23 @@ function ChatInputArea({
             />
           </PromptInputBody>
           <PromptInputFooter>
-            {/* Left side - attachment action menu */}
-            <PromptInputTools>
+            {/* Left side - agent selector, model selector, thinking mode */}
+            <PromptInputTools className="min-w-0 flex-1">
+              <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <AgentSelectorButton />
+                <ModelSelectorButton />
+                <ThinkingModeSelector />
+              </div>
+            </PromptInputTools>
+
+            {/* Right side - attachment menu + submit */}
+            <div className="flex items-center gap-1">
               <PromptInputActionMenu>
                 <PromptInputActionMenuTrigger />
                 <PromptInputActionMenuContent>
                   <PromptInputActionAddAttachments />
                 </PromptInputActionMenuContent>
               </PromptInputActionMenu>
-            </PromptInputTools>
-
-            <div className="flex-1" />
-
-            {/* Right side - model selector + submit */}
-            <div className="flex items-center gap-1">
-              <ModelSelectorButton />
               <PromptInputSubmit
                 disabled={!hasInput && !isLoading}
                 onClick={isLoading ? handleButtonClick : undefined}
@@ -610,6 +641,8 @@ export function ChatView() {
                 );
               })
             )}
+            {/* Total duration indicator */}
+            {messages.length > 0 && <TotalDuration messages={messages} />}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>

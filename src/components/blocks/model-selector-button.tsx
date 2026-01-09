@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { ChevronDown, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { selectorStyles } from "./agent-selector-button";
 import {
   ModelSelector,
   ModelSelectorTrigger,
@@ -169,25 +170,23 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
             <Button
               variant="outline"
               size="sm"
-              className="h-9 gap-2.5 px-3 text-xs border-border/60 bg-card/50 hover:bg-card hover:border-border transition-all duration-200"
+              className={cn(selectorStyles)}
               disabled={isLoading}
             >
               {selectedModelInfo ? (
                 <>
-                  <div className="flex items-center justify-center size-5 rounded-md bg-muted/50 ring-1 ring-border/50">
-                    <ModelSelectorLogo
-                      provider={selectedModelInfo.providerID as any}
-                      className="size-3.5"
-                    />
-                  </div>
-                  <span className="max-w-[120px] truncate font-medium text-foreground/90">
+                  <ModelSelectorLogo
+                    provider={selectedModelInfo.providerID as any}
+                    className="size-3.5 text-muted-foreground"
+                  />
+                  <span className="max-w-[100px] truncate font-medium">
                     {selectedModelInfo.name}
                   </span>
                 </>
               ) : (
                 <span className="font-medium text-muted-foreground">Select model</span>
               )}
-              <ChevronDown className="size-3.5 text-muted-foreground/50" />
+              <ChevronDown className="size-3.5 opacity-50" />
             </Button>
           )}
         </ModelSelectorTrigger>
