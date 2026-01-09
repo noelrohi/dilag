@@ -7,7 +7,10 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { ToolPart } from "./tool-part";
 import { FileCode2 } from "lucide-react";
-import { ErrorBoundary, InlineErrorFallback } from "@/components/ui/error-boundary";
+import {
+  ErrorBoundary,
+  InlineErrorFallback,
+} from "@/components/ui/error-boundary";
 
 interface MessagePartProps {
   part: MessagePartType;
@@ -15,7 +18,9 @@ interface MessagePartProps {
 
 export function MessagePart({ part }: MessagePartProps) {
   return (
-    <ErrorBoundary fallback={<InlineErrorFallback message="Failed to render message part" />}>
+    <ErrorBoundary
+      fallback={<InlineErrorFallback message="Failed to render message part" />}
+    >
       <MessagePartContent part={part} />
     </ErrorBoundary>
   );
@@ -34,7 +39,7 @@ function MessagePartContent({ part }: MessagePartProps) {
     case "reasoning":
       if (!part.text?.trim()) return null;
       return (
-        <Reasoning isStreaming={false}>
+        <Reasoning isStreaming={false} className="mb-0">
           <ReasoningTrigger />
           <ReasoningContent>{part.text}</ReasoningContent>
         </Reasoning>
@@ -42,6 +47,11 @@ function MessagePartContent({ part }: MessagePartProps) {
 
     case "tool":
       if (!part.tool || !part.state) return null;
+      // Hide question tool entirely - the QuestionPrompt UI handles interaction
+      // Show only when completed successfully with user's answers
+      if (part.tool === "question" && part.state.status !== "completed") {
+        return null;
+      }
       return <ToolPart tool={part.tool} state={part.state} />;
 
     case "file":

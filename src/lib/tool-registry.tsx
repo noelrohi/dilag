@@ -15,6 +15,7 @@ import {
   Square,
   Paintbrush,
   Wand2,
+  MessageCircleQuestion,
   type LucideIcon,
 } from "lucide-react";
 import { Streamdown } from "streamdown";
@@ -232,7 +233,6 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: Terminal,
     title: () => "Shell",
     chipLabel: (p) => {
-      // metadata.description is set by backend
       const desc = p.metadata?.description as string | undefined;
       const { description, command } = getInput(p);
       if (desc) return desc.slice(0, 25);
@@ -255,22 +255,30 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
     content: (p) => {
       const { command } = getInput(p);
-      // metadata.output contains the streamed output
       const output = (p.metadata?.output as string) ?? p.output;
+      const exit = p.metadata?.exit as number | null | undefined;
+      const hasError = exit !== undefined && exit !== null && exit !== 0;
+
+      if (!command && !output) return null;
+
       return (
-        <>
+        <div className="space-y-2">
           {command && (
-            <pre className="text-xs font-mono bg-muted/50 rounded px-2 py-1 overflow-x-auto">
-              $ {command}
-            </pre>
+            <div className="flex items-start gap-2 font-mono text-xs">
+              <span className="text-muted-foreground/50 select-none shrink-0">$</span>
+              <code className="text-foreground/90 break-all whitespace-pre-wrap">{command}</code>
+            </div>
           )}
           {output && (
-            <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-              {output.slice(0, 2000)}
-              {output.length > 2000 && "..."}
+            <pre className={cn(
+              "text-xs font-mono leading-relaxed max-h-40 overflow-auto",
+              "whitespace-pre-wrap break-words",
+              hasError ? "text-red-400/80" : "text-muted-foreground"
+            )}>
+              {output.length > 2000 ? output.slice(0, 2000) + "\n..." : output}
             </pre>
           )}
-        </>
+        </div>
       );
     },
   },
@@ -642,6 +650,99 @@ export const TOOLS: Record<string, ToolConfig> = {
         );
       }
       return null;
+    },
+  },
+
+  // Question tool - displays questions and user's answers
+  question: {
+    icon: MessageCircleQuestion,
+    title: (p) => {
+      const questions = p.input.questions as Array<{ header?: string }> | undefined;
+      const firstHeader = questions?.[0]?.header;
+      if (p.status === "completed") {
+        return "Asked question";
+      }
+      return firstHeader || "Question";
+    },
+    chipLabel: (p) => {
+      const questions = p.input.questions as Array<{ header?: string }> | undefined;
+      return questions?.[0]?.header;
+    },
+    subtitle: (p) => {
+      const questions = p.input.questions as Array<{ question?: string; header?: string }> | undefined;
+      const answers = p.metadata?.answers as string[][] | undefined;
+      const count = questions?.length ?? 0;
+
+      if (p.status === "completed" && answers?.length) {
+        // Clean count indicator when completed
+        if (count === 1) {
+          // For single question, show the first answer briefly
+          const firstAnswer = answers[0]?.[0];
+          if (firstAnswer) {
+            return firstAnswer.length > 30 ? firstAnswer.slice(0, 30) + "…" : firstAnswer;
+          }
+        }
+        // For multiple questions, just show count
+        return `${count} answered`;
+      }
+
+      // Show first question text when running/pending
+      const firstQuestion = questions?.[0]?.question;
+      if (firstQuestion) {
+        return firstQuestion.length > 50 ? firstQuestion.slice(0, 50) + "..." : firstQuestion;
+      }
+      return undefined;
+    },
+    content: (p) => {
+      const questions = p.input.questions as Array<{ question: string; header?: string; options?: Array<{ label: string }> }> | undefined;
+      const answers = p.metadata?.answers as string[][] | undefined;
+
+      if (!questions?.length) return null;
+
+      if (p.status === "completed" && answers) {
+        // Light, minimal Q&A display
+        return (
+          <div className="space-y-1.5">
+            {questions.map((q, idx) => {
+              const answer = answers[idx]?.join(", ") || "—";
+              return (
+                <div key={idx} className="flex items-baseline gap-2 text-xs">
+                  <span className="text-muted-foreground/50 shrink-0">
+                    {q.header || `Q${idx + 1}`}
+                  </span>
+                  <span className="text-muted-foreground">{answer}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      // Show questions with options when running/pending
+      return (
+        <div className="space-y-3 text-xs">
+          {questions.map((q, idx) => (
+            <div key={idx} className="space-y-1.5">
+              <div className="text-foreground">{q.question}</div>
+              {q.options && (
+                <div className="flex flex-wrap gap-1.5">
+                  {q.options.slice(0, 4).map((opt, optIdx) => (
+                    <span
+                      key={optIdx}
+                      className="px-2 py-0.5 rounded-md bg-muted/50 text-muted-foreground text-[11px]"
+                    >
+                      {opt.label}
+                    </span>
+                  ))}
+                  {q.options.length > 4 && (
+                    <span className="text-muted-foreground/60">+{q.options.length - 4} more</span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
     },
   },
 };

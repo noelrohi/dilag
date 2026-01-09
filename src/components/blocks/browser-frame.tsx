@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { useGlobalEvents } from "@/context/global-events";
+import { isEventFileWatcherUpdated } from "@/lib/event-guards";
 import {
   Play,
   Square,
@@ -243,7 +245,9 @@ function PreviewContent({
   error: string | null;
   onStart: () => void;
 }) {
-  const { navigate } = useWebPreview();
+  const { navigate, refresh } = useWebPreview();
+  const { subscribe } = useGlobalEvents();
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Update WebPreview URL when Vite URL changes
   useEffect(() => {
@@ -251,6 +255,48 @@ function PreviewContent({
       navigate(iframeUrl);
     }
   }, [iframeUrl, navigate]);
+
+  // Listen for file changes and auto-refresh the preview
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const unsubscribe = subscribe((event) => {
+      if (!isEventFileWatcherUpdated(event)) return;
+
+      const { file, event: changeType } = event.properties;
+
+      // Only refresh for add/change events (not unlink/delete)
+      if (changeType === "unlink") return;
+
+      // Skip node_modules, .git, and other non-source files
+      if (
+        file.includes("node_modules") ||
+        file.includes(".git") ||
+        file.includes("dist/") ||
+        file.includes(".next/") ||
+        file.endsWith(".log")
+      ) {
+        return;
+      }
+
+      // Debounce rapid file changes (e.g., from saves or build processes)
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+
+      refreshTimeoutRef.current = setTimeout(() => {
+        console.debug("[BrowserFrame] File changed, refreshing preview:", file);
+        refresh();
+      }, 300); // 300ms debounce
+    });
+
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [isRunning, subscribe, refresh]);
 
   // Loading: switching projects
   if (!isCurrentSession && projectReady) {

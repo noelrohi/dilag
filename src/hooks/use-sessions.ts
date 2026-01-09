@@ -8,6 +8,7 @@ import {
   useIsServerReady,
   useError,
   useDebugEvents,
+  useHasRunningTools,
   type MessagePart,
   type SessionMeta,
 } from "@/context/session-store";
@@ -63,6 +64,7 @@ export function useSessions() {
   const currentSessionId = useCurrentSessionId();
   const messages = useFilteredSessionMessages(currentSessionId);
   const sessionStatus = useSessionStatus(currentSessionId);
+  const hasRunningTools = useHasRunningTools(currentSessionId);
   const isServerReady = useIsServerReady();
   const error = useError();
   const debugEvents = useDebugEvents();
@@ -304,16 +306,22 @@ export function useSessions() {
   const stopSession = useCallback(async () => {
     if (!currentSessionId || !currentSession) return;
 
+    // Get abortRunningTools action from store
+    const { abortRunningTools } = useSessionStore.getState();
+
     try {
       await sdk.session.abort({
         sessionID: currentSessionId,
         directory: currentSession.cwd,
       });
       setSessionStatus(currentSessionId, "idle");
+      // Also abort any stuck running tools (backend may not clean them up)
+      abortRunningTools(currentSessionId);
     } catch (err) {
       console.error("Failed to stop session:", err);
-      // Still set to idle - abort may fail if session already stopped
+      // Still set to idle and abort tools - abort may fail if session already stopped
       setSessionStatus(currentSessionId, "idle");
+      abortRunningTools(currentSessionId);
     }
   }, [currentSessionId, currentSession, sdk, setSessionStatus]);
 
@@ -565,7 +573,8 @@ export function useSessions() {
     currentSessionId,
     currentSession,
     messages,
-    isLoading: sessionStatus === "running" || sessionStatus === "busy",
+    // Fallback to hasRunningTools when session status is stale/unknown but tools are still running
+    isLoading: sessionStatus === "running" || sessionStatus === "busy" || hasRunningTools,
     isLoadingSessions,
     isServerReady,
     error,

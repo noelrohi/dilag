@@ -30,6 +30,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { copyFilePath } from "@/lib/design-export";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/studio/$sessionId")({
   component: StudioPage,
@@ -153,6 +154,18 @@ function StudioPage() {
               >
                 <Copy className="size-4 mr-2" />
                 Copy session path
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (currentSession?.id) {
+                    navigator.clipboard.writeText(currentSession.id);
+                    toast.success("Session ID copied to clipboard");
+                  }
+                }}
+                disabled={!currentSession?.id}
+              >
+                <Copy className="size-4 mr-2" />
+                Copy session ID
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

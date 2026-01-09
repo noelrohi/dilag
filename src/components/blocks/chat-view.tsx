@@ -50,6 +50,37 @@ import { ThinkingModeSelector } from "./thinking-mode-selector";
 import { TimelineDialog } from "@/components/blocks/dialog-timeline";
 import { RevertBanner } from "@/components/blocks/revert-banner";
 import { GitFork, Undo2, History, Copy } from "lucide-react";
+import { PermissionList } from "@/components/blocks/permission-list";
+import { QuestionList } from "@/components/blocks/question-list";
+import { StuckToolWarning } from "@/components/blocks/stuck-tool-warning";
+import type { MessagePart as MessagePartType } from "@/context/session-store";
+
+/**
+ * Check if a message part would render content.
+ * Matches the null-return conditions in MessagePartContent.
+ */
+function wouldRenderContent(part: MessagePartType): boolean {
+  switch (part.type) {
+    case "text":
+    case "reasoning":
+      return !!part.text?.trim();
+    case "tool":
+      if (!part.tool || !part.state) return false;
+      // Question tool only renders when completed
+      if (part.tool === "question" && part.state.status !== "completed") return false;
+      // todoread is filtered elsewhere
+      if (part.tool === "todoread") return false;
+      return true;
+    case "file":
+      return !!part.url;
+    case "step-start":
+      return !!part.model;
+    case "step-finish":
+      return false;
+    default:
+      return false;
+  }
+}
 
 function ThinkingIndicator() {
   return (
@@ -92,36 +123,18 @@ function InlineErrorCard({ error }: { error: { name: string; message: string } }
   );
 }
 
-// Component to show aggregated total duration at the end of the conversation
-function TotalDuration({ messages }: { messages: SessionMessage[] }) {
-  const assistantMessages = messages.filter((m) => m.role === "assistant");
-  const isAnyStreaming = assistantMessages.some((m) => m.isStreaming);
-
-  // Get earliest start time and latest end time
-  const startTime =
-    assistantMessages.length > 0
-      ? Math.min(...assistantMessages.map((m) => m.time.created))
-      : undefined;
-
-  const endTime =
-    !isAnyStreaming && assistantMessages.length > 0
-      ? Math.max(
-          ...assistantMessages
-            .filter((m) => m.time.completed)
-            .map((m) => m.time.completed!)
-        )
-      : undefined;
-
+// Component to show duration for a single assistant message
+function MessageDuration({ message }: { message: SessionMessage }) {
+  const startTime = message.time.created;
+  const endTime = message.isStreaming ? undefined : (message.time.completed || Date.now());
   const elapsed = useElapsedTime(startTime, endTime);
-
-  if (assistantMessages.length === 0) return null;
 
   return (
     <div className="flex justify-start py-2">
       <span className="inline-flex items-center gap-1.5 text-muted-foreground/60">
-        <DilagIcon animated={isAnyStreaming} className="size-3.5" />
+        <DilagIcon animated={message.isStreaming} className="size-3.5" />
         <span className="font-mono text-xs tabular-nums tracking-tight">
-          {endTime ? `Total: ${elapsed}` : elapsed}
+          {elapsed}
         </span>
       </span>
     </div>
@@ -219,6 +232,7 @@ function AssistantMessage({
   message,
   index,
   isLast,
+  showTimer,
   onFork,
   onCopyText,
   onOpenTimeline,
@@ -226,6 +240,7 @@ function AssistantMessage({
   message: SessionMessage;
   index: number;
   isLast: boolean;
+  showTimer: boolean;
   onFork: (messageId: string) => void;
   onCopyText: (messageId: string) => void;
   onOpenTimeline: () => void;
@@ -241,7 +256,7 @@ function AssistantMessage({
     >
       <MessageContent className="space-y-2 w-full">
         {parts
-          .filter((p) => !(p.type === "tool" && p.tool === "todoread"))
+          .filter(wouldRenderContent)
           .map((part, partIndex) => (
             <div
               key={part.id}
@@ -273,6 +288,8 @@ function AssistantMessage({
           </MessageAction>
         </MessageActions>
       )}
+      {/* Duration timer - only show on last assistant message before next user message */}
+      {showTimer && <MessageDuration message={message} />}
     </Message>
   );
 }
@@ -618,6 +635,11 @@ export function ChatView() {
                 const isLastAssistant = message.role === "assistant" &&
                   !messages.slice(index + 1).some((m) => m.role === "assistant");
 
+                // Show timer on assistant messages that are followed by a user message or are at the end
+                const nextMessage = messages[index + 1];
+                const showTimer = message.role === "assistant" &&
+                  (!nextMessage || nextMessage.role === "user");
+
                 return message.role === "user" ? (
                   <UserMessage
                     key={message.id}
@@ -634,6 +656,7 @@ export function ChatView() {
                     message={message}
                     index={index}
                     isLast={isLastAssistant}
+                    showTimer={showTimer}
                     onFork={handleFork}
                     onCopyText={handleCopyText}
                     onOpenTimeline={handleOpenTimeline}
@@ -641,14 +664,21 @@ export function ChatView() {
                 );
               })
             )}
-            {/* Total duration indicator */}
-            {messages.length > 0 && <TotalDuration messages={messages} />}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
 
         {/* Input area */}
         <div className="shrink-0">
+          {/* Question prompts - shown when AI is asking questions */}
+          <QuestionList className="px-4 pb-2" />
+
+          {/* Warning for stuck question tools */}
+          <StuckToolWarning className="mx-4 mb-2" />
+
+          {/* Permission prompts - shown when permissions are pending */}
+          <PermissionList className="px-4 pb-2" />
+
           <ChatInputArea
             isLoading={isLoading}
             sendMessage={sendMessage}
