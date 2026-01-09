@@ -22,6 +22,7 @@ export interface Model {
   hot?: boolean;
   free?: boolean;
   latest?: boolean;
+  variants?: Record<string, Record<string, unknown>>;
 }
 
 interface ModelState {
@@ -29,6 +30,9 @@ interface ModelState {
   setSelectedModel: (
     model: { providerID: string; modelID: string } | null,
   ) => void;
+  // Variant state: key is "providerID/modelID", value is variant name
+  variants: Record<string, string | undefined>;
+  setVariant: (modelKey: string, variant: string | undefined) => void;
 }
 
 export const useModelStore = create<ModelState>()(
@@ -37,6 +41,11 @@ export const useModelStore = create<ModelState>()(
       // Default to Big Pickle
       selectedModel: { providerID: "opencode", modelID: "big-pickle" },
       setSelectedModel: (model) => set({ selectedModel: model }),
+      variants: {},
+      setVariant: (modelKey, variant) =>
+        set((state) => ({
+          variants: { ...state.variants, [modelKey]: variant },
+        })),
     }),
     {
       name: "dilag-model-store",
@@ -127,6 +136,7 @@ function transformProviderData(
         name: string;
         release_date?: string;
         family?: string;
+        variants?: Record<string, Record<string, unknown>>;
       }
     >;
   }>,
@@ -151,6 +161,7 @@ function transformProviderData(
         family: model.family,
         hot: isHotModel(modelID),
         free: isFreeModel(modelID, model.family),
+        variants: model.variants,
       });
     }
   }
@@ -195,7 +206,8 @@ export function useProviderData() {
  */
 export function useModels() {
   const { data, isLoading, error, refetch } = useProviderData();
-  const { selectedModel, setSelectedModel } = useModelStore();
+  const { selectedModel, setSelectedModel, variants, setVariant } =
+    useModelStore();
   const queryClient = useQueryClient();
   const [isRestarting, setIsRestarting] = useState(false);
 
@@ -219,6 +231,53 @@ export function useModels() {
       ) ?? null
     );
   }, [selectedModel, models]);
+
+  // Get the model key for variant storage
+  const modelKey = useMemo(() => {
+    if (!selectedModel) return null;
+    return `${selectedModel.providerID}/${selectedModel.modelID}`;
+  }, [selectedModel]);
+
+  // Get available variants for current model
+  const variantList = useMemo(() => {
+    if (!selectedModelInfo?.variants) return [];
+    return Object.keys(selectedModelInfo.variants);
+  }, [selectedModelInfo]);
+
+  // Get current variant for selected model
+  const currentVariant = useMemo(() => {
+    if (!modelKey) return undefined;
+    return variants[modelKey];
+  }, [modelKey, variants]);
+
+  // Set variant for current model
+  const setCurrentVariant = useCallback(
+    (variant: string | undefined) => {
+      if (!modelKey) return;
+      setVariant(modelKey, variant);
+    },
+    [modelKey, setVariant],
+  );
+
+  // Cycle through variants: undefined -> variant[0] -> variant[1] -> ... -> undefined
+  const cycleVariant = useCallback(() => {
+    if (variantList.length === 0) return;
+
+    const currentIndex = currentVariant
+      ? variantList.indexOf(currentVariant)
+      : -1;
+
+    if (currentIndex === -1) {
+      // No variant selected, select first
+      setCurrentVariant(variantList[0]);
+    } else if (currentIndex === variantList.length - 1) {
+      // Last variant, cycle back to undefined (default)
+      setCurrentVariant(undefined);
+    } else {
+      // Select next variant
+      setCurrentVariant(variantList[currentIndex + 1]);
+    }
+  }, [variantList, currentVariant, setCurrentVariant]);
 
   const restartServerAndRefresh = useCallback(async () => {
     setIsRestarting(true);
@@ -260,5 +319,10 @@ export function useModels() {
       refetch();
     },
     restartServerAndRefresh,
+    // Variant-related
+    variantList,
+    currentVariant,
+    setCurrentVariant,
+    cycleVariant,
   };
 }
