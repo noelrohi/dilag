@@ -45,7 +45,7 @@ import {
   SquareIcon,
   XIcon,
 } from "lucide-react";
-import { Paperclip } from "@phosphor-icons/react";
+import { Paperclip as PaperclipSolar } from "@solar-icons/react";
 import { nanoid } from "nanoid";
 import {
   type ChangeEvent,
@@ -990,7 +990,7 @@ export const PromptInputActionMenuTrigger = ({
 }: PromptInputActionMenuTriggerProps) => (
   <DropdownMenuTrigger asChild>
     <PromptInputButton className={className} {...props}>
-      {children ?? <Paperclip className="size-4" />}
+      {children ?? <PaperclipSolar size={16} weight="Linear" />}
     </PromptInputButton>
   </DropdownMenuTrigger>
 );
