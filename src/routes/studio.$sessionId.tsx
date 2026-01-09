@@ -1,11 +1,18 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useSessions } from "@/hooks/use-sessions";
 import { useSessionMutations } from "@/hooks/use-session-data";
 import { useSDK } from "@/context/global-events";
+import { useChatWidth } from "@/hooks/use-chat-width";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 import { ChatView } from "@/components/blocks/chat-view";
 import { BrowserFrame } from "@/components/blocks/browser-frame";
 import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil } from "lucide-react";
@@ -34,6 +41,9 @@ function StudioPage() {
   const [chatOpen, setChatOpen] = useState(true);
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
+
+  const chatPanelRef = useRef<ImperativePanelHandle>(null);
+  const { size: chatSize, updateSize, minSize } = useChatWidth();
 
   const { selectSession, sendMessage, sessions, isServerReady, forkSessionDesignsOnly } = useSessions();
   const { updateSession } = useSessionMutations();
@@ -100,7 +110,13 @@ function StudioPage() {
             variant="ghost"
             size="icon"
             className="size-7"
-            onClick={() => setChatOpen(!chatOpen)}
+            onClick={() => {
+              if (chatOpen) {
+                chatPanelRef.current?.collapse();
+              } else {
+                chatPanelRef.current?.expand();
+              }
+            }}
           >
             {chatOpen ? (
               <PanelLeftClose className="size-3.5" />
@@ -147,28 +163,47 @@ function StudioPage() {
       <div className="h-px bg-border" />
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Chat pane - collapsible */}
-        <div
-          className={cn(
-            "border-r overflow-hidden transition-all duration-300 ease-in-out",
-            chatOpen ? "w-[360px]" : "w-0"
-          )}
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex-1"
+        onLayout={(sizes) => {
+          // Only persist when chat is open and user is resizing
+          if (sizes[0] > 0) {
+            updateSize(sizes[0]);
+          }
+        }}
+      >
+        {/* Chat pane - collapsible and resizable */}
+        <ResizablePanel
+          ref={chatPanelRef}
+          defaultSize={chatSize}
+          minSize={minSize}
+          maxSize={50}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setChatOpen(false)}
+          onExpand={() => setChatOpen(true)}
+          className="overflow-hidden"
         >
-          <div className="w-[360px] h-full">
+          <div className="h-full">
             <ChatView />
           </div>
-        </div>
+        </ResizablePanel>
+
+        <ResizableHandle
+          withHandle={chatOpen}
+          className={cn(!chatOpen && "hidden")}
+        />
 
         {/* Preview area - always BrowserFrame */}
-        <div className="flex-1 bg-muted/20">
+        <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20">
           {currentSession?.cwd ? (
             <BrowserFrame sessionCwd={currentSession.cwd} />
           ) : (
             <EmptyState />
           )}
-        </div>
-      </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
 
       {/* Rename Dialog */}
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
