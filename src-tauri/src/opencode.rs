@@ -13,6 +13,9 @@ pub const VITE_PORT: u16 = 5173;
 /// Frontend design skill content - embedded from assets
 const FRONTEND_DESIGN_SKILL: &str = include_str!("../assets/frontend-design-skill.md");
 
+/// Solar icons skill content - embedded from assets
+const SOLAR_ICONS_SKILL: &str = include_str!("../assets/solar-icons-skill.md");
+
 /// Find a free port by binding to port 0
 pub fn get_free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -60,10 +63,15 @@ fn ensure_config_exists() -> AppResult<()> {
     let config_dir = get_opencode_config_dir();
     fs::create_dir_all(&config_dir)?;
 
-    // Create skill directory and file
-    let skill_dir = config_dir.join("skill").join("frontend-design");
-    fs::create_dir_all(&skill_dir)?;
-    fs::write(skill_dir.join("SKILL.md"), FRONTEND_DESIGN_SKILL)?;
+    // Create frontend-design skill directory and file
+    let frontend_skill_dir = config_dir.join("skill").join("frontend-design");
+    fs::create_dir_all(&frontend_skill_dir)?;
+    fs::write(frontend_skill_dir.join("SKILL.md"), FRONTEND_DESIGN_SKILL)?;
+
+    // Create solar-icons skill directory and file
+    let solar_skill_dir = config_dir.join("skill").join("solar-icons");
+    fs::create_dir_all(&solar_skill_dir)?;
+    fs::write(solar_skill_dir.join("SKILL.md"), SOLAR_ICONS_SKILL)?;
 
     // Create opencode config
     let config_file = config_dir.join("opencode.json");
@@ -73,17 +81,28 @@ fn ensure_config_exists() -> AppResult<()> {
         "share": "disabled",
         "default_agent": "build",
         "plugin": [
-            "opencode-antigravity-auth@1.2.7"
+            "opencode-antigravity-auth@1.2.8"
         ],
         "agent": {
             "build": {
-                "prompt": "You are a web UI design assistant. IMPORTANT: Always invoke the `frontend-design` skill before creating any UI components or pages. Use the skill tool with skill name 'frontend-design' to load design guidelines first."
+                "prompt": "You are a web UI design assistant. IMPORTANT: Always invoke the `frontend-design` skill before creating any UI components or pages. Use the skill tool with skill name 'frontend-design' to load design guidelines first. When you need to find icons, use the `solar-icons` skill to search for the correct icon names."
             }
         },
         "permission": {
-            "bash": "deny",
+            "bash": {
+                "*": "ask",
+                "git status": "allow",
+                "git push": "allow",
+                "bun i": "allow",
+                "bun run dev": "allow",
+                "bun run build": "allow",
+                "bun run lint": "allow",
+                "tsc --noEmit": "allow"
+            },
+            "task": "deny",
             "skill": {
-                "frontend-design": "allow"
+                "frontend-design": "allow",
+                "solar-icons": "allow"
             }
         }
     });

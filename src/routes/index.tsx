@@ -15,6 +15,8 @@ import {
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
 import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
+import { AgentSelectorButton } from "@/components/blocks/agent-selector-button";
+import { ThinkingModeSelector } from "@/components/blocks/thinking-mode-selector";
 import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
 import { ArrowUpIcon } from "@phosphor-icons/react";
@@ -271,18 +273,7 @@ function ComposerInput({
   const hasInput = textInput.value.trim().length > 0;
 
   return (
-    <PromptInput
-      onSubmit={async ({ text, files }) => onSubmit(text, files)}
-      className={cn(
-        "[&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:border-border/40",
-        "[&_[data-slot=input-group]]:bg-card/60 [&_[data-slot=input-group]]:backdrop-blur-sm",
-        "[&_[data-slot=input-group]]:shadow-lg [&_[data-slot=input-group]]:shadow-black/5",
-        "[&_[data-slot=input-group]]:transition-all [&_[data-slot=input-group]]:duration-300",
-        "[&_[data-slot=input-group]]:focus-within:border-border/60 [&_[data-slot=input-group]]:focus-within:shadow-xl",
-        "[&_[data-slot=input-group]]:focus-within:ring-2 [&_[data-slot=input-group]]:focus-within:ring-primary/20",
-        "dark:[&_[data-slot=input-group]]:bg-card/40",
-      )}
-    >
+    <PromptInput onSubmit={async ({ text, files }) => onSubmit(text, files)}>
       <PromptInputAttachments>
         {(attachment) => <PromptInputAttachment data={attachment} />}
       </PromptInputAttachments>
@@ -290,27 +281,27 @@ function ComposerInput({
         <PromptInputTextarea
           placeholder="Describe your app idea..."
           disabled={disabled}
-          className={cn(
-            "min-h-[100px] max-h-[200px]",
-            "text-[15px] leading-relaxed",
-            "placeholder:text-muted-foreground/30",
-          )}
+          className="min-h-[100px] max-h-[200px]"
         />
       </PromptInputBody>
       <PromptInputFooter className="border-t-0">
+        {/* Left side - agent selector, model selector, thinking mode */}
         <PromptInputTools>
+          <AgentSelectorButton />
+          <ModelSelectorButton />
+          <ThinkingModeSelector />
+        </PromptInputTools>
+
+        <div className="flex-1" />
+
+        {/* Right side - attachment menu + submit */}
+        <div className="flex items-center gap-1">
           <PromptInputActionMenu>
             <PromptInputActionMenuTrigger />
             <PromptInputActionMenuContent>
               <PromptInputActionAddAttachments />
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
-        </PromptInputTools>
-
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-1">
-          <ModelSelectorButton />
           <PromptInputSubmit
             disabled={!hasInput || disabled}
             className={cn(

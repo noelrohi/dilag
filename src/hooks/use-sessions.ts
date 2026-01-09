@@ -20,6 +20,7 @@ import {
 } from "@/hooks/use-session-data";
 import { useGlobalEvents, useSDK, useConnectionStatus, type Event } from "@/context/global-events";
 import { useModelStore } from "@/hooks/use-models";
+import { useAgentStore } from "@/hooks/use-agents";
 import { withErrorHandler } from "@/lib/async-utils";
 import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 import type { FileUIPart } from "ai";
@@ -483,10 +484,18 @@ export function useSessions() {
         return;
       }
 
-      // Get selected model from store
-      const { selectedModel } = useModelStore.getState();
-      const agentName = "build";
+      // Get selected model and variant from store
+      const { selectedModel, variants } = useModelStore.getState();
+      // Get selected agent from store
+      const { selectedAgent } = useAgentStore.getState();
+      const agentName = selectedAgent ?? "build";
       const directory = currentSession.cwd;
+
+      // Get variant for current model
+      const modelKey = selectedModel
+        ? `${selectedModel.providerID}/${selectedModel.modelID}`
+        : null;
+      const variant = modelKey ? variants[modelKey] : undefined;
 
       try {
         setError(null);
@@ -526,13 +535,14 @@ export function useSessions() {
           }
         }
 
-        console.log("[sendMessage] calling sdk.session.prompt with:", { sessionID: currentSessionId, agent: agentName, model, partsCount: parts.length });
+        console.log("[sendMessage] calling sdk.session.prompt with:", { sessionID: currentSessionId, agent: agentName, model, variant, partsCount: parts.length });
         sdk.session.prompt({
           sessionID: currentSessionId,
           directory,
           agent: agentName,
           model,
           parts,
+          variant,
         }).then((response) => {
           console.log("[sendMessage] prompt response:", response);
         }).catch((err) => {
