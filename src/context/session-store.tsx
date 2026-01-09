@@ -12,7 +12,24 @@ import {
   isEventSessionIdle,
   isEventSessionError,
   isEventSessionUpdated,
+  isEventServerHeartbeat,
+  isEventFileWatcherUpdated,
+  isEventProjectUpdated,
+  isEventVcsBranchUpdated,
+  isEventPermissionAsked,
+  isEventPermissionReplied,
+  isEventQuestionAsked,
+  isEventQuestionReplied,
+  isEventQuestionRejected,
+  type PermissionRequest,
+  type QuestionRequest,
+  type EventQuestionAsked,
+  type EventQuestionReplied,
+  type EventQuestionRejected,
 } from "@/lib/event-guards";
+
+// Re-export types for consumers
+export type { PermissionRequest, QuestionRequest, QuestionInfo, QuestionOption } from "@/lib/event-guards";
 
 // Re-export SDK types
 export type { ToolState, FileDiff };
@@ -35,6 +52,25 @@ export interface SessionRevertState {
   partID?: string;
   snapshot?: string;
   diff?: string;
+}
+
+// Server health state
+export interface ServerHealth {
+  lastHeartbeat: number;
+  isHealthy: boolean;
+}
+
+// VCS branch state
+export interface VcsBranchState {
+  branch: string | null;
+  lastUpdated: number;
+}
+
+// File watcher event
+export interface FileWatcherEvent {
+  file: string;
+  event: "add" | "change" | "unlink";
+  timestamp: number;
 }
 
 export interface MessagePart {
@@ -101,6 +137,13 @@ interface SessionState {
   sessionErrors: Record<string, { name: string; message: string } | null>; // Keyed by sessionId
   sessionRevert: Record<string, SessionRevertState | null>; // Keyed by sessionId - tracks revert state
 
+  // New event state
+  serverHealth: ServerHealth;
+  pendingPermissions: Record<string, PermissionRequest[]>; // Keyed by sessionId
+  pendingQuestions: Record<string, QuestionRequest[]>; // Keyed by sessionId
+  vcsBranch: VcsBranchState;
+  recentFileChanges: FileWatcherEvent[];
+
   // Server connection state
   isServerReady: boolean;
   error: string | null;
@@ -124,6 +167,20 @@ interface SessionState {
   removeMessage: (sessionId: string, messageId: string) => void;
   removeMessagesAfter: (sessionId: string, messageId: string) => void;
   clearSessionData: (sessionId: string) => void;
+  abortRunningTools: (sessionId: string) => void;
+
+  // Actions - New event state
+  setServerHealth: (health: ServerHealth) => void;
+  addPendingPermission: (sessionId: string, request: PermissionRequest) => void;
+  removePendingPermission: (sessionId: string, requestId: string) => void;
+  clearPendingPermissions: (sessionId: string) => void;
+  syncPendingPermissions: (permissions: PermissionRequest[]) => void;
+  addPendingQuestion: (sessionId: string, request: QuestionRequest) => void;
+  removePendingQuestion: (sessionId: string, requestId: string) => void;
+  clearPendingQuestions: (sessionId: string) => void;
+  syncPendingQuestions: (questions: QuestionRequest[]) => void;
+  setVcsBranch: (branch: string | null) => void;
+  addFileChange: (event: FileWatcherEvent) => void;
 
   // Actions - Server state
   setServerReady: (ready: boolean) => void;
@@ -189,6 +246,11 @@ export const useSessionStore = create<SessionState>()(
       sessionDiffs: {},
       sessionErrors: {},
       sessionRevert: {},
+      serverHealth: { lastHeartbeat: 0, isHealthy: false },
+      pendingPermissions: {},
+      pendingQuestions: {},
+      vcsBranch: { branch: null, lastUpdated: 0 },
+      recentFileChanges: [],
       isServerReady: false,
       error: null,
       debugEvents: [],
@@ -305,9 +367,133 @@ export const useSessionStore = create<SessionState>()(
           delete state.sessionDiffs[sessionId];
           delete state.sessionErrors[sessionId];
           delete state.sessionRevert[sessionId];
+          delete state.pendingPermissions[sessionId];
+          delete state.pendingQuestions[sessionId];
           if (state.currentSessionId === sessionId) {
             state.currentSessionId = null;
           }
+        }),
+
+      // Mark all running tools as aborted for a session (used when stop fails to clean up backend state)
+      abortRunningTools: (sessionId) =>
+        set((state) => {
+          const messages = state.messages[sessionId];
+          if (!messages) return;
+
+          for (const message of messages) {
+            const parts = state.parts[message.id];
+            if (!parts) continue;
+
+            for (const part of parts) {
+              if (part.type === "tool" && part.state?.status === "running") {
+                part.state = {
+                  ...part.state,
+                  status: "error",
+                  error: "Aborted",
+                };
+              }
+            }
+          }
+        }),
+
+      // New event state actions
+      setServerHealth: (health) =>
+        set((state) => {
+          state.serverHealth = health;
+        }),
+
+      addPendingPermission: (sessionId, request) =>
+        set((state) => {
+          if (!state.pendingPermissions[sessionId]) {
+            state.pendingPermissions[sessionId] = [];
+          }
+          // Avoid duplicates
+          const exists = state.pendingPermissions[sessionId].some(
+            (p) => p.id === request.id
+          );
+          if (!exists) {
+            state.pendingPermissions[sessionId].push(request);
+          }
+        }),
+
+      removePendingPermission: (sessionId, requestId) =>
+        set((state) => {
+          if (state.pendingPermissions[sessionId]) {
+            state.pendingPermissions[sessionId] = state.pendingPermissions[
+              sessionId
+            ].filter((p) => p.id !== requestId);
+          }
+        }),
+
+      clearPendingPermissions: (sessionId) =>
+        set((state) => {
+          delete state.pendingPermissions[sessionId];
+        }),
+
+      syncPendingPermissions: (permissions) =>
+        set((state) => {
+          // Clear all existing permissions and rebuild from server state
+          state.pendingPermissions = {};
+          for (const permission of permissions) {
+            if (!state.pendingPermissions[permission.sessionID]) {
+              state.pendingPermissions[permission.sessionID] = [];
+            }
+            state.pendingPermissions[permission.sessionID].push(permission);
+          }
+        }),
+
+      addPendingQuestion: (sessionId, request) =>
+        set((state) => {
+          if (!state.pendingQuestions[sessionId]) {
+            state.pendingQuestions[sessionId] = [];
+          }
+          // Avoid duplicates
+          const exists = state.pendingQuestions[sessionId].some(
+            (q) => q.id === request.id
+          );
+          if (!exists) {
+            state.pendingQuestions[sessionId].push(request);
+          }
+        }),
+
+      removePendingQuestion: (sessionId, requestId) =>
+        set((state) => {
+          if (state.pendingQuestions[sessionId]) {
+            state.pendingQuestions[sessionId] = state.pendingQuestions[
+              sessionId
+            ].filter((q) => q.id !== requestId);
+          }
+        }),
+
+      clearPendingQuestions: (sessionId) =>
+        set((state) => {
+          delete state.pendingQuestions[sessionId];
+        }),
+
+      syncPendingQuestions: (questions) =>
+        set((state) => {
+          // Clear all existing questions and rebuild from server state
+          state.pendingQuestions = {};
+          for (const question of questions) {
+            if (!state.pendingQuestions[question.sessionID]) {
+              state.pendingQuestions[question.sessionID] = [];
+            }
+            state.pendingQuestions[question.sessionID].push(question);
+          }
+        }),
+
+      setVcsBranch: (branch) =>
+        set((state) => {
+          state.vcsBranch = { branch, lastUpdated: Date.now() };
+        }),
+
+      addFileChange: (event) =>
+        set((state) => {
+          // Keep only last 50 file changes
+          if (state.recentFileChanges.length >= 50) {
+            state.recentFileChanges = state.recentFileChanges.slice(-49);
+          }
+          state.recentFileChanges.push(event);
         }),
 
       // Server state actions
@@ -345,6 +531,11 @@ export const useSessionStore = create<SessionState>()(
           state.sessionDiffs = {};
           state.sessionErrors = {};
           state.sessionRevert = {};
+          state.pendingPermissions = {};
+          state.pendingQuestions = {};
+          state.serverHealth = { lastHeartbeat: 0, isHealthy: false };
+          state.vcsBranch = { branch: null, lastUpdated: 0 };
+          state.recentFileChanges = [];
           state.debugEvents = [];
           state.error = null;
           // Note: currentSessionId and screenPositions are preserved
@@ -352,7 +543,13 @@ export const useSessionStore = create<SessionState>()(
 
       // Central event handler for SSE - handles real-time updates
       handleEvent: (event) => {
-        const { addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus, setSessionDiffs, setSessionError, setSessionRevert, removeMessage } = get();
+        const {
+          addDebugEvent, updatePart, addMessage, updateMessage, setSessionStatus,
+          setSessionDiffs, setSessionError, setSessionRevert, removeMessage,
+          setServerHealth, addPendingPermission, removePendingPermission,
+          addPendingQuestion, removePendingQuestion,
+          setVcsBranch, addFileChange
+        } = get();
 
         addDebugEvent(event);
 
@@ -447,6 +644,69 @@ export const useSessionStore = create<SessionState>()(
           return;
         }
 
+        // Handle server heartbeat
+        if (isEventServerHeartbeat(event)) {
+          setServerHealth({ lastHeartbeat: Date.now(), isHealthy: true });
+          return;
+        }
+
+        // Handle file watcher updates
+        if (isEventFileWatcherUpdated(event)) {
+          const { file, event: fileEvent } = event.properties;
+          addFileChange({ file, event: fileEvent, timestamp: Date.now() });
+          return;
+        }
+
+        // Handle project updates
+        if (isEventProjectUpdated(event)) {
+          // For now just acknowledge - could be used to refresh project info
+          return;
+        }
+
+        // Handle VCS branch updates
+        if (isEventVcsBranchUpdated(event)) {
+          setVcsBranch(event.properties.branch ?? null);
+          return;
+        }
+
+        // Handle permission requests
+        if (isEventPermissionAsked(event)) {
+          const request = event.properties;
+          addPendingPermission(request.sessionID, request);
+          return;
+        }
+
+        // Handle permission replies (confirmation that permission was handled)
+        if (isEventPermissionReplied(event)) {
+          const { sessionID, requestID } = event.properties;
+          removePendingPermission(sessionID, requestID);
+          return;
+        }
+
+        // Handle question requests
+        if (isEventQuestionAsked(event)) {
+          const questionEvent = event as unknown as EventQuestionAsked;
+          const request = questionEvent.properties;
+          addPendingQuestion(request.sessionID, request);
+          return;
+        }
+
+        // Handle question replies (question was answered)
+        if (isEventQuestionReplied(event)) {
+          const questionEvent = event as unknown as EventQuestionReplied;
+          const { sessionID, requestID } = questionEvent.properties;
+          removePendingQuestion(sessionID, requestID);
+          return;
+        }
+
+        // Handle question rejections (question was dismissed)
+        if (isEventQuestionRejected(event)) {
+          const questionEvent = event as unknown as EventQuestionRejected;
+          const { sessionID, requestID } = questionEvent.properties;
+          removePendingQuestion(sessionID, requestID);
+          return;
+        }
+
         // Log unhandled event types for debugging
         console.debug("[SessionStore] Unhandled event type:", event.type);
       },
@@ -489,6 +749,150 @@ export const useResetRealtimeState = () => useSessionStore((state) => state.rese
 export const useAllSessionStatuses = () => useSessionStore((state) => state.sessionStatus);
 export const useSessionRevert = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? state.sessionRevert[sessionId] ?? null : null));
+
+// New event state selectors
+const EMPTY_PERMISSIONS: PermissionRequest[] = [];
+const EMPTY_QUESTIONS: QuestionRequest[] = [];
+
+export const useServerHealth = () =>
+  useSessionStore((state) => state.serverHealth);
+
+export const usePendingPermissions = (sessionId: string | null) =>
+  useSessionStore((state) =>
+    sessionId
+      ? state.pendingPermissions[sessionId] ?? EMPTY_PERMISSIONS
+      : EMPTY_PERMISSIONS
+  );
+
+export const usePendingQuestions = (sessionId: string | null) =>
+  useSessionStore((state) =>
+    sessionId
+      ? state.pendingQuestions[sessionId] ?? EMPTY_QUESTIONS
+      : EMPTY_QUESTIONS
+  );
+
+export const useVcsBranch = () =>
+  useSessionStore((state) => state.vcsBranch.branch);
+
+export const useRecentFileChanges = () =>
+  useSessionStore((state) => state.recentFileChanges);
+
+// Types for stuck tool detection
+export interface RunningQuestionTool {
+  messageId: string;
+  partId: string;
+  callId: string;
+  startTime: number;
+}
+
+export interface RunningPermissionTool {
+  messageId: string;
+  partId: string;
+  callId: string;
+  tool: string;
+  startTime: number;
+}
+
+// Tools that typically require permission
+const PERMISSION_TOOLS = ["bash", "write", "edit", "read", "glob", "grep", "webfetch", "websearch", "task"];
+
+// Hook to check if session has any running tools (for fallback isLoading detection)
+export function useHasRunningTools(sessionId: string | null): boolean {
+  const messages = useSessionStore((state) =>
+    sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES
+  );
+  const parts = useSessionStore((state) => state.parts);
+
+  return useMemo(() => {
+    if (!sessionId) return false;
+
+    for (const message of messages) {
+      const messageParts = parts[message.id] ?? [];
+      for (const part of messageParts) {
+        if (
+          part.type === "tool" &&
+          part.state?.status === "running"
+        ) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }, [sessionId, messages, parts]);
+}
+
+// Hook to find running question tools for a session
+export function useRunningQuestionTools(sessionId: string | null): RunningQuestionTool[] {
+  const messages = useSessionStore((state) =>
+    sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES
+  );
+  const parts = useSessionStore((state) => state.parts);
+
+  return useMemo(() => {
+    if (!sessionId) return [];
+
+    const runningTools: RunningQuestionTool[] = [];
+
+    for (const message of messages) {
+      const messageParts = parts[message.id] ?? [];
+      for (const part of messageParts) {
+        if (
+          part.type === "tool" &&
+          part.tool === "question" &&
+          part.state?.status === "running"
+        ) {
+          const state = part.state as { status: "running"; time?: { start?: number } };
+          runningTools.push({
+            messageId: message.id,
+            partId: part.id,
+            callId: part.state && "input" in part.state ? (part.state as Record<string, unknown>).callID as string ?? part.id : part.id,
+            startTime: state.time?.start ?? Date.now(),
+          });
+        }
+      }
+    }
+
+    return runningTools;
+  }, [sessionId, messages, parts]);
+}
+
+// Hook to find running permission tools for a session (bash, write, edit, etc.)
+export function useRunningPermissionTools(sessionId: string | null): RunningPermissionTool[] {
+  const messages = useSessionStore((state) =>
+    sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES
+  );
+  const parts = useSessionStore((state) => state.parts);
+
+  return useMemo(() => {
+    if (!sessionId) return [];
+
+    const runningTools: RunningPermissionTool[] = [];
+
+    for (const message of messages) {
+      const messageParts = parts[message.id] ?? [];
+      for (const part of messageParts) {
+        if (
+          part.type === "tool" &&
+          part.tool &&
+          PERMISSION_TOOLS.includes(part.tool) &&
+          part.state?.status === "running"
+        ) {
+          const state = part.state as { status: "running"; time?: { start?: number } };
+          runningTools.push({
+            messageId: message.id,
+            partId: part.id,
+            callId: part.state && "input" in part.state ? (part.state as Record<string, unknown>).callID as string ?? part.id : part.id,
+            tool: part.tool,
+            startTime: state.time?.start ?? Date.now(),
+          });
+        }
+      }
+    }
+
+    return runningTools;
+  }, [sessionId, messages, parts]);
+}
 
 // Hook that returns messages filtered by revert state
 // If session is reverted, only shows messages BEFORE the revert point (matching OpenCode's pattern)

@@ -122,10 +122,35 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
 
   // Bootstrap function to reload all state after reconnection
   const bootstrap = useCallback(async () => {
-    console.log("[GlobalEvents] Running bootstrap - notifying listeners");
+    console.log("[GlobalEvents] Running bootstrap - syncing pending permissions and questions");
+
+    // Sync pending permissions from server
+    try {
+      const permissionsResponse = await sdk.permission.list();
+      if (permissionsResponse.response.ok && permissionsResponse.data) {
+        const permissions = permissionsResponse.data as unknown as import("@/lib/event-guards").PermissionRequest[];
+        useSessionStore.getState().syncPendingPermissions(permissions);
+        console.log("[GlobalEvents] Synced", permissions.length, "pending permissions");
+      }
+    } catch (err) {
+      console.error("[GlobalEvents] Failed to sync permissions:", err);
+    }
+
+    // Sync pending questions from server
+    try {
+      const questionsResponse = await sdk.question.list();
+      if (questionsResponse.response.ok && questionsResponse.data) {
+        const questions = questionsResponse.data as unknown as import("@/lib/event-guards").QuestionRequest[];
+        useSessionStore.getState().syncPendingQuestions(questions);
+        console.log("[GlobalEvents] Synced", questions.length, "pending questions");
+      }
+    } catch (err) {
+      console.error("[GlobalEvents] Failed to sync questions:", err);
+    }
+
     // Notify all registered bootstrap callbacks
     bootstrapCallbacksRef.current.forEach((callback) => callback());
-  }, []);
+  }, [sdk]);
 
   // Handle disposal events that require re-bootstrap
   const handleDisposalEvent = useCallback((event: Event) => {
@@ -166,17 +191,19 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
         const events = await sdk.global.event();
 
         if (!mountedRef.current) break;
-        
+
+        // Track if this is a reconnection before resetting attempt
+        const isReconnection = attempt > 1;
+
         // Reset attempt counter on successful connection
         attempt = 0;
         setReconnectAttempt(0);
         setConnectionStatus("connected");
         console.log("[GlobalEvents] Connected to event stream");
 
-        // Run bootstrap on reconnection (but not first connection)
-        if (attempt > 1) {
-          await bootstrap();
-        }
+        // Run bootstrap to sync pending permissions/questions
+        // Always run on reconnection, optionally on first connection too
+        await bootstrap();
 
         // Process events
         for await (const event of events.stream) {
