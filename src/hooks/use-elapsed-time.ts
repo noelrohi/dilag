@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 
@@ -26,23 +26,44 @@ export function useElapsedTime(
     return formatDuration(end - startTime);
   });
 
+  // Use refs to track values without causing effect re-runs
+  const startTimeRef = useRef(startTime);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Update ref when startTime changes (should be rare)
   useEffect(() => {
-    // If we have an end time, just compute once and return
+    startTimeRef.current = startTime;
+  }, [startTime]);
+
+  useEffect(() => {
+    // If we have an end time, compute final value and stop
     if (endTime !== undefined) {
-      setElapsed(formatDuration(endTime - startTime));
+      setElapsed(formatDuration(endTime - startTimeRef.current));
+      // Clear any running interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       return;
     }
 
     // Update immediately
-    setElapsed(formatDuration(Date.now() - startTime));
+    setElapsed(formatDuration(Date.now() - startTimeRef.current));
 
-    // Set up interval for live updates
-    const interval = setInterval(() => {
-      setElapsed(formatDuration(Date.now() - startTime));
-    }, 1000);
+    // Only create interval if not already running
+    if (!intervalRef.current) {
+      intervalRef.current = setInterval(() => {
+        setElapsed(formatDuration(Date.now() - startTimeRef.current));
+      }, 1000);
+    }
 
-    return () => clearInterval(interval);
-  }, [startTime, endTime]);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [endTime]); // Only depend on endTime, not startTime
 
   return elapsed;
 }
