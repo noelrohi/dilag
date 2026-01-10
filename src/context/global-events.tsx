@@ -192,9 +192,6 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
 
         if (!mountedRef.current) break;
 
-        // Track if this is a reconnection before resetting attempt
-        const isReconnection = attempt > 1;
-
         // Reset attempt counter on successful connection
         attempt = 0;
         setReconnectAttempt(0);
