@@ -126,6 +126,9 @@ pub fn run() {
             vite::get_vite_status,
             vite::get_vite_port,
             vite::check_project_ready,
+            vite::check_project_has_files,
+            vite::list_project_files,
+            vite::read_project_file,
             // Licensing commands
             licensing::get_license_status,
             licensing::start_trial,

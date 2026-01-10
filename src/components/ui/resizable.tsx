@@ -1,4 +1,4 @@
-import * as React from "react"
+import { forwardRef } from "react"
 import { GripVerticalIcon } from "lucide-react"
 import {
   PanelGroup,
@@ -7,6 +7,7 @@ import {
   type PanelGroupProps,
   type PanelProps,
   type PanelResizeHandleProps,
+  type ImperativePanelHandle,
 } from "react-resizable-panels"
 
 import { cn } from "@/lib/utils"
@@ -27,12 +28,11 @@ function ResizablePanelGroup({
   )
 }
 
-function ResizablePanel({
-  className,
-  ...props
-}: PanelProps) {
-  return <Panel data-slot="resizable-panel" className={cn(className)} {...props} />
-}
+const ResizablePanel = forwardRef<ImperativePanelHandle, PanelProps>(
+  ({ className, ...props }, ref) => {
+    return <Panel ref={ref} data-slot="resizable-panel" className={cn(className)} {...props} />
+  }
+)
 
 function ResizableHandle({
   withHandle,

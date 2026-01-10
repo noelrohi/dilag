@@ -7,6 +7,7 @@ import {
   OctagonAlert,
   Square,
 } from "lucide-react";
+import { usePendingMessage } from "@/hooks/use-chat-interface";
 import { DilagIcon } from "@/components/ui/dilag-icon";
 import { ArrowUp, Sparkle } from "@phosphor-icons/react";
 import { useSessions } from "@/hooks/use-sessions";
@@ -387,6 +388,15 @@ function ChatInputArea({
 }) {
   const { textInput } = usePromptInputController();
   const hasInput = textInput.value.trim().length > 0;
+  const { pendingMessage, clearPendingMessage } = usePendingMessage();
+
+  // Handle pending messages from server error overlay or other sources
+  useEffect(() => {
+    if (pendingMessage) {
+      textInput.setInput(pendingMessage);
+      clearPendingMessage();
+    }
+  }, [pendingMessage, textInput, clearPendingMessage]);
 
   const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
     if (!text.trim() || isLoading) return;

@@ -73,6 +73,16 @@ export interface FileWatcherEvent {
   timestamp: number;
 }
 
+// Session file write tracking state
+export interface SessionFileWriteState {
+  hasFiles: boolean;
+  firstFileTimestamp: number | null;
+  fileCount: number;
+}
+
+// Files/directories to ignore when tracking writes
+const IGNORE_PATTERNS = ["node_modules", ".git", "bun.lockb", "package.json", ".DS_Store"];
+
 export interface MessagePart {
   id: string;
   sessionID?: string;
@@ -143,6 +153,7 @@ interface SessionState {
   pendingQuestions: Record<string, QuestionRequest[]>; // Keyed by sessionId
   vcsBranch: VcsBranchState;
   recentFileChanges: FileWatcherEvent[];
+  sessionFileWrites: Record<string, SessionFileWriteState>; // Keyed by session cwd
 
   // Server connection state
   isServerReady: boolean;
@@ -181,6 +192,7 @@ interface SessionState {
   syncPendingQuestions: (questions: QuestionRequest[]) => void;
   setVcsBranch: (branch: string | null) => void;
   addFileChange: (event: FileWatcherEvent) => void;
+  trackFileWrite: (sessionCwd: string, filePath: string) => void;
 
   // Actions - Server state
   setServerReady: (ready: boolean) => void;
@@ -251,6 +263,7 @@ export const useSessionStore = create<SessionState>()(
       pendingQuestions: {},
       vcsBranch: { branch: null, lastUpdated: 0 },
       recentFileChanges: [],
+      sessionFileWrites: {},
       isServerReady: false,
       error: null,
       debugEvents: [],
@@ -386,10 +399,13 @@ export const useSessionStore = create<SessionState>()(
 
             for (const part of parts) {
               if (part.type === "tool" && part.state?.status === "running") {
+                const now = Date.now();
+                const start = part.state.time?.start ?? now;
                 part.state = {
                   ...part.state,
                   status: "error",
                   error: "Aborted",
+                  time: { start, end: now },
                 };
               }
             }
@@ -496,6 +512,25 @@ export const useSessionStore = create<SessionState>()(
           state.recentFileChanges.push(event);
         }),
 
+      trackFileWrite: (sessionCwd, filePath) =>
+        set((state) => {
+          // Skip ignored files/directories
+          if (IGNORE_PATTERNS.some((p) => filePath.includes(p))) return;
+
+          const existing = state.sessionFileWrites[sessionCwd];
+          if (existing) {
+            // Already tracking, increment count
+            existing.fileCount += 1;
+          } else {
+            // First file for this session
+            state.sessionFileWrites[sessionCwd] = {
+              hasFiles: true,
+              firstFileTimestamp: Date.now(),
+              fileCount: 1,
+            };
+          }
+        }),
+
       // Server state actions
       setServerReady: (ready) =>
         set((state) => {
@@ -536,6 +571,7 @@ export const useSessionStore = create<SessionState>()(
           state.serverHealth = { lastHeartbeat: 0, isHealthy: false };
           state.vcsBranch = { branch: null, lastUpdated: 0 };
           state.recentFileChanges = [];
+          state.sessionFileWrites = {};
           state.debugEvents = [];
           state.error = null;
           // Note: currentSessionId and screenPositions are preserved
@@ -717,6 +753,7 @@ export const useSessionStore = create<SessionState>()(
       partialize: (state) => ({
         currentSessionId: state.currentSessionId,
         screenPositions: state.screenPositions,
+        sessionFileWrites: state.sessionFileWrites,
       }),
     }
   )
@@ -776,6 +813,14 @@ export const useVcsBranch = () =>
 
 export const useRecentFileChanges = () =>
   useSessionStore((state) => state.recentFileChanges);
+
+export const useSessionHasFiles = (sessionCwd: string | null) =>
+  useSessionStore((state) =>
+    sessionCwd ? state.sessionFileWrites[sessionCwd]?.hasFiles ?? false : false
+  );
+
+export const useTrackFileWrite = () =>
+  useSessionStore((state) => state.trackFileWrite);
 
 // Types for stuck tool detection
 export interface RunningQuestionTool {

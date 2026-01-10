@@ -370,3 +370,11 @@ pre,
 .animate-ghost-shimmer {
   animation: ghost-shimmer 1.8s ease-in-out infinite;
 }
+
+/* Pierre Diffs - ensure full height */
+pierre-diffs,
+diffs-container {
+  display: block;
+  min-height: 100%;
+  height: 100%;
+}
