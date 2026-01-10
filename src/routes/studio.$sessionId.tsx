@@ -4,7 +4,9 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useSessions } from "@/hooks/use-sessions";
 import { useSessionMutations } from "@/hooks/use-session-data";
 import { useSDK } from "@/context/global-events";
+import { useSessionDiffs } from "@/context/session-store";
 import { useChatWidth } from "@/hooks/use-chat-width";
+import type { PreviewTab } from "@/components/blocks/preview-tabs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +44,11 @@ function StudioPage() {
   const [chatOpen, setChatOpen] = useState(true);
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [activeTab, setActiveTab] = useState<PreviewTab>("preview");
+
+  // Get file diffs for the code preview tab
+  const diffs = useSessionDiffs(sessionId);
+  const diffCount = diffs.length;
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null);
   const { size: chatSize, updateSize, minSize } = useChatWidth();
@@ -211,7 +218,13 @@ function StudioPage() {
         {/* Preview area - always BrowserFrame */}
         <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20">
           {currentSession?.cwd ? (
-            <BrowserFrame sessionCwd={currentSession.cwd} />
+            <BrowserFrame
+              sessionId={currentSession.id}
+              sessionCwd={currentSession.cwd}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              diffCount={diffCount}
+            />
           ) : (
             <EmptyState />
           )}
