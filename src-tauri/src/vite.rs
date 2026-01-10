@@ -3,8 +3,19 @@ use crate::opencode::VITE_PORT;
 use crate::state::AppState;
 use serde::Serialize;
 use std::path::Path;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::ShellExt;
+
+/// File node for the project file tree
+#[derive(Debug, Serialize, Clone)]
+pub struct FileNode {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "isDir")]
+    pub is_dir: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option<Vec<FileNode>>,
+}
 
 #[derive(Debug, Serialize)]
 pub struct ViteStatus {
@@ -185,17 +196,28 @@ pub async fn start_vite_server(
     *state.vite_pid.lock().unwrap() = Some(pid);
     *state.vite_session_cwd.lock().unwrap() = Some(session_cwd.clone());
 
+    // Clone app handle for use in the async task
+    let app_handle = app.clone();
     tokio::spawn(async move {
         while let Some(event) = rx.recv().await {
             match event {
                 tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
-                    println!("[vite stdout] {}", String::from_utf8_lossy(&line));
+                    let text = String::from_utf8_lossy(&line).to_string();
+                    println!("[vite stdout] {}", text);
+                    let _ = app_handle.emit("vite:stdout", &text);
                 }
                 tauri_plugin_shell::process::CommandEvent::Stderr(line) => {
-                    println!("[vite stderr] {}", String::from_utf8_lossy(&line));
+                    let text = String::from_utf8_lossy(&line).to_string();
+                    println!("[vite stderr] {}", text);
+                    // Emit as error if it contains error keywords
+                    if text.to_lowercase().contains("error") {
+                        let _ = app_handle.emit("vite:error", &text);
+                    }
+                    let _ = app_handle.emit("vite:stderr", &text);
                 }
                 tauri_plugin_shell::process::CommandEvent::Terminated(payload) => {
                     println!("[vite] Process terminated with code: {:?}", payload.code);
+                    let _ = app_handle.emit("vite:terminated", payload.code);
                 }
                 _ => {}
             }
@@ -249,8 +271,180 @@ pub fn get_vite_port() -> u16 {
     VITE_PORT
 }
 
+fn has_project_files(cwd: &Path) -> bool {
+    // Consider a project "has files" if there's any non-ignored file besides package.json.
+    // This is used for UI state, so prefer avoiding false negatives.
+    const IGNORE_DIRS: [&str; 6] = ["node_modules", ".git", "dist", ".next", "target", ".turbo"];
+    const IGNORE_FILES: [&str; 3] = ["package.json", "bun.lockb", ".DS_Store"];
+
+    let mut stack: Vec<std::path::PathBuf> = vec![cwd.to_path_buf()];
+    let mut visited: usize = 0;
+
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(_) => continue,
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+
+            if path.is_dir() {
+                if IGNORE_DIRS.contains(&name.as_ref()) {
+                    continue;
+                }
+                stack.push(path);
+                continue;
+            }
+
+            if path.is_file() && !IGNORE_FILES.contains(&name.as_ref()) {
+                return true;
+            }
+
+            visited += 1;
+            // Avoid pathological scans; if we see lots of entries,
+            // assume the project exists to prevent the UI from getting stuck.
+            if visited > 5000 {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 #[tauri::command]
 pub fn check_project_ready(session_cwd: String) -> bool {
     let cwd = Path::new(&session_cwd);
     cwd.join("package.json").exists()
+}
+
+#[tauri::command]
+pub fn check_project_has_files(session_cwd: String) -> bool {
+    let cwd = Path::new(&session_cwd);
+    if !cwd.join("package.json").exists() {
+        return false;
+    }
+    has_project_files(cwd)
+}
+
+/// Directories and files to ignore when listing project files
+const TREE_IGNORE_DIRS: [&str; 8] = [
+    "node_modules",
+    ".git",
+    "dist",
+    ".next",
+    "target",
+    ".turbo",
+    ".vite",
+    "build",
+];
+const TREE_IGNORE_FILES: [&str; 3] = ["bun.lockb", ".DS_Store", "thumbs.db"];
+
+/// Recursively build a file tree from a directory
+fn build_file_tree(dir: &Path, base_path: &Path) -> Vec<FileNode> {
+    let mut nodes: Vec<FileNode> = Vec::new();
+
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => return nodes,
+    };
+
+    let mut items: Vec<_> = entries.flatten().collect();
+    // Sort: directories first, then alphabetically
+    items.sort_by(|a, b| {
+        let a_is_dir = a.path().is_dir();
+        let b_is_dir = b.path().is_dir();
+        match (a_is_dir, b_is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.file_name().cmp(&b.file_name()),
+        }
+    });
+
+    for entry in items {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().to_string();
+
+        // Skip ignored directories
+        if path.is_dir() && TREE_IGNORE_DIRS.contains(&name.as_str()) {
+            continue;
+        }
+
+        // Skip ignored files
+        if path.is_file() && TREE_IGNORE_FILES.contains(&name.to_lowercase().as_str()) {
+            continue;
+        }
+
+        // Skip hidden files/dirs (starting with .)
+        if name.starts_with('.') {
+            continue;
+        }
+
+        let relative_path = path
+            .strip_prefix(base_path)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .replace('\\', "/");
+
+        if path.is_dir() {
+            let children = build_file_tree(&path, base_path);
+            nodes.push(FileNode {
+                id: relative_path,
+                name,
+                is_dir: true,
+                children: Some(children),
+            });
+        } else {
+            nodes.push(FileNode {
+                id: relative_path,
+                name,
+                is_dir: false,
+                children: None,
+            });
+        }
+    }
+
+    nodes
+}
+
+/// List all project files as a tree structure
+#[tauri::command]
+pub fn list_project_files(session_cwd: String) -> AppResult<Vec<FileNode>> {
+    let cwd = Path::new(&session_cwd);
+    if !cwd.exists() {
+        return Err(AppError::Custom(format!(
+            "Session directory does not exist: {}",
+            session_cwd
+        )));
+    }
+
+    Ok(build_file_tree(cwd, cwd))
+}
+
+/// Read a file's content from the project
+#[tauri::command]
+pub fn read_project_file(session_cwd: String, file_path: String) -> AppResult<String> {
+    let cwd = Path::new(&session_cwd);
+    let full_path = cwd.join(&file_path);
+
+    // Security: ensure the file is within the session directory
+    let canonical_cwd = cwd.canonicalize().map_err(|e| {
+        AppError::Custom(format!("Failed to resolve session directory: {}", e))
+    })?;
+    let canonical_file = full_path.canonicalize().map_err(|e| {
+        AppError::Custom(format!("Failed to resolve file path: {}", e))
+    })?;
+
+    if !canonical_file.starts_with(&canonical_cwd) {
+        return Err(AppError::Custom(
+            "Access denied: file is outside session directory".to_string(),
+        ));
+    }
+
+    std::fs::read_to_string(&canonical_file).map_err(|e| {
+        AppError::Custom(format!("Failed to read file: {}", e))
+    })
 }
