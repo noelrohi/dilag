@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Terminal,
@@ -124,9 +124,9 @@ function InlineErrorCard({ error }: { error: { name: string; message: string } }
   );
 }
 
-// Component to show duration for a single assistant message
-function MessageDuration({ message }: { message: SessionMessage }) {
-  const startTime = message.time.created;
+// Component to show total session duration (from first message to current message completion)
+function MessageDuration({ message, sessionStartTime }: { message: SessionMessage; sessionStartTime: number }) {
+  const startTime = sessionStartTime;
   const endTime = message.isStreaming ? undefined : (message.time.completed || Date.now());
   const elapsed = useElapsedTime(startTime, endTime);
 
@@ -234,6 +234,7 @@ function AssistantMessage({
   index,
   isLast,
   showTimer,
+  sessionStartTime,
   onFork,
   onCopyText,
   onOpenTimeline,
@@ -242,6 +243,7 @@ function AssistantMessage({
   index: number;
   isLast: boolean;
   showTimer: boolean;
+  sessionStartTime: number;
   onFork: (messageId: string) => void;
   onCopyText: (messageId: string) => void;
   onOpenTimeline: () => void;
@@ -290,7 +292,7 @@ function AssistantMessage({
         </MessageActions>
       )}
       {/* Duration timer - only show on last assistant message before next user message */}
-      {showTimer && <MessageDuration message={message} />}
+      {showTimer && <MessageDuration message={message} sessionStartTime={sessionStartTime} />}
     </Message>
   );
 }
@@ -608,6 +610,23 @@ export function ChatView() {
     localStorage.getItem("dilag-initial-files")
   );
 
+  // Memoize turn start times (each user message starts a new turn)
+  // Returns the most recent user message timestamp before a given index
+  const getTurnStartTime = useMemo(() => {
+    // Build a map of turn start times for each message index
+    const turnStarts: number[] = [];
+    let currentTurnStart = messages[0]?.time.created ?? 0;
+    
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === "user") {
+        currentTurnStart = messages[i].time.created;
+      }
+      turnStarts[i] = currentTurnStart;
+    }
+    
+    return (index: number) => turnStarts[index] ?? 0;
+  }, [messages]);
+
   if (!isServerReady) {
     return <LoadingState />;
   }
@@ -667,6 +686,7 @@ export function ChatView() {
                     index={index}
                     isLast={isLastAssistant}
                     showTimer={showTimer}
+                    sessionStartTime={getTurnStartTime(index)}
                     onFork={handleFork}
                     onCopyText={handleCopyText}
                     onOpenTimeline={handleOpenTimeline}
