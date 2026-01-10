@@ -5,6 +5,22 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-10
+
+### Added
+
+- **Code Preview**: File tree navigator and syntax-highlighted code viewer for generated projects
+- **Permission Prompts**: Interactive UI for agent permission requests with approve/deny actions
+- **Question Prompts**: Multi-choice question UI for agent interactions with session state management
+- **Agent Selector**: Dropdown to switch between available agents in studio
+- **Model Selector**: UI to choose AI model for generation
+- **Resizable Panels**: Draggable dividers between studio panels
+
+### Changed
+
+- **Web Template**: Enhanced AGENTS.md with better guidance and switched to Lucide icons
+- **Studio Layout**: Improved panel organization with resizable sections
+
 ## [0.1.0] - 2025-01-07
 
 ### Added

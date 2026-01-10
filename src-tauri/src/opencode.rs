@@ -2,6 +2,7 @@ use crate::error::{AppError, AppResult};
 use crate::paths::{get_dilag_dir, get_opencode_config_dir, get_sessions_dir};
 use crate::state::AppState;
 use serde::Serialize;
+use std::collections::HashSet;
 use std::fs;
 use std::net::TcpListener;
 use std::path::PathBuf;
@@ -54,6 +55,76 @@ pub fn get_opencode_binary_path() -> Option<PathBuf> {
     ];
 
     candidates.into_iter().find(|path| path.exists() && path.is_file())
+}
+
+fn get_bun_binary_path() -> Option<PathBuf> {
+    let mut candidates = vec![
+        PathBuf::from("/opt/homebrew/bin/bun"),
+        PathBuf::from("/usr/local/bin/bun"),
+        PathBuf::from("/usr/bin/bun"),
+    ];
+
+    if let Some(home) = dirs::home_dir() {
+        candidates.push(home.join(".bun/bin/bun"));
+    }
+
+    candidates.into_iter().find(|path| path.exists() && path.is_file())
+}
+
+fn build_augmented_path() -> String {
+    let existing = std::env::var("PATH").unwrap_or_default();
+    let separator = if cfg!(windows) { ";" } else { ":" };
+
+    let mut extra_dirs: Vec<PathBuf> = vec![
+        PathBuf::from("/opt/homebrew/bin"),
+        PathBuf::from("/usr/local/bin"),
+    ];
+
+    if let Some(home) = dirs::home_dir() {
+        extra_dirs.push(home.join(".bun/bin"));
+        extra_dirs.push(home.join(".npm-global/bin"));
+        extra_dirs.push(home.join(".cargo/bin"));
+        extra_dirs.push(home.join(".local/bin"));
+
+        #[cfg(target_os = "macos")]
+        extra_dirs.push(home.join("Library/pnpm"));
+    }
+
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut parts: Vec<String> = Vec::new();
+
+    for dir in extra_dirs {
+        if !dir.exists() || !dir.is_dir() {
+            continue;
+        }
+        let dir_str = dir.to_string_lossy().to_string();
+        if dir_str.is_empty() {
+            continue;
+        }
+        if seen.insert(dir_str.clone()) {
+            parts.push(dir_str);
+        }
+    }
+
+    for item in existing.split(separator) {
+        let item = item.trim();
+        if item.is_empty() {
+            continue;
+        }
+        if seen.insert(item.to_string()) {
+            parts.push(item.to_string());
+        }
+    }
+
+    if parts.is_empty() {
+        if cfg!(windows) {
+            "C:\\Windows\\System32".to_string()
+        } else {
+            "/usr/bin:/bin:/usr/sbin:/sbin".to_string()
+        }
+    } else {
+        parts.join(separator)
+    }
 }
 
 fn ensure_config_exists() -> AppResult<()> {
@@ -247,6 +318,7 @@ pub async fn start_opencode_server(
 
     let shell = app.shell();
     let dilag_dir = get_dilag_dir();
+    let augmented_path = build_augmented_path();
     println!(
         "[start_opencode_server] Starting on port {} with XDG_CONFIG_HOME={:?}",
         port, dilag_dir
@@ -262,6 +334,7 @@ pub async fn start_opencode_server(
             "127.0.0.1",
         ])
         .env("XDG_CONFIG_HOME", dilag_dir.to_string_lossy().to_string())
+        .env("PATH", augmented_path)
         .spawn()
         .map_err(|e| AppError::ServerStart(e.to_string()))?;
 
@@ -321,8 +394,20 @@ pub fn is_opencode_running(state: tauri::State<'_, AppState>) -> bool {
 #[tauri::command]
 pub async fn check_bun_installation(app: AppHandle) -> BunCheckResult {
     let shell = app.shell();
+    let augmented_path = build_augmented_path();
 
-    match shell.command("bun").args(["--version"]).output().await {
+    let command = if let Some(bun_path) = get_bun_binary_path() {
+        shell.command(bun_path)
+    } else {
+        shell.command("bun")
+    };
+
+    match command
+        .env("PATH", augmented_path)
+        .args(["--version"])
+        .output()
+        .await
+    {
         Ok(output) => {
             if output.status.success() {
                 let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
