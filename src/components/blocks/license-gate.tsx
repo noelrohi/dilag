@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { getVersion } from "@tauri-apps/api/app";
+import { useQuery } from "@tanstack/react-query";
 import { useLicenseContext } from "@/context/license-context";
 import { ActivationModal } from "./activation-modal";
+import { DilagIcon } from "@/components/ui/dilag-icon";
 import { cn } from "@/lib/utils";
 
 interface LicenseGateProps {
@@ -14,6 +17,12 @@ export function LicenseGate({ children }: LicenseGateProps) {
   const [starting, setStarting] = useState(false);
   const [showActivation, setShowActivation] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const { data: version } = useQuery({
+    queryKey: ["app", "version"],
+    queryFn: getVersion,
+    staleTime: Infinity,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -220,8 +229,9 @@ export function LicenseGate({ children }: LicenseGateProps) {
             ))}
           </div>
 
-          <div className="absolute bottom-8 left-8 font-mono text-[10px] tracking-widest text-muted-foreground/40 uppercase">
-            Dilag v0.0.1
+          <div className="absolute bottom-8 left-8 flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-muted-foreground/40 uppercase">
+            <DilagIcon className="size-3" />
+            {version && `v${version}`}
           </div>
         </div>
 
