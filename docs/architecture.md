@@ -209,18 +209,14 @@ Technical documentation covering app initialization, data flow, and storage.
 ├── sessions.json                    # Session metadata index
 ├── license.json                     # License/trial state (see Licensing System)
 ├── opencode/
-│   └── opencode.json               # OpenCode config (build agent)
+│   └── opencode.json               # OpenCode config (design agent)
 └── sessions/
-    └── {session-uuid}/             # Per-session working directory (Vite + React project)
-        ├── src/                    # React source code
-        │   ├── routes/
-        │   └── components/
-        ├── package.json
-        └── vite.config.ts
+    └── {session-uuid}/             # Per-session working directory
+        └── screens/                # Generated HTML screens
 ```
 
 **Bundled Resources:**
-The app bundles a Vite + React template in `src-tauri/templates/web-project/`, which is copied to the session directory when creating a new project.
+The app generates HTML files with embedded Tailwind CSS v4, rendered directly on the canvas.
 
 **sessions.json schema:**
 ```json
@@ -236,7 +232,7 @@ The app bundles a Vite + React template in `src-tauri/templates/web-project/`, w
 }
 ```
 
-**opencode.json** - Created/updated on each launch with the build agent configuration including the frontend-design skill for web app generation.
+**opencode.json** - Created/updated on each launch with the design agent configuration including the mobile-design and web-design skills for screen generation.
 
 ---
 

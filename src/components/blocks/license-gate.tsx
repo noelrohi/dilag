@@ -114,13 +114,13 @@ export function LicenseGate({ children }: LicenseGateProps) {
                 )}
               >
                 <h1 className="font-serif text-5xl md:text-6xl text-foreground leading-[1.1] tracking-tight">
-                  Build web apps<br />
+                  Design apps<br />
                   <span className="italic text-primary">
                     at the speed of thought
                   </span>
                 </h1>
                 <p className="font-sans text-base text-muted-foreground max-w-md leading-relaxed">
-                  Transform ideas into production-ready web apps with AI.
+                  Transform ideas into polished mobile and web designs with AI.
                   No templates, no constraints—just your vision, realized.
                 </p>
               </div>
@@ -262,7 +262,7 @@ export function LicenseGate({ children }: LicenseGateProps) {
 
             <p className="font-sans text-muted-foreground mb-8 leading-relaxed">
               {status.type === "TrialExpired"
-                ? "Your 7-day trial has ended. Unlock unlimited access to continue creating beautiful interfaces."
+                ? "Your 7-day trial has ended. Unlock unlimited access to continue designing beautiful apps."
                 : "Please connect to the internet to validate your license."}
             </p>
 

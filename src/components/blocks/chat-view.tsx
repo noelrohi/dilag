@@ -439,7 +439,7 @@ function ChatInputArea({
           </PromptInputAttachments>
           <PromptInputBody>
             <PromptInputTextarea
-              placeholder="Describe what to build..."
+              placeholder="Describe what to design..."
               disabled={isLoading}
               className="min-h-[56px] max-h-[200px]"
             />
@@ -653,7 +653,7 @@ export function ChatView() {
             {messages.length === 0 && !hasPendingPrompt ? (
               <ConversationEmptyState>
                 <p className="text-[13px] text-muted-foreground/50">
-                  Describe your app to get started
+                  Describe your app to start designing
                 </p>
               </ConversationEmptyState>
             ) : messages.length === 0 && hasPendingPrompt ? (
