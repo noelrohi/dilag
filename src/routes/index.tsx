@@ -119,7 +119,7 @@ function LandingPage() {
             >
               <h1 className="text-[42px] md:text-[52px] font-medium leading-[1.1] tracking-[-0.03em] whitespace-nowrap text-balance">
                 <span className="text-foreground">What would you like</span>{" "}
-                <span className="text-muted-foreground/50">to build?</span>
+                <span className="text-muted-foreground/50">to design?</span>
               </h1>
             </div>
 
@@ -284,7 +284,7 @@ function ComposerInput({
       </PromptInputAttachments>
       <PromptInputBody>
         <PromptInputTextarea
-          placeholder="Describe your app idea..."
+          placeholder="Describe your app..."
           disabled={disabled}
           className="min-h-[100px] max-h-[200px]"
         />
