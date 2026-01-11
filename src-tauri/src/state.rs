@@ -4,8 +4,6 @@ use std::sync::Mutex;
 pub struct AppState {
     pub opencode_pid: Mutex<Option<u32>>,
     pub opencode_port: Mutex<Option<u16>>,
-    pub vite_pid: Mutex<Option<u32>>,
-    pub vite_session_cwd: Mutex<Option<String>>,
 }
 
 impl AppState {
@@ -13,8 +11,6 @@ impl AppState {
         Self {
             opencode_pid: Mutex::new(None),
             opencode_port: Mutex::new(None),
-            vite_pid: Mutex::new(None),
-            vite_session_cwd: Mutex::new(None),
         }
     }
 }
@@ -32,6 +28,8 @@ pub struct SessionMeta {
     pub name: String,
     pub created_at: String,
     pub cwd: String,
+    #[serde(default)]
+    pub platform: Option<String>, // "web" (default) or "mobile"
 }
 
 /// Design file extracted from a session directory
