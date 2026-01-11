@@ -1,12 +1,18 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useRef } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
+import { invoke } from "@tauri-apps/api/core";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSessions } from "@/hooks/use-sessions";
 import { useSessionMutations } from "@/hooks/use-session-data";
+import { useSessionDesigns, designKeys } from "@/hooks/use-designs";
 import { useSDK } from "@/context/global-events";
-import { useSessionDiffs } from "@/context/session-store";
 import { useChatWidth } from "@/hooks/use-chat-width";
-import type { PreviewTab } from "@/components/blocks/preview-tabs";
+import {
+  useScreenPositions,
+  useSessionStore,
+  type ScreenPosition,
+} from "@/context/session-store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +21,22 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ChatView } from "@/components/blocks/chat-view";
-import { BrowserFrame } from "@/components/blocks/browser-frame";
-import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil } from "lucide-react";
+import { DesignCanvas } from "@/components/blocks/design-canvas";
+import { DraggableScreen } from "@/components/blocks/draggable-screen";
+import { ScreenFrame } from "@/components/blocks/screen-frame";
+import { IPhoneFrame } from "@/components/blocks/iphone-frame";
+import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil, Palette } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,29 +57,135 @@ export const Route = createFileRoute("/studio/$sessionId")({
   component: StudioPage,
 });
 
+// Layout constants
+const MOBILE_WIDTH = 280;
+const MOBILE_HEIGHT = 572;
+const WEB_WIDTH = 640;
+const WEB_HEIGHT = 400;
+const GAP = 60;
+const START_X = 100;
+const START_Y = 40;
+const MOBILE_COLUMNS = 4;
+const WEB_COLUMNS = 2;
+
+// Calculate initial grid positions for designs
+function getInitialPositions(
+  designs: { filename: string }[],
+  platform: "mobile" | "web"
+): ScreenPosition[] {
+  const isMobile = platform === "mobile";
+  const width = isMobile ? MOBILE_WIDTH : WEB_WIDTH;
+  const height = isMobile ? MOBILE_HEIGHT : WEB_HEIGHT;
+  const columns = isMobile ? MOBILE_COLUMNS : WEB_COLUMNS;
+
+  return designs.map((design, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+
+    return {
+      id: design.filename,
+      x: START_X + col * (width + GAP),
+      y: START_Y + row * (height + GAP),
+    };
+  });
+}
+
 function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [chatOpen, setChatOpen] = useState(true);
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
-  const [activeTab, setActiveTab] = useState<PreviewTab>("preview");
-
-  // Get file diffs for the code preview tab
-  const diffs = useSessionDiffs(sessionId);
-  const diffCount = diffs.length;
+  const [deleteTarget, setDeleteTarget] = useState<{
+    filename: string;
+    title: string;
+  } | null>(null);
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null);
   const { size: chatSize, updateSize, minSize } = useChatWidth();
 
-  const { selectSession, sendMessage, sessions, isServerReady, forkSessionDesignsOnly } = useSessions();
+  const { selectSession, sendMessage, sessions, isServerReady, forkSessionDesignsOnly } =
+    useSessions();
   const { updateSession } = useSessionMutations();
   const sdk = useSDK();
+
+  const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
+  const { data: designs = [] } = useSessionDesigns(currentSession?.cwd);
+
+  // Screen positions from store
+  const screenPositions = useScreenPositions(sessionId);
+  const setScreenPositions = useSessionStore((s) => s.setScreenPositions);
 
   // Initialize session on mount
   useEffect(() => {
     selectSession(sessionId);
   }, [sessionId, selectSession]);
+
+  // Sync screen positions when designs change
+  useEffect(() => {
+    if (designs.length === 0) return;
+
+    const existingIds = screenPositions.map((p) => p.id);
+    const newDesigns = designs.filter((d) => !existingIds.includes(d.filename));
+
+    if (newDesigns.length > 0) {
+      // Position new screens in grid after existing ones
+      const startIndex = existingIds.length;
+      const isMobile = currentSession?.platform === "mobile";
+      const width = isMobile ? MOBILE_WIDTH : WEB_WIDTH;
+      const height = isMobile ? MOBILE_HEIGHT : WEB_HEIGHT;
+      const columns = isMobile ? MOBILE_COLUMNS : WEB_COLUMNS;
+
+      const newPositions = newDesigns.map((design, i) => {
+        const index = startIndex + i;
+        const col = index % columns;
+        const row = Math.floor(index / columns);
+
+        return {
+          id: design.filename,
+          x: START_X + col * (width + GAP),
+          y: START_Y + row * (height + GAP),
+        };
+      });
+
+      setScreenPositions(sessionId, [...screenPositions, ...newPositions]);
+    }
+  }, [designs, screenPositions, sessionId, setScreenPositions, currentSession?.platform]);
+
+  const handlePositionsChange = useCallback(
+    (positions: ScreenPosition[]) => {
+      setScreenPositions(sessionId, positions);
+    },
+    [sessionId, setScreenPositions]
+  );
+
+  const handleReset = useCallback(() => {
+    const platform = currentSession?.platform ?? "web";
+    setScreenPositions(sessionId, getInitialPositions(designs, platform));
+  }, [designs, sessionId, setScreenPositions, currentSession?.platform]);
+
+  const handleDeleteScreen = useCallback(async () => {
+    if (!deleteTarget || !currentSession?.cwd) return;
+
+    const filePath = `${currentSession.cwd}/screens/${deleteTarget.filename}`;
+    try {
+      await invoke("delete_design", { filePath });
+      // Remove from positions
+      setScreenPositions(
+        sessionId,
+        screenPositions.filter((p) => p.id !== deleteTarget.filename)
+      );
+      // Invalidate query to refresh designs
+      queryClient.invalidateQueries({
+        queryKey: designKeys.session(currentSession.cwd),
+      });
+      toast.success(`Deleted ${deleteTarget.title}`);
+    } catch (err) {
+      toast.error(`Failed to delete: ${err}`);
+    }
+    setDeleteTarget(null);
+  }, [deleteTarget, currentSession?.cwd, sessionId, screenPositions, setScreenPositions, queryClient]);
 
   const handleForkSession = useCallback(async () => {
     const newSessionId = await forkSessionDesignsOnly();
@@ -69,18 +194,14 @@ function StudioPage() {
     }
   }, [forkSessionDesignsOnly, navigate]);
 
-  const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
-
   const handleRename = useCallback(async () => {
     if (!currentSession || !newName.trim()) return;
 
-    // Update local metadata
     await updateSession({
       id: sessionId,
       updates: { name: newName.trim() },
     });
 
-    // Sync to OpenCode
     await sdk.session.update({
       sessionID: sessionId,
       title: newName.trim(),
@@ -99,14 +220,24 @@ function StudioPage() {
     if (initialPrompt || initialFilesJson) {
       localStorage.removeItem("dilag-initial-prompt");
       localStorage.removeItem("dilag-initial-files");
-      
+
       const files = initialFilesJson ? JSON.parse(initialFilesJson) : undefined;
       sendMessage(initialPrompt || "", files);
     }
   }, [isServerReady, currentSession, sendMessage]);
 
+  // Scrollbar styles to inject into iframes
+  const scrollbarStyles = `
+    <style>
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #444; }
+    </style>
+  `;
+
   return (
-    <div className="h-dvh flex flex-col bg-background">
+    <div className="h-dvh flex flex-col bg-background overflow-hidden">
       {/* Title bar drag region */}
       <div
         data-tauri-drag-region
@@ -185,9 +316,8 @@ function StudioPage() {
       {/* Main content */}
       <ResizablePanelGroup
         direction="horizontal"
-        className="flex-1"
+        className="flex-1 overflow-hidden"
         onLayout={(sizes) => {
-          // Only persist when chat is open and user is resizing
           if (sizes[0] > 0) {
             updateSize(sizes[0]);
           }
@@ -210,23 +340,83 @@ function StudioPage() {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle
-          withHandle={chatOpen}
-          className={cn(!chatOpen && "hidden")}
-        />
+        <ResizableHandle withHandle={chatOpen} className={cn(!chatOpen && "hidden")} />
 
-        {/* Preview area - always BrowserFrame */}
-        <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20">
-          {currentSession?.cwd ? (
-            <BrowserFrame
-              sessionId={currentSession.id}
-              sessionCwd={currentSession.cwd}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              diffCount={diffCount}
-            />
+        {/* Canvas area */}
+        <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20 overflow-hidden">
+          {designs.length === 0 ? (
+            <CanvasEmptyState />
           ) : (
-            <EmptyState />
+            <DesignCanvas
+              screenPositions={screenPositions}
+              onPositionsChange={handlePositionsChange}
+              onReset={handleReset}
+            >
+              {designs.map((design) => {
+                const position = screenPositions.find((p) => p.id === design.filename);
+                if (!position) return null;
+
+                const isMobile = currentSession?.platform === "mobile";
+                const htmlWithScrollbar = design.html.replace(
+                  "</head>",
+                  `${scrollbarStyles}</head>`
+                );
+
+                return (
+                  <DraggableScreen
+                    key={design.filename}
+                    id={design.filename}
+                    x={position.x}
+                    y={position.y}
+                  >
+                    <ScreenFrame
+                      title={design.title}
+                      onDelete={() =>
+                        setDeleteTarget({
+                          filename: design.filename,
+                          title: design.title,
+                        })
+                      }
+                    >
+                      {isMobile ? (
+                        <IPhoneFrame>
+                          <iframe
+                            srcDoc={htmlWithScrollbar}
+                            className="w-full h-full border-0"
+                            sandbox="allow-scripts"
+                            title={design.title}
+                            style={{
+                              width: 393,
+                              height: 852,
+                              transform: "scale(0.663)",
+                              transformOrigin: "top left",
+                            }}
+                          />
+                        </IPhoneFrame>
+                      ) : (
+                        <div
+                          className="bg-white rounded-lg overflow-hidden shadow-xl ring-1 ring-border"
+                          style={{ width: WEB_WIDTH, height: WEB_HEIGHT }}
+                        >
+                          <iframe
+                            srcDoc={htmlWithScrollbar}
+                            className="w-full h-full border-0"
+                            sandbox="allow-scripts"
+                            title={design.title}
+                            style={{
+                              width: 1280,
+                              height: 800,
+                              transform: `scale(${WEB_WIDTH / 1280})`,
+                              transformOrigin: "top left",
+                            }}
+                          />
+                        </div>
+                      )}
+                    </ScreenFrame>
+                  </DraggableScreen>
+                );
+              })}
+            </DesignCanvas>
           )}
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -260,16 +450,42 @@ function StudioPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete screen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.title}"? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteScreen}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function EmptyState() {
+function CanvasEmptyState() {
   return (
     <div className="h-full flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-[13px] text-muted-foreground/50">
-          Describe your app to get started
+      <div className="text-center space-y-3">
+        <div className="size-20 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center mb-4">
+          <Palette className="size-10 text-primary/60" />
+        </div>
+        <h3 className="font-semibold text-lg">No screens yet</h3>
+        <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+          Describe what you want to design in the chat and screens will appear here
         </p>
       </div>
     </div>

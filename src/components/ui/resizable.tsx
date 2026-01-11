@@ -30,7 +30,14 @@ function ResizablePanelGroup({
 
 const ResizablePanel = forwardRef<ImperativePanelHandle, PanelProps>(
   ({ className, ...props }, ref) => {
-    return <Panel ref={ref} data-slot="resizable-panel" className={cn(className)} {...props} />
+    return (
+      <Panel
+        ref={ref}
+        data-slot="resizable-panel"
+        className={cn("min-w-0 min-h-0", className)}
+        {...props}
+      />
+    )
   }
 )
 

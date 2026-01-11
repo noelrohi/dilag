@@ -10,7 +10,6 @@ mod paths;
 mod sessions;
 mod state;
 mod theme;
-mod vite;
 
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{Emitter, Manager, TitleBarStyle};
@@ -110,7 +109,6 @@ pub fn run() {
             sessions::save_session_metadata,
             sessions::load_sessions_metadata,
             sessions::delete_session_metadata,
-            sessions::initialize_web_project,
             // Design commands
             designs::load_session_designs,
             designs::copy_session_designs,
@@ -120,15 +118,6 @@ pub fn run() {
             app_info::reset_all_data,
             // Theme commands
             theme::set_titlebar_theme,
-            // Vite commands
-            vite::start_vite_server,
-            vite::stop_vite_server,
-            vite::get_vite_status,
-            vite::get_vite_port,
-            vite::check_project_ready,
-            vite::check_project_has_files,
-            vite::list_project_files,
-            vite::read_project_file,
             // Licensing commands
             licensing::get_license_status,
             licensing::start_trial,
