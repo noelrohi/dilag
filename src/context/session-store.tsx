@@ -38,12 +38,15 @@ export type { ToolState, FileDiff };
 export type SessionStatus = "idle" | "running" | "busy" | "error" | "unknown";
 
 // Types
+export type Platform = "web" | "mobile";
+
 export interface SessionMeta {
   id: string;
   name: string;
   created_at: string;
   cwd: string;
   parentID?: string; // Reference to parent session if forked
+  platform?: Platform; // "web" (default) or "mobile"
 }
 
 // Revert state for a session
