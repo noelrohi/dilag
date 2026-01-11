@@ -1,3 +1,12 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+dist-ssr
+.next
+.turbo
+
 # Logs
 logs
 *.log
@@ -7,10 +16,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Environment
 *.local
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
 .vscode/*
@@ -22,6 +32,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Certificates
 Certificates.p12
 *.p12
-fitness-prototype/
+
+# Desktop app specific
+apps/desktop/fitness-prototype/
