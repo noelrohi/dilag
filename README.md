@@ -1,38 +1,38 @@
 # Dilag
 
-> AI-powered web app builder. Describe your app in natural language and watch AI build production-ready web applications in real-time.
+> AI-powered design studio for mobile and web. Describe your app in natural language and watch AI design production-ready screens in real-time.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri-24c8db?logo=tauri)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-18+-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6?logo=typescript)](https://www.typescriptlang.org)
 
-![Dilag - AI Web App Builder](assets/screenshot.png)
+![Dilag - AI Design Studio](assets/screenshot.png)
 
 ## Overview
 
-Dilag is a desktop application that transforms ideas into production-ready web applications. Simply describe what you want to build—"a habit tracking app," "a recipe finder with search"—and AI generates a complete React application with live preview. Iterate in real-time by chatting with the AI to refine and improve your app.
+Dilag is a desktop application that transforms ideas into polished mobile and web designs. Simply describe what you want to design—"a habit tracking app," "a recipe finder with search"—and AI generates production-ready screens as HTML files. Iterate in real-time by chatting with the AI to refine and improve your designs.
 
 Perfect for:
-- 🚀 Rapid prototyping and app development
-- 💡 Turning ideas into working web apps without boilerplate
-- 🔄 Iterating on features through conversation
-- 🌐 Full-stack web application generation
-- ⚡ Accelerating the idea-to-production workflow
+- 🚀 Rapid prototyping and UI design
+- 💡 Turning ideas into polished screens without design tools
+- 🔄 Iterating on designs through conversation
+- 📱 Mobile and web screen generation
+- ⚡ Accelerating the idea-to-design workflow
 
 ## Features
 
-✨ **Natural Language App Generation** – Describe your app and get a complete React project
+✨ **Natural Language Design** – Describe your app and get polished UI screens
 
-🖥️ **Live Web Preview** – See your app running in real-time with hot reload via Vite
+🖥️ **Live Preview** – See your designs rendered in real-time on an infinite canvas
 
-💬 **Iterative Development** – Chat with AI to add features and refine your app
+💬 **Iterative Design** – Chat with AI to refine and improve your screens
 
 🤖 **Multi-Model Support** – Choose from Claude, GPT, Gemini, and more
 
-📚 **Project History** – Save, organize, and revisit all your projects
+📚 **Project History** – Save, organize, and revisit all your designs
 
-🎨 **Production-Ready Code** – Generated apps use React, TanStack Router, and Tailwind CSS
+🎨 **Production-Ready Output** – Generated screens use Tailwind CSS and modern HTML
 
 ## Quick Start
 
@@ -96,7 +96,7 @@ Session Creation
     ↓
 AI Processing (OpenCode)
     ↓
-HTML Generation
+Screen Generation (HTML + Tailwind)
     ↓
 Live Preview on Canvas
     ↓
@@ -138,7 +138,7 @@ dilag/
 
 ## Usage
 
-### Creating Your First App
+### Creating Your First Design
 
 1. **Launch the app** and land on the home screen
 2. **Describe your app** in the prompt box:
@@ -147,15 +147,15 @@ dilag/
    a habit list, and settings page
    ```
 3. **Select your AI model** (Claude, GPT, etc.)
-4. **Hit submit** and watch your app build in real-time
-5. **Iterate** by chatting with the AI to add features
+4. **Hit submit** and watch your screens get designed in real-time
+5. **Iterate** by chatting with the AI to refine your designs
 
-### Working with Projects
+### Working with Designs
 
-- **Live Preview** – Your app runs in an embedded browser with hot reload
+- **Live Preview** – Your screens render on an infinite canvas
 - **Viewport Modes** – Switch between desktop, tablet, and mobile views
-- **Iterate** – Type in the chat pane to add features or fix issues
-- **Auto-Save** – All projects are automatically saved locally
+- **Iterate** – Type in the chat pane to refine designs or add screens
+- **Auto-Save** – All designs are automatically saved locally
 
 ## Data Storage
 
@@ -163,10 +163,9 @@ Dilag stores everything locally on your machine:
 
 ```
 ~/.dilag/
-├── sessions/                    # Project directories
+├── sessions/                    # Design project directories
 │   └── {project-uuid}/
-│       └── src/                # React source code
-│       └── package.json        # Project dependencies
+│       └── screens/            # Generated HTML screens
 ├── sessions.json               # Project metadata
 └── opencode/
     └── opencode.json          # AI agent config

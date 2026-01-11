@@ -1,6 +1,6 @@
 # Dilag Platform Documentation
 
-> Dilag is an AI-powered web app builder built as a native desktop app. It leverages OpenCode's AI coding capabilities to transform natural language prompts into production-ready React applications with live Vite-powered preview.
+> Dilag is an AI-powered design studio for mobile and web apps built as a native desktop app. It leverages OpenCode's AI capabilities to transform natural language prompts into production-ready HTML screens with live preview on an infinite canvas.
 
 ---
 
@@ -182,13 +182,13 @@ dilag/
 |                   +-------------------------------------+                 |
 |                   |                                     |                 |
 |                   |     "What would you like           |                 |
-|                   |           to build?"                |                 |
+|                   |          to design?"                |                 |
 |                   |                                     |                 |
 |                   +-------------------------------------+                 |
 |                                                                          |
 |                   +-------------------------------------+                 |
 |                   |  +-------------------------------+  |                 |
-|                   |  |   Describe your app idea...   |  |                 |
+|                   |  |   Describe your app...        |  |                 |
 |                   |  |                               |  |                 |
 |                   |  |                               |  |                 |
 |                   |  +-------------------------------+  |                 |

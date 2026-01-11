@@ -4,7 +4,7 @@
 
 ## Overview
 
-Dilag is an AI-powered mobile UI design studio. Tauri 2 desktop app (Rust backend) + React 19 frontend. Users describe app ideas in natural language; AI generates Tailwind-styled HTML screens rendered on an infinite canvas.
+Dilag is an AI-powered design studio for mobile and web apps. Tauri 2 desktop app (Rust backend) + React 19 frontend. Users describe app ideas in natural language; AI generates Tailwind-styled HTML screens rendered on an infinite canvas.
 
 ## Documentation
 
