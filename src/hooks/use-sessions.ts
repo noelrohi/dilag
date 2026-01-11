@@ -226,15 +226,14 @@ export function useSessions() {
   }, [currentSessionId, subscribeToSession, saveSessionUpdate]);
 
   const createSession = useCallback(
-    async (name?: string): Promise<string | null> => {
+    async (name?: string, platform: "web" | "mobile" = "web"): Promise<string | null> => {
       try {
         setError(null);
 
         const dirId = crypto.randomUUID();
         const cwd = await createSessionDir(dirId);
 
-        const { invoke } = await import("@tauri-apps/api/core");
-        await invoke("initialize_web_project", { sessionCwd: cwd });
+        // No project initialization needed - AI generates HTML screens directly
         const response = await sdk.session.create({ directory: cwd });
         if (!response.data) {
           throw new Error("Failed to create session");
@@ -247,6 +246,7 @@ export function useSessions() {
           name: name ?? `Session ${sessions.length + 1}`,
           created_at: new Date().toISOString(),
           cwd,
+          platform,
         };
 
         // Save to Tauri + update React Query cache
@@ -524,9 +524,16 @@ export function useSessions() {
         console.log("[sendMessage] model:", `${model.providerID}/${model.modelID}`);
         console.log("[sendMessage] directory:", directory);
 
+        // Add platform prefix for first message to guide skill selection
+        const platform = currentSession.platform ?? "web";
+        const platformPrefix = platform === "mobile" 
+          ? "[Mobile App - Use mobile-design skill]\n\n" 
+          : "[Web App - Use web-design skill]\n\n";
+        const messageContent = platformPrefix + content;
+
         // Build parts array with text and optional file attachments
         const parts: (TextPartInput | FilePartInput)[] = [
-          { type: "text", text: content }
+          { type: "text", text: messageContent }
         ];
 
         // Add file parts if any

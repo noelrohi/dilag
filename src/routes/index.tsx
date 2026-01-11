@@ -18,10 +18,12 @@ import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
 import { AgentSelectorButton } from "@/components/blocks/agent-selector-button";
 import { ThinkingModeSelector } from "@/components/blocks/thinking-mode-selector";
 import { useSessions } from "@/hooks/use-sessions";
+import { type Platform } from "@/context/session-store";
 import { cn } from "@/lib/utils";
-import { ArrowUpIcon } from "@phosphor-icons/react";
+import { ArrowUpIcon, Desktop, DeviceMobile } from "@phosphor-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { X } from "lucide-react";
+import { useState } from "react";
 
 const SUGGESTIONS = [
   { text: "A habit tracking app", color: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 hover:border-emerald-400/50" },
@@ -38,6 +40,7 @@ function LandingPage() {
   const navigate = useNavigate();
   const { sessions, createSession, deleteSession, isServerReady } =
     useSessions();
+  const [platform, setPlatform] = useState<Platform>("web");
 
   const handleSubmit = async (
     text: string,
@@ -45,12 +48,13 @@ function LandingPage() {
   ) => {
     if (!text.trim() && (!files || files.length === 0)) return;
     localStorage.setItem("dilag-initial-prompt", text);
+    localStorage.setItem("dilag-initial-platform", platform);
     if (files && files.length > 0) {
       localStorage.setItem("dilag-initial-files", JSON.stringify(files));
     } else {
       localStorage.removeItem("dilag-initial-files");
     }
-    const sessionId = await createSession();
+    const sessionId = await createSession(undefined, platform);
     if (sessionId) {
       navigate({ to: "/studio/$sessionId", params: { sessionId } });
     }
@@ -113,11 +117,9 @@ function LandingPage() {
               className="animate-in fade-in slide-in-from-bottom-6 duration-700 text-center mb-10"
               style={{ animationFillMode: "backwards" }}
             >
-              <h1 className="text-[42px] md:text-[52px] font-medium text-foreground leading-[1.1] tracking-[-0.03em] mb-3">
-                What would you like
-              </h1>
-              <h1 className="text-[42px] md:text-[52px] font-medium text-muted-foreground/50 leading-[1.1] tracking-[-0.03em]">
-                to build?
+              <h1 className="text-[42px] md:text-[52px] font-medium leading-[1.1] tracking-[-0.03em] whitespace-nowrap text-balance">
+                <span className="text-foreground">What would you like</span>{" "}
+                <span className="text-muted-foreground/50">to build?</span>
               </h1>
             </div>
 
@@ -128,6 +130,8 @@ function LandingPage() {
                 animationFillMode: "backwards",
               }}
             >
+              <PlatformToggle value={platform} onChange={setPlatform} />
+
               <PromptInputProvider>
                 <ComposerInput
                   onSubmit={handleSubmit}
@@ -201,6 +205,7 @@ interface SessionMeta {
   name: string;
   created_at: string;
   cwd: string;
+  platform?: Platform;
 }
 
 function ProjectCard({
@@ -316,6 +321,45 @@ function ComposerInput({
         </div>
       </PromptInputFooter>
     </PromptInput>
+  );
+}
+
+function PlatformToggle({
+  value,
+  onChange,
+}: {
+  value: Platform;
+  onChange: (platform: Platform) => void;
+}) {
+  return (
+    <div className="flex justify-center mb-6">
+      <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/30">
+        <button
+          onClick={() => onChange("web")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
+            value === "web"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Desktop className="size-4" />
+          Web
+        </button>
+        <button
+          onClick={() => onChange("mobile")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
+            value === "mobile"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <DeviceMobile className="size-4" />
+          Mobile
+        </button>
+      </div>
+    </div>
   );
 }
 

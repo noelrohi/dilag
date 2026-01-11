@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useNavigate } from "@tanstack/react-router";
-import { useSessions } from "@/hooks/use-sessions";
 import { useUpdaterContext } from "@/context/updater-context";
 
 interface MenuEventHandler {
@@ -24,7 +23,6 @@ export function useMenuEvents() {
 
 export function MenuEventsProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const { createSession } = useSessions();
   const { checkForUpdates } = useUpdaterContext();
 
   // Store callbacks in refs inside the provider (not module-level globals)
@@ -67,11 +65,7 @@ export function MenuEventsProvider({ children }: { children: ReactNode }) {
           navigate({ to: "/settings" });
           break;
         case "new-session":
-          createSession().then((sessionId) => {
-            if (sessionId) {
-              navigate({ to: "/studio/$sessionId", params: { sessionId } });
-            }
-          });
+          navigate({ to: "/" });
           break;
         case "toggle-sidebar":
           toggleSidebar();
@@ -90,7 +84,7 @@ export function MenuEventsProvider({ children }: { children: ReactNode }) {
     return () => {
       unlisten.then((fn) => fn());
     };
-  }, [navigate, createSession, toggleSidebar, toggleChat, checkForUpdates]);
+  }, [navigate, toggleSidebar, toggleChat, checkForUpdates]);
 
   const value: MenuEventHandler = {
     toggleSidebar,

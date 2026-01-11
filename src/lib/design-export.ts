@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import type { DesignScreen } from "@/context/session-store";
+import type { DesignFile } from "@/hooks/use-designs";
 
 export function copyToClipboard(html: string | undefined) {
   if (!html) {
@@ -15,7 +15,7 @@ export function copyFilePath(path: string) {
   toast.success("Path copied to clipboard");
 }
 
-export function downloadHtml(design: DesignScreen | null) {
+export function downloadHtml(design: DesignFile | null) {
   if (!design) {
     toast.error("No design to download");
     return;
@@ -36,7 +36,7 @@ export function downloadHtml(design: DesignScreen | null) {
   toast.success(`Downloaded ${filename}`);
 }
 
-export function downloadAllDesigns(designs: DesignScreen[]) {
+export function downloadAllDesigns(designs: DesignFile[]) {
   if (designs.length === 0) {
     toast.error("No designs to download");
     return;
