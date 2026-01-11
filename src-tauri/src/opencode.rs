@@ -9,10 +9,11 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
-pub const VITE_PORT: u16 = 5173;
+/// Mobile design skill content - embedded from assets
+const MOBILE_DESIGN_SKILL: &str = include_str!("../assets/mobile-designer-prompt.md");
 
-/// Frontend design skill content - embedded from assets
-const FRONTEND_DESIGN_SKILL: &str = include_str!("../assets/frontend-design-skill.md");
+/// Web design skill content - embedded from assets
+const WEB_DESIGN_SKILL: &str = include_str!("../assets/web-designer-prompt.md");
 
 /// Find a free port by binding to port 0
 pub fn get_free_port() -> u16 {
@@ -131,10 +132,15 @@ fn ensure_config_exists() -> AppResult<()> {
     let config_dir = get_opencode_config_dir();
     fs::create_dir_all(&config_dir)?;
 
-    // Create frontend-design skill directory and file
-    let frontend_skill_dir = config_dir.join("skill").join("frontend-design");
-    fs::create_dir_all(&frontend_skill_dir)?;
-    fs::write(frontend_skill_dir.join("SKILL.md"), FRONTEND_DESIGN_SKILL)?;
+    // Create mobile-design skill directory and file
+    let mobile_skill_dir = config_dir.join("skill").join("mobile-design");
+    fs::create_dir_all(&mobile_skill_dir)?;
+    fs::write(mobile_skill_dir.join("SKILL.md"), MOBILE_DESIGN_SKILL)?;
+
+    // Create web-design skill directory and file
+    let web_skill_dir = config_dir.join("skill").join("web-design");
+    fs::create_dir_all(&web_skill_dir)?;
+    fs::write(web_skill_dir.join("SKILL.md"), WEB_DESIGN_SKILL)?;
 
     // Create opencode config
     let config_file = config_dir.join("opencode.json");
@@ -148,7 +154,7 @@ fn ensure_config_exists() -> AppResult<()> {
         ],
         "agent": {
             "build": {
-                "prompt": "You are a web UI design assistant. IMPORTANT: Always invoke the `frontend-design` skill before creating any UI components or pages. Use the skill tool with skill name 'frontend-design' to load design guidelines first."
+                "prompt": "You are a UI design assistant that creates HTML screen prototypes. The user's first message will indicate the platform: [Mobile App] or [Web App]. IMPORTANT: Always invoke the appropriate skill FIRST before creating any screens. Use 'mobile-design' skill for mobile apps or 'web-design' skill for web apps. Write all screens to the screens/ directory as HTML files."
             }
         },
         "permission": {
@@ -218,7 +224,8 @@ fn ensure_config_exists() -> AppResult<()> {
             },
             "task": "deny",
             "skill": {
-                "frontend-design": "allow"
+                "mobile-design": "allow",
+                "web-design": "allow"
             }
         }
     });
