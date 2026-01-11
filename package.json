@@ -6,6 +6,8 @@
     "dev": "turbo dev",
     "dev:desktop": "turbo dev --filter=@dilag/desktop",
     "dev:web": "turbo dev --filter=@dilag/web",
+    "tauri:dev": "bun run --cwd apps/desktop tauri dev",
+    "tauri:build": "bun run --cwd apps/desktop tauri build",
     "build": "turbo build",
     "build:desktop": "turbo build --filter=@dilag/desktop",
     "build:web": "turbo build --filter=@dilag/web",
@@ -14,7 +16,7 @@
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "turbo": "^2.5.4"
+    "turbo": "^2.7.3"
   },
   "packageManager": "bun@1.2.14"
 }
