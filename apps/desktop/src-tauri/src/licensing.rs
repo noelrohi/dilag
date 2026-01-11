@@ -40,6 +40,15 @@ const EXTENDED_GRACE_SECS: u64 = 7 * 24 * 60 * 60; // 7 days for network issues
 const SANDBOX_API: &str = "https://sandbox-api.polar.sh";
 const PROD_API: &str = "https://api.polar.sh";
 
+// Trial registry API URL (Dilag website)
+fn get_trial_api_url() -> &'static str {
+    if USE_SANDBOX {
+        option_env!("DILAG_TRIAL_API_URL").unwrap_or("http://localhost:3000/api/trial")
+    } else {
+        option_env!("DILAG_TRIAL_API_URL").unwrap_or("https://dilag.app/api/trial")
+    }
+}
+
 fn get_polar_org_id() -> &'static str {
     if USE_SANDBOX {
         option_env!("POLAR_SANDBOX_ORG_ID").unwrap_or(DEFAULT_SANDBOX_ORG_ID)
@@ -134,6 +143,19 @@ struct PolarActivationResponse {
 #[derive(Debug, Deserialize)]
 struct WorldTimeResponse {
     unixtime: i64,
+}
+
+// Trial registry API types
+#[derive(Debug, Serialize)]
+struct TrialRegisterRequest {
+    device_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct TrialRegisterResponse {
+    allowed: bool,
+    trial_start_utc: Option<i64>,
+    message: Option<String>,
 }
 
 // ============================================================================
@@ -333,6 +355,35 @@ async fn validate_with_polar(license_key: &str) -> Result<bool, String> {
     Ok(validation.status == "granted")
 }
 
+/// Register trial with the Dilag server
+/// This prevents trial abuse by tracking device_id -> trial_start_utc on the server
+async fn register_trial_with_server(device_id: &str) -> Result<TrialRegisterResponse, String> {
+    let client = reqwest::Client::new();
+    let url = get_trial_api_url();
+
+    let request_body = TrialRegisterRequest {
+        device_id: device_id.to_string(),
+    };
+
+    let response = client
+        .post(url)
+        .json(&request_body)
+        .timeout(std::time::Duration::from_secs(15))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to connect to trial server: {}", e))?;
+
+    if !response.status().is_success() {
+        let status_code = response.status().as_u16();
+        return Err(format!("Trial registration failed (error {})", status_code));
+    }
+
+    response
+        .json::<TrialRegisterResponse>()
+        .await
+        .map_err(|e| format!("Failed to parse trial response: {}", e))
+}
+
 // ============================================================================
 // Tauri Commands
 // ============================================================================
@@ -421,15 +472,34 @@ pub async fn get_license_status() -> LicenseStatus {
 
 #[tauri::command]
 pub async fn start_trial() -> Result<LicenseStatus, String> {
-    let server_time = get_server_time().await?;
-
+    // Check local state first
     let mut state = load_license_state()?;
-
     if state.trial_start_utc.is_some() {
         return Err("Trial already started".to_string());
     }
 
-    state.trial_start_utc = Some(server_time);
+    // Get device ID for server-side trial tracking
+    let device_id = get_device_id()?;
+
+    // Register trial with server to prevent abuse
+    // This tracks device_id -> trial_start_utc on the server
+    let trial_response = register_trial_with_server(&device_id).await?;
+
+    if !trial_response.allowed {
+        return Err(trial_response.message.unwrap_or_else(|| {
+            "Trial already used on this device. Please purchase a license.".to_string()
+        }));
+    }
+
+    // Use server-provided trial start time
+    let trial_start = trial_response.trial_start_utc.unwrap_or_else(|| {
+        Utc::now().timestamp()
+    });
+
+    // Save trial state locally
+    state.trial_start_utc = Some(trial_start);
+    state.device_id = Some(device_id);
+    state.last_server_time_check = Some(trial_start);
     save_license_state(&state)?;
 
     Ok(LicenseStatus::Trial {
