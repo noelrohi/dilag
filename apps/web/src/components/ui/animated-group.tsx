@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode } from 'react';
+import { ReactNode, ElementType } from 'react';
 import { motion, Variants } from 'motion/react';
 import React from 'react';
 
@@ -23,8 +23,8 @@ export type AnimatedGroupProps = {
     item?: Variants;
   };
   preset?: PresetType;
-  as?: keyof JSX.IntrinsicElements;
-  asChild?: keyof JSX.IntrinsicElements;
+  as?: 'div' | 'ul' | 'ol' | 'section' | 'article' | 'aside' | 'main' | 'nav' | 'header' | 'footer';
+  asChild?: 'div' | 'ul' | 'li' | 'span' | 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'a' | 'button';
 };
 
 const defaultContainerVariants: Variants = {
@@ -116,11 +116,11 @@ function AnimatedGroup({
   const itemVariants = variants?.item || selectedVariants.item;
 
   const MotionComponent = React.useMemo(
-    () => motion.create(as as keyof JSX.IntrinsicElements),
+    () => motion.create(as as 'div' | 'ul' | 'section'),
     [as]
   );
   const MotionChild = React.useMemo(
-    () => motion.create(asChild as keyof JSX.IntrinsicElements),
+    () => motion.create(asChild as 'div' | 'li' | 'span'),
     [asChild]
   );
 
