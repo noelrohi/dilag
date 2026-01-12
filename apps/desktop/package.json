@@ -1,7 +1,7 @@
 {
   "name": "@dilag/desktop",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -48,6 +48,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "dayjs": "^1.11.19",
+    "embla-carousel-react": "^8.6.0",
     "howler": "^2.2.4",
     "immer": "^11.0.1",
     "jszip": "^3.10.1",
@@ -62,6 +63,7 @@
     "streamdown": "^1.6.10",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
+    "tokenlens": "^1.3.1",
     "use-stick-to-bottom": "^1.1.1",
     "zustand": "^5.0.9"
   },
