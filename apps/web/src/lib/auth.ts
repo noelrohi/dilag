@@ -1,6 +1,10 @@
 import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
 import { polar, checkout, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
+import { db } from "@/db";
+import * as schema from "@/db/schema";
 
 // Initialize Polar SDK
 const polarClient = new Polar({
@@ -11,17 +15,38 @@ const polarClient = new Polar({
 export const auth = betterAuth({
   // Use environment variable for base URL
   baseURL: process.env.BETTER_AUTH_URL,
-  
+
+  // Social providers
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
+
   // Email + password authentication
   emailAndPassword: {
     enabled: true,
   },
 
-  // Database - using file-based for now, can switch to proper DB later
-  database: {
-    provider: "sqlite",
-    url: "./data/auth.db",
+  // Session configuration with cookie caching for performance
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60, // 5 minutes cache
+    },
   },
+
+  // Database - Drizzle with PostgreSQL
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user: schema.user,
+      session: schema.session,
+      account: schema.account,
+      verification: schema.verification,
+    },
+  }),
 
   plugins: [
     polar({
@@ -33,7 +58,7 @@ export const auth = betterAuth({
         checkout({
           products: [
             {
-              productId: process.env.POLAR_PRODUCT_ID!,
+              productId: process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID!,
               slug: "pro",
             },
           ],
@@ -54,6 +79,7 @@ export const auth = betterAuth({
         }),
       ],
     }),
+    nextCookies(), // Must be last plugin for server action cookie handling
   ],
 });
 
