@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { DilagLogo } from "@/components/dilag-logo";
-import { Download, Github, Sparkles, Wand2, Layers, MessageSquare, Smartphone, Palette } from "lucide-react";
+import { Download, Github, Sparkles, Wand2, Layers, MessageSquare, Smartphone, Palette, User } from "lucide-react";
 
 export default function Home() {
   return (
@@ -37,6 +38,13 @@ export default function Home() {
               <Github className="w-4 h-4" />
               <span className="hidden sm:inline">GitHub</span>
             </a>
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </Link>
             <a
               href="https://github.com/noelrohi/dilag/releases/latest"
               className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"

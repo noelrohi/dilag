@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { nextCookies } from "better-auth/next-js";
 import { polar, checkout, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
 
@@ -24,6 +25,7 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    nextCookies(), // For server action cookie handling
     polar({
       client: polarClient,
       // Automatically create Polar customer on signup
