@@ -42,6 +42,8 @@ import {
   PromptInputActionAddAttachments,
   PromptInputAttachments,
   PromptInputAttachment,
+  PromptInputScreenReferences,
+  PromptInputScreenReference,
   PromptInputProvider,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
@@ -54,6 +56,7 @@ import { GitFork, Undo2, History, Copy } from "lucide-react";
 import { PermissionList } from "@/components/blocks/permission-list";
 import { QuestionList } from "@/components/blocks/question-list";
 import { StuckToolWarning } from "@/components/blocks/stuck-tool-warning";
+import { AttachmentBridgeConnector } from "@/components/blocks/attachment-bridge-connector";
 import type { MessagePart as MessagePartType } from "@/context/session-store";
 
 /**
@@ -152,6 +155,44 @@ function extractTextFromParts(
     .join("");
 }
 
+// Parse and clean text: remove screen context blocks, identify inline @ScreenName refs
+function parseMessageText(text: string): { cleanText: string; hasScreenRefs: boolean } {
+  // Remove <screen_context> blocks (hidden from display, only for AI)
+  let cleanText = text.replace(/<screen_context name="[^"]+">[\s\S]*?<\/screen_context>/g, '').trim();
+  
+  // Also handle legacy <referenced_screen> format
+  cleanText = cleanText.replace(/<referenced_screen name="[^"]+">[\s\S]*?<\/referenced_screen>/g, '').trim();
+  
+  // Check if there are inline @ScreenName refs
+  const hasScreenRefs = /@\w+/.test(cleanText);
+  
+  return { cleanText, hasScreenRefs };
+}
+
+// Render text with inline @ScreenName highlights
+function HighlightedText({ text }: { text: string }) {
+  // Split on @Word patterns, keeping the delimiters
+  const parts = text.split(/(@\w+)/g);
+  
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('@') && /^@\w+$/.test(part)) {
+          return (
+            <span 
+              key={i} 
+              className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-primary/10 text-primary font-medium"
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 // Component that renders a user message with parts from the store
 function UserMessage({
   message,
@@ -169,7 +210,8 @@ function UserMessage({
   onOpenTimeline: () => void;
 }) {
   const parts = useMessageParts(message.id);
-  const textContent = extractTextFromParts(parts);
+  const rawTextContent = extractTextFromParts(parts);
+  const { cleanText, hasScreenRefs } = parseMessageText(rawTextContent);
   const fileParts = parts.filter((p) => p.type === "file" && p.url);
 
   return (
@@ -205,9 +247,11 @@ function UserMessage({
             ))}
           </div>
         )}
-        {/* Text content */}
-        {textContent && (
-          <p className="whitespace-pre-wrap leading-relaxed">{textContent}</p>
+        {/* Text content with inline highlights for @ScreenName refs */}
+        {cleanText && (
+          <p className="whitespace-pre-wrap leading-relaxed">
+            {hasScreenRefs ? <HighlightedText text={cleanText} /> : cleanText}
+          </p>
         )}
       </MessageContent>
       <MessageActions>
@@ -426,7 +470,7 @@ function ChatInputArea({
 
   return (
     <div className="relative px-4 pb-4">
-      <div>
+      <div className="space-y-2">
         {/* Gradient fade */}
         <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
@@ -437,6 +481,9 @@ function ChatInputArea({
           <PromptInputAttachments>
             {(attachment) => <PromptInputAttachment data={attachment} />}
           </PromptInputAttachments>
+          <PromptInputScreenReferences className="px-3 pt-2">
+            {(ref) => <PromptInputScreenReference data={ref} />}
+          </PromptInputScreenReferences>
           <PromptInputBody>
             <PromptInputTextarea
               placeholder="Describe what to design..."
@@ -641,6 +688,7 @@ export function ChatView() {
 
   return (
     <PromptInputProvider>
+      <AttachmentBridgeConnector />
       <div className="flex flex-col h-full">
         {/* Revert banner - shown when session is in revert state */}
         {sessionRevert && (

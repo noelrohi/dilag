@@ -537,17 +537,48 @@ export function useSessions() {
         ];
 
         // Add file parts if any
+        // HTML screen references: prepend @ScreenName inline, append HTML context at end
+        // Other files (images, etc.) are sent as file parts
+        const screenContexts: string[] = [];
+        const screenNames: string[] = [];
+        
         if (files && files.length > 0) {
           for (const file of files) {
             if (file.url) {
-              parts.push({
-                type: "file",
-                mime: file.mediaType || "application/octet-stream",
-                url: file.url,
-                filename: file.filename,
-              });
+              // HTML files: collect for inline @name prefix and hidden context block
+              if (file.mediaType === "text/html") {
+                const base64Match = file.url.match(/^data:text\/html;base64,(.+)$/);
+                if (base64Match) {
+                  try {
+                    const htmlContent = decodeURIComponent(escape(atob(base64Match[1])));
+                    const screenName = file.filename?.replace('.html', '') || 'Screen';
+                    screenNames.push(screenName);
+                    screenContexts.push(`<screen_context name="${screenName}">\n${htmlContent}\n</screen_context>`);
+                  } catch (e) {
+                    console.error("[sendMessage] Failed to decode HTML content:", e);
+                  }
+                }
+              } else {
+                // Other files (images, etc.) sent as file parts
+                parts.push({
+                  type: "file",
+                  mime: file.mediaType || "application/octet-stream",
+                  url: file.url,
+                  filename: file.filename,
+                });
+              }
             }
           }
+        }
+        
+        // Update the text part with inline @names and append screen context
+        if (screenNames.length > 0) {
+          const inlineRefs = screenNames.map(name => `@${name}`).join(' ');
+          const contextBlock = screenContexts.join('\n\n');
+          parts[0] = {
+            type: "text",
+            text: `${inlineRefs} ${skillHint}${content}\n\n${contextBlock}`,
+          };
         }
 
         console.log("[sendMessage] calling sdk.session.prompt with:", { sessionID: currentSessionId, agent: agentName, model, variant, partsCount: parts.length });
