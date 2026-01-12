@@ -83,6 +83,20 @@ export type AttachmentsContext = {
   fileInputRef: RefObject<HTMLInputElement | null>;
 };
 
+export type ScreenReference = {
+  id: string;
+  filename: string;
+  title: string;
+  html: string;
+};
+
+export type ScreenReferencesContext = {
+  references: ScreenReference[];
+  add: (ref: Omit<ScreenReference, "id">) => void;
+  remove: (id: string) => void;
+  clear: () => void;
+};
+
 export type TextInputContext = {
   value: string;
   setInput: (v: string) => void;
@@ -92,6 +106,7 @@ export type TextInputContext = {
 export type PromptInputControllerProps = {
   textInput: TextInputContext;
   attachments: AttachmentsContext;
+  screenRefs: ScreenReferencesContext;
   /** INTERNAL: Allows PromptInput to register its file textInput + "open" callback */
   __registerFileInput: (
     ref: RefObject<HTMLInputElement | null>,
@@ -103,6 +118,9 @@ const PromptInputController = createContext<PromptInputControllerProps | null>(
   null
 );
 const ProviderAttachmentsContext = createContext<AttachmentsContext | null>(
+  null
+);
+const ProviderScreenRefsContext = createContext<ScreenReferencesContext | null>(
   null
 );
 
@@ -133,6 +151,19 @@ export const useProviderAttachments = () => {
 const useOptionalProviderAttachments = () =>
   useContext(ProviderAttachmentsContext);
 
+export const useProviderScreenRefs = () => {
+  const ctx = useContext(ProviderScreenRefsContext);
+  if (!ctx) {
+    throw new Error(
+      "Wrap your component inside <PromptInputProvider> to use useProviderScreenRefs()."
+    );
+  }
+  return ctx;
+};
+
+const useOptionalProviderScreenRefs = () =>
+  useContext(ProviderScreenRefsContext);
+
 export type PromptInputProviderProps = PropsWithChildren<{
   initialInput?: string;
 }>;
@@ -155,6 +186,9 @@ export function PromptInputProvider({
   >([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openRef = useRef<() => void>(() => {});
+
+  // ----- screen references state
+  const [screenRefsList, setScreenRefsList] = useState<ScreenReference[]>([]);
 
   const add = useCallback((files: File[] | FileList) => {
     const incoming = Array.from(files);
@@ -227,6 +261,35 @@ export function PromptInputProvider({
     [attachmentFiles, add, remove, clear, openFileDialog]
   );
 
+  // ----- screen references methods
+  const addScreenRef = useCallback((ref: Omit<ScreenReference, "id">) => {
+    setScreenRefsList((prev) => {
+      // Don't add if already referenced
+      if (prev.some((r) => r.filename === ref.filename)) {
+        return prev;
+      }
+      return [...prev, { ...ref, id: nanoid() }];
+    });
+  }, []);
+
+  const removeScreenRef = useCallback((id: string) => {
+    setScreenRefsList((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
+  const clearScreenRefs = useCallback(() => {
+    setScreenRefsList([]);
+  }, []);
+
+  const screenRefs = useMemo<ScreenReferencesContext>(
+    () => ({
+      references: screenRefsList,
+      add: addScreenRef,
+      remove: removeScreenRef,
+      clear: clearScreenRefs,
+    }),
+    [screenRefsList, addScreenRef, removeScreenRef, clearScreenRefs]
+  );
+
   const __registerFileInput = useCallback(
     (ref: RefObject<HTMLInputElement | null>, open: () => void) => {
       fileInputRef.current = ref.current;
@@ -243,15 +306,18 @@ export function PromptInputProvider({
         clear: clearInput,
       },
       attachments,
+      screenRefs,
       __registerFileInput,
     }),
-    [textInput, clearInput, attachments, __registerFileInput]
+    [textInput, clearInput, attachments, screenRefs, __registerFileInput]
   );
 
   return (
     <PromptInputController.Provider value={controller}>
       <ProviderAttachmentsContext.Provider value={attachments}>
-        {children}
+        <ProviderScreenRefsContext.Provider value={screenRefs}>
+          {children}
+        </ProviderScreenRefsContext.Provider>
       </ProviderAttachmentsContext.Provider>
     </PromptInputController.Provider>
   );
@@ -401,6 +467,99 @@ export function PromptInputAttachments({
     </div>
   );
 }
+
+// ============================================================================
+// Screen References Components
+// ============================================================================
+
+export const usePromptInputScreenRefs = () => {
+  // Prefer provider if present
+  const provider = useOptionalProviderScreenRefs();
+  if (!provider) {
+    throw new Error(
+      "usePromptInputScreenRefs must be used within a PromptInputProvider"
+    );
+  }
+  return provider;
+};
+
+export type PromptInputScreenReferenceProps = HTMLAttributes<HTMLDivElement> & {
+  data: ScreenReference;
+  className?: string;
+};
+
+export function PromptInputScreenReference({
+  data,
+  className,
+  ...props
+}: PromptInputScreenReferenceProps) {
+  const screenRefs = usePromptInputScreenRefs();
+
+  return (
+    <div
+      className={cn(
+        "group relative inline-flex h-6 cursor-default select-none items-center gap-0.5 rounded-[5px] pl-1.5 pr-1 transition-all duration-150",
+        "bg-gradient-to-b from-foreground/[0.06] to-foreground/[0.03]",
+        "ring-1 ring-inset ring-foreground/[0.08]",
+        "hover:from-foreground/[0.09] hover:to-foreground/[0.05] hover:ring-foreground/[0.12]",
+        className
+      )}
+      key={data.id}
+      {...props}
+    >
+      <span className="font-mono text-[11px] font-medium text-foreground/40">@</span>
+      <span className="max-w-[180px] truncate text-[12px] font-medium tracking-tight text-foreground/70 group-hover:text-foreground/85">
+        {data.title}
+      </span>
+      <button
+        aria-label="Remove screen reference"
+        className="ml-0.5 flex size-4 shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-foreground/10"
+        onClick={(e) => {
+          e.stopPropagation();
+          screenRefs.remove(data.id);
+        }}
+        type="button"
+      >
+        <XIcon className="size-2.5 text-foreground/50" />
+        <span className="sr-only">Remove</span>
+      </button>
+    </div>
+  );
+}
+
+export type PromptInputScreenReferencesProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "children"
+> & {
+  children: (ref: ScreenReference) => ReactNode;
+};
+
+export function PromptInputScreenReferences({
+  children,
+  className,
+  ...props
+}: PromptInputScreenReferencesProps) {
+  const screenRefs = usePromptInputScreenRefs();
+
+  if (!screenRefs.references.length) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn("flex w-full flex-wrap items-start justify-start gap-1.5", className)}
+      {...props}
+    >
+      {screenRefs.references.map((ref) => (
+        <Fragment key={ref.id}>{children(ref)}</Fragment>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// Attachment Action Components
+// ============================================================================
 
 export type PromptInputActionAddAttachmentsProps = ComponentProps<
   typeof DropdownMenuItem
@@ -718,11 +877,26 @@ export const PromptInput = ({
           return (formData.get("message") as string) || "";
         })();
 
+    // Get screen references if using provider
+    const screenReferences = usingProvider ? controller.screenRefs.references : [];
+
     // Reset form immediately after capturing text to avoid race condition
     // where user input during async blob conversion would be lost
     if (!usingProvider) {
       form.reset();
     }
+
+    // Convert screen references to file parts (as HTML files with data URLs)
+    const screenRefFiles: FileUIPart[] = screenReferences.map((ref) => {
+      // Convert HTML string to base64 data URL
+      const base64 = btoa(unescape(encodeURIComponent(ref.html)));
+      return {
+        type: "file" as const,
+        url: `data:text/html;base64,${base64}`,
+        mediaType: "text/html",
+        filename: ref.filename,
+      };
+    });
 
     // Convert blob URLs to data URLs asynchronously
     Promise.all(
@@ -740,7 +914,9 @@ export const PromptInput = ({
     )
       .then((convertedFiles: FileUIPart[]) => {
         try {
-          const result = onSubmit({ text, files: convertedFiles }, event);
+          // Combine regular attachments with screen reference files
+          const allFiles = [...convertedFiles, ...screenRefFiles];
+          const result = onSubmit({ text, files: allFiles }, event);
 
           // Handle both sync and async onSubmit
           if (result instanceof Promise) {
@@ -749,6 +925,7 @@ export const PromptInput = ({
                 clear();
                 if (usingProvider) {
                   controller.textInput.clear();
+                  controller.screenRefs.clear();
                 }
               })
               .catch(() => {
@@ -759,6 +936,7 @@ export const PromptInput = ({
             clear();
             if (usingProvider) {
               controller.textInput.clear();
+              controller.screenRefs.clear();
             }
           }
         } catch {

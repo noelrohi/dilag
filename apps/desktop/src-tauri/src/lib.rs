@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 
 mod app_info;
+mod capture;
 mod designs;
 mod error;
 mod licensing;
@@ -113,6 +114,8 @@ pub fn run() {
             designs::load_session_designs,
             designs::copy_session_designs,
             designs::delete_design,
+            // Capture commands
+            capture::capture_html_to_image,
             // App info commands
             app_info::get_app_info,
             app_info::reset_all_data,

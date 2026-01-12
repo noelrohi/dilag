@@ -1,15 +1,29 @@
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Copy, Code, Download, FolderOpen } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { copyFilePath, copyToClipboard, downloadHtml } from "@/lib/design-export";
+import { CodeViewerDialog } from "@/components/blocks/dialog-code-viewer";
 
 interface ScreenFrameProps {
   title: string;
   children: React.ReactNode;
+  filePath?: string;
+  html?: string;
   onDelete?: () => void;
   className?: string;
 }
@@ -17,44 +31,158 @@ interface ScreenFrameProps {
 export function ScreenFrame({
   title,
   children,
+  filePath,
+  html,
   onDelete,
   className,
 }: ScreenFrameProps) {
   return (
-    <div className={cn("flex flex-col", className)}>
-      {/* Figma-style title above frame */}
-      <div className="flex items-center justify-between mb-2 px-0.5 group">
-        <span className="text-xs text-muted-foreground font-medium truncate max-w-[200px]">
-          {title}
-        </span>
-        {onDelete && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="p-1 rounded hover:bg-secondary/80 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreHorizontal className="size-3.5 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="size-4 mr-2" />
-                Delete screen
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className={cn("flex flex-col group/screen", className)}>
+          {/* Figma-style title above frame */}
+          <div className="flex items-center justify-between mb-2 px-0.5">
+            <span className="text-xs text-muted-foreground font-medium truncate max-w-[200px]">
+              {title}
+            </span>
+          </div>
 
-      {/* Frame content */}
-      {children}
-    </div>
+          {/* Frame content with centered hover menu */}
+          <div className="relative">
+            {children}
+            
+            {/* Centered menu trigger on hover */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/screen:opacity-100 transition-opacity duration-150 pointer-events-none">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="pointer-events-auto p-2.5 rounded-xl bg-popover/95 backdrop-blur-md border border-border/50 shadow-xl hover:bg-popover transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="size-4 text-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-48">
+                  {html && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(html);
+                      }}
+                    >
+                      <Copy className="size-4 mr-2" />
+                      Copy
+                      <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  )}
+                  {filePath && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyFilePath(filePath);
+                      }}
+                    >
+                      <FolderOpen className="size-4 mr-2" />
+                      Copy path
+                    </DropdownMenuItem>
+                  )}
+                  {html && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <CodeViewerDialog code={html} title={title}>
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                          <Code className="size-4 mr-2" />
+                          View Code
+                        </DropdownMenuItem>
+                      </CodeViewerDialog>
+                    </>
+                  )}
+                  {html && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadHtml({ html, title });
+                        }}
+                      >
+                        <Download className="size-4 mr-2" />
+                        Download
+                        <DropdownMenuShortcut>⌘⇧D</DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete();
+                        }}
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                      >
+                        <Trash2 className="size-4 mr-2" />
+                        Delete
+                        <DropdownMenuShortcut>⌫</DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48">
+        {html && (
+          <ContextMenuItem onClick={() => copyToClipboard(html)}>
+            <Copy className="size-4 mr-2" />
+            Copy
+            <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+          </ContextMenuItem>
+        )}
+        {filePath && (
+          <ContextMenuItem onClick={() => copyFilePath(filePath)}>
+            <FolderOpen className="size-4 mr-2" />
+            Copy path
+          </ContextMenuItem>
+        )}
+        {html && (
+          <>
+            <ContextMenuSeparator />
+            <CodeViewerDialog code={html} title={title}>
+              <ContextMenuItem onSelect={(e) => e.preventDefault()}>
+                <Code className="size-4 mr-2" />
+                View Code
+              </ContextMenuItem>
+            </CodeViewerDialog>
+          </>
+        )}
+        {html && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => downloadHtml({ html, title })}>
+              <Download className="size-4 mr-2" />
+              Download
+              <ContextMenuShortcut>⌘⇧D</ContextMenuShortcut>
+            </ContextMenuItem>
+          </>
+        )}
+        {onDelete && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={onDelete}
+              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+            >
+              <Trash2 className="size-4 mr-2" />
+              Delete
+              <ContextMenuShortcut>⌫</ContextMenuShortcut>
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

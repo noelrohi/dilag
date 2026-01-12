@@ -32,11 +32,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ChatView } from "@/components/blocks/chat-view";
-import { DesignCanvas } from "@/components/blocks/design-canvas";
-import { DraggableScreen } from "@/components/blocks/draggable-screen";
-import { ScreenFrame } from "@/components/blocks/screen-frame";
-import { IPhoneFrame } from "@/components/blocks/iphone-frame";
-import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil, Palette } from "lucide-react";
+import { DesignCanvas } from "@/components/canvas";
+import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil, Palette, Play, Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,7 +47,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { copyFilePath } from "@/lib/design-export";
+import { copyFilePath, downloadAsZip } from "@/lib/design-export";
+import { PreviewCarousel } from "@/components/blocks/preview-carousel";
+import { AttachmentBridgeProvider } from "@/context/attachment-bridge";
+import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/studio/$sessionId")({
@@ -68,28 +68,6 @@ const START_Y = 40;
 const MOBILE_COLUMNS = 4;
 const WEB_COLUMNS = 2;
 
-// Calculate initial grid positions for designs
-function getInitialPositions(
-  designs: { filename: string }[],
-  platform: "mobile" | "web"
-): ScreenPosition[] {
-  const isMobile = platform === "mobile";
-  const width = isMobile ? MOBILE_WIDTH : WEB_WIDTH;
-  const height = isMobile ? MOBILE_HEIGHT : WEB_HEIGHT;
-  const columns = isMobile ? MOBILE_COLUMNS : WEB_COLUMNS;
-
-  return designs.map((design, index) => {
-    const col = index % columns;
-    const row = Math.floor(index / columns);
-
-    return {
-      id: design.filename,
-      x: START_X + col * (width + GAP),
-      y: START_Y + row * (height + GAP),
-    };
-  });
-}
-
 function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
   const navigate = useNavigate();
@@ -101,6 +79,8 @@ function StudioPage() {
     filename: string;
     title: string;
   } | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedScreenIds, setSelectedScreenIds] = useState<Set<string>>(new Set());
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null);
   const { size: chatSize, updateSize, minSize } = useChatWidth();
@@ -160,11 +140,6 @@ function StudioPage() {
     [sessionId, setScreenPositions]
   );
 
-  const handleReset = useCallback(() => {
-    const platform = currentSession?.platform ?? "web";
-    setScreenPositions(sessionId, getInitialPositions(designs, platform));
-  }, [designs, sessionId, setScreenPositions, currentSession?.platform]);
-
   const handleDeleteScreen = useCallback(async () => {
     if (!deleteTarget || !currentSession?.cwd) return;
 
@@ -193,6 +168,16 @@ function StudioPage() {
       navigate({ to: "/studio/$sessionId", params: { sessionId: newSessionId } });
     }
   }, [forkSessionDesignsOnly, navigate]);
+
+  const handleRequestDelete = useCallback(
+    (filename: string) => {
+      const design = designs.find((d) => d.filename === filename);
+      if (design) {
+        setDeleteTarget({ filename, title: design.title });
+      }
+    },
+    [designs]
+  );
 
   const handleRename = useCallback(async () => {
     if (!currentSession || !newName.trim()) return;
@@ -226,17 +211,52 @@ function StudioPage() {
     }
   }, [isServerReady, currentSession, sendMessage]);
 
-  // Scrollbar styles to inject into iframes
-  const scrollbarStyles = `
-    <style>
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-      ::-webkit-scrollbar-thumb:hover { background: #444; }
-    </style>
-  `;
+  // Keyboard shortcuts for selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in inputs
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // Cmd/Ctrl + A: Select all
+      if ((e.metaKey || e.ctrlKey) && e.key === "a" && designs.length > 0) {
+        e.preventDefault();
+        setSelectedScreenIds(new Set(designs.map((d) => d.filename)));
+      }
+
+      // Escape: Clear selection
+      if (e.key === "Escape") {
+        setSelectedScreenIds(new Set());
+      }
+
+      // Delete/Backspace: Delete selected (show confirmation)
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedScreenIds.size > 0
+      ) {
+        e.preventDefault();
+        // If multiple selected, set deleteTarget to first for now
+        // (Could enhance to batch delete later)
+        const firstSelectedId = Array.from(selectedScreenIds)[0];
+        const design = designs.find((d) => d.filename === firstSelectedId);
+        if (design) {
+          setDeleteTarget({ filename: design.filename, title: design.title });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [designs, selectedScreenIds]);
+
+
 
   return (
+    <AttachmentBridgeProvider>
     <div className="h-dvh flex flex-col bg-background overflow-hidden">
       {/* Title bar drag region */}
       <div
@@ -308,6 +328,52 @@ function StudioPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Right controls - Preview and Export */}
+        <div className="absolute right-3 top-0 h-full flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2.5 text-xs gap-1.5"
+            onClick={() => setPreviewOpen(true)}
+            disabled={designs.length === 0}
+          >
+            <Play className="size-3.5" />
+            Preview
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-xs gap-1.5"
+                disabled={designs.length === 0}
+              >
+                <Download className="size-3.5" />
+                Export
+                <ChevronDown className="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => downloadAsZip(designs, currentSession?.name ?? "designs")}
+              >
+                Export all as zip
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const selectedDesigns = designs.filter((d) =>
+                    selectedScreenIds.has(d.filename)
+                  );
+                  downloadAsZip(selectedDesigns, `${currentSession?.name ?? "designs"}-selected`);
+                }}
+                disabled={selectedScreenIds.size === 0}
+              >
+                Export selected as zip ({selectedScreenIds.size})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Border */}
@@ -347,76 +413,18 @@ function StudioPage() {
           {designs.length === 0 ? (
             <CanvasEmptyState />
           ) : (
-            <DesignCanvas
-              screenPositions={screenPositions}
-              onPositionsChange={handlePositionsChange}
-              onReset={handleReset}
-            >
-              {designs.map((design) => {
-                const position = screenPositions.find((p) => p.id === design.filename);
-                if (!position) return null;
-
-                const isMobile = currentSession?.platform === "mobile";
-                const htmlWithScrollbar = design.html.replace(
-                  "</head>",
-                  `${scrollbarStyles}</head>`
-                );
-
-                return (
-                  <DraggableScreen
-                    key={design.filename}
-                    id={design.filename}
-                    x={position.x}
-                    y={position.y}
-                  >
-                    <ScreenFrame
-                      title={design.title}
-                      onDelete={() =>
-                        setDeleteTarget({
-                          filename: design.filename,
-                          title: design.title,
-                        })
-                      }
-                    >
-                      {isMobile ? (
-                        <IPhoneFrame>
-                          <iframe
-                            srcDoc={htmlWithScrollbar}
-                            className="w-full h-full border-0"
-                            sandbox="allow-scripts"
-                            title={design.title}
-                            style={{
-                              width: 393,
-                              height: 852,
-                              transform: "scale(0.663)",
-                              transformOrigin: "top left",
-                            }}
-                          />
-                        </IPhoneFrame>
-                      ) : (
-                        <div
-                          className="bg-white rounded-lg overflow-hidden shadow-xl ring-1 ring-border"
-                          style={{ width: WEB_WIDTH, height: WEB_HEIGHT }}
-                        >
-                          <iframe
-                            srcDoc={htmlWithScrollbar}
-                            className="w-full h-full border-0"
-                            sandbox="allow-scripts"
-                            title={design.title}
-                            style={{
-                              width: 1280,
-                              height: 800,
-                              transform: `scale(${WEB_WIDTH / 1280})`,
-                              transformOrigin: "top left",
-                            }}
-                          />
-                        </div>
-                      )}
-                    </ScreenFrame>
-                  </DraggableScreen>
-                );
-              })}
-            </DesignCanvas>
+            <ScreenCaptureProvider platform={currentSession?.platform ?? "web"}>
+              <ConnectedCanvas
+                designs={designs}
+                platform={currentSession?.platform ?? "web"}
+                positions={screenPositions}
+                sessionCwd={currentSession?.cwd}
+                selectedIds={selectedScreenIds}
+                onPositionsChange={handlePositionsChange}
+                onSelectionChange={setSelectedScreenIds}
+                onDeleteScreen={handleRequestDelete}
+              />
+            </ScreenCaptureProvider>
           )}
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -472,7 +480,20 @@ function StudioPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Preview Carousel */}
+      <PreviewCarousel
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        designs={
+          selectedScreenIds.size > 0
+            ? designs.filter((d) => selectedScreenIds.has(d.filename))
+            : designs
+        }
+        platform={currentSession?.platform}
+      />
     </div>
+    </AttachmentBridgeProvider>
   );
 }
 
@@ -489,5 +510,44 @@ function CanvasEmptyState() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Wrapper that connects ScreenCaptureContext to DesignCanvas
+interface ConnectedCanvasProps {
+  designs: import("@/hooks/use-designs").DesignFile[];
+  platform: "mobile" | "web";
+  positions: ScreenPosition[];
+  sessionCwd?: string;
+  selectedIds: Set<string>;
+  onPositionsChange: (positions: ScreenPosition[]) => void;
+  onSelectionChange: (ids: Set<string>) => void;
+  onDeleteScreen: (filename: string) => void;
+}
+
+function ConnectedCanvas({
+  designs,
+  platform,
+  positions,
+  sessionCwd,
+  selectedIds,
+  onPositionsChange,
+  onSelectionChange,
+  onDeleteScreen,
+}: ConnectedCanvasProps) {
+  const { captureAndAttach } = useScreenCaptureContext();
+
+  return (
+    <DesignCanvas
+      designs={designs}
+      platform={platform}
+      positions={positions}
+      sessionCwd={sessionCwd}
+      selectedIds={selectedIds}
+      onPositionsChange={onPositionsChange}
+      onSelectionChange={onSelectionChange}
+      onDeleteScreen={onDeleteScreen}
+      onCaptureScreen={captureAndAttach}
+    />
   );
 }

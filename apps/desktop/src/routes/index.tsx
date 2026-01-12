@@ -6,6 +6,8 @@ import {
   PromptInputActionMenuTrigger,
   PromptInputAttachment,
   PromptInputAttachments,
+  PromptInputScreenReferences,
+  PromptInputScreenReference,
   PromptInputBody,
   PromptInputFooter,
   PromptInputProvider,
@@ -285,6 +287,9 @@ function ComposerInput({
       <PromptInputAttachments>
         {(attachment) => <PromptInputAttachment data={attachment} />}
       </PromptInputAttachments>
+      <PromptInputScreenReferences className="px-3 pt-2">
+        {(ref) => <PromptInputScreenReference data={ref} />}
+      </PromptInputScreenReferences>
       <PromptInputBody>
         <PromptInputTextarea
           placeholder="Describe your app..."
