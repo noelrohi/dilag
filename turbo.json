@@ -3,7 +3,19 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": [
+        "BETTER_AUTH_URL",
+        "BETTER_AUTH_SECRET",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "POLAR_ACCESS_TOKEN",
+        "POLAR_ORG_ID",
+        "POLAR_WEBHOOK_SECRET",
+        "POLAR_ENVIRONMENT",
+        "NEXT_PUBLIC_POLAR_PRODUCT_ID",
+        "DATABASE_URL"
+      ]
     },
     "dev": {
       "cache": false,
