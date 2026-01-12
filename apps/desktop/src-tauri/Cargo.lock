@@ -704,8 +704,9 @@ dependencies = [
 
 [[package]]
 name = "dilag"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
+ "block2",
  "chrono",
  "dirs 5.0.1",
  "libc",
@@ -713,6 +714,7 @@ dependencies = [
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
+ "objc2-web-kit",
  "regex",
  "reqwest",
  "serde",
