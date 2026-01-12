@@ -282,6 +282,10 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-serif);
 }
 
+h1.font-sans, h2.font-sans, h3.font-sans, h4.font-sans, h5.font-sans, h6.font-sans {
+  font-family: var(--font-sans);
+}
+
 /* Gradient text */
 .text-gradient {
   background: linear-gradient(135deg, oklch(0.65 0.18 250), oklch(0.70 0.15 300));
