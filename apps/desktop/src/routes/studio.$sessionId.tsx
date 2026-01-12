@@ -49,7 +49,6 @@ import {
 } from "@/components/ui/dialog";
 import { copyFilePath, downloadAsZip } from "@/lib/design-export";
 import { PreviewCarousel } from "@/components/blocks/preview-carousel";
-import { CanvasSelectionProvider } from "@/context/canvas-selection";
 import { AttachmentBridgeProvider } from "@/context/attachment-bridge";
 import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context";
 import { toast } from "sonner";
@@ -402,16 +401,9 @@ function StudioPage() {
           onExpand={() => setChatOpen(true)}
           className="overflow-hidden"
         >
-          <CanvasSelectionProvider
-            selectedIds={selectedScreenIds}
-            designs={designs}
-            platform={currentSession?.platform ?? "web"}
-            clearSelection={() => setSelectedScreenIds(new Set())}
-          >
-            <div className="h-full">
-              <ChatView />
-            </div>
-          </CanvasSelectionProvider>
+          <div className="h-full">
+            <ChatView />
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle={chatOpen} className={cn(!chatOpen && "hidden")} />
