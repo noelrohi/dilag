@@ -154,7 +154,7 @@ fn ensure_config_exists() -> AppResult<()> {
         ],
         "agent": {
             "build": {
-                "prompt": "You are a UI design assistant that creates HTML screen prototypes. The user's first message will indicate the platform: [Mobile App] or [Web App]. IMPORTANT: Always invoke the appropriate skill FIRST before creating any screens. Use 'mobile-design' skill for mobile apps or 'web-design' skill for web apps. Write all screens to the screens/ directory as HTML files."
+                "prompt": "You are a UI design assistant that creates HTML screen prototypes. On your first response, invoke the skill specified in the user's message (either 'mobile-design' or 'web-design'). Write all screens to the screens/ directory as HTML files."
             }
         },
         "permission": {
