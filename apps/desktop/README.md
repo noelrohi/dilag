@@ -7,7 +7,7 @@
 [![React](https://img.shields.io/badge/React-18+-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6?logo=typescript)](https://www.typescriptlang.org)
 
-![Dilag - AI Design Studio](assets/screenshot.png)
+![Dilag - AI Design Studio](../web/public/hero-dark.png)
 
 ## Overview
 
