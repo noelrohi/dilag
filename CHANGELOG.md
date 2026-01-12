@@ -5,6 +5,19 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-01-12
+
+### Changed
+
+- **Monorepo Structure**: Reorganized project into `apps/desktop`, `apps/web`, and `packages/shared` workspaces (#30)
+- **Website**: Revamped marketing pages with improved design and moved documentation (#33)
+
+### Fixed
+
+- **Website**: Corrected heading font override and updated footer Twitter link (#34)
+- **Build**: Added environment variables to turbo.json for Vercel deployments (#31)
+- **License Gate**: Footer now displays dynamic version instead of hardcoded value (#29)
+
 ## [0.3.0] - 2026-01-11
 
 ### Added
