@@ -163,6 +163,7 @@ fn ensure_config_exists() -> AppResult<()> {
 
                 "ls": "allow",
                 "ls *": "allow",
+                "mkdir *": "allow",
                 "pwd": "allow",
                 "which *": "allow",
                 "echo *": "allow",
