@@ -41,12 +41,22 @@ const SANDBOX_API: &str = "https://sandbox-api.polar.sh";
 const PROD_API: &str = "https://api.polar.sh";
 
 // Trial registry API URL (Dilag website)
-fn get_trial_api_url() -> &'static str {
-    if USE_SANDBOX {
-        option_env!("DILAG_TRIAL_API_URL").unwrap_or("http://localhost:3000/api/trial")
+// Set DILAG_API_URL at compile time to override (e.g., in GitHub Actions)
+// Debug: defaults to localhost:3000
+// Release: defaults to dilag.noelrohi.com
+const DEFAULT_DEV_API_URL: &str = "http://localhost:3000";
+const DEFAULT_PROD_API_URL: &str = "https://dilag.noelrohi.com";
+
+fn get_dilag_api_base() -> &'static str {
+    option_env!("DILAG_API_URL").unwrap_or(if USE_SANDBOX {
+        DEFAULT_DEV_API_URL
     } else {
-        option_env!("DILAG_TRIAL_API_URL").unwrap_or("https://dilag.app/api/trial")
-    }
+        DEFAULT_PROD_API_URL
+    })
+}
+
+fn get_trial_api_url() -> String {
+    format!("{}/api/trial", get_dilag_api_base())
 }
 
 fn get_polar_org_id() -> &'static str {
