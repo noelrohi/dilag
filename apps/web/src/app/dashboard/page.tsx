@@ -2,10 +2,30 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useSession, signOut, authClient } from "@/lib/auth-client";
-import { ExternalLink } from "lucide-react";
+import { Button } from "@dilag/ui";
+import { Badge } from "@dilag/ui";
+import { Separator } from "@dilag/ui";
+import { SiteHeader } from "@/components/site-header";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemGroup,
+  ItemHeader,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import {
+  ArrowDown,
+  ArrowSquareOut,
+  CheckCircle,
+  Crown,
+} from "@phosphor-icons/react";
 
 interface Order {
   id: string;
@@ -17,14 +37,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
-  // Check if user has purchased the product
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["customer", "orders"],
     queryFn: async () => {
       const res = await authClient.customer.orders.list({
         query: { limit: 100 },
       });
-      // Response structure: { result: { items: [...] } }
       const data = res.data as { result?: { items?: Order[] } } | undefined;
       return data?.result?.items ?? [];
     },
@@ -56,123 +74,142 @@ export default function DashboardPage() {
 
   if (isPending || !session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-950">
-        <div className="text-neutral-400">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span>Loading...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      <header className="border-b border-neutral-800">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-semibold">
-            Dilag
-          </Link>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-neutral-400">
-              {session.user.email}
-            </span>
-            <button
-              onClick={handleSignOut}
-              className="text-sm text-neutral-400 hover:text-white transition-colors"
-            >
+    <div className="min-h-screen bg-background">
+      {/* Subtle background */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-background" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/5 rounded-full blur-[120px]" />
+      </div>
+
+      <SiteHeader 
+        user={session.user} 
+        onSignOut={handleSignOut}
+      />
+
+      {/* Main content */}
+      <main className="max-w-2xl mx-auto px-6 pt-28 pb-16">
+        {/* Profile section */}
+        <Item variant="outline" className="mb-10">
+          <ItemMedia>
+            <Avatar className="size-12 border border-border">
+              <AvatarImage src={session.user.image ?? undefined} alt={session.user.name ?? "User"} />
+              <AvatarFallback>
+                {session.user.name?.charAt(0) ||
+                  session.user.email?.charAt(0) ||
+                  "?"}
+              </AvatarFallback>
+            </Avatar>
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle className="text-base">{session.user.name || "User"}</ItemTitle>
+            <ItemDescription>{session.user.email}</ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
               Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+            </Button>
+          </ItemActions>
+        </Item>
 
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            Welcome, {session.user.name || "User"}
-          </h1>
-          <p className="mt-1 text-neutral-400">Manage your Dilag account</p>
-        </div>
+        <Separator className="mb-8" />
 
-        <section className="space-y-4">
-          <h2 className="text-lg font-medium">Account</h2>
-          <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg space-y-3">
-            <div className="flex items-center gap-3">
-              {session.user.image ? (
-                <img
-                  src={session.user.image}
-                  alt=""
-                  className="w-12 h-12 rounded-full"
-                />
-              ) : (
-                <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center text-neutral-400">
-                  {session.user.name?.charAt(0) ||
-                    session.user.email?.charAt(0) ||
-                    "?"}
-                </div>
-              )}
-              <div>
-                <p className="font-medium">{session.user.name || "User"}</p>
-                <p className="text-sm text-neutral-400">{session.user.email}</p>
-              </div>
-            </div>
-          </div>
+        {/* License status */}
+        <section className="mb-12">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
+            License
+          </h2>
+
+          {ordersLoading ? (
+            <Item variant="muted" size="sm">
+              <ItemMedia variant="icon">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>Checking license</ItemTitle>
+                <ItemDescription>Fetching your latest status.</ItemDescription>
+              </ItemContent>
+            </Item>
+          ) : hasPurchased ? (
+            <ItemGroup className="gap-3">
+              <Item variant="outline">
+                <ItemMedia variant="icon" className="bg-emerald-500/10 text-emerald-500">
+                  <CheckCircle weight="fill" className="w-5 h-5" />
+                </ItemMedia>
+                <ItemContent className="gap-2">
+                  <ItemHeader className="items-start">
+                    <ItemTitle>Pro License</ItemTitle>
+                    <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-500 border-0">
+                      Active
+                    </Badge>
+                  </ItemHeader>
+                  <ItemDescription>Full access to all features.</ItemDescription>
+                  <ItemFooter className="pt-1">
+                    <Button variant="outline" size="sm" onClick={handleOpenPortal} className="gap-2">
+                      Manage subscription
+                      <ArrowSquareOut weight="bold" className="w-4 h-4" />
+                    </Button>
+                  </ItemFooter>
+                </ItemContent>
+              </Item>
+            </ItemGroup>
+          ) : (
+            <ItemGroup className="gap-3">
+              <Item variant="outline">
+                <ItemMedia variant="icon">
+                  <Crown weight="duotone" className="w-5 h-5 text-muted-foreground" />
+                </ItemMedia>
+                <ItemContent className="gap-2">
+                  <ItemHeader className="items-start">
+                    <ItemTitle>Free Trial</ItemTitle>
+                    <Badge variant="outline" className="text-xs">Limited</Badge>
+                  </ItemHeader>
+                  <ItemDescription>Upgrade to unlock all features.</ItemDescription>
+                  <ItemFooter className="pt-1">
+                    <Button size="sm" onClick={handleUpgrade} className="gap-2">
+                      <Crown weight="fill" className="w-4 h-4" />
+                      Upgrade to Pro
+                    </Button>
+                  </ItemFooter>
+                </ItemContent>
+              </Item>
+            </ItemGroup>
+          )}
         </section>
 
-        <section className="space-y-4">
-          <h2 className="text-lg font-medium">License</h2>
-          {ordersLoading ? (
-            <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg">
-              <p className="text-neutral-400">Loading...</p>
-            </div>
-          ) : hasPurchased ? (
-            <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-green-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-medium text-green-400">
-                    Pro License Active
-                  </p>
-                  <p className="text-sm text-neutral-400">
-                    You have full access to all features
-                  </p>
-                </div>
-              </div>
+        <Separator className="mb-8" />
 
-              <div className="pt-3 border-t border-neutral-800">
-                <button
-                  onClick={handleOpenPortal}
-                  className="flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  Manage License
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 bg-neutral-900 border border-neutral-800 rounded-lg">
-              <p className="text-neutral-400 mb-4">
-                Purchase a Pro license for lifetime access to all features.
-              </p>
-              <button
-                onClick={handleUpgrade}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Purchase Pro License
-              </button>
-            </div>
-          )}
+        {/* Quick actions */}
+        <section>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
+            Quick Actions
+          </h2>
+
+          <ItemGroup className="gap-3">
+            <Item variant="outline" asChild>
+              <a href="https://github.com/noelrohi/dilag/releases/latest">
+                <ItemMedia variant="icon" className="text-primary">
+                  <ArrowDown weight="duotone" className="w-5 h-5" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>Download Dilag</ItemTitle>
+                  <ItemDescription>macOS (Apple Silicon & Intel)</ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <ArrowSquareOut weight="bold" className="w-4 h-4 text-muted-foreground" />
+                </ItemActions>
+              </a>
+            </Item>
+          </ItemGroup>
         </section>
       </main>
     </div>
