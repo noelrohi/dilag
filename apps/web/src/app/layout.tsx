@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Rubik, IBM_Plex_Mono, IBM_Plex_Serif } from "next/font/google";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const rubik = Rubik({
@@ -48,7 +49,7 @@ export default function RootLayout({
       <body
         className={`${rubik.variable} ${ibmPlexMono.variable} ${ibmPlexSerif.variable} antialiased`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
