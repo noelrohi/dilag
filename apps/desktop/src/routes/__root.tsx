@@ -1,4 +1,5 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/blocks/app-sidebar";
 import { AppProviders } from "@/components/app-providers";
@@ -14,12 +15,14 @@ function RootLayout() {
   // TanStack Router handles lazy loading gracefully without Suspense at root.
   return (
     <AppProviders>
-      <SidebarProvider defaultOpen={false}>
-        <AppSidebar />
-        <SidebarInset>
-          <Outlet />
-        </SidebarInset>
-      </SidebarProvider>
+      <NuqsAdapter>
+        <SidebarProvider defaultOpen={false}>
+          <AppSidebar />
+          <SidebarInset>
+            <Outlet />
+          </SidebarInset>
+        </SidebarProvider>
+      </NuqsAdapter>
     </AppProviders>
   );
 }

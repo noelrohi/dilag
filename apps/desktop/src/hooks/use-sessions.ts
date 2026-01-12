@@ -524,16 +524,16 @@ export function useSessions() {
         console.log("[sendMessage] model:", `${model.providerID}/${model.modelID}`);
         console.log("[sendMessage] directory:", directory);
 
-        // Add platform prefix for first message to guide skill selection
+        // On first message, prepend skill instruction
         const platform = currentSession.platform ?? "web";
-        const platformPrefix = platform === "mobile" 
-          ? "[Mobile App - Use mobile-design skill]\n\n" 
-          : "[Web App - Use web-design skill]\n\n";
-        const messageContent = platformPrefix + content;
+        const isFirstMessage = messages.length === 0;
+        const skillHint = isFirstMessage 
+          ? `[Use ${platform}-design skill]\n\n` 
+          : "";
 
         // Build parts array with text and optional file attachments
         const parts: (TextPartInput | FilePartInput)[] = [
-          { type: "text", text: messageContent }
+          { type: "text", text: skillHint + content }
         ];
 
         // Add file parts if any
@@ -572,7 +572,7 @@ export function useSessions() {
         console.error("Failed to send message:", err);
       }
     },
-    [currentSessionId, currentSession, setError, setSessionStatus, setSessionError, sdk]
+    [currentSessionId, currentSession, messages, setError, setSessionStatus, setSessionError, sdk]
   );
 
   return {

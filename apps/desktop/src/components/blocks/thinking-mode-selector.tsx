@@ -33,6 +33,7 @@ export function ThinkingModeSelector({ className }: ThinkingModeSelectorProps) {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
           size="sm"
           onClick={cycleVariant}
