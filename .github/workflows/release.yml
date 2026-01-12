@@ -72,7 +72,7 @@ jobs:
               if (index($0, "["ver"]")) found=1
             }
             found { print }
-          ' apps/desktop/CHANGELOG.md)
+          ' CHANGELOG.md)
           
           # If no changelog entry found, use a default message
           if [ -z "$NOTES" ]; then
