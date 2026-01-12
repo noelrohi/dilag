@@ -22,8 +22,8 @@ import { type Platform } from "@/context/session-store";
 import { cn } from "@/lib/utils";
 import { ArrowUpIcon, Desktop, DeviceMobile } from "@phosphor-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { X } from "lucide-react";
-import { useState } from "react";
 
 const SUGGESTIONS = [
   { text: "A habit tracking app", color: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 hover:border-emerald-400/50" },
@@ -40,7 +40,10 @@ function LandingPage() {
   const navigate = useNavigate();
   const { sessions, createSession, deleteSession, isServerReady } =
     useSessions();
-  const [platform, setPlatform] = useState<Platform>("web");
+  const [platform, setPlatform] = useQueryState(
+    "platform",
+    parseAsStringLiteral(["web", "mobile"] as const).withDefault("web")
+  );
 
   const handleSubmit = async (
     text: string,
