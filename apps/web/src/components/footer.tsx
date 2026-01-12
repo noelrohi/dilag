@@ -112,7 +112,7 @@ export default function FooterSection() {
                             </svg>
                         </Link>
                         <Link
-                            href="https://x.com/noaborohi"
+                            href="https://x.com/noelrohi"
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label="X/Twitter"
