@@ -22,6 +22,10 @@ fn load_sessions_store() -> SessionsStore {
 pub fn create_session_dir(session_id: String) -> AppResult<String> {
     let session_dir = get_sessions_dir().join(&session_id);
     fs::create_dir_all(&session_dir)?;
+
+    // Create screens directory by default so agent doesn't need to mkdir
+    fs::create_dir_all(session_dir.join("screens"))?;
+
     Ok(session_dir.to_string_lossy().to_string())
 }
 
