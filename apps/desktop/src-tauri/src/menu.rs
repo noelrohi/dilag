@@ -70,6 +70,10 @@ pub fn setup_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
                 Some("CmdOrCtrl+\\"),
             )?,
             &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, "zoom-in", "Zoom In", true, Some("CmdOrCtrl+="))?,
+            &MenuItem::with_id(app, "zoom-out", "Zoom Out", true, Some("CmdOrCtrl+-"))?,
+            &MenuItem::with_id(app, "zoom-reset", "Actual Size", true, Some("CmdOrCtrl+0"))?,
+            &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::fullscreen(app, Some("Enter Full Screen"))?,
         ],
     )?;
