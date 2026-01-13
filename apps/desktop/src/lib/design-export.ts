@@ -126,7 +126,8 @@ export async function renderHtmlToPng({
     iframe.contentDocument?.close();
 
     await iframe.contentDocument?.fonts?.ready?.catch(() => {});
-    await new Promise((r) => setTimeout(r, 3000));
+    // Brief delay for layout/paint to settle after fonts load
+    await new Promise((r) => setTimeout(r, 500));
 
     const canvas = await html2canvas(iframe.contentDocument!.body, {
       width,

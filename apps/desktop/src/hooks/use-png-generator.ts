@@ -25,8 +25,9 @@ export function usePngGenerator(
     const generate = async (design: DesignFile) => {
       const pngPath = `${sessionCwd}/screens/${design.filename.replace(".html", ".png")}`;
 
-      // Skip if already generating
+      // Skip if already generating (mark immediately to prevent race condition)
       if (generating.current.has(pngPath)) return;
+      generating.current.add(pngPath);
 
       try {
         // Check if PNG exists and is newer than HTML
@@ -35,7 +36,6 @@ export function usePngGenerator(
           return; // PNG is up to date
         }
 
-        generating.current.add(pngPath);
         await generatePngToPath(design.html, pngPath, dimensions);
       } catch (e) {
         console.error(`Failed to generate PNG for ${design.filename}:`, e);
