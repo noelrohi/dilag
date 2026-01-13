@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSessions } from "@/hooks/use-sessions";
 import { useSessionMutations } from "@/hooks/use-session-data";
 import { useSessionDesigns, designKeys } from "@/hooks/use-designs";
+import { usePngGenerator } from "@/hooks/use-png-generator";
 import { useSDK } from "@/context/global-events";
 import { useChatWidth } from "@/hooks/use-chat-width";
 import {
@@ -47,7 +48,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { copyFilePath, downloadAsZip } from "@/lib/design-export";
+import { copyFilePath, exportImages } from "@/lib/design-export";
 import { PreviewCarousel } from "@/components/blocks/preview-carousel";
 import { AttachmentBridgeProvider } from "@/context/attachment-bridge";
 import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context";
@@ -92,6 +93,9 @@ function StudioPage() {
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
   const { data: designs = [] } = useSessionDesigns(currentSession?.cwd);
+
+  // Auto-generate PNG assets for designs
+  usePngGenerator(designs, currentSession?.cwd, currentSession?.platform);
 
   // Screen positions from store
   const screenPositions = useScreenPositions(sessionId);
@@ -228,8 +232,8 @@ function StudioPage() {
         setSelectedScreenIds(new Set(designs.map((d) => d.filename)));
       }
 
-      // Escape: Clear selection
-      if (e.key === "Escape") {
+      // Escape: Clear selection (only when preview is not open)
+      if (e.key === "Escape" && !previewOpen) {
         setSelectedScreenIds(new Set());
       }
 
@@ -251,7 +255,7 @@ function StudioPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [designs, selectedScreenIds]);
+  }, [designs, selectedScreenIds, previewOpen]);
 
 
 
@@ -330,9 +334,9 @@ function StudioPage() {
         </div>
 
         {/* Right controls - Preview and Export */}
-        <div className="absolute right-3 top-0 h-full flex items-center gap-1.5">
+        <div className="absolute right-3 top-0 h-full flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             className="h-7 px-2.5 text-xs gap-1.5"
             onClick={() => setPreviewOpen(true)}
@@ -340,39 +344,32 @@ function StudioPage() {
           >
             <Play className="size-3.5" />
             Preview
+            {selectedScreenIds.size > 0 && (
+              <span className="text-muted-foreground">({selectedScreenIds.size})</span>
+            )}
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2.5 text-xs gap-1.5"
-                disabled={designs.length === 0}
-              >
-                <Download className="size-3.5" />
-                Export
-                <ChevronDown className="size-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => downloadAsZip(designs, currentSession?.name ?? "designs")}
-              >
-                Export all as zip
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  const selectedDesigns = designs.filter((d) =>
-                    selectedScreenIds.has(d.filename)
-                  );
-                  downloadAsZip(selectedDesigns, `${currentSession?.name ?? "designs"}-selected`);
-                }}
-                disabled={selectedScreenIds.size === 0}
-              >
-                Export selected as zip ({selectedScreenIds.size})
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2.5 text-xs gap-1.5"
+            onClick={() => {
+              const toExport = selectedScreenIds.size > 0
+                ? designs.filter((d) => selectedScreenIds.has(d.filename))
+                : designs;
+              exportImages({
+                designs: toExport,
+                sessionName: currentSession?.name ?? "designs",
+                platform: currentSession?.platform ?? "mobile",
+              });
+            }}
+            disabled={designs.length === 0}
+          >
+            <Download className="size-3.5" />
+            Export
+            {selectedScreenIds.size > 0 && (
+              <span className="text-muted-foreground">({selectedScreenIds.size})</span>
+            )}
+          </Button>
         </div>
       </div>
 

@@ -10,8 +10,8 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Copy, Code, Download, Trash2, FolderOpen, MessageSquarePlus } from "lucide-react";
-import { copyFilePath, copyToClipboard, downloadHtml } from "@/lib/design-export";
+import { Copy, Code, Download, Trash2, FolderOpen, MessageSquarePlus, Image } from "lucide-react";
+import { copyFilePath, copyToClipboard, downloadHtml, exportAsPng } from "@/lib/design-export";
 import { CodeViewerDialog } from "@/components/blocks/dialog-code-viewer";
 
 // Constants for frame sizes
@@ -61,6 +61,18 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
   const handleDownload = useCallback(() => {
     downloadHtml({ html: design.html, title: design.title });
   }, [design.html, design.title]);
+
+  const handleExportPng = useCallback(() => {
+    const dimensions = isMobile
+      ? { width: 393, height: 852 }
+      : { width: 1280, height: 800 };
+    exportAsPng({
+      html: design.html,
+      title: design.title,
+      ...dimensions,
+      scale: 2,
+    });
+  }, [design.html, design.title, isMobile]);
 
   const handleDelete = useCallback(() => {
     onDelete?.();
@@ -175,8 +187,11 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
         <ContextMenuSeparator />
         <ContextMenuItem onClick={handleDownload}>
           <Download className="size-4 mr-2" />
-          Download
-          <ContextMenuShortcut>Cmd+Shift+D</ContextMenuShortcut>
+          Download HTML
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleExportPng}>
+          <Image className="size-4 mr-2" />
+          Export as PNG
         </ContextMenuItem>
         {onDelete && (
           <>
