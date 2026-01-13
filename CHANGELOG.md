@@ -5,6 +5,21 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2026-01-14
+
+### Added
+
+- **PNG Export**: Export designs as PNG images directly from the canvas (#46)
+- **Auto-Install Dependencies**: Automatically install project dependencies when opening a session (#47)
+
+### Changed
+
+- **Design Prompts**: Cleaner, more focused prompts for AI-generated designs (#46)
+
+### Fixed
+
+- **Canvas Refresh**: Nodes now properly refresh when file content changes (#45)
+
 ## [0.3.7] - 2026-01-13
 
 ### Fixed
