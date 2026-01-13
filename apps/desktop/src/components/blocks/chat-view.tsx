@@ -459,6 +459,11 @@ function ChatInputArea({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isLoading) {
+        // Don't stop session if a dialog/modal is open or event originated from inside one
+        const hasOpenDialog = document.querySelector('[data-radix-portal] [role="dialog"]');
+        const targetInDialog = (e.target as HTMLElement).closest?.('[role="dialog"]');
+        if (hasOpenDialog || targetInDialog) return;
+
         e.preventDefault();
         stopSession();
       }
