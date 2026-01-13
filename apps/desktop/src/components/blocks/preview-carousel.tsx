@@ -73,6 +73,7 @@ export function PreviewCarousel({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onEscapeKeyDown={(e) => e.stopPropagation()}
         className={cn(
           "p-0 gap-0 border-border/50 overflow-hidden",
           "bg-zinc-950/98 backdrop-blur-xl",

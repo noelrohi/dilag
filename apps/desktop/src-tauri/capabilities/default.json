@@ -10,6 +10,17 @@
     "shell:allow-kill",
     "updater:default",
     "process:allow-restart",
-    "process:allow-exit"
+    "process:allow-exit",
+    "dialog:allow-save",
+    "fs:allow-watch",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "$HOME/.dilag/**",
+        "$DOWNLOAD/**"
+      ]
+    },
+    "fs:read-all",
+    "fs:allow-write-file"
   ]
 }
