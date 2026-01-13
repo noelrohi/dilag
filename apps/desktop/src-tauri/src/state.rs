@@ -30,6 +30,8 @@ pub struct SessionMeta {
     pub cwd: String,
     #[serde(default)]
     pub platform: Option<String>, // "web" (default) or "mobile"
+    #[serde(default)]
+    pub favorite: bool,
 }
 
 /// Design file extracted from a session directory

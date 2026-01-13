@@ -110,6 +110,7 @@ pub fn run() {
             sessions::save_session_metadata,
             sessions::load_sessions_metadata,
             sessions::delete_session_metadata,
+            sessions::toggle_session_favorite,
             // Design commands
             designs::load_session_designs,
             designs::copy_session_designs,
