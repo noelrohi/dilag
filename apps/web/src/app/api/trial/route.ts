@@ -7,8 +7,6 @@ import type {
   TrialCheckResponse,
 } from "@dilag/shared";
 
-const ORG_ID = process.env.POLAR_ORG_ID!;
-
 /**
  * POST /api/trial - Register or check a device trial
  * 
@@ -33,7 +31,6 @@ export async function POST(request: NextRequest) {
 
     // Check if customer already exists with this device_id
     const existingCustomers = await polar.customers.list({
-      organizationId: ORG_ID,
       query: device_id, // Search by external_id
     });
 
@@ -71,7 +68,6 @@ export async function POST(request: NextRequest) {
     const trialStartUtc = Math.floor(Date.now() / 1000);
 
     await polar.customers.create({
-      organizationId: ORG_ID,
       externalId: device_id,
       email: `trial-${device_id.substring(0, 8)}@dilag.noelrohi.com`,
       name: `Trial Device ${device_id.substring(0, 8)}`,
@@ -110,7 +106,6 @@ export async function GET(request: NextRequest) {
     }
 
     const existingCustomers = await polar.customers.list({
-      organizationId: ORG_ID,
       query: deviceId,
     });
 
