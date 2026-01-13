@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri-24c8db?logo=tauri)](https://tauri.app)
-[![React](https://img.shields.io/badge/React-18+-61dafb?logo=react)](https://react.dev)
+[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6?logo=typescript)](https://www.typescriptlang.org)
 
 ![Dilag - AI Design Studio](../web/public/hero-dark.png)
@@ -46,7 +46,7 @@ Perfect for:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/dilag.git
+git clone https://github.com/noelrohi/dilag.git
 cd dilag
 
 # Install dependencies
@@ -75,7 +75,7 @@ bun run tauri build
 ## Architecture
 
 ### Frontend Stack
-- **React 18** – UI framework
+- **React 19** – UI framework
 - **TypeScript** – Type safety
 - **Vite** – Build tool
 - **Tailwind CSS** – Styling
@@ -224,15 +224,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## Roadmap
-
-- [ ] Export to deployable packages
-- [ ] GitHub integration
-- [ ] Project template library
-- [ ] Team collaboration features
-- [ ] Database integration
-- [ ] API endpoint generation
-
 ## Troubleshooting
 
 ### Server won't start
@@ -254,7 +245,7 @@ bun run tauri dev
 
 ## License
 
-MIT © 2025 Dilag Contributors
+MIT © 2024-2026 Dilag
 
 ## Acknowledgments
 

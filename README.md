@@ -40,7 +40,7 @@ Dilag is a desktop application that transforms ideas into polished mobile and we
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/dilag.git
+git clone https://github.com/noelrohi/dilag.git
 cd dilag
 
 # Install dependencies
@@ -140,15 +140,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-## Roadmap
-
-- [ ] Export to deployable packages
-- [ ] GitHub integration
-- [ ] Project template library
-- [ ] Team collaboration
-- [ ] Database integration
-- [ ] API endpoint generation
 
 ## License
 
