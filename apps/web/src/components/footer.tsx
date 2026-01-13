@@ -1,5 +1,6 @@
 import { DilagLogo } from '@/components/dilag-logo'
 import Link from 'next/link'
+import { DOWNLOAD_URL } from '@/lib/constants'
 
 const links = [
     {
@@ -20,7 +21,7 @@ const links = [
         items: [
             {
                 title: 'macOS',
-                href: 'https://github.com/noelrohi/dilag/releases/latest',
+                href: DOWNLOAD_URL,
                 external: true,
             },
         ],

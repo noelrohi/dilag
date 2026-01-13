@@ -8,6 +8,7 @@ import { Button } from "@dilag/ui";
 import { Badge } from "@dilag/ui";
 import { Separator } from "@dilag/ui";
 import { SiteHeader } from "@/components/site-header";
+import { DOWNLOAD_URL } from "@/lib/constants";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Item,
@@ -196,7 +197,7 @@ export default function DashboardPage() {
 
           <ItemGroup className="gap-3">
             <Item variant="outline" asChild>
-              <a href="https://github.com/noelrohi/dilag/releases/latest">
+              <a href={DOWNLOAD_URL}>
                 <ItemMedia variant="icon" className="text-primary">
                   <ArrowDown weight="duotone" className="w-5 h-5" />
                 </ItemMedia>

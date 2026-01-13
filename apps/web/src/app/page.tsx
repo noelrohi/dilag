@@ -4,6 +4,7 @@ import Features from "@/components/features-1";
 import IntegrationsSection from "@/components/integrations-8";
 import HeroSection from "@/components/hero-section";
 import FooterSection from "@/components/footer";
+import { DOWNLOAD_URL } from "@/lib/constants";
 import { Download, ArrowRight } from "lucide-react";
 
 export default function Home() {
@@ -33,7 +34,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button size="lg" asChild className="h-12 px-8 text-base gap-3 rounded-full">
-                  <a href="https://github.com/noelrohi/dilag/releases/latest">
+                  <a href={DOWNLOAD_URL}>
                     <Download className="w-5 h-5" />
                     Download Free
                   </a>

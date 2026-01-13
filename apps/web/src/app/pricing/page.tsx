@@ -1,6 +1,7 @@
 import { Button } from "@dilag/ui";
 import { Badge } from "@dilag/ui";
 import { SiteHeader } from "@/components/site-header";
+import { DOWNLOAD_URL } from "@/lib/constants";
 import { Check, Sparkle, Lightning } from "@phosphor-icons/react/dist/ssr";
 
 export default function PricingPage() {
@@ -54,7 +55,7 @@ export default function PricingPage() {
             </ul>
 
             <Button variant="outline" className="w-full" asChild>
-              <a href="https://github.com/noelrohi/dilag/releases/latest">
+              <a href={DOWNLOAD_URL}>
                 Download Free
               </a>
             </Button>

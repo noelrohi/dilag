@@ -82,14 +82,26 @@ Insert the new version section after line 7 (after the format description), befo
 
 Use the Edit tool to prepend the new section above the most recent `## [X.Y.Z]` entry.
 
-### Step 5: Commit Changelog
+### Step 5: Update Download URL
 
-```bash
-git add CHANGELOG.md
-git commit -m "docs: add vX.Y.Z release notes to changelog"
+Update the web download URL constant with the new version:
+
+```typescript
+// apps/web/src/lib/constants.ts
+export const DOWNLOAD_URL =
+  "https://github.com/noelrohi/dilag/releases/download/vX.Y.Z/Dilag_X.Y.Z_aarch64.dmg";
 ```
 
-### Step 6: Run Version Bump
+Use the Edit tool to update both version references in the URL.
+
+### Step 6: Commit All Changes
+
+```bash
+git add CHANGELOG.md apps/web/src/lib/constants.ts
+git commit -m "docs: add vX.Y.Z release notes and update download URL"
+```
+
+### Step 7: Run Version Bump
 
 Execute the release command with the determined version type:
 
@@ -107,7 +119,7 @@ This will:
 5. Push commit and tag to GitHub
 6. Trigger CI release workflow
 
-### Step 7: Confirm Release
+### Step 8: Confirm Release
 
 ```bash
 git log -2 --oneline
