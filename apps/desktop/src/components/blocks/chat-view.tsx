@@ -156,28 +156,28 @@ function extractTextFromParts(
 }
 
 // Parse and clean text: remove screen context blocks, identify inline @ScreenName refs
-function parseMessageText(text: string): { cleanText: string; hasScreenRefs: boolean } {
+export function parseMessageText(text: string): { cleanText: string; hasScreenRefs: boolean } {
   // Remove <screen_context> blocks (hidden from display, only for AI)
   let cleanText = text.replace(/<screen_context name="[^"]+">[\s\S]*?<\/screen_context>/g, '').trim();
   
   // Also handle legacy <referenced_screen> format
   cleanText = cleanText.replace(/<referenced_screen name="[^"]+">[\s\S]*?<\/referenced_screen>/g, '').trim();
   
-  // Check if there are inline @ScreenName refs
-  const hasScreenRefs = /@\w+/.test(cleanText);
+  // Check if there are inline @ScreenName refs (including kebab-case names with hyphens)
+  const hasScreenRefs = /@[\w-]+/.test(cleanText);
   
   return { cleanText, hasScreenRefs };
 }
 
 // Render text with inline @ScreenName highlights
-function HighlightedText({ text }: { text: string }) {
-  // Split on @Word patterns, keeping the delimiters
-  const parts = text.split(/(@\w+)/g);
+export function HighlightedText({ text }: { text: string }) {
+  // Split on @Word patterns (including hyphens for kebab-case names), keeping the delimiters
+  const parts = text.split(/(@[\w-]+)/g);
   
   return (
     <>
       {parts.map((part, i) => {
-        if (part.startsWith('@') && /^@\w+$/.test(part)) {
+        if (part.startsWith('@') && /^@[\w-]+$/.test(part)) {
           return (
             <span 
               key={i} 
