@@ -91,14 +91,18 @@ function DesignCanvasInner({
   // When syncing from external state (props), we skip position updates
   // in handleNodesChange to avoid: setNodes → onNodesChange → onPositionsChange → re-render → loop
   const isExternalSyncRef = useRef(false);
-  const prevNodeIdsRef = useRef<string>('');
+  const prevNodeKeyRef = useRef<string>('');
 
   useEffect(() => {
-    const newIds = initialNodes.map(n => n.id).sort().join(',');
+    // Include modified_at timestamps to detect content changes, not just add/remove
+    const nodeKey = initialNodes
+      .map(n => `${n.id}:${(n.data as ScreenNodeData).design.modified_at}`)
+      .sort()
+      .join(',');
 
-    // Only sync when node IDs change (add/remove) - not on every render
-    if (newIds !== prevNodeIdsRef.current) {
-      prevNodeIdsRef.current = newIds;
+    // Sync when nodes change (add/remove) OR when content changes (edit)
+    if (nodeKey !== prevNodeKeyRef.current) {
+      prevNodeKeyRef.current = nodeKey;
       isExternalSyncRef.current = true;
       setNodes(initialNodes);
       // Reset flag after React has processed the update
