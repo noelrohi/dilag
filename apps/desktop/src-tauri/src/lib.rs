@@ -11,6 +11,7 @@ mod paths;
 mod sessions;
 mod state;
 mod theme;
+mod zoom;
 
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{Emitter, Manager, TitleBarStyle};
@@ -39,6 +40,7 @@ pub fn run() {
                     .title("Dilag")
                     .inner_size(1000.0, 700.0)
                     .min_inner_size(600.0, 400.0)
+                    .maximized(true)
                     .title_bar_style(TitleBarStyle::Transparent)
                     .hidden_title(true)
                     .initialization_script(&format!(
@@ -73,6 +75,21 @@ pub fn run() {
             match event_id {
                 "settings" | "new-session" | "toggle-sidebar" | "toggle-chat" | "check-updates" => {
                     let _ = app.emit("menu-event", event_id);
+                }
+                "zoom-in" => {
+                    if let Ok(level) = zoom::zoom_in(app.clone()) {
+                        let _ = app.emit("zoom-changed", level);
+                    }
+                }
+                "zoom-out" => {
+                    if let Ok(level) = zoom::zoom_out(app.clone()) {
+                        let _ = app.emit("zoom-changed", level);
+                    }
+                }
+                "zoom-reset" => {
+                    if let Ok(level) = zoom::zoom_reset(app.clone()) {
+                        let _ = app.emit("zoom-changed", level);
+                    }
                 }
                 "help-docs" => {
                     let _ = tauri_plugin_opener::open_url(
@@ -129,6 +146,12 @@ pub fn run() {
             licensing::validate_license,
             licensing::get_purchase_url,
             licensing::reset_license,
+            // Zoom commands
+            zoom::set_zoom_level,
+            zoom::get_zoom_level,
+            zoom::zoom_in,
+            zoom::zoom_out,
+            zoom::zoom_reset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
