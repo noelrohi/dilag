@@ -34,7 +34,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ChatView } from "@/components/blocks/chat-view";
 import { DesignCanvas } from "@/components/canvas";
-import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil, Palette, Play, Download } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil, Palette } from "lucide-react";
+import { Play, DownloadSimple } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -342,7 +343,7 @@ function StudioPage() {
             onClick={() => setPreviewOpen(true)}
             disabled={designs.length === 0}
           >
-            <Play className="size-3.5" />
+            <Play className="size-3.5" weight="fill" />
             Preview
             {selectedScreenIds.size > 0 && (
               <span className="text-muted-foreground">({selectedScreenIds.size})</span>
@@ -364,7 +365,7 @@ function StudioPage() {
             }}
             disabled={designs.length === 0}
           >
-            <Download className="size-3.5" />
+            <DownloadSimple className="size-3.5" weight="bold" />
             Export
             {selectedScreenIds.size > 0 && (
               <span className="text-muted-foreground">({selectedScreenIds.size})</span>

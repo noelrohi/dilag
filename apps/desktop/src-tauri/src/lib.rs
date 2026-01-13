@@ -118,6 +118,7 @@ pub fn run() {
             // OpenCode commands
             opencode::check_opencode_installation,
             opencode::check_bun_installation,
+            opencode::install_dependencies,
             opencode::get_opencode_port,
             opencode::start_opencode_server,
             opencode::stop_opencode_server,
