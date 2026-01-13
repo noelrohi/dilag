@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
 import { Search, MoreHorizontal, Trash2, Globe } from "lucide-react";
+import { Star } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/projects")({
 
 function ProjectsPage() {
   const navigate = useNavigate();
-  const { sessions, deleteSession } = useSessions();
+  const { sessions, deleteSession, toggleFavorite } = useSessions();
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleOpenProject = (sessionId: string) => {
@@ -129,6 +130,7 @@ function ProjectsPage() {
                         session={session}
                         onOpen={() => handleOpenProject(session.id)}
                         onDelete={() => handleDeleteProject(session.id)}
+                        onToggleFavorite={() => toggleFavorite(session.id)}
                       />
                     ))}
                   </div>
@@ -147,17 +149,22 @@ interface SessionMeta {
   name: string;
   created_at: string;
   cwd: string;
+  favorite?: boolean;
 }
 
 function ProjectCard({
   session,
   onOpen,
   onDelete,
+  onToggleFavorite,
 }: {
   session: SessionMeta;
   onOpen: () => void;
   onDelete: () => void;
+  onToggleFavorite: () => void;
 }) {
+  const isFavorite = session.favorite ?? false;
+
   return (
     <div
       className={cn(
@@ -169,6 +176,23 @@ function ProjectCard({
       )}
       onClick={onOpen}
     >
+      {/* Favorite indicator */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleFavorite();
+        }}
+        className={cn(
+          "absolute top-3 right-3 z-10 p-1.5 rounded-lg",
+          "transition-all duration-200",
+          isFavorite
+            ? "text-amber-500 hover:text-amber-400"
+            : "text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover:opacity-100"
+        )}
+      >
+        <Star weight={isFavorite ? "fill" : "regular"} className="size-5" />
+      </button>
+
       <div className="relative h-32 bg-gradient-to-br from-primary/5 via-muted/30 to-accent/5 overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           <Globe className="size-10 text-muted-foreground/20" />
@@ -201,6 +225,15 @@ function ProjectCard({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite();
+                }}
+              >
+                <Star weight={isFavorite ? "fill" : "regular"} className={cn("size-4 mr-2", isFavorite && "text-amber-500")} />
+                {isFavorite ? "Unfavorite" : "Favorite"}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();

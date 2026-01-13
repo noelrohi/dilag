@@ -81,3 +81,23 @@ pub fn delete_session_metadata(session_id: String) -> AppResult<()> {
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn toggle_session_favorite(session_id: String) -> AppResult<bool> {
+    let file_path = get_sessions_file();
+    let mut store = load_sessions_store();
+
+    let session = store
+        .sessions
+        .iter_mut()
+        .find(|s| s.id == session_id)
+        .ok_or_else(|| crate::error::AppError::Custom(format!("Session {} not found", session_id)))?;
+
+    session.favorite = !session.favorite;
+    let new_favorite = session.favorite;
+
+    let json = serde_json::to_string_pretty(&store)?;
+    fs::write(&file_path, json)?;
+
+    Ok(new_favorite)
+}

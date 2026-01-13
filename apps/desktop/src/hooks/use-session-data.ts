@@ -26,6 +26,10 @@ async function deleteSessionMetadata(sessionId: string): Promise<void> {
   return invoke<void>("delete_session_metadata", { sessionId });
 }
 
+async function toggleSessionFavorite(sessionId: string): Promise<boolean> {
+  return invoke<boolean>("toggle_session_favorite", { sessionId });
+}
+
 export async function createSessionDir(sessionId: string): Promise<string> {
   return invoke<string>("create_session_dir", { sessionId });
 }
@@ -99,12 +103,42 @@ export function useSessionMutations() {
     },
   });
 
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const newFavorite = await toggleSessionFavorite(sessionId);
+      return { sessionId, favorite: newFavorite };
+    },
+    onMutate: async (sessionId) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
+      const previous = queryClient.getQueryData<SessionMeta[]>(sessionKeys.list());
+      queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
+        old?.map((s) => (s.id === sessionId ? { ...s, favorite: !s.favorite } : s)) ?? []
+      );
+      return { previous };
+    },
+    onError: (_err, _sessionId, context) => {
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(sessionKeys.list(), context.previous);
+      }
+    },
+    onSuccess: ({ sessionId, favorite }) => {
+      // Ensure cache is in sync with server
+      queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
+        old?.map((s) => (s.id === sessionId ? { ...s, favorite } : s)) ?? []
+      );
+    },
+  });
+
   return {
     createSession: createMutation.mutateAsync,
     updateSession: updateMutation.mutateAsync,
     deleteSession: deleteMutation.mutateAsync,
+    toggleFavorite: toggleFavoriteMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isTogglingFavorite: toggleFavoriteMutation.isPending,
   };
 }

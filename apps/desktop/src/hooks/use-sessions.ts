@@ -73,7 +73,7 @@ export function useSessions() {
   const currentSession = useCurrentSession(sessions, currentSessionId);
 
   // React Query mutations
-  const { createSession: saveSession, updateSession: saveSessionUpdate, deleteSession: removeSession } = useSessionMutations();
+  const { createSession: saveSession, updateSession: saveSessionUpdate, deleteSession: removeSession, toggleFavorite: toggleSessionFavorite } = useSessionMutations();
 
   // Zustand actions
   const {
@@ -606,6 +606,13 @@ export function useSessions() {
     [currentSessionId, currentSession, messages, setError, setSessionStatus, setSessionError, sdk]
   );
 
+  const toggleFavorite = useCallback(
+    async (sessionId: string) => {
+      await toggleSessionFavorite(sessionId);
+    },
+    [toggleSessionFavorite]
+  );
+
   return {
     sessions,
     currentSessionId,
@@ -629,5 +636,6 @@ export function useSessions() {
     revertToMessage,
     unrevertSession,
     clearDebugEvents,
+    toggleFavorite,
   };
 }

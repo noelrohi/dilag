@@ -47,6 +47,7 @@ export interface SessionMeta {
   cwd: string;
   parentID?: string; // Reference to parent session if forked
   platform?: Platform; // "web" (default) or "mobile"
+  favorite?: boolean;
 }
 
 // Revert state for a session
