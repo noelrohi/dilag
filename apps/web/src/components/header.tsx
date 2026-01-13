@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { DilagLogo } from '@/components/dilag-logo'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { DOWNLOAD_URL } from '@/lib/constants'
 import React from 'react'
 import { cn } from '@/lib/utils'
 
@@ -80,7 +81,7 @@ export const HeroHeader = () => {
                                 <Button
                                     asChild
                                     size="sm">
-                                    <a href="https://github.com/noelrohi/dilag/releases/latest">
+                                    <a href={DOWNLOAD_URL}>
                                         <span>Download</span>
                                     </a>
                                 </Button>

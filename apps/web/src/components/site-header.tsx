@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@dilag/ui";
 import { DilagLogo } from "./dilag-logo";
+import { DOWNLOAD_URL } from "@/lib/constants";
 import { 
   DownloadSimple,
   User,
@@ -77,7 +78,7 @@ export function SiteHeader({ user, onSignOut }: SiteHeaderProps) {
                 <Link href="/sign-in">Sign in</Link>
               </Button>
               <Button size="sm" className="rounded-full" asChild>
-                <a href="https://github.com/noelrohi/dilag/releases/latest">
+                <a href={DOWNLOAD_URL}>
                   <DownloadSimple weight="bold" className="w-4 h-4" />
                   <span className="hidden sm:inline">Download</span>
                 </a>
