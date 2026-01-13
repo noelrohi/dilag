@@ -5,6 +5,18 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-01-13
+
+### Added
+
+- **Window Maximization**: App now maximizes by default with zoom controls for canvas navigation (#40)
+- **Session Favorites**: Favorite sessions for quick access with redesigned sidebar navigation (#39)
+- **Screens Directory**: Automatically creates screens directory when initializing a session (#38)
+
+### Fixed
+
+- **Website Favicon**: Now uses the app icon as favicon for consistent branding (#37)
+
 ## [0.3.3] - 2026-01-12
 
 ### Added
