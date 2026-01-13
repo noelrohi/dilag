@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     await polar.customers.create({
       organizationId: ORG_ID,
       externalId: device_id,
-      email: `device-${device_id.substring(0, 8)}@trial.dilag.app`,
+      email: `trial-${device_id.substring(0, 8)}@dilag.noelrohi.com`,
       name: `Trial Device ${device_id.substring(0, 8)}`,
       metadata: {
         trial_start_utc: trialStartUtc,
