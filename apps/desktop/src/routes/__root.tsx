@@ -16,7 +16,7 @@ function RootLayout() {
   return (
     <AppProviders>
       <NuqsAdapter>
-        <SidebarProvider defaultOpen={false}>
+        <SidebarProvider defaultOpen={true}>
           <AppSidebar />
           <SidebarInset>
             <Outlet />
