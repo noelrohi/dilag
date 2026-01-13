@@ -398,6 +398,83 @@ pub fn is_opencode_running(state: tauri::State<'_, AppState>) -> bool {
     state.opencode_pid.lock().unwrap().is_some()
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct InstallProgress {
+    pub stage: String,
+    pub message: String,
+    pub completed: bool,
+    pub error: Option<String>,
+}
+
+/// Install OpenCode and Bun using their official install scripts
+#[tauri::command]
+pub async fn install_dependencies(app: AppHandle) -> Result<InstallProgress, String> {
+    let shell = app.shell();
+
+    // First install Bun
+    let bun_install = shell
+        .command("bash")
+        .args(["-c", "curl -fsSL https://bun.sh/install | bash"])
+        .output()
+        .await;
+
+    match bun_install {
+        Ok(output) if !output.status.success() => {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Ok(InstallProgress {
+                stage: "bun".to_string(),
+                message: "Failed to install Bun".to_string(),
+                completed: false,
+                error: Some(stderr),
+            });
+        }
+        Err(e) => {
+            return Ok(InstallProgress {
+                stage: "bun".to_string(),
+                message: "Failed to install Bun".to_string(),
+                completed: false,
+                error: Some(e.to_string()),
+            });
+        }
+        _ => {}
+    }
+
+    // Then install OpenCode
+    let opencode_install = shell
+        .command("bash")
+        .args(["-c", "curl -fsSL https://opencode.ai/install | bash"])
+        .output()
+        .await;
+
+    match opencode_install {
+        Ok(output) if !output.status.success() => {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            return Ok(InstallProgress {
+                stage: "opencode".to_string(),
+                message: "Failed to install OpenCode".to_string(),
+                completed: false,
+                error: Some(stderr),
+            });
+        }
+        Err(e) => {
+            return Ok(InstallProgress {
+                stage: "opencode".to_string(),
+                message: "Failed to install OpenCode".to_string(),
+                completed: false,
+                error: Some(e.to_string()),
+            });
+        }
+        _ => {}
+    }
+
+    Ok(InstallProgress {
+        stage: "complete".to_string(),
+        message: "All dependencies installed successfully".to_string(),
+        completed: true,
+        error: None,
+    })
+}
+
 /// Check if Bun is installed and get its version
 #[tauri::command]
 pub async fn check_bun_installation(app: AppHandle) -> BunCheckResult {
