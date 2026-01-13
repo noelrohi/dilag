@@ -209,7 +209,7 @@ export function PreviewCarousel({
                 // Desktop frame - 1500:865 native, scaled to fit
                 <div
                   className={cn(
-                    "relative bg-white rounded-lg overflow-hidden",
+                    "relative bg-card rounded-lg overflow-hidden",
                     "shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_25px_50px_-12px_rgba(0,0,0,0.8)]"
                   )}
                   style={{

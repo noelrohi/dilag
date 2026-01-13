@@ -108,7 +108,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
               </IPhoneFrame>
             ) : (
               <div
-                className="bg-white rounded-lg overflow-hidden shadow-xl ring-1 ring-border relative"
+                className="bg-card rounded-lg overflow-hidden shadow-xl ring-1 ring-border relative"
                 style={{ width: WEB_WIDTH, height: WEB_HEIGHT }}
               >
                 {/* Overlay to capture mouse events */}
