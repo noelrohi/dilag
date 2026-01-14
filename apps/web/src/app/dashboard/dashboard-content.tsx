@@ -68,9 +68,12 @@ export function DashboardContent({ user, licenseKey }: DashboardContentProps) {
     },
   });
 
-  const hasPurchased = orders.some(
-    (order) => order.productId === process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID
-  );
+  const proProductIds = [
+    process.env.NEXT_PUBLIC_POLAR_MONTHLY_PRODUCT_ID,
+    process.env.NEXT_PUBLIC_POLAR_LIFETIME_PRODUCT_ID,
+  ].filter((id): id is string => Boolean(id));
+
+  const hasPurchased = orders.some((order) => proProductIds.includes(order.productId));
 
   const handleOpenPortal = async () => {
     await authClient.customer.portal();
@@ -89,7 +92,7 @@ export function DashboardContent({ user, licenseKey }: DashboardContentProps) {
   };
 
   const handleUpgrade = async () => {
-    await authClient.checkout({ slug: "pro" });
+    await authClient.checkout({ slug: "pro-monthly" });
   };
 
   return (

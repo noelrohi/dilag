@@ -64,7 +64,6 @@ export function OnboardingForm({ userName, isFromDesktop }: OnboardingFormProps)
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: userName.trim() || "User",
-            plan: selectedPlan,
           }),
         });
 

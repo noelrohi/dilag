@@ -149,8 +149,14 @@ export function LicenseProvider({ children }: LicenseProviderProps) {
       for (const url of urls) {
         // Parse URL: dilag://activate?key=LICENSE_KEY
         if (url.startsWith("dilag://activate")) {
-          const urlObj = new URL(url);
-          const key = urlObj.searchParams.get("key");
+          let key: string | null = null;
+          try {
+            const urlObj = new URL(url);
+            key = urlObj.searchParams.get("key");
+          } catch (error) {
+            console.warn("[deep-link] Invalid activation URL:", url, error);
+          }
+
           if (key) {
             console.log("[deep-link] Received license key for activation");
             activateLicense(key)
