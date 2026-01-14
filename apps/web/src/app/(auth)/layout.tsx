@@ -1,12 +1,23 @@
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { DilagLogo } from "@/components/dilag-logo";
+import { auth } from "@/lib/auth";
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Redirect authenticated users to dashboard
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (session?.user) {
+    redirect("/dashboard");
+  }
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}

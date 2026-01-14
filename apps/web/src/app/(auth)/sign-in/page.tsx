@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
 import {
@@ -15,17 +15,29 @@ import {
 import { DilagLogo } from "@/components/dilag-logo";
 import { GoogleLogo, ArrowRight } from "@phosphor-icons/react";
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
+  // Check if coming from desktop app
+  const from = searchParams.get("from");
+  const isFromDesktop = from === "desktop";
+  
+  // Redirect URL after auth
+  // For existing users signing in, go to dashboard (they can start trial from there)
+  // For desktop flow, we still want to go through onboarding/checkout
+  const getRedirectUrl = () => {
+    return isFromDesktop ? "/onboarding?from=desktop" : "/dashboard";
+  };
+
   const handleGoogleSignIn = async () => {
     setError("");
     try {
-      await signIn.social({ provider: "google", callbackURL: "/dashboard" });
+      await signIn.social({ provider: "google", callbackURL: getRedirectUrl() });
     } catch (err) {
       console.error("Google sign-in error:", err);
       setError("Failed to sign in with Google");
@@ -42,7 +54,7 @@ export default function SignInPage() {
         if (result.error) {
           setError(result.error.message || "Sign in failed");
         } else {
-          router.push("/dashboard");
+          router.push(getRedirectUrl());
         }
       } catch (err) {
         setError("An unexpected error occurred");
@@ -135,12 +147,24 @@ export default function SignInPage() {
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
         <Link
-          href="/sign-up"
+          href={isFromDesktop ? "/sign-up?from=desktop" : "/sign-up"}
           className="text-primary hover:text-primary/80 font-medium transition-colors"
         >
           Sign up
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-sm flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }
