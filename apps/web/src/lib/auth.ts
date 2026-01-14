@@ -29,23 +29,6 @@ export const auth = betterAuth({
     enabled: true,
   },
 
-  // Additional user fields for onboarding
-  user: {
-    additionalFields: {
-      referralSource: {
-        type: "string",
-        required: false,
-        input: false, // Only set during onboarding, not signup
-      },
-      onboardingCompleted: {
-        type: "boolean",
-        required: false,
-        defaultValue: false,
-        input: false,
-      },
-    },
-  },
-
   // Session configuration with cookie caching for performance
   session: {
     cookieCache: {
@@ -75,12 +58,12 @@ export const auth = betterAuth({
         checkout({
           products: [
             {
-              // Pro Monthly - $9/month with 7-day free trial
+              // Pro Monthly - $9.99/month with 7-day free trial
               productId: process.env.NEXT_PUBLIC_POLAR_MONTHLY_PRODUCT_ID!,
               slug: "pro-monthly",
             },
             {
-              // Pro Lifetime - $29 one-time purchase
+              // Pro Lifetime - $49 one-time purchase
               productId: process.env.NEXT_PUBLIC_POLAR_LIFETIME_PRODUCT_ID!,
               slug: "pro-lifetime",
             },
@@ -97,36 +80,29 @@ export const auth = betterAuth({
             const order = payload.data;
             console.log("Order paid:", order.id, "Product:", order.productId);
             
-            // Check if this is a lifetime purchase
+            // If lifetime purchase, cancel any active subscriptions
             const lifetimeProductId = process.env.NEXT_PUBLIC_POLAR_LIFETIME_PRODUCT_ID;
             if (order.productId === lifetimeProductId && order.customerId) {
               console.log("Lifetime purchase detected, checking for active subscriptions...");
               
               try {
-                // Get customer's subscriptions
                 const subscriptions = await polarClient.subscriptions.list({
                   customerId: order.customerId,
                   active: true,
                 });
                 
-                // Revoke any active subscriptions (cancel immediately)
                 for (const sub of subscriptions.result.items) {
                   console.log("Revoking subscription:", sub.id);
-                  await polarClient.subscriptions.revoke({
-                    id: sub.id,
-                  });
+                  await polarClient.subscriptions.revoke({ id: sub.id });
                 }
                 
                 if (subscriptions.result.items.length > 0) {
-                  console.log(`Canceled ${subscriptions.result.items.length} subscription(s) for customer ${order.customerId}`);
+                  console.log(`Canceled ${subscriptions.result.items.length} subscription(s)`);
                 }
               } catch (error) {
                 console.error("Failed to cancel subscriptions:", error);
               }
             }
-          },
-          onSubscriptionActive: async (payload) => {
-            console.log("Subscription active:", payload.data.id);
           },
         }),
       ],
