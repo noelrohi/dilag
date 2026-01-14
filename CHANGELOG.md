@@ -5,6 +5,18 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-01-14
+
+### Added
+
+- **Activity Indicators**: Visual feedback for loading states and ongoing operations (#49)
+- **Mobile Sidebar**: Improved sidebar navigation for mobile-responsive views (#49)
+- **Session Metadata**: Enhanced session information display with additional context (#49)
+
+### Fixed
+
+- **Polar API Calls**: Remove deprecated organizationId parameter from API requests (#48)
+
 ## [0.3.8] - 2026-01-14
 
 ### Added
