@@ -3,7 +3,7 @@ name = "dilag"
 # Version reset to 0.0.1 for licensing system introduction.
 # Previous versions (0.2.x) were pre-release/internal builds.
 # Version will increment from here following semver after initial public release.
-version = "0.3.8"
+version = "0.3.9"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
