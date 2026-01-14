@@ -5,6 +5,26 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-14
+
+### Added
+
+- **Desktop-to-Web Authentication**: Sign in via browser and return to the desktop app using deep links (#50)
+- **Onboarding & Download Pages**: Added onboarding, download, and success pages for the license flow (#50)
+- **Legal Pages**: Added cookies, privacy, and terms pages (#50)
+- **License Key API**: Added API endpoints for license keys and onboarding (#50)
+- **License Activation Deep Links**: Added deep link support for license activation in the desktop app (#50)
+
+### Changed
+
+- **Website Auth UI**: Updated branding and layout across auth-related pages (#50)
+
+### Fixed
+
+- **Licensing & Purchase Flow**: Improved Polar purchase flow handling and deep-link redirects (#50)
+- **License Gate**: Updated the license gate component behavior and UI (#50)
+- **Desktop Licensing Backend**: Always uses production Polar configuration (#50)
+
 ## [0.3.9] - 2026-01-14
 
 ### Added
