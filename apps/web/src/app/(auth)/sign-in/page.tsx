@@ -37,7 +37,11 @@ function SignInForm() {
   const handleGoogleSignIn = async () => {
     setError("");
     try {
-      await signIn.social({ provider: "google", callbackURL: getRedirectUrl() });
+      const baseUrl = window.location.origin;
+      await signIn.social({ 
+        provider: "google", 
+        callbackURL: `${baseUrl}${getRedirectUrl()}` 
+      });
     } catch (err) {
       console.error("Google sign-in error:", err);
       setError("Failed to sign in with Google");
