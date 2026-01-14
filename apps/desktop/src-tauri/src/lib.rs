@@ -41,7 +41,7 @@ pub fn run() {
                 WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
                     .title("Dilag")
                     .inner_size(1000.0, 700.0)
-                    .min_inner_size(600.0, 400.0)
+                    .min_inner_size(768.0, 600.0)
                     .maximized(true)
                     .title_bar_style(TitleBarStyle::Transparent)
                     .hidden_title(true)
