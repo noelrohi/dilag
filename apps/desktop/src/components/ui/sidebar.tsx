@@ -304,7 +304,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+function SidebarInset({ className, children, ...props }: React.ComponentProps<"main">) {
   return (
     <main
       data-slot="sidebar-inset"
@@ -314,7 +314,13 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
         className
       )}
       {...props}
-    />
+    >
+      <SidebarTrigger
+        className="fixed left-3 top-12 z-40 rounded-md border bg-background/80 shadow-sm backdrop-blur md:hidden"
+        aria-label="Open sidebar"
+      />
+      {children}
+    </main>
   )
 }
 

@@ -40,6 +40,15 @@ function convertPart(part: Part, messageID: string, sessionID: string): MessageP
     mime: "mime" in part ? part.mime : undefined,
     url: "url" in part ? part.url : undefined,
     filename: "filename" in part ? part.filename : undefined,
+    // Step part fields
+    provider:
+      "provider" in part && typeof (part as { provider?: unknown }).provider === "string"
+        ? (part as { provider: string }).provider
+        : undefined,
+    model:
+      "model" in part && typeof (part as { model?: unknown }).model === "string"
+        ? (part as { model: string }).model
+        : undefined,
   };
 }
 

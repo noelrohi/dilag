@@ -605,6 +605,17 @@ export const useSessionStore = create<SessionState>()(
               text: "text" in sdkPart ? sdkPart.text : undefined,
               tool: "tool" in sdkPart ? sdkPart.tool : undefined,
               state: "state" in sdkPart ? sdkPart.state : undefined,
+              mime: "mime" in sdkPart ? sdkPart.mime : undefined,
+              url: "url" in sdkPart ? sdkPart.url : undefined,
+              filename: "filename" in sdkPart ? sdkPart.filename : undefined,
+              provider:
+                "provider" in sdkPart && typeof (sdkPart as { provider?: unknown }).provider === "string"
+                  ? (sdkPart as { provider: string }).provider
+                  : undefined,
+              model:
+                "model" in sdkPart && typeof (sdkPart as { model?: unknown }).model === "string"
+                  ? (sdkPart as { model: string }).model
+                  : undefined,
             };
             updatePart(sdkPart.messageID, part);
           }
