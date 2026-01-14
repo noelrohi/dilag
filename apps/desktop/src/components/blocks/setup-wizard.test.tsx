@@ -43,7 +43,7 @@ describe("SetupWizard", () => {
 
       render(<SetupWizard onComplete={mockOnComplete} />);
 
-      expect(screen.getByText("Setting up...")).toBeInTheDocument();
+      expect(screen.getByText("Checking setup...")).toBeInTheDocument();
     });
 
     it("should call onComplete when both dependencies are installed", async () => {
@@ -54,7 +54,7 @@ describe("SetupWizard", () => {
       render(<SetupWizard onComplete={mockOnComplete} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Ready to go")).toBeInTheDocument();
+        expect(screen.getByText("Ready")).toBeInTheDocument();
       });
 
       await waitFor(
@@ -65,7 +65,7 @@ describe("SetupWizard", () => {
       );
     });
 
-    it("should show OpenCode not found when OpenCode is missing", async () => {
+    it("should show missing state when OpenCode is missing", async () => {
       mockInvoke.mockResolvedValueOnce({
         installed: false,
         version: null,
@@ -75,13 +75,15 @@ describe("SetupWizard", () => {
       render(<SetupWizard onComplete={mockOnComplete} />);
 
       await waitFor(() => {
-        expect(screen.getByText("OpenCode not found")).toBeInTheDocument();
+        expect(screen.getByText("Install required dependencies")).toBeInTheDocument();
       });
 
+      expect(mockInvoke).toHaveBeenCalledWith("check_opencode_installation");
+      expect(mockInvoke).toHaveBeenCalledTimes(1);
       expect(mockOnComplete).not.toHaveBeenCalled();
     });
 
-    it("should show Bun not found when OpenCode is installed but Bun is missing", async () => {
+    it("should show missing state when Bun is missing", async () => {
       mockInvoke
         .mockResolvedValueOnce({ installed: true, version: "1.0.0", error: null })
         .mockResolvedValueOnce({
@@ -93,29 +95,16 @@ describe("SetupWizard", () => {
       render(<SetupWizard onComplete={mockOnComplete} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Bun not found")).toBeInTheDocument();
+        expect(screen.getByText("Install required dependencies")).toBeInTheDocument();
       });
 
+      expect(mockInvoke).toHaveBeenCalledWith("check_opencode_installation");
+      expect(mockInvoke).toHaveBeenCalledWith("check_bun_installation");
+      expect(mockInvoke).toHaveBeenCalledTimes(2);
       expect(mockOnComplete).not.toHaveBeenCalled();
     });
 
-    it("should show 'Get Bun' button when Bun is missing", async () => {
-      mockInvoke
-        .mockResolvedValueOnce({ installed: true, version: "1.0.0", error: null })
-        .mockResolvedValueOnce({
-          installed: false,
-          version: null,
-          error: "Bun not found",
-        });
-
-      render(<SetupWizard onComplete={mockOnComplete} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Get Bun")).toBeInTheDocument();
-      });
-    });
-
-    it("should show 'Get OpenCode' button when OpenCode is missing", async () => {
+    it("should show install and skip actions when dependencies are missing", async () => {
       mockInvoke.mockResolvedValueOnce({
         installed: false,
         version: null,
@@ -125,35 +114,37 @@ describe("SetupWizard", () => {
       render(<SetupWizard onComplete={mockOnComplete} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Get OpenCode")).toBeInTheDocument();
+        expect(screen.getByText("Install")).toBeInTheDocument();
+        expect(screen.getByText("Skip")).toBeInTheDocument();
       });
     });
   });
 
   describe("retry functionality", () => {
-    it("should retry checking dependencies when 'Check again' is clicked", async () => {
-      mockInvoke.mockResolvedValue({
-        installed: false,
-        version: null,
-        error: null,
-      });
+    it("should retry checking dependencies when 'Try again' is clicked", async () => {
+      mockInvoke.mockRejectedValueOnce(new Error("Network error"));
 
       render(<SetupWizard onComplete={mockOnComplete} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Check again")).toBeInTheDocument();
+        expect(screen.getByText("Try again")).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText("Check again"));
+      mockInvoke.mockResolvedValueOnce({ installed: true, version: "1.0.0", error: null });
+      mockInvoke.mockResolvedValueOnce({ installed: true, version: "1.1.0", error: null });
+
+      fireEvent.click(screen.getByText("Try again"));
 
       await waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledTimes(2);
+        expect(mockInvoke).toHaveBeenCalledWith("check_opencode_installation");
       });
+
+      expect(mockInvoke).toHaveBeenCalledTimes(3);
     });
   });
 
   describe("continue anyway", () => {
-    it("should allow user to continue anyway when dependency is missing", async () => {
+    it("should allow user to skip setup when dependency is missing", async () => {
       mockInvoke.mockResolvedValue({
         installed: false,
         version: null,
@@ -163,10 +154,10 @@ describe("SetupWizard", () => {
       render(<SetupWizard onComplete={mockOnComplete} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Continue anyway")).toBeInTheDocument();
+        expect(screen.getByText("Skip")).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText("Continue anyway"));
+      fireEvent.click(screen.getByText("Skip"));
 
       expect(mockOnComplete).toHaveBeenCalled();
     });
@@ -179,23 +170,8 @@ describe("SetupWizard", () => {
       render(<SetupWizard onComplete={mockOnComplete} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-      });
-    });
-
-    it("should show PATH issue hint when error suggests it", async () => {
-      mockInvoke.mockResolvedValueOnce({
-        installed: false,
-        version: null,
-        error: "No such file or directory",
-      });
-
-      render(<SetupWizard onComplete={mockOnComplete} />);
-
-      await waitFor(() => {
-        expect(
-          screen.getByText(/may be installed but not in your PATH/i)
-        ).toBeInTheDocument();
+        expect(screen.getByText("Setup failed")).toBeInTheDocument();
+        expect(screen.getByText("Network error")).toBeInTheDocument();
       });
     });
   });

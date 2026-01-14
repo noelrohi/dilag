@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 
 vi.mock("@/context/global-events", () => ({
-  useGlobalEvents: vi.fn(() => ({ isServerReady: true })),
+  useGlobalEvents: vi.fn(() => ({
+    isServerReady: true,
+    subscribeToSession: vi.fn(() => () => {}),
+  })),
   useSDK: vi.fn(() => mockSDK),
   useConnectionStatus: vi.fn(() => ({ connectionStatus: "connected" })),
 }));
@@ -23,7 +26,13 @@ vi.mock("@/hooks/use-session-data", () => ({
 
 vi.mock("@/hooks/use-models", () => ({
   useModelStore: {
-    getState: vi.fn(() => ({ selectedModel: null })),
+    getState: vi.fn(() => ({ selectedModel: null, variants: {} })),
+  },
+}));
+
+vi.mock("@/hooks/use-agents", () => ({
+  useAgentStore: {
+    getState: vi.fn(() => ({ selectedAgent: null })),
   },
 }));
 
@@ -49,6 +58,7 @@ const mockSessions = [
 import { useSessions } from "./use-sessions";
 import { useSessionStore } from "@/context/session-store";
 import { useModelStore } from "@/hooks/use-models";
+import { useCurrentSession } from "@/hooks/use-session-data";
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -77,7 +87,7 @@ describe("use-sessions", () => {
       debugEvents: [],
     });
 
-    (useModelStore.getState as Mock).mockReturnValue({ selectedModel: null });
+    (useModelStore.getState as Mock).mockReturnValue({ selectedModel: null, variants: {} });
   });
 
   describe("sendMessage", () => {
@@ -101,6 +111,7 @@ describe("use-sessions", () => {
     it("should use opencode provider when selected", async () => {
       (useModelStore.getState as Mock).mockReturnValue({
         selectedModel: { providerID: "opencode", modelID: "big-pickle" },
+        variants: {},
       });
 
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() });
@@ -122,6 +133,7 @@ describe("use-sessions", () => {
     it("should use selected model when non-opencode provider", async () => {
       (useModelStore.getState as Mock).mockReturnValue({
         selectedModel: { providerID: "google", modelID: "gemini-2.5-flash" },
+        variants: {},
       });
 
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() });
@@ -155,7 +167,8 @@ describe("use-sessions", () => {
     });
 
     it("should not send message when currentSession is null", async () => {
-      useSessionStore.setState({ currentSessionId: null });
+      useSessionStore.setState({ currentSessionId: "session-1" });
+      (useCurrentSession as unknown as Mock).mockReturnValueOnce(null);
 
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() });
 
@@ -192,7 +205,7 @@ describe("use-sessions", () => {
       expect(mockSDK.session.prompt).toHaveBeenCalledWith(
         expect.objectContaining({
           parts: [
-            { type: "text", text: "Hello with image" },
+            { type: "text", text: "[Use web-design skill]\n\nHello with image" },
             { type: "file", mime: "image/png", url: "data:image/png;base64,abc", filename: "test.png" },
           ],
         })
