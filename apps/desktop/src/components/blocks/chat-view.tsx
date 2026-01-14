@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Terminal,
@@ -16,6 +16,10 @@ import {
   useSessionError,
   useSessionRevert,
   useSessionStore,
+  usePendingPermissions,
+  usePendingQuestions,
+  useRunningPermissionTools,
+  useRunningQuestionTools,
   type Message as SessionMessage,
 } from "@/context/session-store";
 import { Button } from "@/components/ui/button";
@@ -86,6 +90,65 @@ function wouldRenderContent(part: MessagePartType): boolean {
   }
 }
 
+const BUSY_FALLBACKS = [
+  "Thinking",
+  "Designing",
+  "Sketching",
+  "Refining",
+  "Polishing",
+  "Exploring",
+  "Planning",
+  "Cooking",
+] as const;
+
+function formatToolActivity(tool: string): string {
+  switch (tool) {
+    case "bash":
+      return "Running command";
+    case "read":
+    case "glob":
+    case "grep":
+      return "Searching project";
+    case "edit":
+    case "write":
+      return "Editing files";
+    case "webfetch":
+    case "websearch":
+      return "Browsing";
+    case "task":
+      return "Working";
+    default:
+      return `Running ${tool}`;
+  }
+}
+
+function useBusyFallbackOnce(active: boolean): string {
+  const [label, setLabel] = useState<string>(BUSY_FALLBACKS[0]);
+  const prevActiveRef = useRef(false);
+  const lastLabelRef = useRef<string>(label);
+
+  useEffect(() => {
+    lastLabelRef.current = label;
+  }, [label]);
+
+  useEffect(() => {
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = active;
+
+    // Pick once when we *enter* active state.
+    if (active && !wasActive) {
+      let next = lastLabelRef.current;
+      // Avoid repeating the same label when possible
+      for (let attempts = 0; attempts < 5 && next === lastLabelRef.current; attempts++) {
+        next = BUSY_FALLBACKS[Math.floor(Math.random() * BUSY_FALLBACKS.length)];
+      }
+      setLabel(next);
+    }
+  }, [active]);
+
+  return label;
+}
+
 function ThinkingIndicator() {
   return (
     <div className="flex items-center gap-3 py-4 animate-slide-up">
@@ -128,19 +191,47 @@ function InlineErrorCard({ error }: { error: { name: string; message: string } }
 }
 
 // Component to show total session duration (from first message to current message completion)
-function MessageDuration({ message, sessionStartTime }: { message: SessionMessage; sessionStartTime: number }) {
+function MessageDuration({
+  message,
+  sessionStartTime,
+  activityLabel,
+}: {
+  message: SessionMessage;
+  sessionStartTime: number;
+  activityLabel?: string;
+}) {
   const startTime = sessionStartTime;
-  const endTime = message.isStreaming ? undefined : (message.time.completed || Date.now());
+  // Only freeze the timer when the message is actually marked completed.
+  // Using Date.now() here causes the display to "stick" and then jump when rerendered.
+  const endTime = message.time.completed;
   const elapsed = useElapsedTime(startTime, endTime);
+  const showActivity = endTime === undefined && !!activityLabel;
+  const isActive = endTime === undefined;
 
   return (
-    <div className="flex justify-start py-2">
-      <span className="inline-flex items-center gap-1.5 text-muted-foreground/60">
-        <DilagIcon animated={message.isStreaming} className="size-3.5" />
-        <span className="font-mono text-xs tabular-nums tracking-tight">
+    <div className="flex items-center gap-2.5 pt-3 pb-1">
+      <DilagIcon
+        animated={isActive}
+        className={cn(
+          "size-3.5 transition-colors duration-300",
+          isActive ? "text-primary" : "text-muted-foreground"
+        )}
+      />
+      <div className="flex items-baseline gap-1.5">
+        {showActivity && (
+          <span className="text-[13px] text-muted-foreground">
+            {activityLabel}
+          </span>
+        )}
+        <span
+          className={cn(
+            "font-mono text-[13px] tabular-nums tracking-tight transition-colors duration-300",
+            isActive ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
           {elapsed}
         </span>
-      </span>
+      </div>
     </div>
   );
 }
@@ -201,6 +292,7 @@ function UserMessage({
   onRevert,
   onCopyText,
   onOpenTimeline,
+  hideActions,
 }: {
   message: SessionMessage;
   index: number;
@@ -208,6 +300,7 @@ function UserMessage({
   onRevert: (messageId: string) => void;
   onCopyText: (messageId: string) => void;
   onOpenTimeline: () => void;
+  hideActions?: boolean;
 }) {
   const parts = useMessageParts(message.id);
   const rawTextContent = extractTextFromParts(parts);
@@ -254,20 +347,22 @@ function UserMessage({
           </p>
         )}
       </MessageContent>
-      <MessageActions>
-        <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
-          <Copy className="size-3.5" />
-        </MessageAction>
-        <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
-          <GitFork className="size-3.5" />
-        </MessageAction>
-        <MessageAction tooltip="Revert to here" onClick={() => onRevert(message.id)}>
-          <Undo2 className="size-3.5" />
-        </MessageAction>
-        <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
-          <History className="size-3.5" />
-        </MessageAction>
-      </MessageActions>
+      {!hideActions && (
+        <MessageActions>
+          <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
+            <Copy className="size-3.5" />
+          </MessageAction>
+          <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
+            <GitFork className="size-3.5" />
+          </MessageAction>
+          <MessageAction tooltip="Revert to here" onClick={() => onRevert(message.id)}>
+            <Undo2 className="size-3.5" />
+          </MessageAction>
+          <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
+            <History className="size-3.5" />
+          </MessageAction>
+        </MessageActions>
+      )}
     </Message>
   );
 }
@@ -279,6 +374,7 @@ function AssistantMessage({
   isLast,
   showTimer,
   sessionStartTime,
+  activityLabel,
   onFork,
   onCopyText,
   onOpenTimeline,
@@ -288,12 +384,14 @@ function AssistantMessage({
   isLast: boolean;
   showTimer: boolean;
   sessionStartTime: number;
+  activityLabel?: string;
   onFork: (messageId: string) => void;
   onCopyText: (messageId: string) => void;
   onOpenTimeline: () => void;
 }) {
   const parts = useMessageParts(message.id);
   const sessionError = useSessionError(message.sessionID);
+  const renderableParts = parts.filter(wouldRenderContent);
 
   return (
     <Message
@@ -302,20 +400,18 @@ function AssistantMessage({
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
       <MessageContent className="space-y-2 w-full">
-        {parts
-          .filter(wouldRenderContent)
-          .map((part, partIndex) => (
-            <div
-              key={part.id}
-              className="animate-stream-in"
-              style={{ animationDelay: `${partIndex * 50}ms` }}
-            >
-              <MessagePart part={part} />
-            </div>
-          ))}
+        {renderableParts.map((part, partIndex) => (
+          <div
+            key={part.id}
+            className="animate-stream-in"
+            style={{ animationDelay: `${partIndex * 50}ms` }}
+          >
+            <MessagePart part={part} />
+          </div>
+        ))}
 
-        {/* Thinking indicator - show when streaming and no parts yet */}
-        {message.isStreaming && parts.length === 0 && <ThinkingIndicator />}
+        {/* Thinking indicator - show when streaming and no renderable parts yet */}
+        {message.isStreaming && renderableParts.length === 0 && <ThinkingIndicator />}
 
         {/* Inline error - show on last assistant message when session has error */}
         {isLast && !message.isStreaming && sessionError && (
@@ -336,7 +432,13 @@ function AssistantMessage({
         </MessageActions>
       )}
       {/* Duration timer - only show on last assistant message before next user message */}
-      {showTimer && <MessageDuration message={message} sessionStartTime={sessionStartTime} />}
+      {showTimer && (
+        <MessageDuration
+          message={message}
+          sessionStartTime={sessionStartTime}
+          activityLabel={activityLabel}
+        />
+      )}
     </Message>
   );
 }
@@ -610,6 +712,7 @@ export function ChatView() {
     forkSession,
     revertToMessage,
     unrevertSession,
+    sessionStatus,
   } = useSessions();
 
   const navigate = useNavigate();
@@ -660,6 +763,64 @@ export function ChatView() {
     localStorage.getItem("dilag-initial-prompt") ||
     localStorage.getItem("dilag-initial-files")
   );
+
+  const firstUserMessageId = useMemo(() => messages.find((m) => m.role === "user")?.id, [messages]);
+  const hideInitialMessageActions = useMemo(() => {
+    const userCount = messages.reduce((count, message) => count + (message.role === "user" ? 1 : 0), 0);
+    if (userCount !== 1) return false;
+
+    const firstAssistant = messages.find((m) => m.role === "assistant");
+    if (!firstAssistant) return false;
+
+    const hasCompletedAssistant = messages.some(
+      (m) => m.role === "assistant" && m.time.completed !== undefined
+    );
+    if (hasCompletedAssistant) return false;
+
+    return firstAssistant.isStreaming && firstAssistant.time.completed === undefined;
+  }, [messages]);
+
+  // Activity cues (derived from available session events/state)
+  const pendingPermissions = usePendingPermissions(currentSessionId);
+  const pendingQuestions = usePendingQuestions(currentSessionId);
+  const runningPermissionTools = useRunningPermissionTools(currentSessionId);
+  const runningQuestionTools = useRunningQuestionTools(currentSessionId);
+  const busyFallbackOnce = useBusyFallbackOnce(isLoading);
+
+  const activityLabel = useMemo(() => {
+    if (!isLoading) return undefined;
+
+    if (pendingQuestions.length > 0) {
+      return "Waiting for your answer";
+    }
+
+    if (pendingPermissions.length > 0) {
+      return "Waiting for permission";
+    }
+
+    if (runningPermissionTools.length > 0) {
+      const oldest = [...runningPermissionTools].sort((a, b) => a.startTime - b.startTime)[0];
+      return formatToolActivity(oldest.tool);
+    }
+
+    if (runningQuestionTools.length > 0) {
+      return "Preparing questions";
+    }
+
+    if (sessionStatus === "running") {
+      return "Thinking";
+    }
+
+    return busyFallbackOnce;
+  }, [
+    isLoading,
+    pendingQuestions.length,
+    pendingPermissions.length,
+    runningPermissionTools,
+    runningQuestionTools.length,
+    sessionStatus,
+    busyFallbackOnce,
+  ]);
 
   // Memoize turn start times (each user message starts a new turn)
   // Returns the most recent user message timestamp before a given index
@@ -730,6 +891,7 @@ export function ChatView() {
                     onRevert={handleRevert}
                     onCopyText={handleCopyText}
                     onOpenTimeline={handleOpenTimeline}
+                    hideActions={hideInitialMessageActions && message.id === firstUserMessageId}
                   />
                 ) : (
                   <AssistantMessage
@@ -739,6 +901,13 @@ export function ChatView() {
                     isLast={isLastAssistant}
                     showTimer={showTimer}
                     sessionStartTime={getTurnStartTime(index)}
+                    activityLabel={
+                      isLastAssistant &&
+                      isLoading &&
+                      message.time.completed === undefined
+                        ? activityLabel
+                        : undefined
+                    }
                     onFork={handleFork}
                     onCopyText={handleCopyText}
                     onOpenTimeline={handleOpenTimeline}
