@@ -3,13 +3,13 @@ import Link from 'next/link'
 import { DilagLogo } from '@/components/dilag-logo'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DOWNLOAD_URL } from '@/lib/constants'
 import React from 'react'
 import { cn } from '@/lib/utils'
 
 const menuItems = [
     { name: 'Pricing', href: '/pricing' },
     { name: 'FAQ', href: '/faq' },
+    { name: 'Download', href: '/download' },
     { name: 'GitHub', href: 'https://github.com/noelrohi/dilag' },
 ]
 
@@ -81,9 +81,9 @@ export const HeroHeader = () => {
                                 <Button
                                     asChild
                                     size="sm">
-                                    <a href={DOWNLOAD_URL}>
-                                        <span>Download</span>
-                                    </a>
+                                    <Link href="/sign-in">
+                                        <span>Get Started</span>
+                                    </Link>
                                 </Button>
                             </div>
                         </div>

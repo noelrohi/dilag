@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 
 // Types matching Rust LicenseStatus enum
 export type LicenseStatus =
@@ -141,6 +142,35 @@ export function LicenseProvider({ children }: LicenseProviderProps) {
 
     return () => clearInterval(interval);
   }, [state.status?.type, validateLicense]);
+
+  // Listen for deep link activation events
+  useEffect(() => {
+    const unlisten = onOpenUrl((urls) => {
+      for (const url of urls) {
+        // Parse URL: dilag://activate?key=LICENSE_KEY
+        if (url.startsWith("dilag://activate")) {
+          let key: string | null = null;
+          try {
+            const urlObj = new URL(url);
+            key = urlObj.searchParams.get("key");
+          } catch (error) {
+            console.warn("[deep-link] Invalid activation URL:", url, error);
+          }
+
+          if (key) {
+            console.log("[deep-link] Received license key for activation");
+            activateLicense(key)
+              .then(() => console.log("[deep-link] License activated successfully"))
+              .catch((error) => console.error("[deep-link] Failed to activate license:", error));
+          }
+        }
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [activateLicense]);
 
   const isTrialActive = state.status?.type === "Trial";
   const isActivated = state.status?.type === "Activated";

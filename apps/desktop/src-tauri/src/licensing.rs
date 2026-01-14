@@ -16,13 +16,9 @@ use std::path::PathBuf;
 // ============================================================================
 
 /// Whether to use Polar sandbox
-/// In release builds, defaults to production. In debug builds, defaults to sandbox.
+/// Set to true only for testing against Polar sandbox environment.
 /// Override by setting POLAR_USE_SANDBOX environment variable at compile time.
-#[cfg(debug_assertions)]
-const USE_SANDBOX: bool = true; // Debug mode: use sandbox by default
-
-#[cfg(not(debug_assertions))]
-const USE_SANDBOX: bool = false; // Release mode: use production by default
+const USE_SANDBOX: bool = false; // Always use production Polar API
 
 // Sandbox credentials (defaults for development)
 const DEFAULT_SANDBOX_ORG_ID: &str = "7a87a3ca-b5b5-4291-aa65-cf8ed697d0f3";
@@ -44,15 +40,20 @@ const PROD_API: &str = "https://api.polar.sh";
 // Set DILAG_API_URL at compile time to override (e.g., in GitHub Actions)
 // Debug: defaults to localhost:3000
 // Release: defaults to dilag.noelrohi.com
+#[allow(dead_code)]
 const DEFAULT_DEV_API_URL: &str = "http://localhost:3000";
+#[allow(dead_code)]
 const DEFAULT_PROD_API_URL: &str = "https://dilag.noelrohi.com";
 
 fn get_dilag_api_base() -> &'static str {
-    option_env!("DILAG_API_URL").unwrap_or(if USE_SANDBOX {
-        DEFAULT_DEV_API_URL
-    } else {
-        DEFAULT_PROD_API_URL
-    })
+    #[cfg(debug_assertions)]
+    {
+        option_env!("DILAG_API_URL").unwrap_or(DEFAULT_DEV_API_URL)
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        option_env!("DILAG_API_URL").unwrap_or(DEFAULT_PROD_API_URL)
+    }
 }
 
 fn get_trial_api_url() -> String {
@@ -137,6 +138,19 @@ struct PolarActivationRequest {
 #[derive(Debug, Deserialize)]
 struct PolarValidationResponse {
     status: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct PolarActivationInfo {
+    id: String,
+    label: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct PolarFullValidationResponse {
+    status: String,
+    activations: Option<Vec<PolarActivationInfo>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -283,13 +297,14 @@ async fn activate_with_polar(license_key: &str) -> Result<String, String> {
         label: device_id,
     };
 
+    let url = get_activation_url();
     let response = client
-        .post(get_activation_url())
+        .post(&url)
         .json(&request_body)
         .timeout(std::time::Duration::from_secs(10))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {} (url: {})", e, url))?;
 
     if response.status().is_client_error() {
         let status_code = response.status().as_u16();
@@ -363,6 +378,51 @@ async fn validate_with_polar(license_key: &str) -> Result<bool, String> {
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
     Ok(validation.status == "granted")
+}
+
+/// Check if the current device is already activated for this license key
+/// Returns Some(activation_id) if already activated, None otherwise
+async fn check_device_activation(license_key: &str) -> Result<Option<String>, String> {
+    let org_id = get_polar_org_id();
+    if org_id.is_empty() {
+        return Err("Polar organization ID not configured".to_string());
+    }
+
+    let device_id = get_device_id()?;
+    let client = reqwest::Client::new();
+
+    let request_body = PolarValidationRequest {
+        key: license_key.to_string(),
+        organization_id: org_id.to_string(),
+    };
+
+    let response = client
+        .post(get_validation_url())
+        .json(&request_body)
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err("Failed to check activation status".to_string());
+    }
+
+    let validation: PolarFullValidationResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    // Check if current device is already in the activations list
+    if let Some(activations) = validation.activations {
+        for activation in activations {
+            if activation.label == device_id {
+                return Ok(Some(activation.id));
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 /// Register trial with the Dilag server
@@ -519,9 +579,24 @@ pub async fn start_trial() -> Result<LicenseStatus, String> {
 
 #[tauri::command]
 pub async fn activate_license(key: String) -> Result<LicenseStatus, String> {
-    let activation_id = activate_with_polar(&key).await?;
     let device_id = get_device_id()?;
     let current_time = get_current_timestamp();
+
+    // First check if this device is already activated for this license
+    let activation_id = match check_device_activation(&key).await {
+        Ok(Some(existing_id)) => {
+            // Device already activated, reuse existing activation
+            existing_id
+        }
+        Ok(None) => {
+            // Device not activated, create new activation
+            activate_with_polar(&key).await?
+        }
+        Err(_) => {
+            // Couldn't check, try to activate (may fail if limit reached)
+            activate_with_polar(&key).await?
+        }
+    };
 
     let mut state = load_license_state()?;
     state.license_key = Some(key);

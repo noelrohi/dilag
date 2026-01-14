@@ -1,12 +1,30 @@
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { DilagLogo } from "@/components/dilag-logo";
+import { auth } from "@/lib/auth";
+import { hasCompletedOnboarding } from "@/lib/polar";
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Redirect authenticated users
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (session?.user) {
+    // Check if user has completed onboarding (has subscription/order in Polar)
+    const isOnboarded = await hasCompletedOnboarding(session.user.email);
+    if (isOnboarded) {
+      redirect("/dashboard");
+    } else {
+      redirect("/onboarding");
+    }
+  }
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Branding */}
@@ -43,9 +61,9 @@ export default function AuthLayout({
             <div className="relative animate-slide-up delay-200">
               {/* Large decorative logo */}
               <div className="relative">
-                <DilagLogo className="w-48 h-48 xl:w-56 xl:h-56 opacity-90" />
+                <DilagLogo solid className="w-48 h-48 xl:w-56 xl:h-56 opacity-90" />
                 {/* Glow behind logo */}
-                <div className="absolute inset-0 bg-primary/20 blur-3xl scale-150 animate-glow-pulse" />
+                <div className="pointer-events-none absolute inset-0 -z-10 bg-primary/20 blur-3xl scale-150 animate-glow-pulse" />
               </div>
             </div>
           </div>
@@ -53,12 +71,12 @@ export default function AuthLayout({
           {/* Tagline */}
           <div className="space-y-4 animate-slide-up delay-300">
             <h1 className="text-4xl xl:text-5xl font-bold tracking-tight leading-tight">
-              Design apps
+              Design that ships.
               <br />
-              <span className="text-gradient">with natural language</span>
+              <span className="text-gradient">Faster.</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-md">
-              Describe your idea and watch beautiful mobile and web UI designs come to life.
+              Turn a rough idea into polished screens, flows, and components—then export and move on.
             </p>
           </div>
         </div>

@@ -15,6 +15,9 @@ mod zoom;
 
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{Emitter, Manager, TitleBarStyle};
+#[cfg(desktop)]
+#[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+use tauri_plugin_deep_link::DeepLinkExt;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -25,6 +28,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_deep_link::init())
         .manage(state::AppState::new())
         .setup(|app| {
             let menu = menu::setup_menu(app.handle())?;
@@ -68,6 +72,13 @@ pub fn run() {
 
             #[cfg(not(target_os = "macos"))]
             let _ = window;
+
+            // Register deep link schemes at runtime for development on Windows/Linux
+            #[cfg(desktop)]
+            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+            {
+                let _ = app.deep_link().register_all();
+            }
 
             Ok(())
         })
@@ -159,3 +170,5 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+

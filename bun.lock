@@ -9,7 +9,7 @@
     },
     "apps/desktop": {
       "name": "@dilag/desktop",
-      "version": "0.3.7",
+      "version": "0.3.9",
       "dependencies": {
         "@opencode-ai/sdk": "^1.1.8",
         "@phosphor-icons/react": "^2.1.10",
@@ -34,6 +34,7 @@
         "@tanstack/react-query-devtools": "^5.91.1",
         "@tanstack/react-router": "^1.141.2",
         "@tauri-apps/api": "^2",
+        "@tauri-apps/plugin-deep-link": "^2",
         "@tauri-apps/plugin-dialog": "^2.5.0",
         "@tauri-apps/plugin-fs": "^2.4.5",
         "@tauri-apps/plugin-opener": "^2",
@@ -773,6 +774,8 @@
     "@tauri-apps/cli-win32-ia32-msvc": ["@tauri-apps/cli-win32-ia32-msvc@2.9.6", "", { "os": "win32", "cpu": "ia32" }, "sha512-S4pT0yAJgFX8QRCyKA1iKjZ9Q/oPjCZf66A/VlG5Yw54Nnr88J1uBpmenINbXxzyhduWrIXBaUbEY1K80ZbpMg=="],
 
     "@tauri-apps/cli-win32-x64-msvc": ["@tauri-apps/cli-win32-x64-msvc@2.9.6", "", { "os": "win32", "cpu": "x64" }, "sha512-ldWuWSSkWbKOPjQMJoYVj9wLHcOniv7diyI5UAJ4XsBdtaFB0pKHQsqw/ItUma0VXGC7vB4E9fZjivmxur60aw=="],
+
+    "@tauri-apps/plugin-deep-link": ["@tauri-apps/plugin-deep-link@2.4.6", "", { "dependencies": { "@tauri-apps/api": "^2.8.0" } }, "sha512-UUOSt0U5juK20uhO2MoHZX/IPblkrhUh+VPtIeu3RwtzI0R9Em3Auzfg/PwcZ9Pv8mLne3cQ4p9CFXD6WxqCZA=="],
 
     "@tauri-apps/plugin-dialog": ["@tauri-apps/plugin-dialog@2.5.0", "", { "dependencies": { "@tauri-apps/api": "^2.8.0" } }, "sha512-I0R0ygwRd9AN8Wj5GnzCogOlqu2+OWAtBd0zEC4+kQCI32fRowIyuhPCBoUv4h/lQt2bM39kHlxPHD5vDcFjiA=="],
 

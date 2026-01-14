@@ -58,8 +58,14 @@ export const auth = betterAuth({
         checkout({
           products: [
             {
-              productId: process.env.NEXT_PUBLIC_POLAR_PRODUCT_ID!,
-              slug: "pro",
+              // Pro Monthly - $9.99/month with 7-day free trial
+              productId: process.env.NEXT_PUBLIC_POLAR_MONTHLY_PRODUCT_ID!,
+              slug: "pro-monthly",
+            },
+            {
+              // Pro Lifetime - $49 one-time purchase
+              productId: process.env.NEXT_PUBLIC_POLAR_LIFETIME_PRODUCT_ID!,
+              slug: "pro-lifetime",
             },
           ],
           successUrl: "/success?checkout_id={CHECKOUT_ID}",
@@ -71,10 +77,32 @@ export const auth = betterAuth({
         webhooks({
           secret: process.env.POLAR_WEBHOOK_SECRET!,
           onOrderPaid: async (payload) => {
-            console.log("Order paid:", payload.data.id);
-          },
-          onSubscriptionActive: async (payload) => {
-            console.log("Subscription active:", payload.data.id);
+            const order = payload.data;
+            console.log("Order paid:", order.id, "Product:", order.productId);
+            
+            // If lifetime purchase, cancel any active subscriptions
+            const lifetimeProductId = process.env.NEXT_PUBLIC_POLAR_LIFETIME_PRODUCT_ID;
+            if (order.productId === lifetimeProductId && order.customerId) {
+              console.log("Lifetime purchase detected, checking for active subscriptions...");
+              
+              try {
+                const subscriptions = await polarClient.subscriptions.list({
+                  customerId: order.customerId,
+                  active: true,
+                });
+                
+                for (const sub of subscriptions.result.items) {
+                  console.log("Revoking subscription:", sub.id);
+                  await polarClient.subscriptions.revoke({ id: sub.id });
+                }
+                
+                if (subscriptions.result.items.length > 0) {
+                  console.log(`Canceled ${subscriptions.result.items.length} subscription(s)`);
+                }
+              } catch (error) {
+                console.error("Failed to cancel subscriptions:", error);
+              }
+            }
           },
         }),
       ],
