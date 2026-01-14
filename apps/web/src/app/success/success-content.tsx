@@ -1,19 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Button } from "@dilag/ui";
-import { SiteHeader } from "@/components/site-header";
-import { DilagLogo } from "@/components/dilag-logo";
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { DOWNLOAD_URL } from "@/lib/constants";
-import {
-  CheckCircle,
-  Copy,
-  Check,
-  ArrowSquareOut,
-  DownloadSimple,
-  Key,
-} from "@phosphor-icons/react";
+import { Check, Copy } from "@phosphor-icons/react";
 import type { LicenseKey } from "@/lib/polar";
 
 interface SuccessContentProps {
@@ -28,10 +19,22 @@ interface SuccessContentProps {
 
 export function SuccessContent({ user, licenseKey, isFromDesktop }: SuccessContentProps) {
   const [copied, setCopied] = useState(false);
+  const [opened, setOpened] = useState(false);
+
+  // Auto-trigger deep link for desktop users
+  useEffect(() => {
+    if (isFromDesktop && licenseKey?.key && !opened) {
+      setOpened(true);
+      // Small delay to let the page render first
+      const timer = setTimeout(() => {
+        window.location.href = `dilag://activate?key=${encodeURIComponent(licenseKey.key)}`;
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isFromDesktop, licenseKey, opened]);
 
   const handleCopyKey = async () => {
     if (!licenseKey?.key) return;
-
     try {
       await navigator.clipboard.writeText(licenseKey.key);
       setCopied(true);
@@ -47,141 +50,149 @@ export function SuccessContent({ user, licenseKey, isFromDesktop }: SuccessConte
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Background */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-background" />
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-emerald-500/5 rounded-full blur-[120px]" />
-        <div className="absolute inset-0 grain" />
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Subtle background glow */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/8 rounded-full blur-[100px]" />
       </div>
 
-      <SiteHeader user={user} />
-
-      <main className="max-w-lg mx-auto px-6 pt-28 pb-16">
-        {/* Success header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10 mb-6">
-            <CheckCircle weight="fill" className="w-8 h-8 text-emerald-500" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">
-            You&apos;re all set!
-          </h1>
-          <p className="text-muted-foreground">
-            {isFromDesktop
-              ? "Your trial has started. Open Dilag to begin designing."
-              : "Your trial has started. You can now use Dilag."}
-          </p>
-        </div>
-
-        {/* License key card */}
-        {licenseKey && (
-          <div className="rounded-2xl border border-border bg-card/50 p-6 mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Key weight="duotone" className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="font-semibold">Your License Key</h2>
-                <p className="text-sm text-muted-foreground">
-                  Use this to activate Dilag
-                </p>
-              </div>
-            </div>
-
-            {/* License key display */}
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 font-mono text-sm mb-4">
-              <code className="flex-1 truncate">{licenseKey.key}</code>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0"
-                onClick={handleCopyKey}
+      {/* Main content - vertically centered */}
+      <main className="flex-1 flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-sm text-center">
+          {/* Animated success icon */}
+          <div className="relative mb-8 inline-block">
+            <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-emerald-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {copied ? (
-                  <Check className="w-4 h-4 text-emerald-500" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-
-            {/* Actions */}
-            {isFromDesktop ? (
-              <Button className="w-full gap-2" onClick={handleOpenInDilag}>
-                <DilagLogo className="w-4 h-4" />
-                Open in Dilag
-              </Button>
-            ) : (
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1 gap-2" asChild>
-                  <a href={DOWNLOAD_URL}>
-                    <DownloadSimple weight="bold" className="w-4 h-4" />
-                    Download
-                  </a>
-                </Button>
-                <Button className="flex-1 gap-2" onClick={handleCopyKey}>
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copy Key
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* No license key - show download/dashboard links */}
-        {!licenseKey && (
-          <div className="rounded-2xl border border-border bg-card/50 p-6 mb-6 text-center">
-            <p className="text-muted-foreground mb-4">
-              Your license key will be available shortly. Check your email or visit the dashboard.
-            </p>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" asChild>
-                <a href={DOWNLOAD_URL}>
-                  <DownloadSimple weight="bold" className="w-4 h-4 mr-2" />
-                  Download
-                </a>
-              </Button>
-              <Button className="flex-1" asChild>
-                <Link href="/dashboard">Go to Dashboard</Link>
-              </Button>
+                <polyline 
+                  points="20 6 9 17 4 12" 
+                  className="animate-[draw_0.5s_ease-out_0.3s_forwards]"
+                  style={{ 
+                    strokeDasharray: 24, 
+                    strokeDashoffset: 24,
+                  }}
+                />
+              </svg>
             </div>
           </div>
-        )}
 
-        {/* Help text for desktop flow */}
-        {isFromDesktop && licenseKey && (
-          <p className="text-center text-sm text-muted-foreground mb-6">
-            Didn&apos;t open?{" "}
-            <button
-              onClick={handleCopyKey}
-              className="text-primary hover:text-primary/80 font-medium transition-colors"
-            >
-              Copy the key
-            </button>{" "}
-            and paste it in Dilag manually.
+          {/* Heading */}
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">
+            You&apos;re all set
+          </h1>
+          <p className="text-muted-foreground text-sm mb-10">
+            {isFromDesktop 
+              ? "Opening Dilag..." 
+              : "Your trial is ready. Download the app to start designing."}
           </p>
-        )}
 
-        {/* Links */}
-        <div className="flex items-center justify-center gap-4 text-sm">
-          <Link
-            href="/dashboard"
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-          >
-            Go to Dashboard
-            <ArrowSquareOut weight="bold" className="w-3 h-3" />
-          </Link>
+          {/* License key - minimal display */}
+          {licenseKey && (
+            <div className="mb-8">
+              <p className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-2">
+                License Key
+              </p>
+              <button
+                onClick={handleCopyKey}
+                className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+              >
+                <code className="text-sm font-mono text-foreground/80">
+                  {licenseKey.key.slice(0, 8)}...{licenseKey.key.slice(-4)}
+                </code>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                  {copied ? (
+                    <Check className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </span>
+              </button>
+              {copied && (
+                <p className="text-xs text-emerald-500 mt-2 animate-in fade-in">
+                  Copied to clipboard
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Primary action */}
+          {isFromDesktop ? (
+            <div className="space-y-4">
+              <button
+                onClick={handleOpenInDilag}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors"
+              >
+                Open Dilag
+                <ArrowSquareOut weight="bold" className="w-4 h-4" />
+              </button>
+              <p className="text-xs text-muted-foreground">
+                Didn&apos;t work?{" "}
+                <button
+                  onClick={handleCopyKey}
+                  className="text-foreground hover:underline"
+                >
+                  Copy the key
+                </button>{" "}
+                and paste it manually.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <a
+                href={DOWNLOAD_URL}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors"
+              >
+                Download Dilag
+              </a>
+              <p className="text-xs text-muted-foreground">
+                macOS &middot; Apple Silicon &amp; Intel
+              </p>
+            </div>
+          )}
+
+          {/* No license key state */}
+          {!licenseKey && (
+            <div className="text-sm text-muted-foreground">
+              <p className="mb-4">
+                Your license key is being generated...
+              </p>
+              <Link
+                href="/dashboard"
+                className="text-foreground hover:underline"
+              >
+                Go to Dashboard
+              </Link>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Minimal footer */}
+      <footer className="py-6 text-center">
+        <Link
+          href="/dashboard"
+          className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+        >
+          Go to Dashboard
+        </Link>
+      </footer>
+
+      {/* Checkmark animation keyframes */}
+      <style jsx>{`
+        @keyframes draw {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }

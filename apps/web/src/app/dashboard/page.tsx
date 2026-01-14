@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { getLicenseKeysForUser } from "@/lib/polar";
+import { getLicenseKeysForUser, hasCompletedOnboarding } from "@/lib/polar";
 import { DashboardContent } from "./dashboard-content";
 
 export default async function DashboardPage() {
@@ -11,6 +11,12 @@ export default async function DashboardPage() {
 
   if (!session?.user) {
     redirect("/sign-in");
+  }
+
+  // Check if user has completed onboarding (has subscription/order in Polar)
+  const isOnboarded = await hasCompletedOnboarding(session.user.email);
+  if (!isOnboarded) {
+    redirect("/onboarding");
   }
 
   // Fetch license keys

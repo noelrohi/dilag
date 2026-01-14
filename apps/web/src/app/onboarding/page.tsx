@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { getLicenseKeysForUser } from "@/lib/polar";
+import { hasCompletedOnboarding } from "@/lib/polar";
 import { OnboardingForm } from "./onboarding-form";
 
 interface PageProps {
@@ -22,10 +22,16 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
     redirect(isFromDesktop ? "/sign-up?from=desktop" : "/sign-up");
   }
 
-  // Check if user already has a license key
-  const licenseKeys = await getLicenseKeysForUser(session.user.email);
-  if (licenseKeys.length > 0) {
-    redirect(isFromDesktop ? "/success?from=desktop" : "/success");
+  // Check if user already completed onboarding (has subscription/order in Polar)
+  const isOnboarded = await hasCompletedOnboarding(session.user.email);
+  
+  if (isOnboarded) {
+    // Desktop users go to success (triggers deep link with license key)
+    if (isFromDesktop) {
+      redirect("/success?from=desktop");
+    }
+    // Web users go to dashboard
+    redirect("/dashboard");
   }
 
   return (
