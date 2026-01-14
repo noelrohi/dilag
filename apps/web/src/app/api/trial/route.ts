@@ -3,15 +3,14 @@ import { polar, TRIAL_DAYS } from "@/lib/polar";
 import type {
   TrialRegisterRequest,
   TrialRegisterResponse,
-  TrialCheckRequest,
   TrialCheckResponse,
 } from "@dilag/shared";
 
 /**
  * POST /api/trial - Register or check a device trial
- * 
+ *
  * Body: { device_id: string }
- * 
+ *
  * Flow:
  * 1. Check if customer with external_id=device_id exists
  * 2. If exists, return existing trial info
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (existingCustomer) {
       // Customer exists - check trial status
       const trialStartUtc = existingCustomer.metadata?.trial_start_utc as number | undefined;
-      
+
       if (!trialStartUtc) {
         // Customer exists but no trial - shouldn't happen, but handle it
         return NextResponse.json<TrialRegisterResponse>({
@@ -58,8 +57,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<TrialRegisterResponse>({
         allowed: !expired,
         trial_start_utc: trialStartUtc,
-        message: expired 
-          ? "Trial has expired" 
+        message: expired
+          ? "Trial has expired"
           : `Trial active, ${daysRemaining} days remaining`,
       });
     }
