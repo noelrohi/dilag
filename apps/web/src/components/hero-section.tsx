@@ -1,7 +1,6 @@
 import Link from 'next/link'
-import { Download, Github } from 'lucide-react'
+import { Sparkle, Github } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DOWNLOAD_URL } from '@/lib/constants'
 import Image from 'next/image'
 import { TextEffect } from '@/components/ui/text-effect'
 import { AnimatedGroup } from '@/components/ui/animated-group'
@@ -51,10 +50,10 @@ export default function HeroSection() {
                                             asChild
                                             size="lg"
                                             className="rounded-xl px-5 text-base">
-                                            <a href={DOWNLOAD_URL}>
-                                                <Download className="mr-2 size-4" />
-                                                <span className="text-nowrap">Download for macOS</span>
-                                            </a>
+                                            <Link href="/sign-up">
+                                                <Sparkle className="mr-2 size-4" />
+                                                <span className="text-nowrap">Start Free Trial</span>
+                                            </Link>
                                         </Button>
                                     </div>
                                     <Button
