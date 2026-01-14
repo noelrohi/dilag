@@ -43,7 +43,7 @@ export function SiteHeader({ user, onSignOut }: SiteHeaderProps) {
               <Link href="/pricing">Pricing</Link>
             </Button>
             <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" asChild>
-              <Link href="/faq">FAQ</Link>
+              <Link href="/download">Download</Link>
             </Button>
             <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" asChild>
               <a href="https://github.com/noelrohi/dilag" target="_blank" rel="noopener noreferrer">
@@ -77,9 +77,9 @@ export function SiteHeader({ user, onSignOut }: SiteHeaderProps) {
                 <Link href="/sign-in">Sign in</Link>
               </Button>
               <Button size="sm" className="rounded-full" asChild>
-                <Link href="/sign-up">
+                <Link href="/sign-in">
                   <Sparkle weight="bold" className="w-4 h-4" />
-                  <span className="hidden sm:inline">Start Trial</span>
+                  <span className="hidden sm:inline">Get Started</span>
                 </Link>
               </Button>
             </>

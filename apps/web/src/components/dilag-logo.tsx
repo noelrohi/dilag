@@ -1,6 +1,12 @@
 import { cn } from "@/lib/utils";
 
-export function DilagLogo({ className }: { className?: string }) {
+export function DilagLogo({
+  className,
+  solid = false,
+}: {
+  className?: string;
+  solid?: boolean;
+}) {
   return (
     <svg
       viewBox="0 0 1024 1024"
@@ -14,7 +20,9 @@ export function DilagLogo({ className }: { className?: string }) {
         width="1024"
         height="1024"
         rx="227"
-        className="fill-foreground/10 dark:fill-foreground/5"
+        className={cn(
+          solid ? "fill-background" : "fill-foreground/10 dark:fill-foreground/5",
+        )}
       />
       <rect
         x="198"

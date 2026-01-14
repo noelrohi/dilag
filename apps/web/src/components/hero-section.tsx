@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Sparkle, Github } from 'lucide-react'
+import { Sparkle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { TextEffect } from '@/components/ui/text-effect'
@@ -32,7 +32,7 @@ export default function HeroSection() {
                                     speedSegment={0.3}
                                     as="h1"
                                     className="mx-auto mt-8 max-w-4xl text-balance text-5xl font-bold md:text-7xl lg:mt-16 xl:text-[5.25rem]">
-                                    Design apps with natural language
+                                    Design that ships. Faster.
                                 </TextEffect>
                                 <TextEffect
                                     per="line"
@@ -41,7 +41,7 @@ export default function HeroSection() {
                                     delay={0.5}
                                     as="p"
                                     className="text-muted-foreground mx-auto mt-8 max-w-2xl text-balance text-lg">
-                                    Describe your idea and watch Dilag generate beautiful mobile and web UI designs in real-time.
+                                    Turn a rough idea into polished screens, flows, and components—then export and move on.
                                 </TextEffect>
 
                                 <AnimatedGroup className="mt-12 flex flex-col items-center justify-center gap-2 md:flex-row">
@@ -50,9 +50,9 @@ export default function HeroSection() {
                                             asChild
                                             size="lg"
                                             className="rounded-xl px-5 text-base">
-                                            <Link href="/sign-up">
+                                            <Link href="/sign-in">
                                                 <Sparkle className="mr-2 size-4" />
-                                                <span className="text-nowrap">Start Free Trial</span>
+                                                <span className="text-nowrap">Get Started</span>
                                             </Link>
                                         </Button>
                                     </div>
@@ -61,13 +61,9 @@ export default function HeroSection() {
                                         size="lg"
                                         variant="ghost"
                                         className="h-10.5 rounded-xl px-5">
-                                        <a
-                                            href="https://github.com/noelrohi/dilag"
-                                            target="_blank"
-                                            rel="noopener noreferrer">
-                                            <Github className="mr-2 size-4" />
-                                            <span className="text-nowrap">View Source</span>
-                                        </a>
+                                        <Link href="/download">
+                                            <span className="text-nowrap">Download for macOS</span>
+                                        </Link>
                                     </Button>
                                 </AnimatedGroup>
                             </div>

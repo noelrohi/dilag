@@ -81,8 +81,8 @@ export const HeroHeader = () => {
                                 <Button
                                     asChild
                                     size="sm">
-                                    <Link href="/sign-up">
-                                        <span>Start Free Trial</span>
+                                    <Link href="/sign-in">
+                                        <span>Get Started</span>
                                     </Link>
                                 </Button>
                             </div>
