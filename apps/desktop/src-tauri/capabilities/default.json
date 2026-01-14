@@ -21,6 +21,7 @@
       ]
     },
     "fs:read-all",
-    "fs:allow-write-file"
+    "fs:allow-write-file",
+    "deep-link:default"
   ]
 }
