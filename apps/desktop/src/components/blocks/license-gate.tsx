@@ -9,8 +9,8 @@ import { DilagIcon } from "@/components/ui/dilag-icon";
 import { cn } from "@/lib/utils";
 
 const AUTH_URL = import.meta.env.PROD
-  ? "https://dilag.noelrohi.com/sign-up?from=desktop"
-  : "http://localhost:3000/sign-up?from=desktop";
+  ? "https://dilag.noelrohi.com/onboarding?from=desktop"
+  : "http://localhost:3000/onboarding?from=desktop";
 
 interface LicenseGateProps {
   children: React.ReactNode;
