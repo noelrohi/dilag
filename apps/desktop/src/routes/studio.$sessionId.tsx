@@ -509,7 +509,7 @@ function ConnectedCanvas({
   onSelectionChange,
   onDeleteScreen,
 }: ConnectedCanvasProps) {
-  const { captureAndAttach } = useScreenCaptureContext();
+  const { captureAndAttach, captureElementAndAttach } = useScreenCaptureContext();
 
   return (
     <DesignCanvas
@@ -522,6 +522,7 @@ function ConnectedCanvas({
       onSelectionChange={onSelectionChange}
       onDeleteScreen={onDeleteScreen}
       onCaptureScreen={captureAndAttach}
+      onEditElementWithAI={captureElementAndAttach}
     />
   );
 }
