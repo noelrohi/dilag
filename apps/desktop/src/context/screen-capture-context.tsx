@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useState, type ReactNode } from
 import type { DesignFile } from "@/hooks/use-designs";
 import { useAttachmentBridge } from "@/context/attachment-bridge";
 import { toast } from "sonner";
+import type { ElementInfo } from "@/context/element-selection-store";
 
 interface ScreenCaptureContextValue {
   /**
@@ -9,6 +10,12 @@ interface ScreenCaptureContextValue {
    * Returns true if added successfully, false if screen was already referenced.
    */
   captureAndAttach: (design: DesignFile) => Promise<boolean>;
+  
+  /**
+   * Add a screen reference with a specific selected element to the chat composer.
+   * The element context will be included for AI-assisted editing.
+   */
+  captureElementAndAttach: (design: DesignFile, element: ElementInfo) => Promise<boolean>;
   
   /**
    * Check if a specific screen is currently being captured.
@@ -75,8 +82,37 @@ export function ScreenCaptureProvider({ children, platform }: ScreenCaptureProvi
     }
   }, [addScreenRef, referencedScreens]);
 
+  const captureElementAndAttach = useCallback(async (design: DesignFile, element: ElementInfo): Promise<boolean> => {
+    const screenId = design.filename.replace(".html", "");
+
+    try {
+      // Add as a screen reference with element info
+      // For element selection, we allow re-adding with different element
+      addScreenRef({
+        filename: design.filename,
+        title: design.title,
+        html: design.html,
+        selectedElement: {
+          selector: element.selector,
+          html: element.html,
+          tagName: element.tagName,
+          ancestorPath: element.ancestorPath,
+        },
+      });
+      // Single state update - add screenId (Set naturally handles duplicates)
+      setReferencedScreens(prev => new Set([...prev, screenId]));
+      toast.success(`Selected ${element.tagName} in "${design.title}"`);
+      return true;
+    } catch (err) {
+      console.error("Failed to add element to chat:", err);
+      toast.error(`Failed to add element from "${design.title}"`);
+      return false;
+    }
+  }, [addScreenRef]);
+
   const value: ScreenCaptureContextValue = {
     captureAndAttach,
+    captureElementAndAttach,
     isCapturing,
     isAttached,
     platform,

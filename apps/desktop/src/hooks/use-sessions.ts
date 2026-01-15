@@ -25,6 +25,7 @@ import { useAgentStore } from "@/hooks/use-agents";
 import { withErrorHandler } from "@/lib/async-utils";
 import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 import type { FileUIPart } from "ai";
+import { formatElementWithAncestry, minifyHtml } from "@/lib/html-utils";
 
 // Convert SDK message format to our internal format
 function convertPart(part: Part, messageID: string, sessionID: string): MessagePart {
@@ -559,10 +560,40 @@ export function useSessions() {
                 const base64Match = file.url.match(/^data:text\/html;base64,(.+)$/);
                 if (base64Match) {
                   try {
-                    const htmlContent = decodeURIComponent(escape(atob(base64Match[1])));
+                    let htmlContent = decodeURIComponent(escape(atob(base64Match[1])));
                     const screenName = file.filename?.replace('.html', '') || 'Screen';
-                    screenNames.push(screenName);
-                    screenContexts.push(`<screen_context name="${screenName}">\n${htmlContent}\n</screen_context>`);
+                    
+                    // Check for element selection marker
+                    const elementMarkerMatch = htmlContent.match(/<!-- dilag-element-selection: ({.*?}) -->/);
+                    let elementInfo: { selector: string; html: string; tagName: string; ancestorPath?: string[] } | null = null;
+                    
+                    if (elementMarkerMatch) {
+                      try {
+                        elementInfo = JSON.parse(elementMarkerMatch[1]);
+                        // Remove the marker from the HTML content
+                        htmlContent = htmlContent.replace(elementMarkerMatch[0], '').trim();
+                      } catch (e) {
+                        console.error("[sendMessage] Failed to parse element selection marker:", e);
+                      }
+                    }
+                    
+                    // Format with or without element context
+                    if (elementInfo) {
+                      // For element editing: compact format only, no full HTML
+                      // AI can read the screen file if it needs full context
+                      const compactElement = formatElementWithAncestry(elementInfo.html, elementInfo.ancestorPath);
+                      screenNames.push(`${screenName} (${elementInfo.tagName})`);
+                      screenContexts.push(
+                        `<edit_element screen="${screenName}" selector="${elementInfo.selector}">\n` +
+                        `${compactElement}\n` +
+                        `</edit_element>`
+                      );
+                    } else {
+                      // For full screen reference: minify HTML
+                      const minifiedHtml = minifyHtml(htmlContent);
+                      screenNames.push(screenName);
+                      screenContexts.push(`<screen_context name="${screenName}">${minifiedHtml}</screen_context>`);
+                    }
                   } catch (e) {
                     console.error("[sendMessage] Failed to decode HTML content:", e);
                   }

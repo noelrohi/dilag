@@ -17,6 +17,7 @@ import "@xyflow/react/dist/style.css";
 import { ScreenNode, type ScreenNodeData } from "./screen-node";
 import { CanvasControls } from "./canvas-controls";
 import type { DesignFile } from "@/hooks/use-designs";
+import type { ElementInfo } from "@/context/element-selection-store";
 import { cn } from "@/lib/utils";
 
 // Register custom node types
@@ -40,6 +41,8 @@ interface DesignCanvasProps {
   onSelectionChange?: (ids: Set<string>) => void;
   onDeleteScreen?: (filename: string) => void;
   onCaptureScreen?: (design: DesignFile) => void;
+  /** Callback when user wants to edit a specific element with AI */
+  onEditElementWithAI?: (design: DesignFile, element: ElementInfo) => void;
   className?: string;
 }
 
@@ -53,6 +56,7 @@ function DesignCanvasInner({
   onSelectionChange,
   onDeleteScreen,
   onCaptureScreen,
+  onEditElementWithAI,
   className,
 }: DesignCanvasProps) {
   const { getNodes } = useReactFlow();
@@ -79,11 +83,14 @@ function DesignCanvasInner({
             onAddToComposer: onCaptureScreen
               ? () => onCaptureScreen(design)
               : undefined,
+            onEditElementWithAI: onEditElementWithAI
+              ? (element: ElementInfo) => onEditElementWithAI(design, element)
+              : undefined,
           } as ScreenNodeData,
         } as Node;
       })
       .filter((n): n is Node => n !== null);
-  }, [positions, designs, platform, sessionCwd, selectedIds, onDeleteScreen, onCaptureScreen]);
+  }, [positions, designs, platform, sessionCwd, selectedIds, onDeleteScreen, onCaptureScreen, onEditElementWithAI]);
 
   const [nodes, setNodes] = useNodesState(initialNodes);
 

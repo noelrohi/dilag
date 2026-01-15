@@ -55,11 +55,24 @@ export type AttachmentsContext = {
   fileInputRef: RefObject<HTMLInputElement | null>;
 };
 
+export type SelectedElementInfo = {
+  /** CSS selector for the element */
+  selector: string;
+  /** Outer HTML of the selected element */
+  html: string;
+  /** Tag name (lowercase) */
+  tagName: string;
+  /** Ancestor path from parent to root */
+  ancestorPath?: string[];
+};
+
 export type ScreenReference = {
   id: string;
   filename: string;
   title: string;
   html: string;
+  /** Optional: specific element selected within this screen */
+  selectedElement?: SelectedElementInfo;
 };
 
 export type ScreenReferencesContext = {
@@ -236,9 +249,12 @@ export function PromptInputProvider({
   // ----- screen references methods
   const addScreenRef = useCallback((ref: Omit<ScreenReference, "id">) => {
     setScreenRefsList((prev) => {
-      // Don't add if already referenced
-      if (prev.some((r) => r.filename === ref.filename)) {
-        return prev;
+      const existingIndex = prev.findIndex((r) => r.filename === ref.filename);
+      if (existingIndex !== -1) {
+        // Replace existing reference (e.g., with new element selection)
+        const updated = [...prev];
+        updated[existingIndex] = { ...ref, id: prev[existingIndex].id };
+        return updated;
       }
       return [...prev, { ...ref, id: nanoid() }];
     });
@@ -460,12 +476,33 @@ export type PromptInputScreenReferenceProps = HTMLAttributes<HTMLDivElement> & {
   className?: string;
 };
 
+// Helper to get a short label for an element (e.g., "button.primary" or "div#header")
+function getElementShortLabel(tagName: string, selector: string): string {
+  // Extract ID if present
+  const idMatch = selector.match(/#([a-zA-Z0-9_-]+)/);
+  if (idMatch) {
+    return `${tagName}#${idMatch[1].slice(0, 15)}`;
+  }
+  // Extract first class if present
+  const classMatch = selector.match(/\.([a-zA-Z0-9_-]+)/);
+  if (classMatch) {
+    return `${tagName}.${classMatch[1].slice(0, 15)}`;
+  }
+  return tagName;
+}
+
 export function PromptInputScreenReference({
   data,
   className,
   ...props
 }: PromptInputScreenReferenceProps) {
   const screenRefs = usePromptInputScreenRefs();
+  const hasElement = !!data.selectedElement;
+
+  // Get a short element description for display
+  const elementLabel = hasElement
+    ? getElementShortLabel(data.selectedElement!.tagName, data.selectedElement!.selector)
+    : null;
 
   return (
     <div
@@ -474,15 +511,22 @@ export function PromptInputScreenReference({
         "bg-gradient-to-b from-foreground/[0.06] to-foreground/[0.03]",
         "ring-1 ring-inset ring-foreground/[0.08]",
         "hover:from-foreground/[0.09] hover:to-foreground/[0.05] hover:ring-foreground/[0.12]",
+        hasElement && "ring-primary/30 from-primary/[0.08] to-primary/[0.04]",
         className
       )}
       key={data.id}
+      title={hasElement ? `Editing: ${data.selectedElement!.selector}` : undefined}
       {...props}
     >
       <span className="font-mono text-[11px] font-medium text-foreground/40">@</span>
       <span className="max-w-[180px] truncate text-[12px] font-medium tracking-tight text-foreground/70 group-hover:text-foreground/85">
         {data.title}
       </span>
+      {elementLabel && (
+        <span className="ml-0.5 text-[10px] font-medium text-primary/70">
+          ({elementLabel})
+        </span>
+      )}
       <button
         aria-label="Remove screen reference"
         className="ml-0.5 flex size-4 shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-foreground/10"
@@ -859,9 +903,24 @@ export const PromptInput = ({
     }
 
     // Convert screen references to file parts (as HTML files with data URLs)
+    // If a screen has a selectedElement, embed it as a marker comment in the HTML
     const screenRefFiles: FileUIPart[] = screenReferences.map((ref) => {
+      let htmlContent = ref.html;
+      
+      // Embed element selection info as a marker comment at the top of the HTML
+      if (ref.selectedElement) {
+        const marker = `<!-- dilag-element-selection: ${JSON.stringify(ref.selectedElement)} -->`;
+        // Insert after <!DOCTYPE html> if present, otherwise at the start
+        if (htmlContent.toLowerCase().startsWith('<!doctype')) {
+          const doctypeEnd = htmlContent.indexOf('>') + 1;
+          htmlContent = htmlContent.slice(0, doctypeEnd) + '\n' + marker + htmlContent.slice(doctypeEnd);
+        } else {
+          htmlContent = marker + '\n' + htmlContent;
+        }
+      }
+      
       // Convert HTML string to base64 data URL
-      const base64 = btoa(unescape(encodeURIComponent(ref.html)));
+      const base64 = btoa(unescape(encodeURIComponent(htmlContent)));
       return {
         type: "file" as const,
         url: `data:text/html;base64,${base64}`,
