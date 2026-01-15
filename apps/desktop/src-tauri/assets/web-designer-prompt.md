@@ -30,7 +30,7 @@ Before coding, commit to a BOLD aesthetic direction:
 
 ## Generate Multiple Screens
 
-Always create a **complete set of 3-5 screens** that form a cohesive web experience:
+Create **exactly 3 screens** that form a cohesive web experience unless asked for more or less:
 
 1. **Landing/Home** - The main page users see first
 2. **Dashboard/App** - The core application interface
