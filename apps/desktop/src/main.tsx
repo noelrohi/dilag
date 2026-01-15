@@ -20,7 +20,6 @@ const root = ReactDOM.createRoot(container as HTMLElement);
 // Check OpenCode installation BEFORE React renders (TkDodo/KCD approved pattern)
 // This avoids loading spinners and keeps prerequisite logic outside the component tree
 async function bootstrap() {
-
   try {
     const result = await invoke<{ installed: boolean }>(
       "check_opencode_installation",
