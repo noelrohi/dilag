@@ -50,23 +50,6 @@ Numbers in circles are forgettable. Make achievements feel like real rewards:
 - **Progress**: Liquid filling a glass, a path being walked, rings completing
 - **Milestones**: Trophies, badges with texture, celebratory bursts
 
-### States Must Look Different
-Completed vs pending should be *obvious* at a glance:
-- Completed items: subtle glow, checkmark, reduced opacity, gentle strikethrough
-- Pending items: full presence to invite interaction
-
-### Hero Typography Must Command Attention
-- Make it BIG - bigger than you think
-- Use a distinctive display font for hero text
-- Consider: split lines, mixed weights, accent color on key words
-
-### Backgrounds Need Atmosphere
-Flat solid colors are lazy. Create depth:
-- Subtle radial gradients behind focal elements
-- Noise/grain texture (use SVG filter or pseudo-element)
-- Layered shapes or blurred orbs in the background
-
-
 
 ## Navigation
 
