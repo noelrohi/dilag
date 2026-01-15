@@ -4,12 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { signOut, authClient } from "@/lib/auth-client";
-import { Button } from "@dilag/ui";
-import { Badge } from "@dilag/ui";
-import { Separator } from "@dilag/ui";
-import { SiteHeader } from "@/components/site-header";
-import { DOWNLOAD_URL } from "@/lib/constants";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@dilag/ui/button";
+import { Badge } from "@dilag/ui/badge";
+import { Separator } from "@dilag/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@dilag/ui/avatar";
 import {
   Item,
   ItemActions,
@@ -20,7 +18,9 @@ import {
   ItemHeader,
   ItemMedia,
   ItemTitle,
-} from "@/components/ui/item";
+} from "@dilag/ui/item";
+import { SiteHeader } from "@/components/site-header";
+import { DOWNLOAD_URL } from "@/lib/constants";
 import {
   ArrowDown,
   ArrowSquareOut,

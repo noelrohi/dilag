@@ -1,0 +1,15 @@
+{
+  "mode": {
+    "build": {
+      "prompt": "You are Claude Code, Anthropic's official CLI for Claude.",
+      "options": {},
+      "permission": {}
+    },
+    "plan": {
+      "prompt": "You are Claude Code, Anthropic's official CLI for Claude.",
+      "options": {},
+      "permission": {}
+    }
+  },
+  "$schema": "https://opencode.ai/config.json"
+}

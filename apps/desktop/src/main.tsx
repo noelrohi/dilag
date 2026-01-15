@@ -3,10 +3,10 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { invoke } from "@tauri-apps/api/core";
 import { router } from "./router";
-import { SetupWizard } from "./components/blocks/setup-wizard";
+import { SetupWizard } from "./components/blocks/setup/setup-wizard";
 import { CheckUpdatesMenuListener } from "./components/blocks/check-updates-menu-listener";
 import { ThemeProvider } from "./components/theme-provider";
-import { Toaster } from "./components/ui/sonner";
+import { Toaster } from "@dilag/ui/sonner";
 import { UpdaterProvider } from "./context/updater-context";
 import "./index.css";
 

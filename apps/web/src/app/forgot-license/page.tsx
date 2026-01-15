@@ -1,5 +1,5 @@
 import { SiteHeader } from "@/components/site-header";
-import { Button } from "@/components/ui/button";
+import { Button } from "@dilag/ui/button";
 import Link from "next/link";
 import { Key, ArrowRight } from "lucide-react";
 

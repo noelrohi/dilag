@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@dilag/ui";
+import { Button } from "@dilag/ui/button";
 import { DilagLogo } from "@/components/dilag-logo";
 import { Check, Lightning, Crown } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";

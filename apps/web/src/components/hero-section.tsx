@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { Sparkle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button } from '@dilag/ui/button'
 import Image from 'next/image'
-import { TextEffect } from '@/components/ui/text-effect'
-import { AnimatedGroup } from '@/components/ui/animated-group'
+import { TextEffect } from '@dilag/ui/text-effect'
+import { AnimatedGroup } from '@dilag/ui/animated-group'
 import { HeroHeader } from './header'
 
 export default function HeroSection() {

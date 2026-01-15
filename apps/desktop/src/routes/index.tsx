@@ -16,9 +16,9 @@ import {
   PromptInputTools,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
-import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
-import { AgentSelectorButton } from "@/components/blocks/agent-selector-button";
-import { ThinkingModeSelector } from "@/components/blocks/thinking-mode-selector";
+import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button";
+import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button";
+import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector";
 import { useSessions } from "@/hooks/use-sessions";
 import { type Platform } from "@/context/session-store";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button } from "@dilag/ui/button";
 import Features from "@/components/features-1";
 import IntegrationsSection from "@/components/integrations-8";
 import HeroSection from "@/components/hero-section";

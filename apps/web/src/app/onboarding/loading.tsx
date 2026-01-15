@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@dilag/ui/skeleton";
 
 export default function OnboardingLoading() {
   return (

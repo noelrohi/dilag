@@ -1,6 +1,6 @@
 import { useElapsedTime } from "@/hooks/use-elapsed-time";
 import { cn } from "@/lib/utils";
-import { DilagIcon } from "@/components/ui/dilag-icon";
+import { DilagIcon } from "@/components/blocks/branding/dilag-icon";
 import type { Message } from "@/context/session-store";
 
 interface MessageDurationProps {

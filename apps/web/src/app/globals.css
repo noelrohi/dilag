@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Scan @dilag/ui package for Tailwind classes */
+@source "../../../../packages/ui/src/**/*.tsx";
+
 @custom-variant dark (&:is(.dark *));
 
 /* Dark-only refined theme */

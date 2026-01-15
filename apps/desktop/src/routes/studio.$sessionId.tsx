@@ -15,42 +15,18 @@ import {
   type ScreenPosition,
 } from "@/context/session-store";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { ChatView } from "@/components/blocks/chat-view";
+import { Button } from "@dilag/ui/button";
+import { Input } from "@dilag/ui/input";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@dilag/ui/resizable";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@dilag/ui/alert-dialog";
+import { ChatView } from "@/components/blocks/chat/chat-view";
 import { DesignCanvas } from "@/components/canvas";
 import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil, Palette } from "lucide-react";
 import { Play, DownloadSimple } from "@phosphor-icons/react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@dilag/ui/dialog";
 import { copyFilePath, exportImages } from "@/lib/design-export";
-import { PreviewCarousel } from "@/components/blocks/preview-carousel";
+import { PreviewCarousel } from "@/components/blocks/preview/preview-carousel";
 import { AttachmentBridgeProvider } from "@/context/attachment-bridge";
 import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context";
 import { toast } from "sonner";

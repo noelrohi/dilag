@@ -4,12 +4,7 @@ import { useSessions } from "@/hooks/use-sessions";
 import { cn } from "@/lib/utils";
 import { Search, MoreHorizontal, Trash2, Globe } from "lucide-react";
 import { Star } from "@phosphor-icons/react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
 
 export const Route = createFileRoute("/projects")({
   component: ProjectsPage,

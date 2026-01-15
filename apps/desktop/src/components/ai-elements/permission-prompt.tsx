@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertTitle, AlertDescription } from "@dilag/ui/alert";
+import { Button } from "@dilag/ui/button";
+import { Textarea } from "@dilag/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   ShieldQuestion,

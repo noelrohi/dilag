@@ -6,15 +6,8 @@ import { Sun, Moon, Monitor, ExternalLink, Trash2, RefreshCw, HardDrive, Info, P
 import { useTheme } from "@/components/theme-provider";
 import { useUpdaterContext } from "@/context/updater-context";
 import { cn } from "@/lib/utils";
-import { ModelSelectorButton } from "@/components/blocks/model-selector-button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@dilag/ui/dialog";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,

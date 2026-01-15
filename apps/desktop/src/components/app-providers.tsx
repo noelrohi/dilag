@@ -5,9 +5,9 @@ import { MenuEventsProvider } from "@/context/menu-events";
 import { UpdaterProvider } from "@/context/updater-context";
 import { LicenseProvider } from "@/context/license-context";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { Toaster } from "@/components/ui/sonner";
-import { LicenseGate } from "@/components/blocks/license-gate";
+import { ErrorBoundary } from "@/components/blocks/errors/error-boundary";
+import { Toaster } from "@dilag/ui/sonner";
+import { LicenseGate } from "@/components/blocks/auth/license-gate";
 import { NotificationProvider } from "@/context/notification";
 import type { ReactNode } from "react";
 
