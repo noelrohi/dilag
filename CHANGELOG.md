@@ -5,6 +5,13 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-01-15
+
+### Changed
+
+- **Designer Prompts**: Improved prompts for more memorable, distinctive UI generation (#53)
+- **Shared Packages**: Centralized UI components and database modules into shared packages for better code organization (#52)
+
 ## [0.4.1] - 2026-01-15
 
 ### Added

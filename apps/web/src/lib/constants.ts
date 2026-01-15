@@ -1,2 +1,2 @@
 export const DOWNLOAD_URL =
-  "https://github.com/noelrohi/dilag/releases/download/v0.4.1/Dilag_0.4.1_aarch64.dmg";
+  "https://github.com/noelrohi/dilag/releases/download/v0.4.2/Dilag_0.4.2_aarch64.dmg";
