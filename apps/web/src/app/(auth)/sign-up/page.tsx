@@ -4,14 +4,9 @@ import { useState, useTransition, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn, signUp } from "@/lib/auth-client";
-import {
-  Button,
-  Input,
-  Field,
-  FieldLabel,
-  FieldGroup,
-  FieldError,
-} from "@dilag/ui";
+import { Button } from "@dilag/ui/button";
+import { Input } from "@dilag/ui/input";
+import { Field, FieldLabel, FieldGroup, FieldError } from "@dilag/ui/field";
 import { DilagLogo } from "@/components/dilag-logo";
 import { GoogleLogo, ArrowRight } from "@phosphor-icons/react";
 

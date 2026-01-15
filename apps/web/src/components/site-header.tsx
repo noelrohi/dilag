@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button } from "@dilag/ui";
+import { Button } from "@dilag/ui/button";
 import { DilagLogo } from "./dilag-logo";
 import { 
   Sparkle,

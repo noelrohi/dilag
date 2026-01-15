@@ -3,8 +3,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { polar, checkout, portal, webhooks } from "@polar-sh/better-auth";
 import { Polar } from "@polar-sh/sdk";
-import { db } from "@/db";
-import * as schema from "@/db/schema";
+import { db } from "@dilag/db";
+import * as schema from "@dilag/db/schema";
 
 // Initialize Polar SDK
 const polarClient = new Polar({

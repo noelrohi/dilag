@@ -1,18 +1,11 @@
 import { memo, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { IPhoneFrame } from "@/components/blocks/iphone-frame";
+import { IPhoneFrame } from "@/components/blocks/preview/iphone-frame";
 import type { DesignFile } from "@/hooks/use-designs";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut } from "@dilag/ui/context-menu";
 import { Copy, Code, Download, Trash2, FolderOpen, MessageSquarePlus, Image } from "lucide-react";
 import { copyFilePath, copyToClipboard, downloadHtml, exportAsPng } from "@/lib/design-export";
-import { CodeViewerDialog } from "@/components/blocks/dialog-code-viewer";
+import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer";
 
 // Constants for frame sizes
 const WEB_WIDTH = 640;

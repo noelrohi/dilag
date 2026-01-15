@@ -1,5 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@dilag/ui";
+import { Skeleton } from "@dilag/ui/skeleton";
+import { Separator } from "@dilag/ui/separator";
 
 export default function DashboardLoading() {
   return (

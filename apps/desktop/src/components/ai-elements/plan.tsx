@@ -1,20 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Button } from "@dilag/ui/button";
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@dilag/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { ChevronsUpDownIcon } from "lucide-react";
 import type { ComponentProps } from "react";

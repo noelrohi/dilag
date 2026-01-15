@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@dilag/ui";
-import { Badge } from "@dilag/ui";
+import { Button } from "@dilag/ui/button";
+import { Badge } from "@dilag/ui/badge";
 import { SiteHeader } from "@/components/site-header";
 import { useSession, authClient } from "@/lib/auth-client";
 import { Check, Sparkle, Lightning, Clock } from "@phosphor-icons/react";

@@ -1,12 +1,4 @@
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, CardAction } from "@dilag/ui/card";
 import { cn } from "@/lib/utils";
 import { Handle, Position } from "@xyflow/react";
 import type { ComponentProps } from "react";

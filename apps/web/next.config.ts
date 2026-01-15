@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   images: {
     unoptimized: true
-  }
+  },
+  transpilePackages: ["@dilag/ui", "@dilag/db", "@dilag/shared"]
 };
 
 export default nextConfig;

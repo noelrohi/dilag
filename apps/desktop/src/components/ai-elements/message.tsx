@@ -1,16 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  ButtonGroup,
-  ButtonGroupText,
-} from "@/components/ui/button-group";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Button } from "@dilag/ui/button";
+import { ButtonGroup, ButtonGroupText } from "@dilag/ui/button-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@dilag/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FileUIPart, UIMessage } from "ai";
 import {

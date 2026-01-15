@@ -1,5 +1,5 @@
-import { Button } from "@dilag/ui";
-import { Badge } from "@dilag/ui";
+import { Button } from "@dilag/ui/button";
+import { Badge } from "@dilag/ui/badge";
 import { SiteHeader } from "@/components/site-header";
 import { DOWNLOAD_URL } from "@/lib/constants";
 import { 

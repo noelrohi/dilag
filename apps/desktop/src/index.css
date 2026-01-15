@@ -3,6 +3,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Scan @dilag/ui package for Tailwind classes */
+@source "../../../packages/ui/src/**/*.tsx";
+
 @custom-variant dark (&:is(.dark *));
 :root {
   /* Warm Paper - cream tones with terracotta accent */

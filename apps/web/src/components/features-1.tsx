@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@dilag/ui/card'
 import { Lightning, CodeBlock, Sparkle } from '@phosphor-icons/react/dist/ssr'
 import { ReactNode } from 'react'
 
