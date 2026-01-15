@@ -19,6 +19,7 @@
     "./context-menu": "./src/components/context-menu.tsx",
     "./dialog": "./src/components/dialog.tsx",
     "./dropdown-menu": "./src/components/dropdown-menu.tsx",
+    "./empty": "./src/components/empty.tsx",
     "./field": "./src/components/field.tsx",
     "./hover-card": "./src/components/hover-card.tsx",
     "./input": "./src/components/input.tsx",
