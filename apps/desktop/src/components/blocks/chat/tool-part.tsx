@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible";
-import { ChevronRightIcon } from "lucide-react";
+import { AltArrowRight } from "@solar-icons/react";
 import { getToolConfig, isStructuredSubtitle, type ToolRenderProps } from "@/lib/tool-registry";
 import type { ToolState } from "@/context/session-store";
 import { cn } from "@/lib/utils";
@@ -91,9 +91,10 @@ export function ToolPart({ tool, state }: ToolPartProps) {
           )}
         </div>
         {hasContent && (
-          <ChevronRightIcon
+          <AltArrowRight
+            size={16}
             className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform duration-150",
+              "shrink-0 text-muted-foreground transition-transform duration-150",
               "group-data-[state=open]:rotate-90"
             )}
           />

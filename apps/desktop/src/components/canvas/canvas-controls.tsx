@@ -1,6 +1,6 @@
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { useCallback } from "react";
-import { Maximize2, RotateCcw, Minus, Plus } from "lucide-react";
+import { Maximize, Restart, MinusCircle, AddCircle } from "@solar-icons/react";
 
 export function CanvasControls() {
   const { setViewport, fitView, getViewport } = useReactFlow();
@@ -35,14 +35,14 @@ export function CanvasControls() {
           className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
           title="Reset view"
         >
-          <RotateCcw className="w-4 h-4 text-foreground" />
+          <Restart size={16} className="text-foreground" />
         </button>
         <button
           onClick={handleFitView}
           className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
           title="Fit to screen"
         >
-          <Maximize2 className="w-4 h-4 text-foreground" />
+          <Maximize size={16} className="text-foreground" />
         </button>
         <div className="w-px h-5 bg-border mx-1" />
         <button
@@ -50,7 +50,7 @@ export function CanvasControls() {
           className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-foreground text-sm font-medium w-6 h-6 flex items-center justify-center"
           title="Zoom out"
         >
-          <Minus className="w-3.5 h-3.5" />
+          <MinusCircle size={14} />
         </button>
         <span className="text-foreground text-xs font-medium px-2 min-w-[3rem] text-center tabular-nums">
           {Math.round(zoom * 100)}%
@@ -60,13 +60,8 @@ export function CanvasControls() {
           className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-foreground text-sm font-medium w-6 h-6 flex items-center justify-center"
           title="Zoom in"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <AddCircle size={14} />
         </button>
-      </div>
-
-      {/* Control hints */}
-      <div className="absolute bottom-6 right-6 text-xs text-muted-foreground bg-popover/90 backdrop-blur-sm px-2 py-1 rounded border border-border z-50">
-        Drag to select · Scroll to pan · Ctrl+scroll to zoom
       </div>
     </>
   );

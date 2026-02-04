@@ -4,7 +4,7 @@ import { Button } from "@dilag/ui/button";
 import { Separator } from "@dilag/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { BookmarkIcon, type LucideProps } from "lucide-react";
+import { Bookmark } from "@solar-icons/react";
 import type { ComponentProps, HTMLAttributes } from "react";
 
 export type CheckpointProps = HTMLAttributes<HTMLDivElement>;
@@ -23,15 +23,16 @@ export const Checkpoint = ({
   </div>
 );
 
-export type CheckpointIconProps = LucideProps;
+export type CheckpointIconProps = React.SVGProps<SVGSVGElement> & { size?: number };
 
 export const CheckpointIcon = ({
   className,
   children,
+  size = 16,
   ...props
 }: CheckpointIconProps) =>
   children ?? (
-    <BookmarkIcon className={cn("size-4 shrink-0", className)} {...props} />
+    <Bookmark size={size} className={cn("shrink-0", className)} {...props} />
   );
 
 export type CheckpointTriggerProps = ComponentProps<typeof Button> & {

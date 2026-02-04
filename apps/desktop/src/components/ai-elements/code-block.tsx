@@ -2,7 +2,7 @@
 
 import { Button } from "@dilag/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckCircle, Copy } from "@solar-icons/react";
 import {
   type ComponentProps,
   createContext,
@@ -162,7 +162,7 @@ export const CodeBlockCopyButton = ({
     }
   };
 
-  const Icon = isCopied ? CheckIcon : CopyIcon;
+  const Icon = isCopied ? CheckCircle : Copy;
 
   return (
     <Button

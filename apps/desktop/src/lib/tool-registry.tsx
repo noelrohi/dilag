@@ -1,23 +1,22 @@
-import type { ReactNode } from "react";
+import type { ReactNode, FC } from "react";
 import type { ToolState } from "@/context/session-store";
 import {
+  Monitor,
+  Magnifer,
+  Global,
   Glasses,
-  Terminal,
-  Code2,
-  FilePlus2,
-  FolderSearch,
-  Search,
-  Globe,
-  Bot,
-  Wrench,
-  ListChecks,
+  Code,
+  AddSquare,
+  FolderPathConnect,
+  Bolt,
+  Settings,
+  ClipboardList,
   CheckSquare,
-  Square,
-  Paintbrush,
-  Wand2,
-  MessageCircleQuestion,
-  type LucideIcon,
-} from "lucide-react";
+  Record,
+  Pallete2,
+  MagicStick,
+  QuestionCircle,
+} from "@solar-icons/react";
 import { Streamdown } from "streamdown";
 import { cn } from "@/lib/utils";
 
@@ -37,9 +36,12 @@ export interface StructuredSubtitle {
   suffix?: ReactNode;   // Fixed part (line counts, stats) - never truncated
 }
 
+// Icon type that works with both Lucide and Solar icons
+type IconComponent = FC<{ size?: number; className?: string }>;
+
 // Tool registration config
 export interface ToolConfig {
-  icon: LucideIcon;
+  icon: IconComponent;
   title: (props: ToolRenderProps) => string;
   chipLabel?: (props: ToolRenderProps) => string | undefined;
   subtitle?: (props: ToolRenderProps) => ReactNode | StructuredSubtitle;
@@ -196,7 +198,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   edit: {
-    icon: Code2,
+    icon: Code,
     title: () => "Edit",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
@@ -230,7 +232,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   bash: {
-    icon: Terminal,
+    icon: Monitor,
     title: () => "Shell",
     chipLabel: (p) => {
       const desc = p.metadata?.description as string | undefined;
@@ -284,7 +286,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   write: {
-    icon: FilePlus2,
+    icon: AddSquare,
     title: () => "Write",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
@@ -317,7 +319,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   todowrite: {
-    icon: ListChecks,
+    icon: ClipboardList,
     title: () => "To-dos",
     subtitle: (p) => {
       const todos = p.input.todos as Todo[] | undefined;
@@ -333,9 +335,9 @@ export const TOOLS: Record<string, ToolConfig> = {
           {todos.map((todo, i) => (
             <div key={i} className="flex items-start gap-2">
               {todo.status === "completed" ? (
-                <CheckSquare className="size-4 shrink-0 text-emerald-500 mt-0.5" />
+                <CheckSquare size={16} className="shrink-0 text-emerald-500 mt-0.5" />
               ) : (
-                <Square className="size-4 shrink-0 text-muted-foreground mt-0.5" />
+                <Record size={16} className="shrink-0 text-muted-foreground mt-0.5" />
               )}
               <span
                 className={
@@ -354,7 +356,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   glob: {
-    icon: FolderSearch,
+    icon: FolderPathConnect,
     title: () => "Glob",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
@@ -379,7 +381,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   list: {
-    icon: FolderSearch,
+    icon: FolderPathConnect,
     title: () => "List",
     chipLabel: (p) => filename(getInput(p).filePath) || "directory",
     subtitle: (p) => {
@@ -405,7 +407,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   grep: {
-    icon: Search,
+    icon: Magnifer,
     title: () => "Grep",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
@@ -430,7 +432,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   webfetch: {
-    icon: Globe,
+    icon: Global,
     title: () => "Fetch",
     chipLabel: (p) => {
       const url = getInput(p).url;
@@ -484,7 +486,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   task: {
-    icon: Bot,
+    icon: Bolt,
     title: () => "Task",
     chipLabel: (p) => getInput(p).description?.slice(0, 25),
     subtitle: (p) => {
@@ -563,7 +565,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   theme: {
-    icon: Paintbrush,
+    icon: Pallete2,
     title: () => "Theme",
     chipLabel: (p) => {
       const name = p.input.name as string | undefined;
@@ -574,7 +576,7 @@ export const TOOLS: Record<string, ToolConfig> = {
       const style = p.input.style as string | undefined;
       return (
         <>
-          <Paintbrush className="size-3 inline mr-1 text-primary" />
+          <Pallete2 size={12} className="inline mr-1 text-primary" />
           <span className="text-primary">{name ?? "Theme"}</span>
           {style && (
             <span className="text-muted-foreground ml-1">({style})</span>
@@ -628,7 +630,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   skill: {
-    icon: Wand2,
+    icon: MagicStick,
     title: (p) => {
       // Try different possible input keys for skill name
       const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined;
@@ -655,7 +657,7 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   // Question tool - displays questions and user's answers
   question: {
-    icon: MessageCircleQuestion,
+    icon: QuestionCircle,
     title: (p) => {
       const questions = p.input.questions as Array<{ header?: string }> | undefined;
       const firstHeader = questions?.[0]?.header;
@@ -749,7 +751,7 @@ export const TOOLS: Record<string, ToolConfig> = {
 
 // Default config for unknown tools
 export const DEFAULT_TOOL: ToolConfig = {
-  icon: Wrench,
+  icon: Settings,
   title: (p) => p.tool,
   content: (p) => {
     const hasInput = Object.keys(p.input).length > 0;

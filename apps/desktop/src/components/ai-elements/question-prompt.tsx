@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle, ArrowLeft, ArrowRight } from "@solar-icons/react";
 import type { QuestionRequest } from "@/context/session-store";
 
 export interface QuestionPromptProps {
@@ -194,7 +194,7 @@ export function QuestionPrompt({
                 )}
               >
                 <span className="flex items-center gap-1.5">
-                  {isSelected && <Check className="size-3" strokeWidth={2.5} />}
+                  {isSelected && <CheckCircle size={12} />}
                   {option.label}
                 </span>
               </button>
@@ -256,7 +256,7 @@ export function QuestionPrompt({
               disabled={isLoading}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
             >
-              <ChevronLeft className="size-3" />
+              <ArrowLeft size={12} />
               Back
             </button>
           )}
@@ -274,7 +274,7 @@ export function QuestionPrompt({
               )}
             >
               Next
-              <ChevronRight className="size-3" />
+              <ArrowRight size={12} />
             </button>
           ) : (
             <button

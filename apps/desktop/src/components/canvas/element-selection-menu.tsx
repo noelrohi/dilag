@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Button } from "@dilag/ui/button";
-import { Sparkles, Copy, X } from "lucide-react";
+import { MagicStick, Copy, CloseCircle } from "@solar-icons/react";
 import { cn } from "@/lib/utils";
 import type { ElementInfo } from "@/context/element-selection-store";
 import { toast } from "sonner";
@@ -67,7 +67,7 @@ function ElementSelectionMenuComponent({
         className="h-7 px-2.5 gap-1.5 text-xs font-medium"
         onClick={onEditWithAI}
       >
-        <Sparkles className="size-3.5" />
+        <MagicStick size={14} />
         Edit with AI
       </Button>
 
@@ -82,7 +82,7 @@ function ElementSelectionMenuComponent({
         onClick={handleCopySelector}
         title="Copy CSS selector"
       >
-        <Copy className="size-3.5" />
+        <Copy size={14} />
       </Button>
 
       {/* Close */}
@@ -93,7 +93,7 @@ function ElementSelectionMenuComponent({
         onClick={onClose}
         title="Deselect (Esc)"
       >
-        <X className="size-3.5" />
+        <CloseCircle size={14} />
       </Button>
     </div>
   );

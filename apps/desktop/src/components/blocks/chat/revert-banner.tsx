@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { Restart } from "@solar-icons/react";
 import { cn } from "@/lib/utils";
 
 interface RevertBannerProps {
@@ -22,7 +22,7 @@ export function RevertBanner({ onUnrevert, className }: RevertBannerProps) {
         onClick={onUnrevert}
         className="flex items-center gap-1.5 text-xs text-amber-400/90 hover:text-amber-300 transition-colors"
       >
-        <RotateCcw className="size-3" />
+        <Restart size={12} />
         Undo
       </button>
     </div>

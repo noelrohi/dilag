@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@dilag/ui/dialog";
 import { Button } from "@dilag/ui/button";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CloseCircle } from "@solar-icons/react";
 import type { DesignFile } from "@/hooks/use-designs";
 import { cn } from "@/lib/utils";
 import { IPhoneFrame } from "./iphone-frame";
@@ -131,7 +131,7 @@ export function PreviewCarousel({
                 size="icon"
                 className="size-8 text-white/60 hover:text-white hover:bg-white/10"
               >
-                <X className="size-4" />
+                <CloseCircle size={16} />
                 <span className="sr-only">Close</span>
               </Button>
             </DialogClose>
@@ -155,7 +155,7 @@ export function PreviewCarousel({
                   )}
                   onClick={goPrev}
                 >
-                  <ChevronLeft className="size-5" />
+                  <ArrowLeft size={20} />
                 </Button>
                 <Button
                   variant="ghost"
@@ -170,7 +170,7 @@ export function PreviewCarousel({
                   )}
                   onClick={goNext}
                 >
-                  <ChevronRight className="size-5" />
+                  <ArrowRight size={20} />
                 </Button>
               </>
             )}

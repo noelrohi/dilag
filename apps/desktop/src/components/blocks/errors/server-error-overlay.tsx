@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { AlertTriangle, X, Copy, MessageSquare, ChevronDown, Check } from "lucide-react";
+import { DangerTriangle, CloseCircle, Copy, ChatRoundDots, AltArrowDown, CheckCircle } from "@solar-icons/react";
 import { Button } from "@dilag/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -100,7 +100,7 @@ export function ServerErrorOverlay({
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-destructive/20 bg-destructive/5">
           <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="size-4" />
+            <DangerTriangle size={16} />
             <span className="font-medium text-sm">Server Error</span>
             <span className="text-xs text-muted-foreground">
               ({errors.length} error{errors.length > 1 ? "s" : ""})
@@ -113,9 +113,10 @@ export function ServerErrorOverlay({
               className="size-7 p-0"
               onClick={() => setIsExpanded(!isExpanded)}
             >
-              <ChevronDown
+              <AltArrowDown
+                size={16}
                 className={cn(
-                  "size-4 transition-transform",
+                  "transition-transform",
                   !isExpanded && "-rotate-90"
                 )}
               />
@@ -126,7 +127,7 @@ export function ServerErrorOverlay({
               className="size-7 p-0"
               onClick={handleDismiss}
             >
-              <X className="size-4" />
+              <CloseCircle size={16} />
             </Button>
           </div>
         </div>
@@ -151,12 +152,12 @@ export function ServerErrorOverlay({
               >
                 {copied ? (
                   <>
-                    <Check className="size-3.5" />
+                    <CheckCircle size={14} />
                     Copied
                   </>
                 ) : (
                   <>
-                    <Copy className="size-3.5" />
+                    <Copy size={14} />
                     Copy
                   </>
                 )}
@@ -168,7 +169,7 @@ export function ServerErrorOverlay({
                   onClick={handleSendToChat}
                   className="gap-1.5 bg-destructive hover:bg-destructive/90"
                 >
-                  <MessageSquare className="size-3.5" />
+                  <ChatRoundDots size={14} />
                   Send to Chat
                 </Button>
               )}

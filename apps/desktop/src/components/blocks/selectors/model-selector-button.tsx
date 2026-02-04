@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, Plus, RefreshCw } from "lucide-react";
+import { AltArrowDown, AddCircle, Refresh } from "@solar-icons/react";
 import { Button } from "@dilag/ui/button";
 import { cn } from "@/lib/utils";
 import { selectorStyles } from "./agent-selector-button";
@@ -120,7 +120,7 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
           disabled={isRestarting}
           title="Refresh models"
         >
-          <RefreshCw className={cn("size-3.5", isRestarting && "animate-spin")} />
+          <Refresh size={14} className={isRestarting ? "animate-spin" : ""} />
         </Button>
         <Button
           variant="outline"
@@ -131,7 +131,7 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
             setProviderDialogState({ type: "select-provider" });
           }}
         >
-          <Plus className="size-3.5" />
+          <AddCircle size={14} />
           Connect
         </Button>
       </div>
@@ -164,7 +164,7 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
               ) : (
                 <span className="text-sm text-muted-foreground">Select</span>
               )}
-              <ChevronDown className="size-3.5 text-muted-foreground/50" />
+              <AltArrowDown size={14} className="text-muted-foreground/50" />
             </button>
           ) : (
             <Button
@@ -186,7 +186,7 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
               ) : (
                 <span className="font-medium text-muted-foreground">Select model</span>
               )}
-              <ChevronDown className="size-3.5 opacity-50" />
+              <AltArrowDown size={14} className="opacity-50" />
             </Button>
           )}
         </ModelSelectorTrigger>

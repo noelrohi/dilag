@@ -4,7 +4,7 @@ import { Badge } from "@dilag/ui/badge";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@dilag/ui/carousel";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@dilag/ui/hover-card";
 import { cn } from "@/lib/utils";
-import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "@solar-icons/react";
 import {
   type ComponentProps,
   createContext,
@@ -197,7 +197,7 @@ export const InlineCitationCarouselPrev = ({
       type="button"
       {...props}
     >
-      <ArrowLeftIcon className="size-4 text-muted-foreground" />
+      <ArrowLeft size={16} className="text-muted-foreground" />
     </button>
   );
 };
@@ -224,7 +224,7 @@ export const InlineCitationCarouselNext = ({
       type="button"
       {...props}
     >
-      <ArrowRightIcon className="size-4 text-muted-foreground" />
+      <ArrowRight size={16} className="text-muted-foreground" />
     </button>
   );
 };

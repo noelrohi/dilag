@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
+import { DangerTriangle } from "@solar-icons/react";
 import {
   useCurrentSessionId,
   useRunningQuestionTools,
@@ -144,7 +144,7 @@ export function StuckToolWarning({
       )}
     >
       <div className="flex items-start gap-3">
-        <AlertTriangle className="size-4 text-amber-500 shrink-0 mt-0.5" />
+        <DangerTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
         <div className="flex flex-col gap-1 min-w-0">
           <span className="text-sm font-medium text-amber-500">
             {message.title}

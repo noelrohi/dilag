@@ -4,7 +4,7 @@ import { Button } from "@dilag/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@dilag/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { ChevronsUpDownIcon } from "lucide-react";
+import { SortVertical } from "@solar-icons/react";
 import type { ComponentProps } from "react";
 import { createContext, useContext } from "react";
 import { Shimmer } from "./shimmer";
@@ -123,7 +123,7 @@ export const PlanTrigger = ({ className, ...props }: PlanTriggerProps) => (
       variant="ghost"
       {...props}
     >
-      <ChevronsUpDownIcon className="size-4" />
+      <SortVertical size={16} />
       <span className="sr-only">Toggle plan</span>
     </Button>
   </CollapsibleTrigger>

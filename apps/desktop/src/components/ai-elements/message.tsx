@@ -5,12 +5,7 @@ import { ButtonGroup, ButtonGroupText } from "@dilag/ui/button-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@dilag/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FileUIPart, UIMessage } from "ai";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PaperclipIcon,
-  XIcon,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Paperclip, CloseCircle } from "@solar-icons/react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -252,7 +247,7 @@ export const MessageBranchPrevious = ({
       variant="ghost"
       {...props}
     >
-      {children ?? <ChevronLeftIcon size={14} />}
+      {children ?? <ArrowLeft size={14} />}
     </Button>
   );
 };
@@ -276,7 +271,7 @@ export const MessageBranchNext = ({
       variant="ghost"
       {...props}
     >
-      {children ?? <ChevronRightIcon size={14} />}
+      {children ?? <ArrowRight size={14} />}
     </Button>
   );
 };
@@ -365,7 +360,7 @@ export function MessageAttachment({
               type="button"
               variant="ghost"
             >
-              <XIcon />
+              <CloseCircle size={12} />
               <span className="sr-only">Remove</span>
             </Button>
           )}
@@ -375,7 +370,7 @@ export function MessageAttachment({
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex size-full shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <PaperclipIcon className="size-4" />
+                <Paperclip size={16} />
               </div>
             </TooltipTrigger>
             <TooltipContent>
@@ -393,7 +388,7 @@ export function MessageAttachment({
               type="button"
               variant="ghost"
             >
-              <XIcon />
+              <CloseCircle size={12} />
               <span className="sr-only">Remove</span>
             </Button>
           )}

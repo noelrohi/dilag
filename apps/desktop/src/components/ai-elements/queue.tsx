@@ -4,7 +4,7 @@ import { Button } from "@dilag/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible";
 import { ScrollArea } from "@dilag/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon, PaperclipIcon } from "lucide-react";
+import { AltArrowDown, Paperclip } from "@solar-icons/react";
 import type { ComponentProps } from "react";
 
 export type QueueMessagePart = {
@@ -170,7 +170,7 @@ export const QueueItemFile = ({
     )}
     {...props}
   >
-    <PaperclipIcon size={12} />
+    <Paperclip size={12} />
     <span className="max-w-[100px] truncate">{children}</span>
   </span>
 );
@@ -237,7 +237,7 @@ export const QueueSectionLabel = ({
   ...props
 }: QueueSectionLabelProps) => (
   <span className={cn("flex items-center gap-2", className)} {...props}>
-    <ChevronDownIcon className="group-data-[state=closed]:-rotate-90 size-4 transition-transform" />
+    <AltArrowDown size={16} className="group-data-[state=closed]:-rotate-90 transition-transform" />
     {icon}
     <span>
       {count} {label}

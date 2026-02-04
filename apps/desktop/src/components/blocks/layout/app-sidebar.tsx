@@ -1,18 +1,15 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { FolderSimple, Gear, Plug, CaretLeft, CaretRight, Star, Plus, DotsThree, Trash } from "@phosphor-icons/react";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, useSidebar } from "@dilag/ui/sidebar";
+import { Folder, Settings, PlugCircle, Star, AddSquare, MenuDots, TrashBinMinimalistic } from "@solar-icons/react";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@dilag/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
-import { DilagLogo } from "@/components/blocks/branding/dilag-logo";
 import { AuthSettings } from "@/components/blocks/auth/auth-settings";
 import { TrialBanner } from "@/components/blocks/auth/trial-banner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip";
 import { useSessions } from "@/hooks/use-sessions";
 
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toggleSidebar, state } = useSidebar();
   const { sessions, deleteSession, toggleFavorite } = useSessions();
 
   // Derive favorites and recent sessions
@@ -41,37 +38,9 @@ export function AppSidebar() {
     deleteSession(sessionId);
   };
 
-  const isExpanded = state === "expanded";
-
   return (
-    <Sidebar collapsible="icon" className="border-r relative">
-      {/* Edge toggle button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={toggleSidebar}
-            className="absolute top-1/2 -right-3 -translate-y-1/2 z-10
-              size-6 rounded-full bg-sidebar border border-sidebar-border
-              flex items-center justify-center shadow-sm"
-          >
-            {isExpanded ? (
-              <CaretLeft className="size-3" />
-            ) : (
-              <CaretRight className="size-3" />
-            )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          {isExpanded ? "Collapse" : "Expand"}
-        </TooltipContent>
-      </Tooltip>
-
-      <SidebarHeader className="h-[38px] flex flex-row items-center gap-2 px-3">
-        <DilagLogo className="size-5" />
-        <span className="font-semibold text-sm group-data-[collapsible=icon]:hidden">
-          Dilag
-        </span>
-      </SidebarHeader>
+    <Sidebar collapsible="offcanvas">
+      <SidebarHeader data-tauri-drag-region className="h-[42px] pb-1 border-b border-sidebar-border" />
 
       <SidebarContent>
         {/* Main Navigation */}
@@ -83,7 +52,7 @@ export function AppSidebar() {
                   onClick={handleNewDesign}
                   tooltip="New design"
                 >
-                  <Plus className="size-4" weight="bold" />
+                  <AddSquare size={16} />
                   <span>New design</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -94,7 +63,7 @@ export function AppSidebar() {
                   tooltip="Projects"
                 >
                   <Link to="/projects">
-                    <FolderSimple className="size-4" />
+                    <Folder size={16} />
                     <span>Projects</span>
                   </Link>
                 </SidebarMenuButton>
@@ -115,9 +84,7 @@ export function AppSidebar() {
                   <SidebarMenuItem key={session.id} className="group/item">
                     <SidebarMenuButton
                       onClick={() => handleOpenProject(session.id)}
-                      className="text-muted-foreground hover:text-foreground"
                     >
-                      <Star weight="fill" className="size-3.5 text-amber-500 shrink-0" />
                       <span className="truncate text-sm">{session.name}</span>
                     </SidebarMenuButton>
                     <DropdownMenu>
@@ -126,19 +93,19 @@ export function AppSidebar() {
                           className="opacity-0 group-hover/item:opacity-100 transition-opacity"
                           showOnHover
                         >
-                          <DotsThree weight="bold" className="size-4" />
+                          <MenuDots size={16} />
                         </SidebarMenuAction>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" className="w-40">
                         <DropdownMenuItem onClick={() => handleToggleFavorite(session.id)}>
-                          <Star className="size-4 mr-2" />
+                          <Star size={16} className="mr-2" />
                           Unfavorite
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDelete(session.id)}
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash className="size-4 mr-2" />
+                          <TrashBinMinimalistic size={16} className="mr-2" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -162,7 +129,6 @@ export function AppSidebar() {
                   <SidebarMenuItem key={session.id} className="group/item">
                     <SidebarMenuButton
                       onClick={() => handleOpenProject(session.id)}
-                      className="text-muted-foreground hover:text-foreground"
                     >
                       <span className="truncate text-sm">{session.name}</span>
                     </SidebarMenuButton>
@@ -172,19 +138,19 @@ export function AppSidebar() {
                           className="opacity-0 group-hover/item:opacity-100 transition-opacity"
                           showOnHover
                         >
-                          <DotsThree weight="bold" className="size-4" />
+                          <MenuDots size={16} />
                         </SidebarMenuAction>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent side="right" align="start" className="w-40">
                         <DropdownMenuItem onClick={() => handleToggleFavorite(session.id)}>
-                          <Star className="size-4 mr-2" />
+                          <Star size={16} className="mr-2" />
                           Favorite
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDelete(session.id)}
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash className="size-4 mr-2" />
+                          <TrashBinMinimalistic size={16} className="mr-2" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -206,7 +172,7 @@ export function AppSidebar() {
             <AuthSettings
               trigger={
                 <SidebarMenuButton tooltip="Connect Provider">
-                  <Plug className="size-4" />
+                  <PlugCircle size={16} />
                   <span>Connect Provider</span>
                 </SidebarMenuButton>
               }
@@ -219,7 +185,7 @@ export function AppSidebar() {
               tooltip="Settings"
             >
               <Link to="/settings">
-                <Gear className="size-4" />
+                <Settings size={16} />
                 <span>Settings</span>
               </Link>
             </SidebarMenuButton>

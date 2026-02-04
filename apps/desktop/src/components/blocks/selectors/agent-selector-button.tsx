@@ -1,4 +1,4 @@
-import { ChevronDown, Check } from "lucide-react";
+import { AltArrowDown, CheckCircle } from "@solar-icons/react";
 import { Button } from "@dilag/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
 import { useAgents } from "@/hooks/use-agents";
@@ -40,7 +40,7 @@ export function AgentSelectorButton({ className }: AgentSelectorButtonProps) {
           <span className="capitalize font-medium">
             {selectedAgentInfo?.name ?? "Agent"}
           </span>
-          <ChevronDown className="size-3.5 opacity-50" />
+          <AltArrowDown size={14} className="opacity-50" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
@@ -58,7 +58,7 @@ export function AgentSelectorButton({ className }: AgentSelectorButtonProps) {
             )}
             <span className="flex-1 capitalize">{agent.name}</span>
             {selectedAgent === agent.name && (
-              <Check className="size-3.5 text-muted-foreground" />
+              <CheckCircle size={14} className="text-muted-foreground" />
             )}
           </DropdownMenuItem>
         ))}

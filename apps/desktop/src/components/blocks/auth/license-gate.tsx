@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Restart } from "@solar-icons/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getVersion } from "@tauri-apps/api/app";
 import { useQuery } from "@tanstack/react-query";
@@ -31,10 +31,7 @@ export function LicenseGate({ children }: LicenseGateProps) {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <div className="relative">
-          <div className="absolute inset-0 blur-2xl bg-primary/20 rounded-full animate-pulse" />
-          <Loader2 className="relative size-8 animate-spin text-primary" />
-        </div>
+        <DilagIcon className="size-12 opacity-50" />
       </div>
     );
   }
@@ -97,7 +94,7 @@ export function LicenseGate({ children }: LicenseGateProps) {
                 >
                   {starting ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" />
+                      <Restart size={16} className="animate-spin" />
                       <span>Opening browser...</span>
                     </>
                   ) : (

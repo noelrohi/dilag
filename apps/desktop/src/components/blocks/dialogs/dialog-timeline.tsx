@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Clock, GitFork, Undo2 } from "lucide-react";
+import { ClockCircle, BranchingPathsUp, UndoLeft } from "@solar-icons/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@dilag/ui/dialog";
 import { Button } from "@dilag/ui/button";
 import { ScrollArea } from "@dilag/ui/scroll-area";
@@ -41,7 +41,7 @@ function TimelineItem({
           {truncatedText || "Empty message"}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-          <Clock className="size-3 shrink-0" />
+          <ClockCircle size={12} />
           {timeFormatted}
         </p>
       </div>
@@ -54,7 +54,7 @@ function TimelineItem({
               className="size-7"
               onClick={() => onFork(message.id)}
             >
-              <GitFork className="size-3.5" />
+              <BranchingPathsUp size={14} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Fork from here</TooltipContent>
@@ -67,7 +67,7 @@ function TimelineItem({
               className="size-7"
               onClick={() => onRevert(message.id)}
             >
-              <Undo2 className="size-3.5" />
+              <UndoLeft size={14} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Revert to here</TooltipContent>
