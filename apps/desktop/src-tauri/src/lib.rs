@@ -47,8 +47,9 @@ pub fn run() {
                     .inner_size(1000.0, 700.0)
                     .min_inner_size(768.0, 600.0)
                     .maximized(true)
-                    .title_bar_style(TitleBarStyle::Transparent)
+                    .title_bar_style(TitleBarStyle::Overlay)
                     .hidden_title(true)
+                    .traffic_light_position(tauri::LogicalPosition::new(16.0, 18.0))
                     .initialization_script(&format!(
                         r#"window.__DILAG__ = {{ port: {} }};"#,
                         port
@@ -66,7 +67,8 @@ pub fn run() {
                     let ptr = window.as_ref().window().ns_window().unwrap();
                     Retained::retain(ptr as *mut NSWindow).unwrap()
                 };
-                let bg_color = NSColor::colorWithRed_green_blue_alpha(0.086, 0.086, 0.110, 1.0);
+                // Dark: oklch(0.14 0.01 250) - match CSS --background
+                let bg_color = NSColor::colorWithRed_green_blue_alpha(0.025, 0.037, 0.051, 1.0);
                 ns_win.setBackgroundColor(Some(&bg_color));
             }
 
