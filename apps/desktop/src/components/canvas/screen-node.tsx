@@ -3,7 +3,7 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { IPhoneFrame } from "@/components/blocks/preview/iphone-frame";
 import type { DesignFile } from "@/hooks/use-designs";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut } from "@dilag/ui/context-menu";
-import { Copy, Code, Download, Trash2, FolderOpen, MessageSquarePlus, Image } from "lucide-react";
+import { Copy, Code, Download, TrashBinMinimalistic, FolderOpen, ChatRoundDots, Gallery } from "@solar-icons/react";
 import { copyFilePath, copyToClipboard, downloadHtml, exportAsPng } from "@/lib/design-export";
 import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer";
 import { injectInspector, type ElementInspectorMessage } from "@/lib/element-inspector";
@@ -19,6 +19,8 @@ import { ElementSelectionMenu } from "./element-selection-menu";
 // Constants for frame sizes
 const WEB_WIDTH = 640;
 const WEB_HEIGHT = 400;
+const MOBILE_SCREEN_WIDTH = 393;
+const MOBILE_SCREEN_HEIGHT = 852;
 const MOBILE_SCALE = 0.663;
 const WEB_SCALE = WEB_WIDTH / 1280;
 
@@ -185,7 +187,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
 
   const handleExportPng = useCallback(() => {
     const dimensions = isMobile
-      ? { width: 393, height: 852 }
+      ? { width: MOBILE_SCREEN_WIDTH, height: MOBILE_SCREEN_HEIGHT }
       : { width: 1280, height: 800 };
     exportAsPng({
       html: design.html,
@@ -238,7 +240,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
           <div className="relative drag-handle">
             {/* Selection ring - only around the frame, not the title */}
             {selected && (
-              <div className="absolute -inset-2 border-2 border-primary rounded-lg pointer-events-none z-10" />
+              <div className="absolute -inset-2 border-2 border-primary rounded-2xl pointer-events-none z-10" />
             )}
 
             {isMobile ? (
@@ -279,8 +281,8 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                   sandbox="allow-scripts"
                   title={design.title}
                   style={{
-                    width: 393,
-                    height: 852,
+                    width: MOBILE_SCREEN_WIDTH,
+                    height: MOBILE_SCREEN_HEIGHT,
                     transform: `scale(${MOBILE_SCALE})`,
                     transformOrigin: "top left",
                   }}
@@ -288,51 +290,62 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
               </IPhoneFrame>
             ) : (
               <div
-                className="bg-card rounded-lg overflow-hidden shadow-xl ring-1 ring-border relative"
+                className="bg-card rounded-2xl shadow-xl border-2 border-border relative overflow-visible flex flex-col"
                 style={{ width: WEB_WIDTH, height: WEB_HEIGHT }}
               >
-                {/* Element highlights for web */}
-                {showHoveredHighlight && hoveredElement && (
-                  <ElementHighlight
-                    element={hoveredElement}
-                    isSelected={false}
-                    scale={scale}
-                    offset={iframeOffset}
-                  />
-                )}
-                {showSelectedHighlight && selectedElement && (
-                  <>
+                {/* Browser toolbar */}
+                <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/50">
+                  <div className="flex gap-1.5">
+                    <div className="size-2.5 rounded-full bg-red-400" />
+                    <div className="size-2.5 rounded-full bg-yellow-400" />
+                    <div className="size-2.5 rounded-full bg-green-400" />
+                  </div>
+                  <div className="flex-1 mx-8">
+                    <div className="h-4 bg-muted/50 rounded-md" />
+                  </div>
+                </div>
+                <div className="flex-1 relative rounded-b-2xl overflow-hidden">
+                  {/* Element highlights for web */}
+                  {showHoveredHighlight && hoveredElement && (
+                    <ElementHighlight
+                      element={hoveredElement}
+                      isSelected={false}
+                      scale={scale}
+                      offset={iframeOffset}
+                    />
+                  )}
+                  {showSelectedHighlight && selectedElement && (
                     <ElementHighlight
                       element={selectedElement}
                       isSelected={true}
                       scale={scale}
                       offset={iframeOffset}
                     />
-                    {onEditElementWithAI && (
-                      <ElementSelectionMenu
-                        element={selectedElement}
-                        scale={scale}
-                        offset={iframeOffset}
-                        onEditWithAI={() => onEditElementWithAI(selectedElement)}
-                        onClose={clearSelection}
-                      />
-                    )}
-                  </>
+                  )}
+                  <iframe
+                    ref={iframeRef}
+                    data-screen-id={id}
+                    srcDoc={preparedHtml}
+                    className="w-full h-full border-0"
+                    sandbox="allow-scripts"
+                    title={design.title}
+                    style={{
+                      width: 1280,
+                      height: 800,
+                      transform: `scale(${WEB_SCALE})`,
+                      transformOrigin: "top left",
+                    }}
+                  />
+                </div>
+                {showSelectedHighlight && selectedElement && onEditElementWithAI && (
+                  <ElementSelectionMenu
+                    element={selectedElement}
+                    scale={scale}
+                    offset={iframeOffset}
+                    onEditWithAI={() => onEditElementWithAI(selectedElement)}
+                    onClose={clearSelection}
+                  />
                 )}
-                <iframe
-                  ref={iframeRef}
-                  data-screen-id={id}
-                  srcDoc={preparedHtml}
-                  className="w-full h-full border-0"
-                  sandbox="allow-scripts"
-                  title={design.title}
-                  style={{
-                    width: 1280,
-                    height: 800,
-                    transform: `scale(${WEB_SCALE})`,
-                    transformOrigin: "top left",
-                  }}
-                />
               </div>
             )}
           </div>
@@ -355,37 +368,37 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
         {onAddToComposer && (
           <>
             <ContextMenuItem onClick={handleAddToComposer}>
-              <MessageSquarePlus className="size-4 mr-2" />
+              <ChatRoundDots size={16} className="mr-2" />
               Add to chat
             </ContextMenuItem>
             <ContextMenuSeparator />
           </>
         )}
         <ContextMenuItem onClick={handleCopy}>
-          <Copy className="size-4 mr-2" />
+          <Copy size={16} className="mr-2" />
           Copy
           <ContextMenuShortcut>Cmd+C</ContextMenuShortcut>
         </ContextMenuItem>
         {filePath && (
           <ContextMenuItem onClick={handleCopyPath}>
-            <FolderOpen className="size-4 mr-2" />
+            <FolderOpen size={16} className="mr-2" />
             Copy path
           </ContextMenuItem>
         )}
         <ContextMenuSeparator />
         <CodeViewerDialog code={design.html} title={design.title}>
           <ContextMenuItem onSelect={(e) => e.preventDefault()}>
-            <Code className="size-4 mr-2" />
+            <Code size={16} className="mr-2" />
             View Code
           </ContextMenuItem>
         </CodeViewerDialog>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={handleDownload}>
-          <Download className="size-4 mr-2" />
+          <Download size={16} className="mr-2" />
           Download HTML
         </ContextMenuItem>
         <ContextMenuItem onClick={handleExportPng}>
-          <Image className="size-4 mr-2" />
+          <Gallery size={16} className="mr-2" />
           Export as PNG
         </ContextMenuItem>
         {onDelete && (
@@ -395,7 +408,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
               onClick={handleDelete}
               className="text-destructive focus:text-destructive focus:bg-destructive/10"
             >
-              <Trash2 className="size-4 mr-2" />
+              <TrashBinMinimalistic size={16} className="mr-2" />
               Delete
               <ContextMenuShortcut>Del</ContextMenuShortcut>
             </ContextMenuItem>

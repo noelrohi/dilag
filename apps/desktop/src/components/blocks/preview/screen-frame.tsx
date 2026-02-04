@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, Trash2, Copy, Code, Download, FolderOpen } from "lucide-react";
+import { MenuDots, TrashBinMinimalistic, Copy, Code, Download, FolderOpen } from "@solar-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuShortcut } from "@dilag/ui/dropdown-menu";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut } from "@dilag/ui/context-menu";
 import { copyFilePath, copyToClipboard, downloadHtml } from "@/lib/design-export";
@@ -45,7 +45,7 @@ export function ScreenFrame({
                     className="pointer-events-auto p-2.5 rounded-xl bg-popover/95 backdrop-blur-md border border-border/50 shadow-xl hover:bg-popover transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <MoreHorizontal className="size-4 text-foreground" />
+                    <MenuDots size={16} className="text-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center" className="w-48">
@@ -56,7 +56,7 @@ export function ScreenFrame({
                         copyToClipboard(html);
                       }}
                     >
-                      <Copy className="size-4 mr-2" />
+                      <Copy size={16} className="mr-2" />
                       Copy
                       <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
                     </DropdownMenuItem>
@@ -68,7 +68,7 @@ export function ScreenFrame({
                         copyFilePath(filePath);
                       }}
                     >
-                      <FolderOpen className="size-4 mr-2" />
+                      <FolderOpen size={16} className="mr-2" />
                       Copy path
                     </DropdownMenuItem>
                   )}
@@ -77,8 +77,8 @@ export function ScreenFrame({
                       <DropdownMenuSeparator />
                       <CodeViewerDialog code={html} title={title}>
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                          <Code className="size-4 mr-2" />
-                          View Code
+                        <Code size={16} className="mr-2" />
+                        View Code
                         </DropdownMenuItem>
                       </CodeViewerDialog>
                     </>
@@ -92,7 +92,7 @@ export function ScreenFrame({
                           downloadHtml({ html, title });
                         }}
                       >
-                        <Download className="size-4 mr-2" />
+                        <Download size={16} className="mr-2" />
                         Download
                         <DropdownMenuShortcut>⌘⇧D</DropdownMenuShortcut>
                       </DropdownMenuItem>
@@ -108,7 +108,7 @@ export function ScreenFrame({
                         }}
                         className="text-destructive focus:text-destructive focus:bg-destructive/10"
                       >
-                        <Trash2 className="size-4 mr-2" />
+                        <TrashBinMinimalistic size={16} className="mr-2" />
                         Delete
                         <DropdownMenuShortcut>⌫</DropdownMenuShortcut>
                       </DropdownMenuItem>
@@ -123,14 +123,14 @@ export function ScreenFrame({
       <ContextMenuContent className="w-48">
         {html && (
           <ContextMenuItem onClick={() => copyToClipboard(html)}>
-            <Copy className="size-4 mr-2" />
+            <Copy size={16} className="mr-2" />
             Copy
             <ContextMenuShortcut>⌘C</ContextMenuShortcut>
           </ContextMenuItem>
         )}
         {filePath && (
           <ContextMenuItem onClick={() => copyFilePath(filePath)}>
-            <FolderOpen className="size-4 mr-2" />
+            <FolderOpen size={16} className="mr-2" />
             Copy path
           </ContextMenuItem>
         )}
@@ -139,7 +139,7 @@ export function ScreenFrame({
             <ContextMenuSeparator />
             <CodeViewerDialog code={html} title={title}>
               <ContextMenuItem onSelect={(e) => e.preventDefault()}>
-                <Code className="size-4 mr-2" />
+                <Code size={16} className="mr-2" />
                 View Code
               </ContextMenuItem>
             </CodeViewerDialog>
@@ -149,7 +149,7 @@ export function ScreenFrame({
           <>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => downloadHtml({ html, title })}>
-              <Download className="size-4 mr-2" />
+              <Download size={16} className="mr-2" />
               Download
               <ContextMenuShortcut>⌘⇧D</ContextMenuShortcut>
             </ContextMenuItem>
@@ -162,7 +162,7 @@ export function ScreenFrame({
               onClick={onDelete}
               className="text-destructive focus:text-destructive focus:bg-destructive/10"
             >
-              <Trash2 className="size-4 mr-2" />
+              <TrashBinMinimalistic size={16} className="mr-2" />
               Delete
               <ContextMenuShortcut>⌫</ContextMenuShortcut>
             </ContextMenuItem>

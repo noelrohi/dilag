@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowLeft, Loader2, AlertCircle, Copy, Check } from "lucide-react";
+import { ArrowLeft, Restart, DangerCircle, Copy, CheckCircle } from "@solar-icons/react";
 import { useSDK } from "@/context/global-events";
 import { Dialog, DialogContent } from "@dilag/ui/dialog";
 import { Input } from "@dilag/ui/input";
@@ -226,7 +226,7 @@ export function DialogConnectProvider({
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               )}
             >
-              <ArrowLeft className="size-4 text-muted-foreground" />
+              <ArrowLeft size={16} className="text-muted-foreground" />
             </button>
             <div className="size-8 rounded-md bg-muted/50 flex items-center justify-center">
               <img
@@ -270,7 +270,7 @@ export function DialogConnectProvider({
           {/* Pending state */}
           {authState === "pending" && (
             <div className="py-6 flex flex-col items-center gap-3">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <Restart size={20} className="animate-spin text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Starting authorization...</p>
             </div>
           )}
@@ -279,7 +279,7 @@ export function DialogConnectProvider({
           {authState === "error" && (
             <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
               <div className="flex items-start gap-2">
-                <AlertCircle className="size-4 text-destructive mt-0.5 shrink-0" />
+                <DangerCircle size={16} className="text-destructive mt-0.5 shrink-0" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-destructive">Authorization failed</p>
                   <p className="text-xs text-destructive/80">{error}</p>
@@ -342,7 +342,7 @@ export function DialogConnectProvider({
                 >
                   {apiKeyMutation.isPending ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Restart size={14} className="animate-spin" />
                       Connecting...
                     </span>
                   ) : (
@@ -396,7 +396,7 @@ export function DialogConnectProvider({
                 >
                   {oauthCallbackMutation.isPending ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Restart size={14} className="animate-spin" />
                       Verifying...
                     </span>
                   ) : (
@@ -440,9 +440,9 @@ export function DialogConnectProvider({
                       )}
                     >
                       {copied ? (
-                        <Check className="size-3.5 text-emerald-600" />
+                        <CheckCircle size={14} className="text-emerald-600" />
                       ) : (
-                        <Copy className="size-3.5 text-muted-foreground" />
+                        <Copy size={14} className="text-muted-foreground" />
                       )}
                     </button>
                   </div>
@@ -461,7 +461,7 @@ export function DialogConnectProvider({
                 Reopen browser window
               </button>
               <div className="flex items-center justify-center gap-2 py-2">
-                <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                <Restart size={14} className="animate-spin text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Waiting for authorization...</span>
               </div>
             </div>

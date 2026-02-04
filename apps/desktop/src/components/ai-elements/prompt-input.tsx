@@ -8,16 +8,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } fro
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@dilag/ui/select";
 import { cn } from "@/lib/utils";
 import type { ChatStatus, FileUIPart } from "ai";
-import {
-  CornerDownLeftIcon,
-  ImageIcon,
-  Loader2Icon,
-  MicIcon,
-  PaperclipIcon,
-  SquareIcon,
-  XIcon,
-} from "lucide-react";
-import { Paperclip as PaperclipSolar } from "@solar-icons/react";
+import { Paperclip, CloseCircle, Stop, Restart, ArrowLeftDown, GalleryMinimalistic, Microphone2 } from "@solar-icons/react";
 import { nanoid } from "nanoid";
 import {
   type ChangeEvent,
@@ -373,7 +364,7 @@ export function PromptInputAttachment({
                 />
               ) : (
                 <div className="flex size-5 items-center justify-center text-muted-foreground">
-                  <PaperclipIcon className="size-3" />
+                  <Paperclip size={12} />
                 </div>
               )}
             </div>
@@ -387,7 +378,7 @@ export function PromptInputAttachment({
               type="button"
               variant="ghost"
             >
-              <XIcon />
+              <CloseCircle size={10} />
               <span className="sr-only">Remove</span>
             </Button>
           </div>
@@ -536,7 +527,7 @@ export function PromptInputScreenReference({
         }}
         type="button"
       >
-        <XIcon className="size-2.5 text-foreground/50" />
+        <CloseCircle size={10} className="text-foreground/50" />
         <span className="sr-only">Remove</span>
       </button>
     </div>
@@ -597,7 +588,7 @@ export const PromptInputActionAddAttachments = ({
         attachments.openFileDialog();
       }}
     >
-      <ImageIcon className="mr-2 size-4" /> {label}
+      <GalleryMinimalistic size={16} className="mr-2" /> {label}
     </DropdownMenuItem>
   );
 };
@@ -1199,7 +1190,7 @@ export const PromptInputActionMenuTrigger = ({
 }: PromptInputActionMenuTriggerProps) => (
   <DropdownMenuTrigger asChild>
     <PromptInputButton className={className} {...props}>
-      {children ?? <PaperclipSolar size={16} weight="Linear" />}
+      {children ?? <Paperclip size={16} />}
     </PromptInputButton>
   </DropdownMenuTrigger>
 );
@@ -1239,14 +1230,14 @@ export const PromptInputSubmit = ({
   children,
   ...props
 }: PromptInputSubmitProps) => {
-  let Icon = <CornerDownLeftIcon className="size-4" />;
+  let Icon = <ArrowLeftDown size={16} />;
 
   if (status === "submitted") {
-    Icon = <Loader2Icon className="size-4 animate-spin" />;
+    Icon = <Restart size={16} className="animate-spin" />;
   } else if (status === "streaming") {
-    Icon = <SquareIcon className="size-4" />;
+    Icon = <Stop size={16} />;
   } else if (status === "error") {
-    Icon = <XIcon className="size-4" />;
+    Icon = <CloseCircle size={16} />;
   }
 
   return (
@@ -1418,7 +1409,7 @@ export const PromptInputSpeechButton = ({
       onClick={toggleListening}
       {...props}
     >
-      <MicIcon className="size-4" />
+      <Microphone2 size={16} />
     </PromptInputButton>
   );
 };

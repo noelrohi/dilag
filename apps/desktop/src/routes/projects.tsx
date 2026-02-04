@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useSessions } from "@/hooks/use-sessions";
+import { PageHeader } from "@/components/blocks/layout/page-header";
 import { cn } from "@/lib/utils";
-import { Search, MoreHorizontal, Trash2, Globe } from "lucide-react";
-import { Star } from "@phosphor-icons/react";
+import { Magnifer, MenuDots, TrashBinMinimalistic, Global, Star } from "@solar-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
 
 export const Route = createFileRoute("/projects")({
@@ -74,6 +74,7 @@ function ProjectsPage() {
 
   return (
     <div className="h-dvh flex flex-col bg-background">
+      <PageHeader />
       <main className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between px-2 mb-6">
@@ -85,7 +86,7 @@ function ProjectsPage() {
             </div>
 
             <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
+              <Magnifer size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
               <input
                 type="text"
                 placeholder="Search projects..."
@@ -105,7 +106,7 @@ function ProjectsPage() {
           {filteredSessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                <Globe className="size-5 text-muted-foreground/50" />
+                <Global size={20} className="text-muted-foreground/50" />
               </div>
               <p className="text-muted-foreground text-sm">
                 {searchQuery ? "No matching projects" : "No projects yet"}
@@ -185,12 +186,12 @@ function ProjectCard({
             : "text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover:opacity-100"
         )}
       >
-        <Star weight={isFavorite ? "fill" : "regular"} className="size-5" />
+        <Star size={20} weight={isFavorite ? "Bold" : "Linear"} />
       </button>
 
       <div className="relative h-32 bg-gradient-to-br from-primary/5 via-muted/30 to-accent/5 overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
-          <Globe className="size-10 text-muted-foreground/20" />
+          <Global size={40} className="text-muted-foreground/20" />
         </div>
       </div>
 
@@ -216,7 +217,7 @@ function ProjectCard({
                   "transition-all duration-200"
                 )}
               >
-                <MoreHorizontal className="size-4" />
+                <MenuDots size={16} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
@@ -226,7 +227,7 @@ function ProjectCard({
                   onToggleFavorite();
                 }}
               >
-                <Star weight={isFavorite ? "fill" : "regular"} className={cn("size-4 mr-2", isFavorite && "text-amber-500")} />
+                <Star size={16} weight={isFavorite ? "Bold" : "Linear"} className={cn("mr-2", isFavorite && "text-amber-500")} />
                 {isFavorite ? "Unfavorite" : "Favorite"}
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -236,7 +237,7 @@ function ProjectCard({
                 }}
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
               >
-                <Trash2 className="size-4 mr-2" />
+                <TrashBinMinimalistic size={16} className="mr-2" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>

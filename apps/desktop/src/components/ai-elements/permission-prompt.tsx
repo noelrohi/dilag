@@ -5,19 +5,7 @@ import { Alert, AlertTitle, AlertDescription } from "@dilag/ui/alert";
 import { Button } from "@dilag/ui/button";
 import { Textarea } from "@dilag/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  ShieldQuestion,
-  Terminal,
-  FileEdit,
-  FolderSearch,
-  Search,
-  Globe,
-  Bot,
-  ChevronDown,
-  ChevronUp,
-  FolderOpen,
-  FileText,
-} from "lucide-react";
+import { AltArrowDown, AltArrowUp, Magnifer, ShieldWarning, Monitor, FolderPathConnect, Global, Bolt, FolderOpen, File, Pen } from "@solar-icons/react";
 import type { PermissionRequest } from "@/context/session-store";
 
 export type PermissionReply = "once" | "always" | "reject";
@@ -31,35 +19,35 @@ export interface PermissionPromptProps {
 // Map permission types to icons and labels
 const PERMISSION_CONFIG: Record<
   string,
-  { icon: typeof ShieldQuestion; label: string; colorClass: string }
+  { icon: typeof ShieldWarning | typeof Magnifer; label: string; colorClass: string }
 > = {
   bash: {
-    icon: Terminal,
+    icon: Monitor,
     label: "Shell Command",
     colorClass: "text-amber-500",
   },
   edit: {
-    icon: FileEdit,
+    icon: Pen,
     label: "Edit File",
     colorClass: "text-blue-500",
   },
   write: {
-    icon: FileEdit,
+    icon: Pen,
     label: "Write File",
     colorClass: "text-green-500",
   },
   read: {
-    icon: FileText,
+    icon: File,
     label: "Read File",
     colorClass: "text-purple-500",
   },
   glob: {
-    icon: FolderSearch,
+    icon: FolderPathConnect,
     label: "Search Files",
     colorClass: "text-cyan-500",
   },
   grep: {
-    icon: Search,
+    icon: Magnifer,
     label: "Search Content",
     colorClass: "text-cyan-500",
   },
@@ -69,17 +57,17 @@ const PERMISSION_CONFIG: Record<
     colorClass: "text-purple-500",
   },
   webfetch: {
-    icon: Globe,
+    icon: Global,
     label: "Fetch URL",
     colorClass: "text-indigo-500",
   },
   websearch: {
-    icon: Globe,
+    icon: Global,
     label: "Web Search",
     colorClass: "text-indigo-500",
   },
   task: {
-    icon: Bot,
+    icon: Bolt,
     label: "Run Task",
     colorClass: "text-orange-500",
   },
@@ -90,10 +78,23 @@ const PERMISSION_CONFIG: Record<
   },
 };
 
+const COMMAND_TRUNCATE_HEAD = 160;
+const COMMAND_TRUNCATE_TAIL = 80;
+
+function truncateMiddle(value: string, head = COMMAND_TRUNCATE_HEAD, tail = COMMAND_TRUNCATE_TAIL) {
+  if (value.length <= head + tail + 3) {
+    return { text: value, truncated: false };
+  }
+  return {
+    text: `${value.slice(0, head)}...${value.slice(-tail)}`,
+    truncated: true,
+  };
+}
+
 function getPermissionConfig(permission: string) {
   return (
     PERMISSION_CONFIG[permission] ?? {
-      icon: ShieldQuestion,
+      icon: ShieldWarning,
       label: permission,
       colorClass: "text-muted-foreground",
     }
@@ -109,6 +110,7 @@ export function PermissionPrompt({
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectMessage, setRejectMessage] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [showFullCommand, setShowFullCommand] = useState(false);
 
   const config = getPermissionConfig(request.permission);
   const Icon = config.icon;
@@ -137,15 +139,33 @@ export function PermissionPrompt({
     if (permission === "bash") {
       const command = metadata.command as string | undefined;
       const description = metadata.description as string | undefined;
+      const truncation = command ? truncateMiddle(command) : null;
+      const showToggle = Boolean(truncation?.truncated);
+      const commandDisplay = command
+        ? showFullCommand || !truncation?.truncated
+          ? command
+          : truncation.text
+        : undefined;
       return (
         <div className="space-y-1.5">
           {description && (
             <p className="text-sm text-muted-foreground">{description}</p>
           )}
-          {command && (
-            <pre className="text-xs font-mono bg-muted/50 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all">
-              $ {command}
-            </pre>
+          {commandDisplay && (
+            <div className="space-y-1">
+              <pre className="text-xs font-mono bg-muted/50 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all">
+                $ {commandDisplay}
+              </pre>
+              {showToggle && (
+                <button
+                  type="button"
+                  onClick={() => setShowFullCommand((prev) => !prev)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showFullCommand ? "Show less" : "Show full command"}
+                </button>
+              )}
+            </div>
           )}
         </div>
       );
@@ -233,6 +253,7 @@ export function PermissionPrompt({
   // Format patterns for display
   const patternDisplay =
     request.patterns.length > 0 ? request.patterns.join(", ") : null;
+  const metadataDisplay = getMetadataDisplay();
 
   return (
     <Alert
@@ -241,7 +262,7 @@ export function PermissionPrompt({
         className
       )}
     >
-      <Icon className={cn("size-4", config.colorClass)} />
+      <Icon size={16} className={config.colorClass} />
 
       <div className="flex flex-col gap-2">
         <AlertTitle className="flex items-center gap-2">
@@ -258,10 +279,10 @@ export function PermissionPrompt({
 
         <AlertDescription className="space-y-2">
           {/* Metadata display */}
-          {getMetadataDisplay()}
+          {metadataDisplay}
 
           {/* Patterns display (if no metadata) */}
-          {!getMetadataDisplay() && patternDisplay && (
+          {!metadataDisplay && patternDisplay && (
             <p className="text-sm">
               <span className="text-muted-foreground">Patterns: </span>
               <code className="text-xs bg-muted px-1 rounded">
@@ -278,9 +299,9 @@ export function PermissionPrompt({
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {expanded ? (
-                <ChevronUp className="size-3" />
+                <AltArrowUp size={12} />
               ) : (
-                <ChevronDown className="size-3" />
+                <AltArrowDown size={12} />
               )}
               {expanded ? "Hide" : "Show"} &quot;Allow always&quot; patterns
             </button>

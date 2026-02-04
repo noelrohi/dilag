@@ -14,15 +14,14 @@ import {
   useSessionStore,
   type ScreenPosition,
 } from "@/context/session-store";
-import { cn } from "@/lib/utils";
 import { Button } from "@dilag/ui/button";
 import { Input } from "@dilag/ui/input";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@dilag/ui/resizable";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@dilag/ui/alert-dialog";
 import { ChatView } from "@/components/blocks/chat/chat-view";
+import { PageHeader, PageHeaderLeft, PageHeaderRight } from "@/components/blocks/layout/page-header";
 import { DesignCanvas } from "@/components/canvas";
-import { PanelLeftClose, PanelLeftOpen, Copy, ChevronDown, GitFork, Pencil, Palette } from "lucide-react";
-import { Play, DownloadSimple } from "@phosphor-icons/react";
+import { Copy, AltArrowDown, BranchingPathsUp, Pen, Palette, Play, Download } from "@solar-icons/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@dilag/ui/dialog";
 import { copyFilePath, exportImages } from "@/lib/design-export";
@@ -50,7 +49,6 @@ function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [chatOpen, setChatOpen] = useState(true);
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -238,39 +236,16 @@ function StudioPage() {
 
   return (
     <AttachmentBridgeProvider>
-    <div className="h-dvh flex flex-col bg-background overflow-hidden">
-      {/* Title bar drag region */}
-      <div
-        data-tauri-drag-region
-        className="h-[38px] shrink-0 flex items-center select-none relative"
-      >
-        {/* Left controls - chat toggle */}
-        <div className="absolute left-0 top-0 h-full flex items-center pl-3 gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={() => {
-              if (chatOpen) {
-                chatPanelRef.current?.collapse();
-              } else {
-                chatPanelRef.current?.expand();
-              }
-            }}
-          >
-            {chatOpen ? (
-              <PanelLeftClose className="size-3.5" />
-            ) : (
-              <PanelLeftOpen className="size-3.5" />
-            )}
-          </Button>
+    <div className="h-full flex flex-col bg-background overflow-hidden">
+      <PageHeader>
+        <PageHeaderLeft>
           <span className="text-sm font-medium truncate max-w-[200px]">
             {currentSession?.name ?? "Untitled"}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center justify-center size-6 hover:bg-muted rounded">
-                <ChevronDown className="size-3.5 text-muted-foreground" />
+                <AltArrowDown size={14} className="text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -280,18 +255,18 @@ function StudioPage() {
                   setRenameOpen(true);
                 }}
               >
-                <Pencil className="size-4 mr-2" />
+                <Pen size={16} className="mr-2" />
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleForkSession}>
-                <GitFork className="size-4 mr-2" />
+                <BranchingPathsUp size={16} className="mr-2" />
                 Fork to new session
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => currentSession?.cwd && copyFilePath(currentSession.cwd)}
                 disabled={!currentSession?.cwd}
               >
-                <Copy className="size-4 mr-2" />
+                <Copy size={16} className="mr-2" />
                 Copy session path
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -303,15 +278,14 @@ function StudioPage() {
                 }}
                 disabled={!currentSession?.id}
               >
-                <Copy className="size-4 mr-2" />
+                <Copy size={16} className="mr-2" />
                 Copy session ID
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </PageHeaderLeft>
 
-        {/* Right controls - Preview and Export */}
-        <div className="absolute right-3 top-0 h-full flex items-center gap-2">
+        <PageHeaderRight>
           <Button
             variant="outline"
             size="sm"
@@ -319,7 +293,7 @@ function StudioPage() {
             onClick={() => setPreviewOpen(true)}
             disabled={designs.length === 0}
           >
-            <Play className="size-3.5" weight="fill" />
+            <Play size={14} />
             Preview
             {selectedScreenIds.size > 0 && (
               <span className="text-muted-foreground">({selectedScreenIds.size})</span>
@@ -341,17 +315,14 @@ function StudioPage() {
             }}
             disabled={designs.length === 0}
           >
-            <DownloadSimple className="size-3.5" weight="bold" />
+            <Download size={14} />
             Export
             {selectedScreenIds.size > 0 && (
               <span className="text-muted-foreground">({selectedScreenIds.size})</span>
             )}
           </Button>
-        </div>
-      </div>
-
-      {/* Border */}
-      <div className="h-px bg-border" />
+        </PageHeaderRight>
+      </PageHeader>
 
       {/* Main content */}
       <ResizablePanelGroup
@@ -371,8 +342,6 @@ function StudioPage() {
           maxSize={50}
           collapsible
           collapsedSize={0}
-          onCollapse={() => setChatOpen(false)}
-          onExpand={() => setChatOpen(true)}
           className="overflow-hidden"
         >
           <div className="h-full">
@@ -380,7 +349,7 @@ function StudioPage() {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle withHandle={chatOpen} className={cn(!chatOpen && "hidden")} />
+        <ResizableHandle />
 
         {/* Canvas area */}
         <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20 overflow-hidden">
@@ -476,7 +445,7 @@ function CanvasEmptyState() {
     <div className="h-full flex items-center justify-center">
       <div className="text-center space-y-3">
         <div className="size-20 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center mb-4">
-          <Palette className="size-10 text-primary/60" />
+          <Palette size={40} className="text-primary/60" />
         </div>
         <h3 className="font-semibold text-lg">No screens yet</h3>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">

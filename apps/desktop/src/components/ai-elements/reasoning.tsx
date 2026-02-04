@@ -3,7 +3,7 @@
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import { Lightbulb, AltArrowDown } from "@solar-icons/react";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -135,11 +135,12 @@ export const ReasoningTrigger = memo(
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4" />
+            <Lightbulb size={16} />
             {getThinkingMessage(isStreaming, duration)}
-            <ChevronDownIcon
+            <AltArrowDown
+              size={16}
               className={cn(
-                "size-4 transition-transform",
+                "transition-transform",
                 isOpen ? "rotate-180" : "rotate-0"
               )}
             />

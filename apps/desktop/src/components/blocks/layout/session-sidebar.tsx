@@ -1,19 +1,19 @@
 import { useMemo, useState } from "react";
 import {
-  Plus,
-  Trash2,
-  Search,
-  Sparkles,
-  Clock,
+  AddCircle,
+  TrashBinMinimalistic,
+  Magnifer,
+  ClockCircle,
+  BranchingPathsUp,
+  Restart,
+  MagicStick,
   Calendar,
-  Archive,
-  PanelLeft,
+  ArchiveDownMinimlistic,
+  SidebarMinimalistic,
   Settings,
-  Wifi,
-  WifiOff,
-  Loader2,
-  GitFork,
-} from "lucide-react";
+  WiFiRouter,
+  WiFiRouterMinimalistic,
+} from "@solar-icons/react";
 import { Link } from "@tanstack/react-router";
 import { useSessions } from "@/hooks/use-sessions";
 import { useConnectionStatus, type ConnectionStatus } from "@/context/global-events";
@@ -76,22 +76,22 @@ function ConnectionStatusIndicator() {
   const statusConfig: Record<ConnectionStatus, { color: string; icon: React.ReactNode; label: string }> = {
     connected: {
       color: "bg-green-500",
-      icon: <Wifi className="size-3" />,
+      icon: <WiFiRouter size={12} />,
       label: "Connected",
     },
     connecting: {
       color: "bg-yellow-500",
-      icon: <Loader2 className="size-3 animate-spin" />,
+      icon: <Restart size={12} className="animate-spin" />,
       label: "Connecting...",
     },
     reconnecting: {
       color: "bg-yellow-500",
-      icon: <Loader2 className="size-3 animate-spin" />,
+      icon: <Restart size={12} className="animate-spin" />,
       label: reconnectAttempt > 1 ? `Reconnecting (attempt ${reconnectAttempt})` : "Reconnecting...",
     },
     disconnected: {
       color: "bg-red-500",
-      icon: <WifiOff className="size-3" />,
+      icon: <WiFiRouterMinimalistic size={12} />,
       label: "Disconnected",
     },
   };
@@ -138,7 +138,7 @@ function SessionGroup({
   return (
     <SidebarGroup>
       <SidebarGroupLabel className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground/60">
-        <Icon className="size-3" />
+        <Icon size={12} />
         {label}
       </SidebarGroupLabel>
       <SidebarGroupContent>
@@ -156,7 +156,7 @@ function SessionGroup({
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {session.parentID && (
-                    <GitFork className="size-3 text-muted-foreground shrink-0" />
+                    <BranchingPathsUp size={12} className="text-muted-foreground shrink-0" />
                   )}
                   <span className="truncate text-sm font-medium">
                     {session.name}
@@ -168,7 +168,7 @@ function SessionGroup({
                 showOnHover
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive transition-colors" />
+                <TrashBinMinimalistic size={14} className="text-muted-foreground hover:text-destructive transition-colors" />
                 <span className="sr-only">Delete session</span>
               </SidebarMenuAction>
             </SidebarMenuItem>
@@ -228,7 +228,7 @@ export function SessionSidebar() {
             size="sm"
             className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
           >
-            <Plus className="size-4" />
+            <AddCircle size={16} />
             <span className="font-medium">New</span>
           </Button>
 
@@ -238,7 +238,7 @@ export function SessionSidebar() {
             size="icon"
             className="size-8 text-muted-foreground hover:text-foreground"
           >
-            <PanelLeft className="size-4" />
+            <SidebarMinimalistic size={16} />
             <span className="sr-only">Toggle sidebar</span>
           </Button>
         </div>
@@ -246,7 +246,7 @@ export function SessionSidebar() {
         {/* Search */}
         {sessions.length > 3 && (
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
+            <Magnifer size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -265,7 +265,7 @@ export function SessionSidebar() {
         {sessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <div className="size-12 rounded-xl bg-sidebar-accent/50 flex items-center justify-center mb-4">
-              <Sparkles className="size-5 text-muted-foreground/50" />
+              <MagicStick size={20} className="text-muted-foreground/50" />
             </div>
             <p className="text-sm font-medium text-muted-foreground">
               No sessions yet
@@ -277,7 +277,7 @@ export function SessionSidebar() {
         ) : filteredSessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <div className="size-12 rounded-xl bg-sidebar-accent/50 flex items-center justify-center mb-4">
-              <Search className="size-5 text-muted-foreground/50" />
+              <Magnifer size={20} className="text-muted-foreground/50" />
             </div>
             <p className="text-sm font-medium text-muted-foreground">
               No results found
@@ -290,7 +290,7 @@ export function SessionSidebar() {
           <>
             <SessionGroup
               label="Today"
-              icon={Clock}
+              icon={ClockCircle}
               sessions={groupedSessions.today}
               currentSessionId={currentSessionId}
               onSelect={selectSession}
@@ -314,7 +314,7 @@ export function SessionSidebar() {
             />
             <SessionGroup
               label="Older"
-              icon={Archive}
+              icon={ArchiveDownMinimlistic}
               sessions={groupedSessions.older}
               currentSessionId={currentSessionId}
               onSelect={selectSession}
@@ -333,7 +333,7 @@ export function SessionSidebar() {
               size="icon"
               className="size-8 text-muted-foreground hover:text-foreground"
             >
-              <Settings className="size-4" />
+              <Settings size={16} />
               <span className="sr-only">Settings</span>
             </Button>
           </Link>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Key, ExternalLink } from "lucide-react";
+import { Restart, Key, SquareArrowRightUp } from "@solar-icons/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@dilag/ui/dialog";
 import { Button } from "@dilag/ui/button";
@@ -49,7 +49,7 @@ export function ActivationModal({
       <DialogContent showCloseButton={allowClose} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Key className="size-5" />
+            <Key size={20} />
             Activate Dilag
           </DialogTitle>
           <DialogDescription>
@@ -83,7 +83,7 @@ export function ActivationModal({
                 className="gap-1"
               >
                 Purchase a license
-                <ExternalLink className="size-3" />
+                <SquareArrowRightUp size={12} />
               </Button>
             </div>
           )}
@@ -105,7 +105,7 @@ export function ActivationModal({
           >
             {activating ? (
               <>
-                <Loader2 className="size-4 animate-spin" />
+                <Restart size={16} className="animate-spin" />
                 Activating...
               </>
             ) : (

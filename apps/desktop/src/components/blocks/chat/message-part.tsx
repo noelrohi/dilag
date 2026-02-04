@@ -6,7 +6,7 @@ import {
   ReasoningContent,
 } from "@/components/ai-elements/reasoning";
 import { ToolPart } from "./tool-part";
-import { FileCode2 } from "lucide-react";
+import { CodeFile } from "@solar-icons/react";
 import { ErrorBoundary, InlineErrorFallback } from "@/components/blocks/errors/error-boundary";
 
 
@@ -73,7 +73,7 @@ function MessagePartContent({ part }: MessagePartProps) {
       }
       return (
         <div className="inline-flex items-center gap-2.5 rounded-lg border border-border/50 bg-card/50 px-3 py-2 text-sm">
-          <FileCode2 className="size-4 text-primary/60" />
+          <CodeFile size={16} className="text-primary/60" />
           <span className="font-mono text-sm">{part.filename || "File"}</span>
         </div>
       );

@@ -1,15 +1,20 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  Terminal,
-  AlertCircle,
-  Paperclip,
-  OctagonAlert,
-  Square,
-} from "lucide-react";
+  Monitor,
+  DangerCircle,
+  ClipboardText,
+  DangerTriangle,
+  Stop,
+  ArrowUp,
+  MagicStick,
+  BranchingPathsUp,
+  UndoLeft,
+  ClockCircle,
+  Copy,
+} from "@solar-icons/react";
 import { usePendingMessage } from "@/hooks/use-chat-interface";
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon";
-import { ArrowUp, Sparkle } from "@phosphor-icons/react";
 import { useSessions } from "@/hooks/use-sessions";
 import {
   useMessageParts,
@@ -56,7 +61,6 @@ import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selecto
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector";
 import { TimelineDialog } from "@/components/blocks/dialogs/dialog-timeline";
 import { RevertBanner } from "./revert-banner";
-import { GitFork, Undo2, History, Copy } from "lucide-react";
 import { PermissionList } from "./permission-list";
 import { QuestionList } from "./question-list";
 import { StuckToolWarning } from "@/components/blocks/errors/stuck-tool-warning";
@@ -177,7 +181,7 @@ function InlineErrorCard({ error }: { error: { name: string; message: string } }
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 animate-slide-up">
-      <OctagonAlert className="size-4 text-destructive shrink-0 mt-0.5" />
+      <DangerTriangle size={16} className="text-destructive shrink-0 mt-0.5" />
       <div className="flex flex-col gap-0.5 min-w-0">
         <span className="text-sm font-medium text-destructive">
           {formattedName || "Error"}
@@ -330,7 +334,7 @@ function UserMessage({
                   />
                 ) : (
                   <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Paperclip className="size-4" />
+                      <ClipboardText size={16} />
                     <span className="truncate max-w-[150px]">
                       {file.filename || "Attachment"}
                     </span>
@@ -350,16 +354,16 @@ function UserMessage({
       {!hideActions && (
         <MessageActions>
           <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
-            <Copy className="size-3.5" />
+            <Copy size={14} />
           </MessageAction>
           <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
-            <GitFork className="size-3.5" />
+            <BranchingPathsUp size={14} />
           </MessageAction>
           <MessageAction tooltip="Revert to here" onClick={() => onRevert(message.id)}>
-            <Undo2 className="size-3.5" />
+            <UndoLeft size={14} />
           </MessageAction>
           <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
-            <History className="size-3.5" />
+            <ClockCircle size={14} />
           </MessageAction>
         </MessageActions>
       )}
@@ -421,13 +425,13 @@ function AssistantMessage({
       {!message.isStreaming && isLast && (
         <MessageActions>
           <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
-            <Copy className="size-3.5" />
+            <Copy size={14} />
           </MessageAction>
           <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
-            <GitFork className="size-3.5" />
+            <BranchingPathsUp size={14} />
           </MessageAction>
           <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
-            <History className="size-3.5" />
+            <ClockCircle size={14} />
           </MessageAction>
         </MessageActions>
       )}
@@ -453,7 +457,7 @@ function EmptyState({ onCreateSession }: { onCreateSession: () => void }) {
         <div className="relative space-y-6">
           {/* Icon */}
           <div className="mx-auto size-16 rounded-2xl bg-card border border-border/50 flex items-center justify-center">
-            <Terminal className="size-7 text-primary" />
+            <Monitor size={28} className="text-primary" />
           </div>
 
           {/* Text */}
@@ -473,7 +477,7 @@ function EmptyState({ onCreateSession }: { onCreateSession: () => void }) {
             className="gap-2 glow-ring"
             size="lg"
           >
-            <Sparkle className="size-4" weight="fill" />
+            <MagicStick size={16} />
             New Session
           </Button>
         </div>
@@ -488,7 +492,7 @@ function LoadingState() {
       <div className="flex flex-col items-center gap-6 animate-slide-up">
         <div className="relative">
           <div className="size-12 rounded-xl bg-card border border-border/50 flex items-center justify-center">
-            <Terminal className="size-5 text-primary animate-thinking" />
+            <Monitor size={20} className="text-primary animate-thinking" />
           </div>
           <div className="absolute -inset-2 rounded-2xl bg-primary/10 animate-pulse" />
         </div>
@@ -511,7 +515,7 @@ function ErrorState({ error }: { error: string }) {
 
         <div className="relative space-y-4">
           <div className="mx-auto size-12 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center">
-            <AlertCircle className="size-5 text-destructive" />
+            <DangerCircle size={20} className="text-destructive" />
           </div>
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-destructive">{error}</h3>
@@ -629,9 +633,9 @@ function ChatInputArea({
                 )}
               >
                 {isLoading ? (
-                  <Square className="size-3.5 fill-current" />
+                  <Stop size={14} className="fill-current" />
                 ) : (
-                  <ArrowUp className="size-4" />
+                  <ArrowUp size={16} />
                 )}
               </PromptInputSubmit>
             </div>
@@ -672,7 +676,7 @@ function PendingPrompt() {
                     />
                   ) : (
                     <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-                      <Paperclip className="size-4" />
+                    <ClipboardText size={16} />
                       <span className="truncate max-w-[150px]">
                         {file.filename || "Attachment"}
                       </span>

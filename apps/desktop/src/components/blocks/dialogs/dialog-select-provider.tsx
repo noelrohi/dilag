@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Search, ChevronDown } from "lucide-react";
+import { CheckCircle, Magnifer, AltArrowDown } from "@solar-icons/react";
 import { useSDK } from "@/context/global-events";
 import { Dialog, DialogContent } from "@dilag/ui/dialog";
 import { Input } from "@dilag/ui/input";
@@ -91,7 +91,7 @@ export function DialogSelectProvider({
         {/* Search */}
         <div className="px-5 pb-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
+            <Magnifer size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
             <Input
               placeholder="Search..."
               value={search}
@@ -142,7 +142,7 @@ export function DialogSelectProvider({
                     </div>
                     {isConnected && (
                       <div className="size-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                        <Check className="size-3 text-emerald-600" />
+                        <CheckCircle size={12} className="text-emerald-600" />
                       </div>
                     )}
                   </button>
@@ -160,9 +160,10 @@ export function DialogSelectProvider({
                       "hover:text-foreground transition-colors"
                     )}
                   >
-                    <ChevronDown
+                    <AltArrowDown
+                      size={14}
                       className={cn(
-                        "size-3.5 transition-transform duration-200",
+                        "transition-transform duration-200",
                         !othersExpanded && "-rotate-90"
                       )}
                     />
@@ -195,7 +196,7 @@ export function DialogSelectProvider({
                             </span>
                             {isConnected && (
                               <div className="size-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                                <Check className="size-3 text-emerald-600" />
+                                <CheckCircle size={12} className="text-emerald-600" />
                               </div>
                             )}
                           </button>

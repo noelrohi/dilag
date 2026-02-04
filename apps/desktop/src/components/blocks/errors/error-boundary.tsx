@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@dilag/ui/button";
-import { RefreshCwIcon, AlertTriangleIcon } from "lucide-react";
+import { Refresh, DangerTriangle } from "@solar-icons/react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -70,15 +70,9 @@ interface DefaultErrorFallbackProps {
 
 function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
   return (
-    <div className="h-dvh flex flex-col bg-background">
-      {/* Title bar drag region */}
-      <div
-        data-tauri-drag-region
-        className="h-[38px] shrink-0 select-none"
-      />
-
-      {/* Error content - centered */}
-      <div className="flex-1 flex items-center justify-center px-8">
+    <div className="h-full w-full flex flex-col items-center justify-center bg-background">
+      {/* Error content */}
+      <div className="px-8">
         <div className="max-w-sm w-full text-center space-y-6">
           {/* Subtle error indicator */}
           <div className="mx-auto size-16 rounded-2xl bg-muted/50 flex items-center justify-center">
@@ -116,7 +110,7 @@ function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
             onClick={onReset}
             className="gap-2"
           >
-            <RefreshCwIcon className="size-3.5" />
+            <Refresh size={14} />
             Try again
           </Button>
 
@@ -138,7 +132,7 @@ function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
 export function InlineErrorFallback({ message }: { message?: string }) {
   return (
     <span className="inline-flex items-center gap-1 text-sm text-destructive">
-      <AlertTriangleIcon className="h-3 w-3" />
+      <DangerTriangle size={12} />
       {message ?? "Error"}
     </span>
   );

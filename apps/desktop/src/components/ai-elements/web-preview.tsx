@@ -5,17 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/c
 import { Input } from "@dilag/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@dilag/ui/tooltip";
 import { cn } from "@/lib/utils";
-import {
-  ArrowLeft,
-  ArrowRight,
-  ChevronDown,
-  Maximize2,
-  Minimize2,
-  Monitor,
-  Smartphone,
-  Tablet,
-  RotateCw,
-} from "lucide-react";
+import { AltArrowDown, Restart, ArrowLeft, ArrowRight, MaximizeSquare, MinimizeSquare, Monitor, Smartphone, Tablet } from "@solar-icons/react";
 import type { ComponentProps, ReactNode } from "react";
 import {
   createContext,
@@ -289,14 +279,14 @@ export const WebPreviewNavigationButtons = () => {
         disabled={!canGoBack}
         tooltip="Go back"
       >
-        <ArrowLeft className="size-4" />
+        <ArrowLeft size={16} />
       </WebPreviewNavigationButton>
       <WebPreviewNavigationButton
         onClick={goForward}
         disabled={!canGoForward}
         tooltip="Go forward"
       >
-        <ArrowRight className="size-4" />
+        <ArrowRight size={16} />
       </WebPreviewNavigationButton>
     </div>
   );
@@ -315,7 +305,7 @@ export const WebPreviewRefresh = () => {
       disabled={isLoading}
       tooltip="Refresh"
     >
-      <RotateCw className={cn("size-4", isLoading && "animate-spin")} />
+      <Restart size={16} className={cn(isLoading && "animate-spin")} />
     </WebPreviewNavigationButton>
   );
 };
@@ -393,7 +383,7 @@ export const WebPreviewViewportSelector = () => {
             viewport === id && "bg-background shadow-sm"
           )}
         >
-          <Icon className="size-3.5" />
+          <Icon size={14} />
         </WebPreviewNavigationButton>
       ))}
     </div>
@@ -413,9 +403,9 @@ export const WebPreviewFullScreenToggle = () => {
       tooltip={isFullScreen ? "Exit full screen" : "Full screen"}
     >
       {isFullScreen ? (
-        <Minimize2 className="size-4" />
+        <MinimizeSquare size={16} />
       ) : (
-        <Maximize2 className="size-4" />
+        <MaximizeSquare size={16} />
       )}
     </WebPreviewNavigationButton>
   );
@@ -579,9 +569,10 @@ export const WebPreviewConsole = ({
               </div>
             )}
           </div>
-          <ChevronDown
+          <AltArrowDown
+            size={16}
             className={cn(
-              "size-4 text-muted-foreground transition-transform duration-200",
+              "text-muted-foreground transition-transform duration-200",
               consoleOpen && "rotate-180"
             )}
           />

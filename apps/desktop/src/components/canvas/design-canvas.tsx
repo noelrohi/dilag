@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useEffect, useRef } from "react";
 import {
   ReactFlow,
-  Background,
-  BackgroundVariant,
   useNodesState,
   useReactFlow,
   ReactFlowProvider,
@@ -169,8 +167,13 @@ function DesignCanvasInner({
     [onCaptureScreen]
   );
 
+  const dotPatternStyle = {
+    backgroundImage: 'radial-gradient(rgba(240, 240, 245, 0.15) 1px, transparent 1px)',
+    backgroundSize: '24px 24px',
+  };
+
   return (
-    <div className={cn("w-full h-full relative", className)}>
+    <div className={cn("w-full h-full relative", className)} style={dotPatternStyle}>
       <ReactFlow
         nodes={nodes}
         nodeTypes={nodeTypes}
@@ -193,14 +196,8 @@ function DesignCanvasInner({
         fitView={false}
         attributionPosition="bottom-left"
         proOptions={{ hideAttribution: true }}
-      >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="hsl(var(--border))"
-        />
-      </ReactFlow>
+      />
+      
       {/* Controls rendered outside ReactFlow to ensure they're clickable */}
       <CanvasControls />
     </div>

@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Sun, Moon, Monitor, ExternalLink, Trash2, RefreshCw, HardDrive, Info, Palette } from "lucide-react";
+import { Sun, Moon, Monitor, SquareArrowRightUp, TrashBinMinimalistic, Refresh, Server, InfoCircle, Palette } from "@solar-icons/react";
 import { useTheme } from "@/components/theme-provider";
 import { useUpdaterContext } from "@/context/updater-context";
+import { PageHeader } from "@/components/blocks/layout/page-header";
 import { cn } from "@/lib/utils";
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@dilag/ui/dialog";
@@ -52,6 +53,7 @@ function SettingsPage() {
 
   return (
     <div className="h-dvh flex flex-col bg-background">
+      <PageHeader />
       <main className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-4 py-8">
           {/* Centered content column */}
@@ -65,7 +67,7 @@ function SettingsPage() {
             </header>
             {/* Appearance Section */}
             <SettingsSection
-              icon={<Palette className="size-4" />}
+              icon={<Palette size={16} />}
               title="Appearance"
             >
               <SettingsCard>
@@ -81,7 +83,7 @@ function SettingsPage() {
 
             {/* Storage Section */}
             <SettingsSection
-              icon={<HardDrive className="size-4" />}
+              icon={<Server size={16} />}
               title="Storage"
               description={appInfo ? formatBytes(appInfo.data_size_bytes) : undefined}
             >
@@ -99,7 +101,7 @@ function SettingsPage() {
                     "text-destructive hover:text-destructive/80 transition-colors"
                   )}
                 >
-                  <Trash2 className="size-4" />
+                  <TrashBinMinimalistic size={16} />
                   <span className="text-sm font-medium">Reset All Data</span>
                 </button>
               </SettingsCard>
@@ -107,7 +109,7 @@ function SettingsPage() {
 
             {/* About Section */}
             <SettingsSection
-              icon={<Info className="size-4" />}
+              icon={<InfoCircle size={16} />}
               title="About"
             >
               <SettingsCard>
@@ -142,7 +144,7 @@ function SettingsPage() {
                         "transition-colors disabled:opacity-60"
                       )}
                     >
-                      <RefreshCw className={cn("size-3", checking && "animate-spin")} />
+                      <Refresh size={12} className={cn(checking && "animate-spin")} />
                       {checking ? "Checking..." : "Check for Updates"}
                     </button>
                   )}
@@ -286,7 +288,7 @@ function ThemeSegment({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Icon className="size-3.5" />
+          <Icon size={14} />
           <span>{label}</span>
         </button>
       ))}
@@ -312,7 +314,7 @@ function ExternalLinkButton({
       )}
     >
       {label}
-      <ExternalLink className="size-3" />
+      <SquareArrowRightUp size={12} />
     </button>
   );
 }
