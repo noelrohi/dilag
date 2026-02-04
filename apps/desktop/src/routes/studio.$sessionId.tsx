@@ -14,7 +14,6 @@ import {
   useSessionStore,
   type ScreenPosition,
 } from "@/context/session-store";
-import { cn } from "@/lib/utils";
 import { Button } from "@dilag/ui/button";
 import { Input } from "@dilag/ui/input";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@dilag/ui/resizable";
@@ -50,7 +49,6 @@ function StudioPage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [chatOpen, setChatOpen] = useState(true);
   const [renameOpen, setRenameOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -344,8 +342,6 @@ function StudioPage() {
           maxSize={50}
           collapsible
           collapsedSize={0}
-          onCollapse={() => setChatOpen(false)}
-          onExpand={() => setChatOpen(true)}
           className="overflow-hidden"
         >
           <div className="h-full">
@@ -353,7 +349,7 @@ function StudioPage() {
           </div>
         </ResizablePanel>
 
-        <ResizableHandle withHandle={chatOpen} className={cn(!chatOpen && "hidden")} />
+        <ResizableHandle />
 
         {/* Canvas area */}
         <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20 overflow-hidden">
