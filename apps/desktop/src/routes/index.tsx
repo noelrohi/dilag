@@ -16,13 +16,14 @@ import {
   PromptInputTools,
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input";
+import { PageHeader } from "@/components/blocks/layout/page-header";
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button";
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button";
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector";
 import { useSessions } from "@/hooks/use-sessions";
 import { type Platform } from "@/context/session-store";
 import { cn } from "@/lib/utils";
-import { ArrowUpIcon, Desktop, DeviceMobile } from "@phosphor-icons/react";
+import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 
@@ -64,7 +65,8 @@ function LandingPage() {
   };
 
   return (
-    <div className="h-dvh flex flex-col bg-background relative overflow-hidden">
+    <div className="h-full flex flex-col bg-background relative overflow-hidden">
+      <PageHeader />
       <div
         className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20"
         style={{
@@ -75,19 +77,13 @@ function LandingPage() {
         }}
       />
 
-      <div
-        data-tauri-drag-region
-        className="h-[38px] shrink-0 flex items-center select-none relative"
-      >
-        {!isServerReady && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-            <div className="size-1.5 rounded-full bg-amber-500/80 animate-pulse" />
-            <span className="text-[10px] text-muted-foreground">
-              connecting
-            </span>
-          </div>
-        )}
-      </div>
+      {/* Connection status indicator */}
+      {!isServerReady && (
+        <div className="absolute top-2 right-3 flex items-center gap-1.5 z-10">
+          <div className="size-1.5 rounded-full bg-amber-500/80" />
+          <span className="text-[10px] text-muted-foreground">connecting</span>
+        </div>
+      )}
 
       <main className="relative flex-1 flex flex-col overflow-auto">
         <div className="flex-1 flex items-center justify-center px-6 py-16">
@@ -190,7 +186,7 @@ function ComposerInput({
                 : "bg-muted text-muted-foreground",
             )}
           >
-            <ArrowUpIcon className="size-4" />
+            <ArrowUp size={16} />
           </PromptInputSubmit>
         </div>
       </PromptInputFooter>
@@ -217,7 +213,7 @@ function PlatformToggle({
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <Desktop className="size-4" />
+          <Monitor size={16} />
           Web
         </button>
         <button
@@ -229,7 +225,7 @@ function PlatformToggle({
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <DeviceMobile className="size-4" />
+          <Smartphone size={16} />
           Mobile
         </button>
       </div>

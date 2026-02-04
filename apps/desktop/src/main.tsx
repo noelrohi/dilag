@@ -8,7 +8,17 @@ import { CheckUpdatesMenuListener } from "./components/blocks/check-updates-menu
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "@dilag/ui/sonner";
 import { UpdaterProvider } from "./context/updater-context";
+import { DilagLogo } from "./components/blocks/branding/dilag-logo";
 import "./index.css";
+
+// Loading screen component
+function LoadingScreen() {
+  return (
+    <div className="h-dvh flex items-center justify-center bg-background">
+      <DilagLogo className="size-12 opacity-50" />
+    </div>
+  );
+}
 
 const container = document.getElementById("root");
 if (!container) {
@@ -16,6 +26,15 @@ if (!container) {
 }
 
 const root = ReactDOM.createRoot(container as HTMLElement);
+
+// Show loading screen immediately
+root.render(
+  <React.StrictMode>
+    <ThemeProvider defaultTheme="dark" storageKey="dilag-theme">
+      <LoadingScreen />
+    </ThemeProvider>
+  </React.StrictMode>,
+);
 
 // Check OpenCode installation BEFORE React renders (TkDodo/KCD approved pattern)
 // This avoids loading spinners and keeps prerequisite logic outside the component tree

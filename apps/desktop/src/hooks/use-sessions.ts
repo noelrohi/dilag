@@ -365,6 +365,7 @@ export function useSessions() {
           created_at: new Date().toISOString(),
           cwd: currentSession.cwd,
           parentID: currentSessionId,
+          platform: currentSession.platform,
         };
 
         // Save to Tauri + update React Query cache
@@ -475,6 +476,7 @@ export function useSessions() {
           created_at: new Date().toISOString(),
           cwd,
           parentID: currentSessionId,
+          platform: currentSession.platform,
         };
 
         // Save to Tauri + update React Query cache
