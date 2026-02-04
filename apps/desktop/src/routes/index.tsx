@@ -108,15 +108,10 @@ function LandingPage() {
               <PlatformToggle value={platform} onChange={setPlatform} />
 
               <PromptInputProvider>
-                <div className="group/composer relative">
-                  {/* Focus glow effect */}
-                  <div className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-focus-within/composer:opacity-100 bg-gradient-to-b from-primary/20 via-primary/5 to-transparent blur-sm" />
-                  <div className="pointer-events-none absolute -inset-[2px] rounded-xl opacity-0 transition-opacity duration-300 group-focus-within/composer:opacity-100 ring-1 ring-primary/30" />
-                  <ComposerInput
-                    onSubmit={handleSubmit}
-                    disabled={!isServerReady}
-                  />
-                </div>
+                <ComposerInput
+                  onSubmit={handleSubmit}
+                  disabled={!isServerReady}
+                />
               </PromptInputProvider>
 
               <div className="flex justify-center gap-2 mt-8">
@@ -152,7 +147,7 @@ function ComposerInput({
   return (
     <PromptInput
       onSubmit={async ({ text, files }) => onSubmit(text, files)}
-      className="rounded-xl border-border/60 bg-card/80 backdrop-blur-sm transition-all duration-200 focus-within:border-primary/40 focus-within:bg-card"
+      className="border border-border bg-card transition-colors duration-200 focus-within:border-primary/50"
     >
       <PromptInputAttachments>
         {(attachment) => <PromptInputAttachment data={attachment} />}
