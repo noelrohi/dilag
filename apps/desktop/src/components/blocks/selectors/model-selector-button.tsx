@@ -229,7 +229,7 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
                       className="flex items-center justify-between gap-3 ml-7"
                     >
                       <span className="truncate">{model.name}</span>
-                      {model.free && (
+{model.free && (
                         <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20">
                           Free
                         </span>

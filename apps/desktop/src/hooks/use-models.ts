@@ -22,6 +22,7 @@ export interface Model {
   hot?: boolean;
   free?: boolean;
   latest?: boolean;
+  cost?: { input?: number; output?: number };
   variants?: Record<string, Record<string, unknown>>;
 }
 
@@ -72,28 +73,22 @@ function isHotModel(modelID: string): boolean {
 }
 
 /**
- * Free model families from OpenCode Zen
+ * Check if a model is marked as latest based on its name
  */
-const FREE_MODEL_FAMILIES = [
-  "big-pickle",
-  "glm-free",
-  "gpt-5-nano",
-  "grok",
-  "minimax",
-] as const;
+function isModelLatest(modelName: string): boolean {
+  return modelName.toLowerCase().includes("(latest)");
+}
 
 /**
- * Check if a model is free based on family or ID
+ * Check if a model is free based on cost data (matching simon pattern)
  */
-function isFreeModel(modelID: string, family?: string): boolean {
-  if (family && FREE_MODEL_FAMILIES.some((f) => family.includes(f))) {
-    return true;
-  }
-  // Fallback to ID check for models without family
-  return modelID.includes("big-pickle") ||
-         modelID.includes("glm-free") ||
-         modelID.includes("gpt-5-nano") ||
-         modelID.includes("grok-code");
+function isModelFree(
+  providerID: string,
+  cost?: { input?: number; output?: number },
+): boolean {
+  if (providerID !== "opencode") return false;
+  if (!cost) return true;
+  return (cost.input ?? 0) === 0 && (cost.output ?? 0) === 0;
 }
 
 /**
@@ -117,9 +112,8 @@ function filterLatestModels(models: Model[]): Model[] {
     }
   }
 
-  // Mark filtered models as latest
-  const latestModels = Array.from(grouped.values());
-  return latestModels.map((m) => ({ ...m, latest: true }));
+  // Return filtered models (latest property already set based on name)
+  return Array.from(grouped.values());
 }
 
 /**
@@ -136,6 +130,7 @@ function transformProviderData(
         name: string;
         release_date?: string;
         family?: string;
+        cost?: { input?: number; output?: number };
         variants?: Record<string, Record<string, unknown>>;
       }
     >;
@@ -154,13 +149,15 @@ function transformProviderData(
 
       models.push({
         id: modelID,
-        name: model.name.replace("(latest)", "").trim(),
+        name: model.name.replace(/\s*\(latest\)\s*/i, "").trim(),
         providerID: provider.id,
         providerName: provider.name,
         releaseDate: model.release_date,
         family: model.family,
         hot: isHotModel(modelID),
-        free: isFreeModel(modelID, model.family),
+        free: isModelFree(provider.id, model.cost),
+        latest: isModelLatest(model.name),
+        cost: model.cost,
         variants: model.variants,
       });
     }
