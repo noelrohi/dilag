@@ -5,6 +5,12 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2026-02-06
+
+### Added
+
+- **Ghost Screen Placeholder**: Loading states and placeholder screens during AI generation for better visual feedback
+
 ## [0.4.6] - 2026-02-06
 
 ### Added
