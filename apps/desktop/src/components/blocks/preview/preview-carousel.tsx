@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@dilag/ui/dialog";
 import { Button } from "@dilag/ui/button";
 import { ArrowLeft, ArrowRight, CloseCircle } from "@solar-icons/react";
@@ -6,6 +6,9 @@ import type { DesignFile } from "@/hooks/use-designs";
 import { cn } from "@/lib/utils";
 import { IPhoneFrame } from "./iphone-frame";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
+import { getMobileViewportSize } from "@/lib/design-viewport";
+
+const MOBILE_FRAME_SCREEN_WIDTH = 260; // matches iphone-frame screen width
 
 interface PreviewCarouselProps {
   open: boolean;
@@ -59,9 +62,16 @@ export function PreviewCarousel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, goNext, goPrev]);
 
-  if (!currentDesign) return null;
-
   const isMobile = platform === "mobile";
+  const mobileViewport = useMemo(() => {
+    if (!isMobile || !currentDesign) return null;
+    return getMobileViewportSize(currentDesign.html);
+  }, [currentDesign?.html, isMobile]);
+  const mobileScale = isMobile
+    ? MOBILE_FRAME_SCREEN_WIDTH / (mobileViewport?.width ?? 393)
+    : 1;
+
+  if (!currentDesign) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -186,18 +196,20 @@ export function PreviewCarousel({
                 // Mobile device frame - same as canvas, no extra scaling
                 <div className="transform-gpu">
                   <IPhoneFrame>
-                    <iframe
-                      srcDoc={currentDesign.html}
-                      className="w-full h-full border-0"
-                      sandbox="allow-scripts"
-                      title={currentDesign.title}
-                      style={{
-                        width: 393,
-                        height: 852,
-                        transform: "scale(0.663)",
-                        transformOrigin: "top left",
-                      }}
-                    />
+                    <div className="relative w-full h-full rounded-[34px] overflow-hidden">
+                      <iframe
+                        srcDoc={currentDesign.html}
+                        className="block w-full h-full border-0"
+                        sandbox="allow-scripts"
+                        title={currentDesign.title}
+                        style={{
+                          width: mobileViewport?.width ?? 393,
+                          height: mobileViewport?.height ?? 852,
+                          transform: `scale(${mobileScale})`,
+                          transformOrigin: "top left",
+                        }}
+                      />
+                    </div>
                   </IPhoneFrame>
                 </div>
               ) : (
@@ -214,7 +226,7 @@ export function PreviewCarousel({
                 >
                   <iframe
                     srcDoc={currentDesign.html}
-                    className="border-0"
+                    className="block border-0"
                     sandbox="allow-scripts"
                     title={currentDesign.title}
                     style={{

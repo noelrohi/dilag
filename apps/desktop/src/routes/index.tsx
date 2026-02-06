@@ -1,9 +1,6 @@
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
+  PromptInputAddAttachmentButton,
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputScreenReferences,
@@ -174,12 +171,7 @@ function ComposerInput({
 
         {/* Right side - attachment menu + submit */}
         <div className="flex items-center gap-1">
-          <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger />
-            <PromptInputActionMenuContent>
-              <PromptInputActionAddAttachments />
-            </PromptInputActionMenuContent>
-          </PromptInputActionMenu>
+          <PromptInputAddAttachmentButton />
           <PromptInputSubmit
             disabled={!hasInput || disabled}
             className={cn(

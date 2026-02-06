@@ -44,6 +44,7 @@ export interface SessionMeta {
   id: string;
   name: string;
   created_at: string;
+  updated_at?: string; // Last activity timestamp (synced from OpenCode SDK)
   cwd: string;
   parentID?: string; // Reference to parent session if forked
   platform?: Platform; // "web" (default) or "mobile"

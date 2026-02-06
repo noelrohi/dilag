@@ -33,7 +33,7 @@ export function IPhoneFrame({ children, className, screenClassName }: IPhoneFram
       {/* Screen - 260px wide content area with iPhone aspect ratio */}
       <div
         className={cn(
-          "relative w-[260px] bg-black rounded-[34px] overflow-hidden",
+          "relative w-[260px] bg-black rounded-[34px] overflow-visible",
           screenClassName
         )}
         style={{ aspectRatio: "393 / 852" }}

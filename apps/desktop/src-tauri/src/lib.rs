@@ -137,6 +137,11 @@ pub fn run() {
             opencode::stop_opencode_server,
             opencode::restart_opencode_server,
             opencode::is_opencode_running,
+            // Skills commands
+            opencode::list_installed_skills,
+            opencode::preview_skills,
+            opencode::install_skill,
+            opencode::remove_skill,
             // Session commands
             sessions::create_session_dir,
             sessions::get_session_cwd,

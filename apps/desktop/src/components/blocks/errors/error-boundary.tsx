@@ -70,7 +70,7 @@ interface DefaultErrorFallbackProps {
 
 function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center bg-background">
+    <div className="min-h-dvh w-full flex flex-col items-center justify-center bg-background">
       {/* Error content */}
       <div className="px-8">
         <div className="max-w-sm w-full text-center space-y-6">

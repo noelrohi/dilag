@@ -593,6 +593,26 @@ export const PromptInputActionAddAttachments = ({
   );
 };
 
+export type PromptInputAddAttachmentButtonProps = PromptInputButtonProps;
+
+export const PromptInputAddAttachmentButton = ({
+  className,
+  ...props
+}: PromptInputAddAttachmentButtonProps) => {
+  const attachments = usePromptInputAttachments();
+
+  return (
+    <PromptInputButton
+      aria-label="Add photos or files"
+      className={className}
+      onClick={() => attachments.openFileDialog()}
+      {...props}
+    >
+      <GalleryMinimalistic size={16} />
+    </PromptInputButton>
+  );
+};
+
 export type PromptInputMessage = {
   text: string;
   files: FileUIPart[];

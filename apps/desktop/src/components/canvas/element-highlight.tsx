@@ -7,7 +7,7 @@ interface ElementHighlightProps {
   element: ElementInfo;
   /** Whether this is the selected (not just hovered) element */
   isSelected?: boolean;
-  /** Scale factor of the iframe (e.g., 0.663 for mobile) */
+  /** Scale factor of the iframe (mobile uses derived scale) */
   scale: number;
   /** Offset from the iframe container's top-left */
   offset?: { x: number; y: number };

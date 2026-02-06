@@ -45,10 +45,7 @@ import {
   PromptInputFooter,
   PromptInputSubmit,
   PromptInputTools,
-  PromptInputActionMenu,
-  PromptInputActionMenuTrigger,
-  PromptInputActionMenuContent,
-  PromptInputActionAddAttachments,
+  PromptInputAddAttachmentButton,
   PromptInputAttachments,
   PromptInputAttachment,
   PromptInputScreenReferences,
@@ -613,12 +610,7 @@ function ChatInputArea({
 
             {/* Right side - attachment menu + submit */}
             <div className="flex items-center gap-1">
-              <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger />
-                <PromptInputActionMenuContent>
-                  <PromptInputActionAddAttachments />
-                </PromptInputActionMenuContent>
-              </PromptInputActionMenu>
+              <PromptInputAddAttachmentButton />
               <PromptInputSubmit
                 disabled={!hasInput && !isLoading}
                 onClick={isLoading ? handleButtonClick : undefined}

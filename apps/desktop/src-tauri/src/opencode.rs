@@ -475,6 +475,389 @@ pub async fn install_dependencies(app: AppHandle) -> Result<InstallProgress, Str
     })
 }
 
+// =============================================================================
+// Skills Commands
+// =============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SkillInfo {
+    pub name: String,
+    pub path: String,
+    pub is_symlink: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SkillPreview {
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SkillPreviewResult {
+    pub success: bool,
+    pub skills: Vec<SkillPreview>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SkillInstallResult {
+    pub success: bool,
+    pub installed: Vec<String>,
+    pub error: Option<String>,
+}
+
+/// Strip ANSI escape codes from a string.
+/// Handles CSI sequences (ESC [ ... letter), OSC sequences (ESC ] ... BEL/ST),
+/// and two-character escape sequences (ESC + single char).
+fn strip_ansi(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            match chars.peek() {
+                // CSI sequence: ESC [ ... (letter)
+                Some(&'[') => {
+                    chars.next();
+                    while let Some(&next) = chars.peek() {
+                        chars.next();
+                        if next.is_ascii_alphabetic() {
+                            break;
+                        }
+                    }
+                }
+                // OSC sequence: ESC ] ... (BEL or ST)
+                Some(&']') => {
+                    chars.next();
+                    while let Some(&next) = chars.peek() {
+                        chars.next();
+                        // BEL terminates OSC
+                        if next == '\x07' {
+                            break;
+                        }
+                        // ST (ESC \) terminates OSC
+                        if next == '\x1b' {
+                            if chars.peek() == Some(&'\\') {
+                                chars.next();
+                            }
+                            break;
+                        }
+                    }
+                }
+                // Two-character sequences: ESC ( , ESC ) , ESC # , etc.
+                Some(&ch) if ch == '(' || ch == ')' || ch == '#' || ch == '>' || ch == '=' => {
+                    chars.next();
+                    // Some of these have a parameter character after
+                    if ch == '(' || ch == ')' || ch == '#' {
+                        chars.next(); // consume the parameter
+                    }
+                }
+                // Unknown ESC sequence - skip the ESC
+                _ => {}
+            }
+        } else if c == '\r' || c == '\u{25cf}' || c == '\u{25c7}' || c == '\u{25c6}' {
+            // Skip carriage returns and clack/prompts marker chars (●◇◆)
+            continue;
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+/// Parse the output of `npx skills add <source> -l` into skill name/description pairs.
+fn parse_skill_list(raw_output: &str) -> Vec<SkillPreview> {
+    let clean = strip_ansi(raw_output);
+    let mut skills = Vec::new();
+    let mut in_skills_section = false;
+    let mut current_name: Option<String> = None;
+    let mut current_desc = String::new();
+
+    for line in clean.lines() {
+        let trimmed = line.trim();
+
+        if trimmed.contains("Available Skills") {
+            in_skills_section = true;
+            continue;
+        }
+
+        if !in_skills_section {
+            continue;
+        }
+
+        // End marker
+        if trimmed.starts_with("Use --skill") || trimmed.starts_with("└") {
+            break;
+        }
+
+        if trimmed.is_empty() || trimmed == "│" || trimmed == "|" {
+            continue;
+        }
+
+        // Strip leading │ or | characters
+        let content = trimmed
+            .trim_start_matches('│')
+            .trim_start_matches('|')
+            .trim();
+
+        if content.is_empty() {
+            continue;
+        }
+
+        // Skill names are short alphanumeric identifiers with hyphens/underscores
+        if content.len() < 80 && content.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            // Save previous skill
+            if let Some(name) = current_name.take() {
+                skills.push(SkillPreview {
+                    name,
+                    description: current_desc.trim().to_string(),
+                });
+                current_desc.clear();
+            }
+            current_name = Some(content.to_string());
+        } else if current_name.is_some() {
+            // This is a description line
+            if !current_desc.is_empty() {
+                current_desc.push(' ');
+            }
+            current_desc.push_str(content);
+        }
+    }
+
+    // Save last skill
+    if let Some(name) = current_name {
+        skills.push(SkillPreview {
+            name,
+            description: current_desc.trim().to_string(),
+        });
+    }
+
+    skills
+}
+
+/// List installed skills by reading both OpenCode skill directories.
+/// Checks `skill/` (OpenCode native) and `skills/` (skills.sh CLI convention).
+#[tauri::command]
+pub fn list_installed_skills() -> AppResult<Vec<SkillInfo>> {
+    let config_dir = get_opencode_config_dir();
+    let mut skills = Vec::new();
+    let mut seen = HashSet::new();
+
+    for dir_name in &["skill", "skills"] {
+        let skill_dir = config_dir.join(dir_name);
+        if !skill_dir.exists() {
+            continue;
+        }
+        if let Ok(entries) = fs::read_dir(&skill_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let is_symlink = entry.file_type().map(|ft| ft.is_symlink()).unwrap_or(false);
+                if path.is_dir() || is_symlink {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        if seen.insert(name.to_string()) {
+                            skills.push(SkillInfo {
+                                name: name.to_string(),
+                                path: path.to_string_lossy().to_string(),
+                                is_symlink,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    skills.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(skills)
+}
+
+/// Validate that a skill source string is a safe owner/repo pattern or URL.
+fn validate_skill_source(source: &str) -> AppResult<()> {
+    if source.is_empty() {
+        return Err(AppError::Custom("Skill source cannot be empty".to_string()));
+    }
+    if source.starts_with('-') {
+        return Err(AppError::Custom(format!("Invalid skill source: {}", source)));
+    }
+    // Allow owner/repo patterns and URLs
+    let is_valid = source.chars().all(|c| {
+        c.is_alphanumeric() || matches!(c, '/' | '-' | '_' | '.' | ':' | '@')
+    });
+    if !is_valid {
+        return Err(AppError::Custom(format!("Invalid skill source: {}", source)));
+    }
+    Ok(())
+}
+
+/// Preview available skills from a source without installing.
+/// Runs `npx -y skills add <source> -l` and parses the output.
+#[tauri::command]
+pub async fn preview_skills(app: AppHandle, source: String) -> AppResult<SkillPreviewResult> {
+    validate_skill_source(&source)?;
+
+    let shell = app.shell();
+    let augmented_path = build_augmented_path();
+
+    let output = shell
+        .command("npx")
+        .args(["-y", "skills", "add", &source, "-l"])
+        .env("PATH", augmented_path)
+        .output()
+        .await
+        .map_err(|e| AppError::Custom(format!("Failed to run npx: {}", e)))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    if output.status.success() {
+        let skills = parse_skill_list(&stdout);
+        Ok(SkillPreviewResult {
+            success: true,
+            skills,
+            error: None,
+        })
+    } else {
+        Ok(SkillPreviewResult {
+            success: false,
+            skills: vec![],
+            error: Some(if stderr.is_empty() {
+                stdout
+            } else {
+                stderr
+            }),
+        })
+    }
+}
+
+/// Install specific skills from a source.
+/// Runs `npx -y skills add <source> -s <name> -g -y -a opencode` for each skill.
+/// After install, syncs skills into `~/.dilag/opencode/skill/` via symlinks.
+#[tauri::command]
+pub async fn install_skill(
+    app: AppHandle,
+    source: String,
+    skill_names: Vec<String>,
+) -> AppResult<SkillInstallResult> {
+    validate_skill_source(&source)?;
+    for name in &skill_names {
+        if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            return Err(AppError::Custom(format!("Invalid skill name: {}", name)));
+        }
+    }
+
+    let shell = app.shell();
+    let augmented_path = build_augmented_path();
+
+    // Build args: -s name1 -s name2 ...
+    let mut args = vec![
+        "-y".to_string(),
+        "skills".to_string(),
+        "add".to_string(),
+        source,
+    ];
+    for name in &skill_names {
+        args.push("-s".to_string());
+        args.push(name.clone());
+    }
+    args.extend(["-g".to_string(), "-y".to_string(), "-a".to_string(), "opencode".to_string()]);
+
+    let output = shell
+        .command("npx")
+        .args(args.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+        .env("PATH", augmented_path)
+        .output()
+        .await
+        .map_err(|e| AppError::Custom(format!("Failed to run npx: {}", e)))?;
+
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    if output.status.success() {
+        sync_canonical_skills()?;
+
+        // Verify which skills were actually installed on disk
+        let config_dir = get_opencode_config_dir();
+        let actually_installed: Vec<String> = skill_names
+            .into_iter()
+            .filter(|name| {
+                ["skill", "skills"]
+                    .iter()
+                    .any(|dir| config_dir.join(dir).join(name).exists())
+            })
+            .collect();
+
+        Ok(SkillInstallResult {
+            success: true,
+            installed: actually_installed,
+            error: None,
+        })
+    } else {
+        Ok(SkillInstallResult {
+            success: false,
+            installed: vec![],
+            error: Some(if stderr.is_empty() {
+                "Installation failed".to_string()
+            } else {
+                stderr
+            }),
+        })
+    }
+}
+
+/// Sync skills from the canonical `~/.agents/skills/` directory into
+/// `~/.dilag/opencode/skill/` by creating symlinks for any missing skills.
+fn sync_canonical_skills() -> AppResult<()> {
+    let home = dirs::home_dir().ok_or(AppError::Custom("No home directory".to_string()))?;
+    let canonical_dir = home.join(".agents").join("skills");
+    let target_dir = get_opencode_config_dir().join("skill");
+
+    if !canonical_dir.exists() {
+        return Ok(());
+    }
+
+    fs::create_dir_all(&target_dir)?;
+
+    if let Ok(entries) = fs::read_dir(&canonical_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            if let Some(name) = path.file_name() {
+                let dest = target_dir.join(name);
+                if !dest.exists() {
+                    #[cfg(unix)]
+                    {
+                        std::os::unix::fs::symlink(&path, &dest)?;
+                    }
+                    #[cfg(windows)]
+                    {
+                        std::os::windows::fs::symlink_dir(&path, &dest)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Remove an installed skill. Handles both symlinks (just remove the link)
+/// and real directories (remove recursively).
+#[tauri::command]
+pub fn remove_skill(skill_name: String) -> AppResult<()> {
+    let config_dir = get_opencode_config_dir();
+    for dir_name in &["skill", "skills"] {
+        let skill_path = config_dir.join(dir_name).join(&skill_name);
+        if let Ok(meta) = skill_path.symlink_metadata() {
+            if meta.file_type().is_symlink() {
+                fs::remove_file(&skill_path)?;
+            } else if skill_path.is_dir() {
+                fs::remove_dir_all(&skill_path)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Check if Bun is installed and get its version
 #[tauri::command]
 pub async fn check_bun_installation(app: AppHandle) -> BunCheckResult {

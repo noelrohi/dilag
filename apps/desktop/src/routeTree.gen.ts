@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StudioSessionIdRouteImport } from './routes/studio.$sessionId'
 
+const SkillsRoute = SkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRoute
   '/settings': typeof SettingsRoute
+  '/skills': typeof SkillsRoute
   '/studio/$sessionId': typeof StudioSessionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRoute
   '/settings': typeof SettingsRoute
+  '/skills': typeof SkillsRoute
   '/studio/$sessionId': typeof StudioSessionIdRoute
 }
 export interface FileRoutesById {
@@ -52,25 +60,40 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRoute
   '/settings': typeof SettingsRoute
+  '/skills': typeof SkillsRoute
   '/studio/$sessionId': typeof StudioSessionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projects' | '/settings' | '/studio/$sessionId'
+  fullPaths: '/' | '/projects' | '/settings' | '/skills' | '/studio/$sessionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects' | '/settings' | '/studio/$sessionId'
-  id: '__root__' | '/' | '/projects' | '/settings' | '/studio/$sessionId'
+  to: '/' | '/projects' | '/settings' | '/skills' | '/studio/$sessionId'
+  id:
+    | '__root__'
+    | '/'
+    | '/projects'
+    | '/settings'
+    | '/skills'
+    | '/studio/$sessionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProjectsRoute: typeof ProjectsRoute
   SettingsRoute: typeof SettingsRoute
+  SkillsRoute: typeof SkillsRoute
   StudioSessionIdRoute: typeof StudioSessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/skills': {
+      id: '/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof SkillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -106,6 +129,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjectsRoute: ProjectsRoute,
   SettingsRoute: SettingsRoute,
+  SkillsRoute: SkillsRoute,
   StudioSessionIdRoute: StudioSessionIdRoute,
 }
 export const routeTree = rootRouteImport

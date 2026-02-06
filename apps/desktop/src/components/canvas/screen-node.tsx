@@ -15,13 +15,14 @@ import {
 } from "@/context/element-selection-store";
 import { ElementHighlight } from "./element-highlight";
 import { ElementSelectionMenu } from "./element-selection-menu";
+import { getMobileViewportSize } from "@/lib/design-viewport";
 
 // Constants for frame sizes
 const WEB_WIDTH = 640;
 const WEB_HEIGHT = 400;
-const MOBILE_SCREEN_WIDTH = 393;
-const MOBILE_SCREEN_HEIGHT = 852;
-const MOBILE_SCALE = 0.663;
+const DEFAULT_MOBILE_SCREEN_WIDTH = 393;
+const DEFAULT_MOBILE_SCREEN_HEIGHT = 852;
+const MOBILE_FRAME_SCREEN_WIDTH = 260; // matches iphone-frame screen width
 const WEB_SCALE = WEB_WIDTH / 1280;
 
 // Scrollbar styles injected into iframes
@@ -47,7 +48,13 @@ export interface ScreenNodeData extends Record<string, unknown> {
 function ScreenNodeComponent({ id, data, selected }: NodeProps) {
   const { design, platform, sessionCwd, onDelete, onAddToComposer, onEditElementWithAI } = data as ScreenNodeData;
   const isMobile = platform === "mobile";
-  const scale = isMobile ? MOBILE_SCALE : WEB_SCALE;
+  const mobileViewport = useMemo(() => {
+    if (!isMobile) return null;
+    return getMobileViewportSize(design.html);
+  }, [design.html, isMobile]);
+  const scale = isMobile
+    ? MOBILE_FRAME_SCREEN_WIDTH / (mobileViewport?.width ?? DEFAULT_MOBILE_SCREEN_WIDTH)
+    : WEB_SCALE;
   
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -187,7 +194,10 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
 
   const handleExportPng = useCallback(() => {
     const dimensions = isMobile
-      ? { width: MOBILE_SCREEN_WIDTH, height: MOBILE_SCREEN_HEIGHT }
+      ? {
+          width: mobileViewport?.width ?? DEFAULT_MOBILE_SCREEN_WIDTH,
+          height: mobileViewport?.height ?? DEFAULT_MOBILE_SCREEN_HEIGHT,
+        }
       : { width: 1280, height: 800 };
     exportAsPng({
       html: design.html,
@@ -195,7 +205,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
       ...dimensions,
       scale: 2,
     });
-  }, [design.html, design.title, isMobile]);
+  }, [design.html, design.title, isMobile, mobileViewport?.height, mobileViewport?.width]);
 
   const handleDelete = useCallback(() => {
     // Clear selection if this screen has the selected element
@@ -245,48 +255,48 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
 
             {isMobile ? (
               <IPhoneFrame>
-                {/* Element highlights for mobile */}
-                {showHoveredHighlight && hoveredElement && (
-                  <ElementHighlight
-                    element={hoveredElement}
-                    isSelected={false}
-                    scale={scale}
-                    offset={iframeOffset}
-                  />
-                )}
-                {showSelectedHighlight && selectedElement && (
-                  <>
+                <div className="relative w-full h-full rounded-[34px] overflow-hidden">
+                  {/* Element highlights for mobile */}
+                  {showHoveredHighlight && hoveredElement && (
+                    <ElementHighlight
+                      element={hoveredElement}
+                      isSelected={false}
+                      scale={scale}
+                      offset={iframeOffset}
+                    />
+                  )}
+                  {showSelectedHighlight && selectedElement && (
                     <ElementHighlight
                       element={selectedElement}
                       isSelected={true}
                       scale={scale}
                       offset={iframeOffset}
                     />
-                    {onEditElementWithAI && (
-                      <ElementSelectionMenu
-                        element={selectedElement}
-                        scale={scale}
-                        offset={iframeOffset}
-                        onEditWithAI={() => onEditElementWithAI(selectedElement)}
-                        onClose={clearSelection}
-                      />
-                    )}
-                  </>
+                  )}
+                  <iframe
+                    ref={iframeRef}
+                    data-screen-id={id}
+                    srcDoc={preparedHtml}
+                    className="block w-full h-full border-0"
+                    sandbox="allow-scripts"
+                    title={design.title}
+                    style={{
+                      width: mobileViewport?.width ?? DEFAULT_MOBILE_SCREEN_WIDTH,
+                      height: mobileViewport?.height ?? DEFAULT_MOBILE_SCREEN_HEIGHT,
+                      transform: `scale(${scale})`,
+                      transformOrigin: "top left",
+                    }}
+                  />
+                </div>
+                {showSelectedHighlight && selectedElement && onEditElementWithAI && (
+                  <ElementSelectionMenu
+                    element={selectedElement}
+                    scale={scale}
+                    offset={iframeOffset}
+                    onEditWithAI={() => onEditElementWithAI(selectedElement)}
+                    onClose={clearSelection}
+                  />
                 )}
-                <iframe
-                  ref={iframeRef}
-                  data-screen-id={id}
-                  srcDoc={preparedHtml}
-                  className="w-full h-full border-0"
-                  sandbox="allow-scripts"
-                  title={design.title}
-                  style={{
-                    width: MOBILE_SCREEN_WIDTH,
-                    height: MOBILE_SCREEN_HEIGHT,
-                    transform: `scale(${MOBILE_SCALE})`,
-                    transformOrigin: "top left",
-                  }}
-                />
               </IPhoneFrame>
             ) : (
               <div
@@ -326,7 +336,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                     ref={iframeRef}
                     data-screen-id={id}
                     srcDoc={preparedHtml}
-                    className="w-full h-full border-0"
+                    className="block w-full h-full border-0"
                     sandbox="allow-scripts"
                     title={design.title}
                     style={{

@@ -207,7 +207,7 @@ export function useSessions() {
     }
   }, [globalServerReady, sessions, currentSessionId, setError, setServerReady, setCurrentSessionId, loadSessionMessages]);
 
-  // Listen for session.updated events to sync OpenCode title to dilag
+  // Listen for session.updated events to sync OpenCode data (title, updated_at) to dilag
   useEffect(() => {
     if (!currentSessionId) return;
 
@@ -218,14 +218,26 @@ export function useSessions() {
 
     const unsubscribe = subscribeToSession(currentSessionId, async (event: Event) => {
       if (event.type === "session.updated" && "properties" in event) {
-        const info = (event.properties as { info?: { id?: string; title?: string } })?.info;
-        if (info?.id === currentSessionId && info?.title && !isDefaultTitle(info.title)) {
-          // OpenCode generated a real title, update dilag's session name
-          console.log("[useSessions] Title from OpenCode:", info.title);
-          if (isMountedRef.current) {
+        const info = (event.properties as { info?: { id?: string; title?: string; time?: { updated?: number } } })?.info;
+        if (info?.id === currentSessionId && isMountedRef.current) {
+          const updates: { name?: string; updated_at?: string } = {};
+          
+          // Sync title if OpenCode generated a real title
+          if (info?.title && !isDefaultTitle(info.title)) {
+            console.log("[useSessions] Title from OpenCode:", info.title);
+            updates.name = info.title;
+          }
+          
+          // Sync updated_at timestamp from OpenCode SDK
+          if (info?.time?.updated) {
+            updates.updated_at = new Date(info.time.updated).toISOString();
+          }
+          
+          // Only save if there are updates
+          if (Object.keys(updates).length > 0) {
             await saveSessionUpdate({
               id: currentSessionId,
-              updates: { name: info.title },
+              updates,
             });
           }
         }
@@ -251,10 +263,12 @@ export function useSessions() {
         const sessionId = response.data.id;
 
         // Create session metadata
+        const now = new Date().toISOString();
         const sessionMeta: SessionMeta = {
           id: sessionId,
           name: name ?? `Session ${sessions.length + 1}`,
-          created_at: new Date().toISOString(),
+          created_at: now,
+          updated_at: now,
           cwd,
           platform,
         };
@@ -359,10 +373,12 @@ export function useSessions() {
 
         // Use parent's directory - OpenCode associates the forked session with this directory
         // This means screens will persist, but chat history is properly forked
+        const now = new Date().toISOString();
         const sessionMeta: SessionMeta = {
           id: forkedSession.id,
           name: `Fork of ${currentSession.name}`,
-          created_at: new Date().toISOString(),
+          created_at: now,
+          updated_at: now,
           cwd: currentSession.cwd,
           parentID: currentSessionId,
           platform: currentSession.platform,
@@ -470,10 +486,12 @@ export function useSessions() {
         });
 
         // Create session metadata with parentID reference
+        const now = new Date().toISOString();
         const sessionMeta: SessionMeta = {
           id: newSessionId,
           name: `Fork of ${currentSession.name}`,
-          created_at: new Date().toISOString(),
+          created_at: now,
+          updated_at: now,
           cwd,
           parentID: currentSessionId,
           platform: currentSession.platform,
