@@ -5,6 +5,14 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-02-06
+
+### Added
+
+- **Skills Management**: Manage and configure AI skills directly from the desktop app
+- **Dynamic Mobile Viewport**: Adaptive viewport sizing for mobile design previews
+- **Sidebar Enhancements**: Improved sidebar navigation and layout
+
 ## [0.4.5] - 2026-02-04
 
 ### Changed
