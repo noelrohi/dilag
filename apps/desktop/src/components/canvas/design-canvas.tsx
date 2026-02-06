@@ -13,6 +13,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { ScreenNode, type ScreenNodeData } from "./screen-node";
+import { GhostScreenNode } from "./ghost-screen-node";
 import { CanvasControls } from "./canvas-controls";
 import type { DesignFile } from "@/hooks/use-designs";
 import type { ElementInfo } from "@/context/element-selection-store";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 // Register custom node types
 const nodeTypes = {
   screen: ScreenNode,
+  "ghost-screen": GhostScreenNode,
 };
 
 export interface ScreenPosition {
@@ -29,12 +31,22 @@ export interface ScreenPosition {
   y: number;
 }
 
+// Layout constants for ghost node positioning (must match studio route)
+const MOBILE_WIDTH = 280;
+const MOBILE_HEIGHT = 584;
+const WEB_WIDTH = 640;
+const WEB_HEIGHT = 400;
+const GAP = 60;
+const MOBILE_COLUMNS = 4;
+const WEB_COLUMNS = 2;
+
 interface DesignCanvasProps {
   designs: DesignFile[];
   platform: "mobile" | "web";
   positions: ScreenPosition[];
   sessionCwd?: string;
   selectedIds?: Set<string>;
+  isLoading?: boolean;
   onPositionsChange: (positions: ScreenPosition[]) => void;
   onSelectionChange?: (ids: Set<string>) => void;
   onDeleteScreen?: (filename: string) => void;
@@ -50,6 +62,7 @@ function DesignCanvasInner({
   positions,
   sessionCwd,
   selectedIds,
+  isLoading,
   onPositionsChange,
   onSelectionChange,
   onDeleteScreen,
@@ -61,7 +74,7 @@ function DesignCanvasInner({
 
   // Convert ScreenPosition[] to React Flow nodes
   const initialNodes = useMemo((): Node[] => {
-    return positions
+    const screenNodes = positions
       .map((pos) => {
         const design = designs.find((d) => d.filename === pos.id);
         if (!design) return null;
@@ -88,7 +101,41 @@ function DesignCanvasInner({
         } as Node;
       })
       .filter((n): n is Node => n !== null);
-  }, [positions, designs, platform, sessionCwd, selectedIds, onDeleteScreen, onCaptureScreen, onEditElementWithAI]);
+
+    // Add a ghost placeholder node when the AI is actively generating
+    if (isLoading) {
+      const isMobile = platform === "mobile";
+      const width = isMobile ? MOBILE_WIDTH : WEB_WIDTH;
+      const height = isMobile ? MOBILE_HEIGHT : WEB_HEIGHT;
+      const columns = isMobile ? MOBILE_COLUMNS : WEB_COLUMNS;
+
+      const count = screenNodes.length;
+      const col = count % columns;
+      const row = Math.floor(count / columns);
+
+      // Find the start position from existing nodes, or use defaults
+      const startX = screenNodes.length > 0
+        ? Math.min(...screenNodes.map((n) => n.position.x))
+        : 100;
+      const startY = screenNodes.length > 0
+        ? Math.min(...screenNodes.map((n) => n.position.y))
+        : 40;
+
+      screenNodes.push({
+        id: "__ghost__",
+        type: "ghost-screen",
+        position: {
+          x: startX + col * (width + GAP),
+          y: startY + row * (height + GAP),
+        },
+        selectable: false,
+        draggable: false,
+        data: { platform },
+      });
+    }
+
+    return screenNodes;
+  }, [positions, designs, platform, sessionCwd, selectedIds, isLoading, onDeleteScreen, onCaptureScreen, onEditElementWithAI]);
 
   const [nodes, setNodes] = useNodesState(initialNodes);
 
@@ -101,7 +148,10 @@ function DesignCanvasInner({
   useEffect(() => {
     // Include modified_at timestamps to detect content changes, not just add/remove
     const nodeKey = initialNodes
-      .map(n => `${n.id}:${(n.data as ScreenNodeData).design.modified_at}`)
+      .map(n => {
+        if (n.type === "ghost-screen") return `${n.id}:ghost`;
+        return `${n.id}:${(n.data as ScreenNodeData).design.modified_at}`;
+      })
       .sort()
       .join(',');
 
@@ -136,11 +186,14 @@ function DesignCanvasInner({
 
       if (positionChanges.length > 0) {
         const currentNodes = getNodes();
-        const newPositions: ScreenPosition[] = currentNodes.map((node) => ({
-          id: node.id,
-          x: node.position.x,
-          y: node.position.y,
-        }));
+        // Exclude ghost placeholder from persisted positions
+        const newPositions: ScreenPosition[] = currentNodes
+          .filter((node) => node.id !== "__ghost__")
+          .map((node) => ({
+            id: node.id,
+            x: node.position.x,
+            y: node.position.y,
+          }));
         onPositionsChange(newPositions);
       }
     },

@@ -12,6 +12,7 @@ import { useChatWidth } from "@/hooks/use-chat-width";
 import {
   useScreenPositions,
   useSessionStore,
+  useIsWritingScreen,
   type ScreenPosition,
 } from "@/context/session-store";
 import { Button } from "@dilag/ui/button";
@@ -22,6 +23,7 @@ import { ChatView } from "@/components/blocks/chat/chat-view";
 import { PageHeader, PageHeaderLeft, PageHeaderRight } from "@/components/blocks/layout/page-header";
 import { DesignCanvas } from "@/components/canvas";
 import { Copy, AltArrowDown, BranchingPathsUp, Pen, Palette, Play, Download } from "@solar-icons/react";
+import { DilagIcon } from "@/components/blocks/branding/dilag-icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@dilag/ui/dialog";
 import { copyFilePath, exportImages } from "@/lib/design-export";
@@ -36,7 +38,7 @@ export const Route = createFileRoute("/studio/$sessionId")({
 
 // Layout constants
 const MOBILE_WIDTH = 280;
-const MOBILE_HEIGHT = 572;
+const MOBILE_HEIGHT = 584;
 const WEB_WIDTH = 640;
 const WEB_HEIGHT = 400;
 const GAP = 60;
@@ -61,13 +63,17 @@ function StudioPage() {
   const chatPanelRef = useRef<ImperativePanelHandle>(null);
   const { size: chatSize, updateSize, minSize } = useChatWidth();
 
-  const { selectSession, sendMessage, sessions, isServerReady, forkSessionDesignsOnly } =
+  const { selectSession, sendMessage, sessions, isServerReady, isLoading, forkSessionDesignsOnly } =
     useSessions();
   const { updateSession } = useSessionMutations();
   const sdk = useSDK();
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId);
   const { data: designs = [] } = useSessionDesigns(currentSession?.cwd);
+  const isWritingScreen = useIsWritingScreen(currentSession?.id ?? null);
+
+  // Show canvas loading when the AI is actively running or a write/edit tool is pending
+  const isCanvasLoading = isLoading || isWritingScreen;
 
   // Auto-generate PNG assets for designs
   usePngGenerator(designs, currentSession?.cwd, currentSession?.platform);
@@ -354,7 +360,7 @@ function StudioPage() {
         {/* Canvas area */}
         <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20 overflow-hidden">
           {designs.length === 0 ? (
-            <CanvasEmptyState />
+            <CanvasEmptyState isLoading={isCanvasLoading} />
           ) : (
             <ScreenCaptureProvider platform={currentSession?.platform ?? "web"}>
               <ConnectedCanvas
@@ -363,6 +369,7 @@ function StudioPage() {
                 positions={screenPositions}
                 sessionCwd={currentSession?.cwd}
                 selectedIds={selectedScreenIds}
+                isLoading={isCanvasLoading}
                 onPositionsChange={handlePositionsChange}
                 onSelectionChange={setSelectedScreenIds}
                 onDeleteScreen={handleRequestDelete}
@@ -440,7 +447,29 @@ function StudioPage() {
   );
 }
 
-function CanvasEmptyState() {
+function CanvasEmptyState({ isLoading }: { isLoading?: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="relative size-20 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center mb-4">
+            <div className="absolute inset-0 rounded-2xl bg-primary/5 animate-pulse" />
+            <DilagIcon animated className="size-10 text-primary" />
+          </div>
+          <h3 className="font-semibold text-lg">Designing your screens...</h3>
+          <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+            Your screens will appear here as they&apos;re created
+          </p>
+          <div className="flex gap-1.5 justify-center pt-1">
+            <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:0ms]" />
+            <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:300ms]" />
+            <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:600ms]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex items-center justify-center">
       <div className="text-center space-y-3">
@@ -463,6 +492,7 @@ interface ConnectedCanvasProps {
   positions: ScreenPosition[];
   sessionCwd?: string;
   selectedIds: Set<string>;
+  isLoading?: boolean;
   onPositionsChange: (positions: ScreenPosition[]) => void;
   onSelectionChange: (ids: Set<string>) => void;
   onDeleteScreen: (filename: string) => void;
@@ -474,6 +504,7 @@ function ConnectedCanvas({
   positions,
   sessionCwd,
   selectedIds,
+  isLoading,
   onPositionsChange,
   onSelectionChange,
   onDeleteScreen,
@@ -487,6 +518,7 @@ function ConnectedCanvas({
       positions={positions}
       sessionCwd={sessionCwd}
       selectedIds={selectedIds}
+      isLoading={isLoading}
       onPositionsChange={onPositionsChange}
       onSelectionChange={onSelectionChange}
       onDeleteScreen={onDeleteScreen}

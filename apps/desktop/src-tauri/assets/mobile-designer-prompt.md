@@ -121,8 +121,8 @@ Choose navigation that fits the app's purpose:
   </style>
 </head>
 <body style="width: 393px; height: 852px; margin: 0; overflow: hidden;" class="bg-background text-foreground font-sans">
-  <!-- Safe areas: 47px top (Dynamic Island), 34px bottom (home indicator) -->
-  <div class="h-full flex flex-col pt-[47px] pb-[34px]">
+  <!-- Safe areas: 47px top (Dynamic Island), 16px visual breathing room at bottom -->
+  <div class="h-full flex flex-col pt-[47px] pb-[16px] relative">
     <!-- Content here -->
   </div>
 </body>
@@ -133,7 +133,16 @@ Choose navigation that fits the app's purpose:
 - Load fonts via `<link>` tag (NOT @import)
 - Define theme in `<style type="text/tailwindcss">` with `@theme` block
 - Body: `width: 393px; height: 852px; margin: 0; overflow: hidden`
-- Safe areas: 47px top, 34px bottom
+- Safe areas: 47px top, 16px bottom baseline
+
+## Bottom Navigation Spacing (Important)
+
+- Do NOT stack large bottom offsets and fake spacer blocks together
+- Avoid trailing spacer divs like `<div class="h-24"></div>` unless explicitly requested
+- If using a floating bottom nav/dock:
+  - Place nav around `bottom-[12px]` to `bottom-[18px]`
+  - Reserve clearance in the scroll container with `pb-[88px]` to `pb-[104px]`
+  - Keep nav visually near the bottom edge; avoid "floating too high"
 
 ## Icons
 

@@ -14,12 +14,11 @@ export function IPhoneFrame({ children, className, screenClassName }: IPhoneFram
   return (
     <div
       className={cn(
-        "relative w-[280px] bg-[#1a1a1a] rounded-[44px] p-[10px] shadow-xl",
+        "relative w-[280px] h-[584px] bg-[#1a1a1a] rounded-[44px] p-[10px] shadow-xl",
         // Outer highlight for realism
         "ring-1 ring-[#333] ring-inset",
         className
       )}
-      style={{ aspectRatio: "280 / 572" }}
     >
       {/* Side button - right */}
       <div className="absolute -right-[2px] top-[120px] w-[3px] h-[32px] bg-[#1a1a1a] rounded-r-sm" />
@@ -33,10 +32,9 @@ export function IPhoneFrame({ children, className, screenClassName }: IPhoneFram
       {/* Screen - 260px wide content area with iPhone aspect ratio */}
       <div
         className={cn(
-          "relative w-[260px] bg-black rounded-[34px] overflow-visible",
+          "relative w-[260px] h-[564px] bg-black rounded-[34px] overflow-visible",
           screenClassName
         )}
-        style={{ aspectRatio: "393 / 852" }}
       >
         {children}
       </div>

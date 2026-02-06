@@ -883,6 +883,33 @@ export function useHasRunningTools(sessionId: string | null): boolean {
   }, [sessionId, messages, parts]);
 }
 
+// Hook to check if session has a pending or running write/edit tool (screen being written)
+export function useIsWritingScreen(sessionId: string | null): boolean {
+  const messages = useSessionStore((state) =>
+    sessionId ? state.messages[sessionId] ?? EMPTY_MESSAGES : EMPTY_MESSAGES
+  );
+  const parts = useSessionStore((state) => state.parts);
+
+  return useMemo(() => {
+    if (!sessionId) return false;
+
+    for (const message of messages) {
+      const messageParts = parts[message.id] ?? [];
+      for (const part of messageParts) {
+        if (
+          part.type === "tool" &&
+          (part.tool === "write" || part.tool === "edit") &&
+          (part.state?.status === "pending" || part.state?.status === "running")
+        ) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }, [sessionId, messages, parts]);
+}
+
 // Hook to find running question tools for a session
 export function useRunningQuestionTools(sessionId: string | null): RunningQuestionTool[] {
   const messages = useSessionStore((state) =>
