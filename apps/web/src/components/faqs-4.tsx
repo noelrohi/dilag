@@ -8,42 +8,42 @@ export default function FAQsFour() {
         {
             id: 'item-1',
             question: 'What is Dilag?',
-            answer: 'Dilag is a native macOS app that uses AI to generate mobile and web UI designs from natural language descriptions. Simply describe what you want, and watch it come to life.',
+            answer: 'Dilag is a native desktop app that uses AI to generate mobile and web UI designs from natural language descriptions. Describe what you want and iterate quickly.',
         },
         {
             id: 'item-2',
             question: 'What AI models are supported?',
-            answer: 'Dilag works with OpenCode, which supports Claude, GPT-5.2, Gemini, and other popular AI models. You can choose your preferred model in the settings.',
+            answer: 'Dilag works with OpenCode, which supports Claude, GPT, Gemini, and other popular AI models. You can choose your preferred model in the app settings.',
         },
         {
             id: 'item-3',
             question: 'Can I export my designs?',
-            answer: 'Yes! Dilag generates real HTML and CSS code that you can copy and use in your projects.',
+            answer: 'Yes. Dilag generates real HTML and CSS code that you can copy into your projects.',
         },
         {
             id: 'item-4',
             question: 'Is Dilag free?',
-            answer: 'Dilag offers a free trial so you can try it out. For continued access and to support development, you can purchase a Pro license.',
+            answer: 'Yes. Dilag is fully free to use.',
         },
         {
             id: 'item-5',
             question: 'What platforms are supported?',
-            answer: 'Dilag currently runs on macOS (both Apple Silicon and Intel). Windows and Linux versions are planned for the future.',
+            answer: 'Dilag currently runs on macOS (Apple Silicon and Intel). Windows support is in progress.',
         },
         {
             id: 'item-6',
             question: 'Do I need an internet connection?',
-            answer: 'Yes, Dilag requires an internet connection to communicate with the AI models. Your designs are generated in real-time using cloud-based AI.',
+            answer: 'Yes. Dilag needs internet access to communicate with cloud AI models in real time.',
         },
         {
             id: 'item-7',
             question: 'What do I need to run Dilag?',
-            answer: 'You need macOS and OpenCode installed. OpenCode provides the AI backend that powers Dilag\'s design generation.',
+            answer: 'You need macOS and OpenCode installed. OpenCode powers the AI backend used by Dilag.',
         },
         {
             id: 'item-8',
-            question: 'How does the one-time payment work?',
-            answer: 'You pay once and get lifetime access to Dilag Pro, including all future updates. No subscriptions, no recurring fees.',
+            question: 'Do I need an account to use Dilag?',
+            answer: 'No. Download the app and start designing right away.',
         },
     ]
 
@@ -78,7 +78,7 @@ export default function FAQsFour() {
                     </Accordion>
 
                     <p className="text-muted-foreground mt-6 font-sans px-8">
-                        Can't find what you're looking for?{' '}
+                        Can&apos;t find what you&apos;re looking for?{' '}
                         <Link
                             href="https://github.com/noelrohi/dilag/issues"
                             target="_blank"

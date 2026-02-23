@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Providers } from "@/components/providers";
 import "./globals.css";
 import Script from "next/script";
 import { Figtree, Instrument_Serif, IBM_Plex_Mono } from "next/font/google";
@@ -56,7 +55,7 @@ export default function RootLayout({
         )}
       </head>
       <body className="antialiased">
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   );

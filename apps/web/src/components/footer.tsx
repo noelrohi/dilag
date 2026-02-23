@@ -7,12 +7,12 @@ const links = [
         group: 'Product',
         items: [
             {
-                title: 'Changelog',
-                href: '/changelog',
+                title: 'Pricing',
+                href: '/pricing',
             },
             {
-                title: 'Roadmap',
-                href: '/roadmap',
+                title: 'FAQ',
+                href: '/faq',
             },
         ],
     },
@@ -23,19 +23,6 @@ const links = [
                 title: 'macOS',
                 href: DOWNLOAD_URL,
                 external: true,
-            },
-        ],
-    },
-    {
-        group: 'Manage',
-        items: [
-            {
-                title: 'Dashboard',
-                href: '/dashboard',
-            },
-            {
-                title: 'Forgot License Key',
-                href: '/forgot-license',
             },
         ],
     },
@@ -73,15 +60,15 @@ export default function FooterSection() {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 md:col-span-3">
+                    <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:col-span-3">
                         {links.map((link, index) => (
                             <div
                                 key={index}
                                 className="space-y-4 text-sm">
                                 <span className="block font-medium">{link.group}</span>
-                                {link.items.map((item, index) => (
+                                {link.items.map((item, itemIndex) => (
                                     <Link
-                                        key={index}
+                                        key={itemIndex}
                                         href={item.href}
                                         {...('external' in item && item.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                                         className="text-muted-foreground hover:text-primary block duration-150">

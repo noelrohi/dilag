@@ -1,13 +1,13 @@
 # AGENTS.md
 
-**Generated:** 2026-01-11 | **Branch:** main
+**Generated:** 2026-02-23 | **Branch:** main
 
 ## Overview
 
-Dilag is an AI-powered design studio for mobile and web apps. This is a monorepo containing:
+Dilag is an AI-powered design studio for mobile and web apps. This monorepo contains:
 - **Desktop App** (`apps/desktop`): Tauri 2 desktop app (Rust backend + React 19 frontend)
-- **Website** (`apps/web`): Next.js 16 marketing site + API for trial tracking
-- **Shared** (`packages/shared`): Shared types and utilities
+- **Website** (`apps/web`): Next.js 16 public marketing site
+- **UI Package** (`packages/ui`): Shared UI primitives/components
 
 ## Structure
 
@@ -18,10 +18,10 @@ dilag/
 │   │   ├── src/              # React frontend
 │   │   ├── src-tauri/        # Rust backend
 │   │   └── docs/             # Architecture docs
-│   └── web/                  # Next.js website + API
+│   └── web/                  # Next.js marketing site
 │       └── src/app/          # App router pages
 ├── packages/
-│   └── shared/               # Shared types (trial API, etc.)
+│   └── ui/                   # Shared UI components
 ├── package.json              # Bun workspaces root
 └── turbo.json                # Turborepo config
 ```
@@ -29,39 +29,35 @@ dilag/
 ## Commands
 
 ```bash
-# Root (monorepo)
-bun install                   # Install all dependencies
-bun run dev                   # Dev all apps (turbo)
-bun run dev:desktop           # Dev desktop only
-bun run dev:web               # Dev website only
-bun run build                 # Build all
+# Root
+bun install
+bun run dev
+bun run dev:desktop
+bun run dev:web
+bun run build
+bun run test
+bun run lint
 
-# Desktop app
+# Desktop
 cd apps/desktop
-bun run tauri dev             # Full Tauri dev (frontend + Rust)
-bun test                      # Vitest tests
-cd src-tauri && cargo test    # Rust tests
+bun run tauri dev
+bun test
+cd src-tauri && cargo test
 
-# Website
+# Web
 cd apps/web
-bun run dev                   # Next.js dev server
-bun run build                 # Production build
+bun run dev
+bun run build
 ```
 
 ## App-Specific Documentation
 
 | App | AGENTS.md | Notes |
 |-----|-----------|-------|
-| Desktop | `apps/desktop/AGENTS.md` | Tauri, React, Rust patterns |
 | Desktop (Rust) | `apps/desktop/src-tauri/src/AGENTS.md` | Rust backend patterns |
-| Web | `apps/web/AGENTS.md` | Next.js, better-auth, Polar |
+| Web | `apps/web/AGENTS.md` | Next.js marketing patterns |
 
 ## Key Integrations
-
-### Polar.sh (Licensing & Payments)
-- **Desktop**: License key validation, trial tracking
-- **Website**: better-auth integration, customer portal, trial registry API
-- Trial abuse prevention via server-side device tracking
 
 ### OpenCode SDK (AI)
 - Desktop app spawns OpenCode server for AI generation
@@ -72,12 +68,12 @@ bun run build                 # Production build
 | Package | Name | Description |
 |---------|------|-------------|
 | `apps/desktop` | `@dilag/desktop` | Tauri desktop app |
-| `apps/web` | `@dilag/web` | Next.js website + API |
-| `packages/shared` | `@dilag/shared` | Shared types |
+| `apps/web` | `@dilag/web` | Next.js marketing website |
+| `packages/ui` | `@dilag/ui` | Shared UI components |
 
 ## Conventions
 
 - **Package manager**: Bun with workspaces
 - **Build orchestration**: Turborepo
-- **Desktop**: See `apps/desktop/AGENTS.md`
-- **Web**: Next.js App Router, better-auth for auth
+- **Desktop**: Tauri + React + Rust modules
+- **Web**: Public marketing pages only

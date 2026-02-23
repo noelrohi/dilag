@@ -12,22 +12,18 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <HeroSection />
 
-      {/* Features */}
       <Features />
-
-      {/* Integrations */}
       <IntegrationsSection />
 
-      {/* CTA Section */}
       <section className="py-24 px-6 border-t border-border">
         <div className="max-w-3xl mx-auto">
           <div className="relative p-12 sm:p-16 rounded-3xl overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-card to-card" />
             <div className="absolute inset-0 border border-border rounded-3xl" />
-            
+
             <div className="relative text-center">
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
-                Start designing with AI
+                Start designing with AI for free
               </h2>
               <p className="text-lg text-muted-foreground mb-8 max-w-md mx-auto">
                 Download Dilag and turn your ideas into beautiful interfaces.
@@ -41,7 +37,7 @@ export default function Home() {
                 </Button>
                 <Button variant="outline" size="lg" className="h-12 px-8 text-base gap-3 rounded-full" asChild>
                   <Link href="/pricing">
-                    View Pricing
+                    See Free Plan
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </Button>
@@ -51,7 +47,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <FooterSection />
     </div>
   );
