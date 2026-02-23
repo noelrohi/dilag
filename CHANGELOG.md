@@ -5,6 +5,19 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-23
+
+### Changed
+
+- **Product Flow Simplification**: Streamlined desktop and web flows by retiring licensing and account-specific paths (#56)
+- **Routing Surface**: Updated active web routes and API handlers to align with the streamlined studio experience (#56)
+
+### Removed
+
+- **Legacy Auth Pages**: Removed sign-in, sign-up, dashboard, onboarding, success, and forgot-license pages from the web app (#56)
+- **Desktop Licensing Modules**: Removed licensing backend module, license gate, activation modal, and trial banner components (#56)
+- **Deprecated Workspaces**: Removed obsolete `packages/db` and `packages/shared` packages from the monorepo (#56)
+
 ## [0.4.7] - 2026-02-06
 
 ### Added
