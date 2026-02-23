@@ -11,7 +11,6 @@ Modular Tauri backend - organized by domain (unusual for Tauri apps).
 | `sessions.rs` | Session CRUD (5 commands) |
 | `opencode.rs` | OpenCode server lifecycle (6 commands) |
 | `designs.rs` | Design file management (3 commands) |
-| `licensing.rs` | Polar.sh license/trial (6 commands) |
 | `app_info.rs` | App metadata, reset (2 commands) |
 | `theme.rs` | macOS titlebar (1 command) |
 | `state.rs` | AppState (OpenCode PID) |
@@ -69,5 +68,4 @@ pub type AppResult<T> = Result<T, AppError>;
 
 ```bash
 cargo test              # All tests
-cargo test licensing    # Module tests
 ```

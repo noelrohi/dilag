@@ -4,7 +4,6 @@ import { MagicStick, Settings, PlugCircle, Star, AddSquare, MenuDots, TrashBinMi
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@dilag/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@dilag/ui/dropdown-menu";
 import { AuthSettings } from "@/components/blocks/auth/auth-settings";
-import { TrialBanner } from "@/components/blocks/auth/trial-banner";
 import { useSessions } from "@/hooks/use-sessions";
 
 function formatRelativeTime(dateStr: string): string {
@@ -236,9 +235,6 @@ export function AppSidebar() {
       <SidebarFooter className="relative">
         {/* Blur gradient overlay for smooth scroll transition */}
         <div className="absolute -top-6 left-0 right-0 h-6 bg-gradient-to-t from-sidebar to-transparent pointer-events-none" />
-        <div className="group-data-[collapsible=icon]:hidden">
-          <TrialBanner />
-        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <AuthSettings

@@ -41,7 +41,7 @@ export default function HeroSection() {
                                     delay={0.5}
                                     as="p"
                                     className="text-muted-foreground mx-auto mt-8 max-w-2xl text-balance text-lg">
-                                    Turn a rough idea into polished screens, flows, and components—then export and move on.
+                                    Turn a rough idea into polished screens, flows, and components, then export and move on.
                                 </TextEffect>
 
                                 <AnimatedGroup className="mt-12 flex flex-col items-center justify-center gap-2 md:flex-row">
@@ -50,9 +50,9 @@ export default function HeroSection() {
                                             asChild
                                             size="lg"
                                             className="rounded-xl px-5 text-base">
-                                            <Link href="/sign-in">
+                                            <Link href="/download">
                                                 <Sparkle className="mr-2 size-4" />
-                                                <span className="text-nowrap">Get Started</span>
+                                                <span className="text-nowrap">Download Dilag</span>
                                             </Link>
                                         </Button>
                                     </div>
@@ -61,8 +61,8 @@ export default function HeroSection() {
                                         size="lg"
                                         variant="ghost"
                                         className="h-10.5 rounded-xl px-5">
-                                        <Link href="/download">
-                                            <span className="text-nowrap">Download for macOS</span>
+                                        <Link href="/pricing">
+                                            <span className="text-nowrap">Free Forever</span>
                                         </Link>
                                     </Button>
                                 </AnimatedGroup>
