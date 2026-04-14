@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!--
+  Reference exemplar: SaaS / analytics dashboard.
+  Demonstrates: cool neutral palette, sidebar nav + content split, metric cards with
+  sparklines, data table with status chips, responsive grid, zero decoration.
+-->
+<html lang="en" data-title="Operations Dashboard">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Inter", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+      --color-background: #fafafa;
+      --color-foreground: #0a0a0a;
+      --color-card: #ffffff;
+      --color-muted: #f4f4f5;
+      --color-muted-foreground: #71717a;
+      --color-border: #e4e4e7;
+      --color-primary: #18181b;
+      --color-success: #16a34a;
+      --color-warning: #ea580c;
+      --radius-lg: 10px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-background text-foreground font-sans antialiased">
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="hidden lg:flex w-60 flex-col border-r border-border bg-card">
+      <div class="px-5 py-5 flex items-center gap-2 border-b border-border">
+        <div class="w-7 h-7 rounded-md bg-primary"></div>
+        <span class="font-semibold">Pivot</span>
+      </div>
+      <nav class="flex-1 px-3 py-4 space-y-0.5 text-sm">
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-md bg-muted font-medium"><span class="iconify" data-icon="solar:chart-2-bold" data-width="16"></span>Overview</a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/60"><span class="iconify" data-icon="solar:users-group-rounded-linear" data-width="16"></span>Customers</a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/60"><span class="iconify" data-icon="solar:box-minimalistic-linear" data-width="16"></span>Products</a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/60"><span class="iconify" data-icon="solar:wallet-linear" data-width="16"></span>Billing</a>
+        <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/60"><span class="iconify" data-icon="solar:settings-linear" data-width="16"></span>Settings</a>
+        <div class="pt-4 mt-4 border-t border-border">
+          <div class="px-3 text-xs uppercase tracking-wider text-muted-foreground mb-2">Workspaces</div>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/60">Rainforest, Inc.</a>
+          <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-muted/60">Atelier Studio</a>
+        </div>
+      </nav>
+      <div class="px-3 py-3 border-t border-border">
+        <div class="flex items-center gap-3 px-3 py-2">
+          <div class="w-8 h-8 rounded-full bg-muted"></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">Priya Shah</div>
+            <div class="text-xs text-muted-foreground truncate">priya@pivot.co</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col min-w-0">
+      <header class="border-b border-border bg-card">
+        <div class="px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
+          <div>
+            <div class="text-xs text-muted-foreground">Workspace / Rainforest, Inc.</div>
+            <h1 class="text-lg font-semibold mt-0.5">Overview</h1>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="relative hidden md:block">
+              <input type="text" placeholder="Search..." class="bg-muted border-0 rounded-md pl-8 pr-3 py-1.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-border" />
+              <span class="iconify absolute left-2.5 top-2 text-muted-foreground" data-icon="solar:magnifer-linear" data-width="16"></span>
+            </div>
+            <button class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted">Export</button>
+            <button class="px-3 py-1.5 text-sm rounded-md bg-primary text-background hover:opacity-90">New report</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="flex-1 px-6 lg:px-8 py-8">
+        <!-- Metric cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="bg-card border border-border rounded-lg p-5">
+            <div class="flex items-center justify-between text-xs text-muted-foreground mb-2"><span>MRR</span><span class="text-success">+4.2%</span></div>
+            <div class="text-2xl font-semibold tabular-nums">$184,320</div>
+            <svg class="mt-3 w-full" viewBox="0 0 120 24" height="24" preserveAspectRatio="none"><polyline fill="none" stroke="#16a34a" stroke-width="1.5" points="0,18 12,16 24,17 36,14 48,13 60,10 72,11 84,8 96,7 108,5 120,3"/></svg>
+          </div>
+          <div class="bg-card border border-border rounded-lg p-5">
+            <div class="flex items-center justify-between text-xs text-muted-foreground mb-2"><span>Active accounts</span><span class="text-success">+12</span></div>
+            <div class="text-2xl font-semibold tabular-nums">1,247</div>
+            <svg class="mt-3 w-full" viewBox="0 0 120 24" height="24" preserveAspectRatio="none"><polyline fill="none" stroke="#16a34a" stroke-width="1.5" points="0,20 12,19 24,15 36,16 48,12 60,13 72,10 84,11 96,9 108,7 120,6"/></svg>
+          </div>
+          <div class="bg-card border border-border rounded-lg p-5">
+            <div class="flex items-center justify-between text-xs text-muted-foreground mb-2"><span>Churn (30d)</span><span class="text-warning">+0.3pp</span></div>
+            <div class="text-2xl font-semibold tabular-nums">2.8%</div>
+            <svg class="mt-3 w-full" viewBox="0 0 120 24" height="24" preserveAspectRatio="none"><polyline fill="none" stroke="#ea580c" stroke-width="1.5" points="0,8 12,9 24,7 36,10 48,9 60,12 72,11 84,13 96,12 108,15 120,16"/></svg>
+          </div>
+          <div class="bg-card border border-border rounded-lg p-5">
+            <div class="flex items-center justify-between text-xs text-muted-foreground mb-2"><span>NPS</span><span class="text-muted-foreground">&mdash;</span></div>
+            <div class="text-2xl font-semibold tabular-nums">64</div>
+            <svg class="mt-3 w-full" viewBox="0 0 120 24" height="24" preserveAspectRatio="none"><polyline fill="none" stroke="#71717a" stroke-width="1.5" points="0,14 12,13 24,14 36,12 48,13 60,12 72,13 84,11 96,12 108,10 120,11"/></svg>
+          </div>
+        </div>
+
+        <!-- Split: chart + table -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div class="xl:col-span-2 bg-card border border-border rounded-lg">
+            <div class="px-5 py-4 flex items-center justify-between border-b border-border">
+              <div>
+                <div class="text-sm font-medium">Revenue by plan</div>
+                <div class="text-xs text-muted-foreground">Last 30 days</div>
+              </div>
+              <div class="flex gap-1 text-xs">
+                <button class="px-2.5 py-1 rounded bg-muted">30d</button>
+                <button class="px-2.5 py-1 rounded text-muted-foreground hover:bg-muted">90d</button>
+                <button class="px-2.5 py-1 rounded text-muted-foreground hover:bg-muted">12m</button>
+              </div>
+            </div>
+            <div class="p-5">
+              <svg viewBox="0 0 600 180" class="w-full h-44">
+                <line x1="0" y1="180" x2="600" y2="180" stroke="#e4e4e7"/>
+                <line x1="0" y1="135" x2="600" y2="135" stroke="#f4f4f5"/>
+                <line x1="0" y1="90" x2="600" y2="90" stroke="#f4f4f5"/>
+                <line x1="0" y1="45" x2="600" y2="45" stroke="#f4f4f5"/>
+                <polyline fill="none" stroke="#18181b" stroke-width="2" points="0,140 40,135 80,120 120,130 160,110 200,95 240,100 280,85 320,78 360,70 400,68 440,55 480,52 520,45 560,40 600,38"/>
+                <polyline fill="none" stroke="#a1a1aa" stroke-width="1.5" stroke-dasharray="3,3" points="0,160 40,158 80,155 120,152 160,150 200,145 240,142 280,140 320,138 360,135 400,134 440,130 480,128 520,125 560,122 600,120"/>
+              </svg>
+              <div class="flex items-center gap-6 mt-4 text-xs">
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-primary"></span>Team</div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-muted-foreground/50"></span>Starter</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-card border border-border rounded-lg">
+            <div class="px-5 py-4 border-b border-border"><div class="text-sm font-medium">Recent signups</div></div>
+            <ul class="divide-y divide-border">
+              <li class="px-5 py-3 flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-muted"></div><div class="flex-1 min-w-0"><div class="text-sm truncate">Hiroshi Tanabe</div><div class="text-xs text-muted-foreground truncate">Hiromi Labs</div></div><span class="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Team</span></li>
+              <li class="px-5 py-3 flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-muted"></div><div class="flex-1 min-w-0"><div class="text-sm truncate">Amara Okafor</div><div class="text-xs text-muted-foreground truncate">Pelican Press</div></div><span class="text-[11px] px-1.5 py-0.5 rounded bg-success/10 text-success">Starter</span></li>
+              <li class="px-5 py-3 flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-muted"></div><div class="flex-1 min-w-0"><div class="text-sm truncate">Jonas Reiter</div><div class="text-xs text-muted-foreground truncate">Reiter &amp; Sohn</div></div><span class="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Team</span></li>
+              <li class="px-5 py-3 flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-muted"></div><div class="flex-1 min-w-0"><div class="text-sm truncate">Leila Haddad</div><div class="text-xs text-muted-foreground truncate">Atlas Freight</div></div><span class="text-[11px] px-1.5 py-0.5 rounded bg-warning/10 text-warning">Trial</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

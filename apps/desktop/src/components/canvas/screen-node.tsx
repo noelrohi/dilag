@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useMemo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { IPhoneFrame } from "@/components/blocks/preview/iphone-frame";
+import { ViolationBadge } from "@/components/blocks/preview/violation-badge";
 import type { DesignFile } from "@/hooks/use-designs";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut } from "@dilag/ui/context-menu";
 import { Copy, Code, Download, TrashBinMinimalistic, FolderOpen, ChatRoundDots, Gallery } from "@solar-icons/react";
@@ -244,6 +245,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
             <span className="text-xs text-muted-foreground font-medium truncate max-w-[200px]">
               {design.title}
             </span>
+            <ViolationBadge violations={design.violations ?? []} />
           </div>
 
           {/* Frame content - selection ring wraps only this */}

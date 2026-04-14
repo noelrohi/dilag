@@ -63,12 +63,15 @@ pub fn load_session_designs(session_cwd: String) -> Vec<DesignFile> {
                             .map(|t| t.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0))
                             .unwrap_or(0);
 
+                        let violations = crate::screen_validator::validate(&html);
+
                         designs.push(DesignFile {
                             filename,
                             title,
                             screen_type,
                             html,
                             modified_at,
+                            violations,
                         });
                     }
                 }

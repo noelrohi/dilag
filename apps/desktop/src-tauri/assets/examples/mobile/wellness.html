@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!--
+  Reference exemplar: mobile wellness / sleep tracking home screen.
+  Demonstrates: deep dark palette, tangible progress (filling ring, not a plain number),
+  soft glows, floating pill nav with proper clearance, safe areas, no animations.
+-->
+<html lang="en" data-title="Rest Home">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=393, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+      --color-background: #0b0a1f;
+      --color-foreground: #f5f4ff;
+      --color-card: #15143a;
+      --color-muted-foreground: #8782a8;
+      --color-primary: #a78bfa;
+      --color-accent: #f0abfc;
+      --color-border: rgba(167,139,250,0.15);
+      --radius-xl: 24px;
+    }
+  </style>
+</head>
+<body style="width: 393px; height: 852px; margin: 0; overflow: hidden;" class="bg-background text-foreground font-sans">
+  <!-- Soft ambient glow, non-animated -->
+  <div style="position:absolute;top:-120px;left:-60px;width:360px;height:360px;background:radial-gradient(circle,#4c1d95,transparent 70%);opacity:0.6;pointer-events:none;"></div>
+  <div style="position:absolute;bottom:120px;right:-80px;width:280px;height:280px;background:radial-gradient(circle,#831843,transparent 70%);opacity:0.4;pointer-events:none;"></div>
+
+  <div class="relative h-full flex flex-col pt-[47px] pb-[16px]">
+    <!-- Header -->
+    <div class="px-6 flex items-center justify-between mb-6">
+      <div>
+        <div class="text-sm text-muted-foreground">Thursday, April 14</div>
+        <div class="text-xl font-semibold mt-0.5">Evening, Eleanor</div>
+      </div>
+      <div class="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center">
+        <span class="iconify text-primary" data-icon="solar:bell-bold" data-width="18"></span>
+      </div>
+    </div>
+
+    <!-- Scroll container with clearance for floating nav -->
+    <div class="flex-1 overflow-y-auto px-6 pb-[104px] space-y-5">
+      <!-- Hero: tangible progress, not a plain number -->
+      <div class="relative rounded-[28px] bg-card border border-border p-6 overflow-hidden">
+        <div class="text-xs uppercase tracking-widest text-primary mb-4">Tonight's goal</div>
+        <div class="flex items-end justify-between">
+          <div>
+            <div class="font-semibold" style="font-size:56px;line-height:1;letter-spacing:-0.04em;">7<span class="text-muted-foreground">h</span> 42<span class="text-muted-foreground">m</span></div>
+            <div class="text-sm text-muted-foreground mt-2">18 minutes until wind-down</div>
+          </div>
+          <!-- Filling ring as visual metaphor, not a digit in a circle -->
+          <svg width="84" height="84" viewBox="0 0 84 84">
+            <circle cx="42" cy="42" r="36" stroke="rgba(167,139,250,0.15)" stroke-width="6" fill="none"/>
+            <circle cx="42" cy="42" r="36" stroke="#a78bfa" stroke-width="6" fill="none"
+              stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="68"
+              transform="rotate(-90 42 42)"/>
+            <text x="42" y="47" text-anchor="middle" fill="#f5f4ff" font-size="14" font-weight="600">70%</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Streak: jars filling, not numbers in circles -->
+      <div class="rounded-[24px] bg-card border border-border p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="text-sm font-medium">12-night streak</div>
+          <div class="text-xs text-muted-foreground">this week</div>
+        </div>
+        <div class="flex gap-2">
+          <!-- Each jar fills proportionally to sleep quality -->
+          <div class="flex-1 h-14 rounded-xl bg-background/60 relative overflow-hidden"><div class="absolute bottom-0 left-0 right-0 bg-primary/80" style="height:90%"></div><div class="absolute bottom-1 inset-x-0 text-center text-[10px]">M</div></div>
+          <div class="flex-1 h-14 rounded-xl bg-background/60 relative overflow-hidden"><div class="absolute bottom-0 left-0 right-0 bg-primary/80" style="height:75%"></div><div class="absolute bottom-1 inset-x-0 text-center text-[10px]">T</div></div>
+          <div class="flex-1 h-14 rounded-xl bg-background/60 relative overflow-hidden"><div class="absolute bottom-0 left-0 right-0 bg-primary/80" style="height:95%"></div><div class="absolute bottom-1 inset-x-0 text-center text-[10px]">W</div></div>
+          <div class="flex-1 h-14 rounded-xl bg-background/60 relative overflow-hidden"><div class="absolute bottom-0 left-0 right-0 bg-accent/80" style="height:100%"></div><div class="absolute bottom-1 inset-x-0 text-center text-[10px]">T</div></div>
+          <div class="flex-1 h-14 rounded-xl bg-background/60 relative overflow-hidden"><div class="absolute bottom-0 left-0 right-0 bg-primary/80" style="height:60%"></div><div class="absolute bottom-1 inset-x-0 text-center text-[10px]">F</div></div>
+          <div class="flex-1 h-14 rounded-xl bg-background/60 relative overflow-hidden"><div class="absolute bottom-0 left-0 right-0 bg-primary/60" style="height:40%"></div><div class="absolute bottom-1 inset-x-0 text-center text-[10px]">S</div></div>
+          <div class="flex-1 h-14 rounded-xl border-2 border-dashed border-border"></div>
+        </div>
+      </div>
+
+      <!-- Tonight's routine -->
+      <div class="rounded-[24px] bg-card border border-border p-5">
+        <div class="text-sm font-medium mb-4">Tonight's wind-down</div>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center"><span class="iconify text-primary" data-icon="solar:tea-cup-bold" data-width="16"></span></div><div class="flex-1 text-sm">Chamomile, 10:42</div><div class="text-xs text-muted-foreground">12m</div></div>
+          <div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center"><span class="iconify text-primary" data-icon="solar:book-bold" data-width="16"></span></div><div class="flex-1 text-sm">Reading</div><div class="text-xs text-muted-foreground">20m</div></div>
+          <div class="flex items-center gap-3"><div class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center"><span class="iconify text-primary" data-icon="solar:moon-bold" data-width="16"></span></div><div class="flex-1 text-sm">Lights out</div><div class="text-xs text-muted-foreground">11:14</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating pill nav: bottom-[14px] with pb-[104px] clearance above -->
+    <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);" class="bg-card/95 backdrop-blur border border-border rounded-full px-2 py-2 flex gap-1">
+      <a href="#" class="w-11 h-11 rounded-full bg-primary flex items-center justify-center"><span class="iconify text-background" data-icon="solar:moon-bold" data-width="20"></span></a>
+      <a href="#" class="w-11 h-11 rounded-full flex items-center justify-center"><span class="iconify text-muted-foreground" data-icon="solar:chart-bold" data-width="20"></span></a>
+      <a href="#" class="w-11 h-11 rounded-full flex items-center justify-center"><span class="iconify text-muted-foreground" data-icon="solar:meditation-linear" data-width="20"></span></a>
+      <a href="#" class="w-11 h-11 rounded-full flex items-center justify-center"><span class="iconify text-muted-foreground" data-icon="solar:user-bold" data-width="20"></span></a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,12 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 
+export type ViolationRule =
+  | "keyframes"
+  | "initial_opacity_zero"
+  | "real_url"
+  | "emoji_as_icon"
+  | "animation_css"
+  | "decorative_animation";
+
+export interface Violation {
+  rule: ViolationRule;
+  snippet: string;
+}
+
 export interface DesignFile {
   filename: string;
   title: string;
   screen_type: string;
   html: string;
   modified_at: number;
+  violations: Violation[];
 }
 
 async function loadSessionDesigns(sessionCwd: string): Promise<DesignFile[]> {

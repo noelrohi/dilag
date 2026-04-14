@@ -16,7 +16,7 @@ export type {
   SessionStatus,
   Part,
   ToolState,
-  FileDiff,
+  SnapshotFileDiff as FileDiff,
 } from "@opencode-ai/sdk/v2/client";
 
 declare global {
@@ -124,11 +124,17 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
   const bootstrap = useCallback(async () => {
     console.log("[GlobalEvents] Running bootstrap - syncing pending permissions and questions");
 
-    // Sync pending permissions from server
+    // Sync pending permissions from server.
+    // SDK v1.4 returns either `{ data }` or `{ data, response }` depending on the call path —
+    // guard both shapes.
     try {
-      const permissionsResponse = await sdk.permission.list();
-      if (permissionsResponse.response.ok && permissionsResponse.data) {
-        const permissions = permissionsResponse.data as unknown as import("@/lib/event-guards").PermissionRequest[];
+      const result = (await sdk.permission.list()) as {
+        data?: unknown;
+        response?: { ok: boolean };
+      };
+      const ok = result.response ? result.response.ok : true;
+      if (ok && Array.isArray(result.data)) {
+        const permissions = result.data as unknown as import("@/lib/event-guards").PermissionRequest[];
         useSessionStore.getState().syncPendingPermissions(permissions);
         console.log("[GlobalEvents] Synced", permissions.length, "pending permissions");
       }
@@ -136,11 +142,14 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
       console.error("[GlobalEvents] Failed to sync permissions:", err);
     }
 
-    // Sync pending questions from server
     try {
-      const questionsResponse = await sdk.question.list();
-      if (questionsResponse.response.ok && questionsResponse.data) {
-        const questions = questionsResponse.data as unknown as import("@/lib/event-guards").QuestionRequest[];
+      const result = (await sdk.question.list()) as {
+        data?: unknown;
+        response?: { ok: boolean };
+      };
+      const ok = result.response ? result.response.ok : true;
+      if (ok && Array.isArray(result.data)) {
+        const questions = result.data as unknown as import("@/lib/event-guards").QuestionRequest[];
         useSessionStore.getState().syncPendingQuestions(questions);
         console.log("[GlobalEvents] Synced", questions.length, "pending questions");
       }

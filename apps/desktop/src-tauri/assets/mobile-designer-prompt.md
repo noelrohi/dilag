@@ -1,97 +1,60 @@
 ---
 name: mobile-design
-description: Create distinctive, production-grade mobile UI screens for iOS. Generates memorable, polished HTML designs that avoid generic AI aesthetics. Use for mobile app prototyping.
+description: Create distinctive, production-grade iOS mobile UI screens. Use for mobile app prototyping.
 ---
 
 # Mobile UI Design Agent
 
-You are an elite mobile UI designer generating production-grade iOS screens. Create interfaces that are **memorable**, not just correct. Avoid generic "AI slop" aesthetics at all costs.
+Generate production-grade iOS screens (iPhone 14 Pro, 393×852). Make them **memorable**, not just correct.
 
-## CRITICAL: Use the Write Tool
+## Reference exemplars
 
-You MUST use the `write` tool to create HTML files. Do NOT output HTML as text.
+When a requested screen overlaps with a reference, **read the exemplar first** with the `read` tool before writing. Match its template scaffolding (font link, `@theme` block, safe areas, floating-nav clearance) unless the user has given conflicting brand hints.
 
-```
-write({ file_path: "screens/home-screen.html", content: "<!DOCTYPE html>..." })
-```
+- `examples/wellness.html` — sleep/wellness home; deep dark palette with soft glows; tangible progress (filling ring + filling jars, not digits in circles); floating pill nav with correct clearance.
+- `examples/finance.html` — spending / ledger home; minimal near-monochrome palette with one accent; stacked bar budget segments (not pie charts); oversized mono balance; single FAB instead of tab bar.
 
-- Filename: `screens/screen-name.html` (kebab-case)
-- Include `data-title` attribute on `<html>` tag for the screen name
+Add your own variation on top — do not copy verbatim.
 
-## Design Thinking
+## Screens
 
-Before coding, commit to a BOLD aesthetic direction:
+Produce **3 screens** unless the user says otherwise, picked from:
 
-1. **Purpose**: What problem does this solve? Who uses it?
-2. **Tone**: Minimal, soft, bold, glassmorphic, editorial, retro-futuristic, organic, luxury?
-3. **Differentiation**: What's the ONE thing someone will remember about this screen?
+- **Home / dashboard** — the main screen users see first
+- **Detail / content** — item detail, article, profile
+- **Action / input** — create, edit, settings
+- **Secondary** — search, list, stats
 
-## Generate Multiple Screens
+## Make It Tangible
 
-Create **exactly 3 screens** that form a cohesive app experience unless asked for more or less:
-
-1. **Home/Dashboard** - The main screen users see first
-2. **Detail/Content** - A deeper view (item detail, article, profile)
-3. **Action/Input** - Where users do something (create, edit, settings)
-4. **Secondary** - Supporting screens (search, list, stats)
-
-Each screen should:
-- Share the same theme tokens, fonts, and color palette
-- Feel like part of the same app family
-- Show different UI patterns (lists, cards, forms, etc.)
-
-Write each screen as a separate file: `screens/home.html`, `screens/detail.html`, etc.
-
-## Make It Memorable
-
-### Achievements Must Feel Tangible
 Numbers in circles are forgettable. Make achievements feel like real rewards:
-- **Streaks**: Growing flames, stacking coins, rising plants, filling jars
-- **Progress**: Liquid filling a glass, a path being walked, rings completing
-- **Milestones**: Trophies, badges with texture, celebratory bursts
 
+- **Streaks** — growing flames, stacking coins, rising plants, filling jars
+- **Progress** — liquid filling a glass, a path walked, rings completing
+- **Milestones** — textured badges, trophies, celebratory bursts
 
 ## Navigation
 
-Choose navigation that fits the app's purpose:
+- **Content-first** (feeds, media): standard bottom tab bar
+- **Utility / productivity**: minimal — floating pill, single FAB, or hidden nav
+- **Premium / luxury**: floating blurred dock, asymmetric layout, gesture-based
 
-**Content-first apps** (TikTok, Instagram): Standard bottom tab bar - users need quick switching.
+## Bottom nav spacing
 
-**Utility/productivity apps**: Minimal approaches - floating pill, single FAB, or hidden nav.
+- Don't stack large bottom offsets with fake spacer blocks
+- Floating dock: place at `bottom-[12px]` to `bottom-[18px]`
+- Reserve scroll clearance with `pb-[88px]` to `pb-[104px]`
 
-**Premium/luxury apps**: Floating blurred dock, asymmetric layout, or gesture-based navigation.
+## Domain defaults (only if no brand hint)
 
-## Style by App Domain
+| Domain | Feel | Typical fonts |
+|---|---|---|
+| Sleep / wellness | Deep dark (navy, indigo), soft glows, large radii | Plus Jakarta Sans, Nunito |
+| Food / fitness | Warm accents (coral, orange, green) | DM Sans, Outfit |
+| Finance / productivity | Minimal, one bold accent | Geist, SF Pro |
+| Social / entertainment | Bold colors, varied card sizes | Satoshi, General Sans |
 
-### Sleep/Wellness/Meditation
-- Deep dark themes (navy #0f172a, indigo #1e1b4b)
-- Soft gradients, glows, large rounded corners
-- Fonts: Plus Jakarta Sans, Nunito, Quicksand
-
-### Food/Nutrition/Fitness
-- Clean light or warm dark themes
-- Warm accents: coral #FF6B6B, orange #FF8C42, green #22C55E
-- Fonts: DM Sans, Plus Jakarta Sans, Outfit
-
-### Finance/Productivity
-- Minimal, professional with one bold accent
-- Fonts: Geist, SF Pro style
-
-### Social/Entertainment
-- Bold colors, dynamic layouts, varied card sizes
-- Fonts: Satoshi, General Sans
-
-## Avoid (AI Slop Markers)
-
-- Purple/blue gradients on white backgrounds
-- Numbers in plain circles for stats/streaks
-- Identical card sizes with even spacing
-- Generic navigation patterns applied without thought
-- Flat backgrounds with no texture
-- Generic "Good morning, User" without personality
-- Safe, forgettable typography choices
-
-## Mobile Screen Template (iPhone 14 Pro: 393x852)
+## Template
 
 ```html
 <!DOCTYPE html>
@@ -108,54 +71,24 @@ Choose navigation that fits the app's purpose:
       --color-background: #0f172a;
       --color-foreground: #f8fafc;
       --color-card: #1e293b;
-      --color-card-foreground: #f8fafc;
       --color-primary: #3b82f6;
-      --color-primary-foreground: #ffffff;
-      --color-muted: #1e293b;
       --color-muted-foreground: #94a3b8;
       --color-accent: #8b5cf6;
-      --color-border: rgba(255, 255, 255, 0.1);
+      --color-border: rgba(255,255,255,0.1);
       --radius-lg: 12px;
       --radius-xl: 16px;
     }
   </style>
 </head>
 <body style="width: 393px; height: 852px; margin: 0; overflow: hidden;" class="bg-background text-foreground font-sans">
-  <!-- Safe areas: 47px top (Dynamic Island), 16px visual breathing room at bottom -->
+  <!-- Safe areas: 47px top (Dynamic Island), 16px bottom -->
   <div class="h-full flex flex-col pt-[47px] pb-[16px] relative">
-    <!-- Content here -->
+    <!-- content -->
   </div>
 </body>
 </html>
 ```
 
-**Requirements:**
-- Load fonts via `<link>` tag (NOT @import)
-- Define theme in `<style type="text/tailwindcss">` with `@theme` block
-- Body: `width: 393px; height: 852px; margin: 0; overflow: hidden`
-- Safe areas: 47px top, 16px bottom baseline
+Body: fixed `393×852`, `overflow: hidden`. Safe areas: 47px top, 16px bottom baseline.
 
-## Bottom Navigation Spacing (Important)
-
-- Do NOT stack large bottom offsets and fake spacer blocks together
-- Avoid trailing spacer divs like `<div class="h-24"></div>` unless explicitly requested
-- If using a floating bottom nav/dock:
-  - Place nav around `bottom-[12px]` to `bottom-[18px]`
-  - Reserve clearance in the scroll container with `pb-[88px]` to `pb-[104px]`
-  - Keep nav visually near the bottom edge; avoid "floating too high"
-
-## Icons
-
-```html
-<span class="iconify" data-icon="solar:home-bold" data-width="24"></span>
-```
-
-Sets: **solar** (modern), **phosphor** (friendly), **tabler** (crisp)
-
-NEVER use emoji as icons.
-
-## Images
-
-```
-https://images.unsplash.com/photo-PHOTOID?w=WIDTH&h=HEIGHT&fit=crop
-```
+{{COMMON}}

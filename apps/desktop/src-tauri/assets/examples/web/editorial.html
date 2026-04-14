@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!--
+  Reference exemplar: editorial / long-form reading screen.
+  Demonstrates: typography-led hierarchy, serif + sans pairing, generous measure,
+  2-column responsive layout, minimal chrome, no animations.
+-->
+<html lang="en" data-title="Editorial">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-serif: "Fraunces", Georgia, serif;
+      --font-sans: "Inter", system-ui, sans-serif;
+      --color-background: #faf8f4;
+      --color-foreground: #1a1410;
+      --color-muted: #7a6f64;
+      --color-rule: #e8e0d4;
+      --color-accent: #a8431a;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-background text-foreground font-sans antialiased">
+  <header class="max-w-6xl mx-auto px-6 lg:px-12 py-6 flex items-center justify-between">
+    <a href="#" class="font-serif text-2xl font-semibold tracking-tight">Ledger</a>
+    <nav class="hidden md:flex gap-8 text-sm text-muted">
+      <a href="#" class="hover:text-foreground">Essays</a>
+      <a href="#" class="hover:text-foreground">Archive</a>
+      <a href="#" class="hover:text-foreground">About</a>
+    </nav>
+    <a href="#" class="text-sm border border-rule px-4 py-2 rounded-full hover:border-foreground">Subscribe</a>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 lg:px-12 pt-16 pb-32">
+    <article class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <aside class="lg:col-span-3 lg:sticky lg:top-8 lg:self-start space-y-6 text-sm">
+        <div>
+          <div class="text-muted uppercase tracking-widest text-xs mb-2">Issue</div>
+          <div class="font-serif text-lg">No. 47 &middot; April 2026</div>
+        </div>
+        <div>
+          <div class="text-muted uppercase tracking-widest text-xs mb-2">Reading time</div>
+          <div>12 minutes</div>
+        </div>
+        <div class="pt-6 border-t border-rule">
+          <div class="text-muted uppercase tracking-widest text-xs mb-3">Contents</div>
+          <ol class="space-y-2 text-muted">
+            <li><a href="#i" class="hover:text-foreground">I. The long silence</a></li>
+            <li><a href="#ii" class="hover:text-foreground">II. What the letters said</a></li>
+            <li><a href="#iii" class="hover:text-foreground">III. A reckoning</a></li>
+          </ol>
+        </div>
+      </aside>
+
+      <div class="lg:col-span-9 max-w-2xl">
+        <div class="text-sm text-accent uppercase tracking-widest mb-6">Essay &middot; Memory</div>
+        <h1 class="font-serif text-5xl md:text-6xl font-semibold leading-[1.05] tracking-tight mb-8">
+          Every letter my grandfather never sent
+        </h1>
+        <p class="text-xl text-muted leading-relaxed mb-10 font-serif">
+          A shoebox of thirty-one envelopes, each addressed but unstamped, sat on the top shelf of a closet in Scranton for forty-two years. What they contained was, in a way, the shape of an entire life.
+        </p>
+        <div class="flex items-center gap-3 text-sm text-muted pb-10 mb-10 border-b border-rule">
+          <div class="w-8 h-8 rounded-full bg-rule"></div>
+          <div>
+            <div class="text-foreground">Eleanor Vance</div>
+            <div>April 12, 2026</div>
+          </div>
+        </div>
+
+        <div class="font-serif text-lg leading-[1.8] space-y-6 text-foreground/90">
+          <p id="i">
+            <span class="font-semibold">The box was blue,</span> the kind of department-store blue that doesn't exist anymore, and it had been labeled in my grandmother's small, exacting handwriting: <em>George — personal.</em> She had left instructions that it not be opened until after both of them were gone. My grandfather outlived her by six years, and when he died in the winter of 2024, I was the one who found it.
+          </p>
+          <p>
+            Inside were thirty-one letters, each in its own envelope, each addressed in my grandfather's hand to a woman named Ada. None of them had ever been sent. The earliest was dated 1962. The latest, 1997.
+          </p>
+          <p id="ii">
+            I read them in the order they were written. This took three days. I will not reproduce any of them here, not because the content is especially private — it is tender and ordinary, as most private things are — but because what struck me was not what they said individually, but what they said together.
+          </p>
+          <blockquote class="border-l-2 border-accent pl-6 my-10 text-2xl italic">
+            "There is a kind of devotion that asks nothing in return, and another kind that asks only that it never be seen. I am not sure which is the better kind."
+          </blockquote>
+          <p id="iii">
+            What the letters said, collectively, was this: that for most of his adult life, my grandfather had been quietly in love with someone who was not his wife. He had never acted on it. Ada had, I later learned, married a man from New Brunswick in 1963 and died in 2009, unaware. The letters were not a record of an affair. They were a record of a restraint.
+          </p>
+        </div>
+
+        <footer class="mt-16 pt-10 border-t border-rule flex items-center justify-between text-sm text-muted">
+          <div class="flex gap-4">
+            <a href="#" class="hover:text-foreground">&larr; Previous essay</a>
+            <a href="#" class="hover:text-foreground">Next essay &rarr;</a>
+          </div>
+          <div class="flex gap-3">
+            <span class="iconify" data-icon="solar:bookmark-linear" data-width="18"></span>
+            <span class="iconify" data-icon="solar:share-linear" data-width="18"></span>
+          </div>
+        </footer>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

@@ -15,6 +15,57 @@ const MOBILE_DESIGN_SKILL: &str = include_str!("../assets/mobile-designer-prompt
 /// Web design skill content - embedded from assets
 const WEB_DESIGN_SKILL: &str = include_str!("../assets/web-designer-prompt.md");
 
+/// Shared content injected via the `{{COMMON}}` marker in each skill
+const DESIGNER_COMMON: &str = include_str!("../assets/designer-common.md");
+
+/// Reference exemplars — the model is told to read these via the `read` tool
+/// when it needs a concrete pattern. Keeping them as full HTML (not prompt text)
+/// means they cost nothing at cache-creation time and only consume tokens when
+/// actually consulted.
+const WEB_EXAMPLE_EDITORIAL: &str = include_str!("../assets/examples/web/editorial.html");
+const WEB_EXAMPLE_SAAS: &str = include_str!("../assets/examples/web/saas-dashboard.html");
+const MOBILE_EXAMPLE_WELLNESS: &str = include_str!("../assets/examples/mobile/wellness.html");
+const MOBILE_EXAMPLE_FINANCE: &str = include_str!("../assets/examples/mobile/finance.html");
+
+/// System prompt for the `build` agent. Replaces opencode's default provider
+/// prompt (see opencode/session/llm.ts: `input.agent.prompt ? [input.agent.prompt] : SystemPrompt.provider(...)`),
+/// so this must carry its own tone, tool policy, and invariants.
+const BUILD_AGENT_PROMPT: &str = concat!(
+    "You are Dilag, a UI design agent that produces production-grade HTML screen prototypes.\n\n",
+    "## How to start\n",
+    "- Inspect the user's message to decide between the `mobile-design` and `web-design` skills. ",
+    "If the user mentions phone, iOS, Android, or specific mobile concepts, use `mobile-design`; otherwise use `web-design`.\n",
+    "- Invoke the chosen skill with the `skill` tool BEFORE any `write` call. Load the skill exactly once per session.\n",
+    "- Follow the skill's instructions strictly — they are the source of truth for screens, template, theme tokens, and forbidden patterns.\n\n",
+    "## Output policy\n",
+    "- Write each screen as a separate HTML file under `screens/` using the `write` tool. Never inline HTML in your reply.\n",
+    "- The `write` tool creates parent directories automatically. Do NOT call `bash mkdir` or any other shell command to prepare the `screens/` folder — just write the files.\n",
+    "- Every screen must share the same fonts, theme tokens, and palette chosen for the session.\n",
+    "- Do not edit files outside `screens/`. Do not run shell commands unless the user explicitly asks.\n\n",
+    "## Tone\n",
+    "- Short, concrete replies. No preamble, no status commentary, no emoji unless the user asks.\n",
+    "- State the aesthetic direction in one sentence before writing, then write the files.\n",
+    "- After writing, summarize in one or two lines: the palette, the type stack, and what each screen shows.\n",
+);
+
+/// Render a skill file: inject shared common section and resolve user-context slots.
+fn render_skill(template: &str) -> String {
+    let brand = std::env::var("DILAG_BRAND_TOKENS").unwrap_or_default();
+    let domain = std::env::var("DILAG_DOMAIN_HINT").unwrap_or_default();
+    let refs = std::env::var("DILAG_REFERENCE_URLS").unwrap_or_default();
+
+    let fallback = "(none specified — use your judgment based on the user's request)";
+    let brand = if brand.trim().is_empty() { fallback } else { brand.as_str() };
+    let domain = if domain.trim().is_empty() { fallback } else { domain.as_str() };
+    let refs = if refs.trim().is_empty() { fallback } else { refs.as_str() };
+
+    template
+        .replace("{{COMMON}}", DESIGNER_COMMON)
+        .replace("{{BRAND_TOKENS}}", brand)
+        .replace("{{DOMAIN_HINT}}", domain)
+        .replace("{{REFERENCE_URLS}}", refs)
+}
+
 /// Find a free port by binding to port 0
 pub fn get_free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -36,6 +87,20 @@ pub struct BunCheckResult {
     pub installed: bool,
     pub version: Option<String>,
     pub error: Option<String>,
+}
+
+/// Build an opencode `Command`, preferring the bundled sidecar and falling back
+/// to the legacy curl-installed binary on `$PATH`.
+///
+/// Returns `(command, source)` where `source` is `"sidecar"` or `"system"` for logging.
+fn opencode_command(
+    app: &AppHandle,
+) -> AppResult<(tauri_plugin_shell::process::Command, &'static str)> {
+    if let Ok(cmd) = app.shell().sidecar("opencode") {
+        return Ok((cmd, "sidecar"));
+    }
+    let path = get_opencode_binary_path().ok_or(AppError::OpenCodeNotFound)?;
+    Ok((app.shell().command(path), "system"))
 }
 
 /// Find the OpenCode binary in common installation locations
@@ -132,15 +197,21 @@ fn ensure_config_exists() -> AppResult<()> {
     let config_dir = get_opencode_config_dir();
     fs::create_dir_all(&config_dir)?;
 
-    // Create mobile-design skill directory and file
+    // Create mobile-design skill directory, prompt, and exemplars
     let mobile_skill_dir = config_dir.join("skill").join("mobile-design");
-    fs::create_dir_all(&mobile_skill_dir)?;
-    fs::write(mobile_skill_dir.join("SKILL.md"), MOBILE_DESIGN_SKILL)?;
+    let mobile_examples_dir = mobile_skill_dir.join("examples");
+    fs::create_dir_all(&mobile_examples_dir)?;
+    fs::write(mobile_skill_dir.join("SKILL.md"), render_skill(MOBILE_DESIGN_SKILL))?;
+    fs::write(mobile_examples_dir.join("wellness.html"), MOBILE_EXAMPLE_WELLNESS)?;
+    fs::write(mobile_examples_dir.join("finance.html"), MOBILE_EXAMPLE_FINANCE)?;
 
-    // Create web-design skill directory and file
+    // Create web-design skill directory, prompt, and exemplars
     let web_skill_dir = config_dir.join("skill").join("web-design");
-    fs::create_dir_all(&web_skill_dir)?;
-    fs::write(web_skill_dir.join("SKILL.md"), WEB_DESIGN_SKILL)?;
+    let web_examples_dir = web_skill_dir.join("examples");
+    fs::create_dir_all(&web_examples_dir)?;
+    fs::write(web_skill_dir.join("SKILL.md"), render_skill(WEB_DESIGN_SKILL))?;
+    fs::write(web_examples_dir.join("editorial.html"), WEB_EXAMPLE_EDITORIAL)?;
+    fs::write(web_examples_dir.join("saas-dashboard.html"), WEB_EXAMPLE_SAAS)?;
 
     // Create opencode config
     let config_file = config_dir.join("opencode.json");
@@ -154,7 +225,7 @@ fn ensure_config_exists() -> AppResult<()> {
         ],
         "agent": {
             "build": {
-                "prompt": "You are a UI design assistant that creates HTML screen prototypes. On your first response, invoke the skill specified in the user's message (either 'mobile-design' or 'web-design'). Write all screens to the screens/ directory as HTML files."
+                "prompt": BUILD_AGENT_PROMPT
             }
         },
         "permission": {
@@ -258,13 +329,15 @@ fn kill_process(pid: u32) {
 
 #[tauri::command]
 pub async fn check_opencode_installation(app: AppHandle) -> OpenCodeCheckResult {
-    let shell = app.shell();
-    let opencode_path = get_opencode_binary_path();
-
-    let command = if let Some(ref path) = opencode_path {
-        shell.command(path)
-    } else {
-        shell.command("opencode")
+    let command = match opencode_command(&app) {
+        Ok((cmd, _)) => cmd,
+        Err(e) => {
+            return OpenCodeCheckResult {
+                installed: false,
+                version: None,
+                error: Some(format!("OpenCode CLI not found: {}", e)),
+            };
+        }
     };
 
     match command.args(["--version"]).output().await {
@@ -322,18 +395,16 @@ pub async fn start_opencode_server(
     fs::create_dir_all(get_sessions_dir())?;
     ensure_config_exists()?;
 
-    let opencode_path = get_opencode_binary_path().ok_or(AppError::OpenCodeNotFound)?;
+    let (cmd, source) = opencode_command(&app)?;
 
-    let shell = app.shell();
     let dilag_dir = get_dilag_dir();
     let augmented_path = build_augmented_path();
     println!(
-        "[start_opencode_server] Starting on port {} with XDG_CONFIG_HOME={:?}",
-        port, dilag_dir
+        "[start_opencode_server] Starting ({}) on port {} with XDG_CONFIG_HOME={:?}",
+        source, port, dilag_dir
     );
 
-    let (_rx, child) = shell
-        .command(&opencode_path)
+    let (_rx, child) = cmd
         .args([
             "serve",
             "--port",
@@ -343,6 +414,11 @@ pub async fn start_opencode_server(
         ])
         .env("XDG_CONFIG_HOME", dilag_dir.to_string_lossy().to_string())
         .env("PATH", augmented_path)
+        // Prevent opencode from auto-loading the user's ~/.claude/CLAUDE.md and any
+        // project-level CLAUDE.md into our design agent's context. Their content is
+        // written for coding assistants and conflicts with our design-only workflow.
+        // See: opencode/src/session/instruction.ts (FILES array + globalFiles()).
+        .env("OPENCODE_DISABLE_CLAUDE_CODE_PROMPT", "1")
         .spawn()
         .map_err(|e| AppError::ServerStart(e.to_string()))?;
 

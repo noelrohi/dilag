@@ -42,6 +42,9 @@ pub struct DesignFile {
     pub screen_type: String,
     pub html: String,
     pub modified_at: u64,
+    /// Rule violations discovered by `screen_validator` — empty when the screen is clean.
+    #[serde(default)]
+    pub violations: Vec<crate::screen_validator::Violation>,
 }
 
 /// Local storage for sessions list

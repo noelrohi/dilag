@@ -42,15 +42,28 @@ function convertPart(part: Part, messageID: string, sessionID: string): MessageP
     url: "url" in part ? part.url : undefined,
     filename: "filename" in part ? part.filename : undefined,
     // Step part fields
-    provider:
-      "provider" in part && typeof (part as { provider?: unknown }).provider === "string"
-        ? (part as { provider: string }).provider
-        : undefined,
-    model:
-      "model" in part && typeof (part as { model?: unknown }).model === "string"
-        ? (part as { model: string }).model
-        : undefined,
+    provider: extractSubtaskProvider(part),
+    model: extractSubtaskModel(part),
   };
+}
+
+/** SDK v1.4 moved provider + model into a nested `{ providerID, modelID }` object
+ *  on SubtaskPart. These helpers tolerate both the old flat shape and the new
+ *  nested one, so we don't care which version the server speaks. */
+function extractSubtaskProvider(part: unknown): string | undefined {
+  const p = part as { provider?: unknown; model?: { providerID?: unknown } };
+  if (typeof p.provider === "string") return p.provider;
+  if (p.model && typeof p.model.providerID === "string") return p.model.providerID;
+  return undefined;
+}
+
+function extractSubtaskModel(part: unknown): string | undefined {
+  const p = part as { model?: unknown };
+  if (typeof p.model === "string") return p.model;
+  if (p.model && typeof (p.model as { modelID?: unknown }).modelID === "string") {
+    return (p.model as { modelID: string }).modelID;
+  }
+  return undefined;
 }
 
 /**

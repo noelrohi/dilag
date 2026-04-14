@@ -27,6 +27,7 @@
       "icons/icon.ico"
     ],
     "resources": [],
+    "externalBin": ["binaries/opencode"],
     "macOS": {
       "minimumSystemVersion": "10.15"
     }

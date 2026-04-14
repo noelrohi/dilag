@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!--
+  Reference exemplar: mobile finance / spending home screen.
+  Demonstrates: minimal near-monochrome palette with one bold accent, spending
+  treated as an object (stacked bar segments by category — not a pie chart),
+  transaction list with merchant iconography, single FAB, safe areas + clearance.
+-->
+<html lang="en" data-title="Ledger Home">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=393, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Geist", system-ui, sans-serif;
+      --font-mono: "Geist Mono", ui-monospace, monospace;
+      --color-background: #f7f7f5;
+      --color-foreground: #0a0a0a;
+      --color-card: #ffffff;
+      --color-muted-foreground: #737373;
+      --color-border: #e5e5e5;
+      --color-accent: #dc2626;
+      --radius-xl: 20px;
+    }
+  </style>
+</head>
+<body style="width: 393px; height: 852px; margin: 0; overflow: hidden;" class="bg-background text-foreground font-sans">
+  <div class="relative h-full flex flex-col pt-[47px] pb-[16px]">
+    <!-- Status row -->
+    <div class="px-6 flex items-center justify-between mb-4">
+      <div class="text-sm text-muted-foreground">April</div>
+      <div class="flex items-center gap-3 text-foreground">
+        <span class="iconify" data-icon="solar:magnifer-linear" data-width="18"></span>
+        <span class="iconify" data-icon="solar:bell-linear" data-width="18"></span>
+      </div>
+    </div>
+
+    <!-- Balance — oversized numeric, mono for alignment -->
+    <div class="px-6 mb-1">
+      <div class="text-xs uppercase tracking-widest text-muted-foreground mb-2">Spent this month</div>
+      <div class="font-mono font-semibold" style="font-size:56px;line-height:1;letter-spacing:-0.04em;">$2,847<span class="text-muted-foreground text-3xl">.12</span></div>
+      <div class="text-sm text-muted-foreground mt-2">$1,152.88 left of $4,000 budget</div>
+    </div>
+
+    <!-- Stacked budget bar, segments are the categories themselves -->
+    <div class="px-6 mt-6 mb-6">
+      <div class="flex h-2.5 rounded-full overflow-hidden bg-border">
+        <div style="width:32%" class="bg-foreground"></div>
+        <div style="width:18%" class="bg-foreground/60"></div>
+        <div style="width:14%" class="bg-foreground/40"></div>
+        <div style="width:7%" class="bg-accent"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 text-sm">
+        <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-foreground"></span>Housing</span><span class="font-mono tabular-nums">$1,280</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-foreground/60"></span>Food</span><span class="font-mono tabular-nums">$720</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-foreground/40"></span>Transit</span><span class="font-mono tabular-nums">$560</span></div>
+        <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-accent"></span>Over limit</span><span class="font-mono tabular-nums text-accent">$287</span></div>
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="flex-1 overflow-y-auto px-6 pb-[96px]">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-medium">Recent</div>
+        <a href="#" class="text-xs text-muted-foreground">All transactions &rarr;</a>
+      </div>
+      <div class="bg-card border border-border rounded-[20px] divide-y divide-border">
+        <div class="px-4 py-3.5 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-background flex items-center justify-center"><span class="iconify" data-icon="solar:cart-3-linear" data-width="18"></span></div>
+          <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">Bi-Rite Market</div><div class="text-xs text-muted-foreground">Today &middot; Food</div></div>
+          <div class="font-mono text-sm tabular-nums">&minus;$48.20</div>
+        </div>
+        <div class="px-4 py-3.5 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-background flex items-center justify-center"><span class="iconify" data-icon="solar:bus-linear" data-width="18"></span></div>
+          <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">BART</div><div class="text-xs text-muted-foreground">Today &middot; Transit</div></div>
+          <div class="font-mono text-sm tabular-nums">&minus;$4.75</div>
+        </div>
+        <div class="px-4 py-3.5 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-background flex items-center justify-center"><span class="iconify" data-icon="solar:tea-cup-linear" data-width="18"></span></div>
+          <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">Sightglass Coffee</div><div class="text-xs text-muted-foreground">Yesterday &middot; Food</div></div>
+          <div class="font-mono text-sm tabular-nums">&minus;$6.50</div>
+        </div>
+        <div class="px-4 py-3.5 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center"><span class="iconify text-accent" data-icon="solar:alarm-linear" data-width="18"></span></div>
+          <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">Streaming subscriptions</div><div class="text-xs text-accent">Over budget by $12</div></div>
+          <div class="font-mono text-sm tabular-nums">&minus;$47.97</div>
+        </div>
+        <div class="px-4 py-3.5 flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-background flex items-center justify-center"><span class="iconify" data-icon="solar:hand-money-linear" data-width="18"></span></div>
+          <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">Paycheck &mdash; Atelier</div><div class="text-xs text-muted-foreground">Apr 1 &middot; Income</div></div>
+          <div class="font-mono text-sm tabular-nums text-foreground">+$4,200.00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Single FAB rather than a tab bar: utility app, one primary action -->
+    <button style="position:absolute;bottom:24px;right:24px;" class="w-14 h-14 rounded-full bg-foreground text-background shadow-lg flex items-center justify-center">
+      <span class="iconify" data-icon="solar:add-circle-bold" data-width="26"></span>
+    </button>
+  </div>
+</body>
+</html>

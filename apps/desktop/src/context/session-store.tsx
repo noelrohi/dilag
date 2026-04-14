@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import type { Event, FileDiff, ToolState } from "@opencode-ai/sdk/v2/client";
+import type { Event, SnapshotFileDiff as FileDiff, ToolState } from "@opencode-ai/sdk/v2/client";
 import {
   isEventMessagePartUpdated,
   isEventMessageUpdated,
@@ -609,14 +609,20 @@ export const useSessionStore = create<SessionState>()(
               mime: "mime" in sdkPart ? sdkPart.mime : undefined,
               url: "url" in sdkPart ? sdkPart.url : undefined,
               filename: "filename" in sdkPart ? sdkPart.filename : undefined,
-              provider:
-                "provider" in sdkPart && typeof (sdkPart as { provider?: unknown }).provider === "string"
-                  ? (sdkPart as { provider: string }).provider
-                  : undefined,
-              model:
-                "model" in sdkPart && typeof (sdkPart as { model?: unknown }).model === "string"
-                  ? (sdkPart as { model: string }).model
-                  : undefined,
+              provider: (() => {
+                const p = sdkPart as { provider?: unknown; model?: { providerID?: unknown } };
+                if (typeof p.provider === "string") return p.provider;
+                if (p.model && typeof p.model.providerID === "string") return p.model.providerID;
+                return undefined;
+              })(),
+              model: (() => {
+                const p = sdkPart as { model?: unknown };
+                if (typeof p.model === "string") return p.model;
+                if (p.model && typeof (p.model as { modelID?: unknown }).modelID === "string") {
+                  return (p.model as { modelID: string }).modelID;
+                }
+                return undefined;
+              })(),
             };
             updatePart(sdkPart.messageID, part);
           }

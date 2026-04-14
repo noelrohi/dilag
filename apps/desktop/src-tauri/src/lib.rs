@@ -7,6 +7,7 @@ mod error;
 mod menu;
 mod opencode;
 mod paths;
+mod screen_validator;
 mod sessions;
 mod state;
 mod theme;
@@ -141,6 +142,7 @@ pub fn run() {
             designs::load_session_designs,
             designs::copy_session_designs,
             designs::delete_design,
+            screen_validator::validate_screen_html,
             // Capture commands
             capture::capture_html_to_image,
             // App info commands
