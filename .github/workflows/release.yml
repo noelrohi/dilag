@@ -58,6 +58,13 @@ jobs:
         run: bun install
         working-directory: apps/desktop
 
+      - name: Fetch bundled opencode sidecar binary
+        working-directory: apps/desktop
+        env:
+          OPENCODE_TARGET: ${{ matrix.target }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: bun run fetch-opencode
+
       - name: Extract changelog for release notes
         id: changelog
         run: |

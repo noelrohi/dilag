@@ -5,7 +5,13 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.1] - 2026-04-14
+## [0.5.2] - 2026-04-14
+
+### Fixed
+
+- **Release Workflow**: Added `bun run fetch-opencode` step to the release workflow so the bundled opencode sidecar binary is downloaded before `tauri build`. v0.5.1's release build failed because the binary required by `externalBin` wasn't present in CI.
+
+## [0.5.1] - 2026-04-14 (failed release)
 
 ### Added
 
