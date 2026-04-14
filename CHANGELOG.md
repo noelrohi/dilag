@@ -5,6 +5,28 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-04-14
+
+### Added
+
+- **Bundled OpenCode Sidecar**: OpenCode v1.4.3 now ships as an embedded sidecar binary on macOS (arm64 + x64), eliminating the external `curl | bash` install step for bundled users. A fallback to a PATH-installed binary remains for dev environments.
+- **Reference Exemplars for Skills**: Each design skill now ships curated HTML exemplars (`editorial.html`, `saas-dashboard.html` for web; `wellness.html`, `finance.html` for mobile). The model reads the matching exemplar before designing to anchor scaffolding and palette choices.
+- **Screen Validator**: Generated HTML screens are now checked against design rules (`@keyframes`, `animation:`, Tailwind `animate-*` utilities, `opacity: 0` initial states, non-allowlisted URLs, emoji-as-icons). Violations surface as an amber badge on each screen in the canvas with a tooltip breakdown.
+- **Prompt Slots**: Skill prompts now support `{{BRAND_TOKENS}}`, `{{DOMAIN_HINT}}`, `{{REFERENCE_URLS}}` slots resolved from environment variables for optional per-install brand steering.
+
+### Changed
+
+- **Build Agent Prompt**: Replaced the brief fallback prompt with a structured role + tool-policy + tone prompt. The agent now states an explicit aesthetic direction before writing and emits a palette/type/screen summary after.
+- **Skill Prompt Structure**: Split shared rules into `designer-common.md` so web and mobile skills only carry their deltas, cutting duplication and improving prompt cache stability.
+- **Narrowed "Never" Rule**: Hover/focus transitions (`transition-*`, `hover:*`, `focus:*`) are now explicitly allowed as legitimate UI affordances; only decorative motion (`@keyframes`, `animation:` shorthand, `animate-spin/pulse/bounce/ping` and custom keyframe utilities, mount-time `opacity: 0`) is forbidden.
+- **OpenCode SDK**: Upgraded to `^1.4.3` to match the bundled sidecar. Migrated `FileDiff` → `SnapshotFileDiff` and `SubtaskPart.model` to the new `{ providerID, modelID }` shape.
+
+### Fixed
+
+- **CLAUDE.md Leakage**: Set `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1` on the sidecar so the user's personal `~/.claude/CLAUDE.md` and project `CLAUDE.md` files no longer inject coding-assistant instructions into design sessions.
+- **Permission Sync Errors**: Defensive response handling in bootstrap eliminates the `TypeError: undefined is not an object (evaluating 'response.ok')` warnings after SDK upgrade.
+- **Unnecessary `bash mkdir`**: Build agent prompt now explicitly notes that the `write` tool creates parent directories automatically, preventing the model from calling `bash mkdir -p screens/` as a redundant defensive step.
+
 ## [0.5.0] - 2026-02-23
 
 ### Changed
