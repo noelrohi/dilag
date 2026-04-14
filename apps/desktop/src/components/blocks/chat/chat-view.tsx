@@ -1,9 +1,19 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useId,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Monitor,
   DangerCircle,
   ClipboardText,
+  CloseCircle,
   DangerTriangle,
   Stop,
   ArrowUp,
@@ -16,6 +26,7 @@ import {
 import { usePendingMessage } from "@/hooks/use-chat-interface";
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon";
 import { useSessions } from "@/hooks/use-sessions";
+import { useSDK } from "@/context/global-events";
 import {
   useMessageParts,
   useSessionError,
@@ -63,6 +74,101 @@ import { QuestionList } from "./question-list";
 import { StuckToolWarning } from "@/components/blocks/errors/stuck-tool-warning";
 import { AttachmentBridgeConnector } from "./attachment-bridge-connector";
 import type { MessagePart as MessagePartType } from "@/context/session-store";
+import { toast } from "sonner";
+
+const FILE_MENTION_SEARCH_DEBOUNCE_MS = 150;
+const FILE_MENTION_SEARCH_LIMIT = 20;
+const FILE_MENTION_MAX_COUNT = 10;
+const FILE_MENTION_MAX_SIZE_BYTES = 200 * 1024;
+
+export type MentionedFileRef = {
+  id: string;
+  path: string;
+  displayName: string;
+};
+
+type ActiveFileMention = {
+  start: number;
+  end: number;
+  query: string;
+};
+
+type MentionSearchResult = {
+  path: string;
+  displayName: string;
+};
+
+type MentionFileContent = {
+  content: string;
+  encoding?: "base64";
+  mimeType?: string;
+};
+
+function getFileDisplayName(path: string): string {
+  return path.split(/[\\/]/).pop() || path;
+}
+
+// Detect active @file mention at a given caret position.
+export function findActiveFileMention(
+  text: string,
+  caretPosition: number,
+): ActiveFileMention | null {
+  if (caretPosition < 0 || caretPosition > text.length) return null;
+
+  let start = caretPosition - 1;
+  while (start >= 0 && !/\s/.test(text[start])) {
+    start--;
+  }
+  start += 1;
+
+  let end = caretPosition;
+  while (end < text.length && !/\s/.test(text[end])) {
+    end++;
+  }
+
+  const token = text.slice(start, end);
+  if (!token.startsWith("@")) return null;
+  if (!/^@[\w./-]*$/.test(token)) return null;
+
+  return {
+    start,
+    end,
+    query: text.slice(start + 1, caretPosition),
+  };
+}
+
+// Remove mention token and keep spacing sane around where it was deleted.
+export function removeFileMentionToken(
+  text: string,
+  mention: Pick<ActiveFileMention, "start" | "end">,
+): { text: string; caretPosition: number } {
+  let prefix = text.slice(0, mention.start);
+  let suffix = text.slice(mention.end);
+
+  if (/\s$/.test(prefix) && /^\s/.test(suffix)) {
+    suffix = suffix.slice(1);
+  } else if (prefix && !/\s$/.test(prefix) && suffix && !/^\s/.test(suffix)) {
+    prefix += " ";
+  }
+
+  return { text: `${prefix}${suffix}`, caretPosition: prefix.length };
+}
+
+export function estimateMentionFileSizeBytes(content: string, encoding?: "base64"): number {
+  if (encoding === "base64") {
+    const padding = content.endsWith("==") ? 2 : content.endsWith("=") ? 1 : 0;
+    return Math.max(0, Math.floor((content.length * 3) / 4) - padding);
+  }
+  return new TextEncoder().encode(content).length;
+}
+
+export function buildMentionDataUrl(content: string, mimeType: string, encoding?: "base64"): string {
+  if (encoding === "base64") {
+    return `data:${mimeType};base64,${content}`;
+  }
+  const base64 = btoa(unescape(encodeURIComponent(content)));
+  return `data:${mimeType};base64,${base64}`;
+}
 
 /**
  * Check if a message part would render content.
@@ -530,26 +636,275 @@ function ChatInputArea({
   isLoading,
   sendMessage,
   stopSession,
+  sessionCwd,
 }: {
   isLoading: boolean;
   sendMessage: (message: string, files?: import("ai").FileUIPart[]) => Promise<void>;
   stopSession: () => Promise<void>;
+  sessionCwd: string | null;
 }) {
-  const { textInput } = usePromptInputController();
+  const sdk = useSDK();
+  const composerTextareaId = useId();
+  const { textInput, attachments, screenRefs } = usePromptInputController();
+  const [caretPosition, setCaretPosition] = useState(0);
+  const [activeMention, setActiveMention] = useState<ActiveFileMention | null>(null);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [isSearchingMentions, setIsSearchingMentions] = useState(false);
+  const [mentionSearchResults, setMentionSearchResults] = useState<MentionSearchResult[]>([]);
+  const [highlightedMentionIndex, setHighlightedMentionIndex] = useState(0);
+  const [mentionedFiles, setMentionedFiles] = useState<MentionedFileRef[]>([]);
+  const mentionSearchRequestRef = useRef(0);
   const hasInput = textInput.value.trim().length > 0;
+  const hasComposerReferences =
+    attachments.files.length > 0 ||
+    screenRefs.references.length > 0 ||
+    mentionedFiles.length > 0;
+  const hasSubmittableInput = hasInput || hasComposerReferences;
   const { pendingMessage, clearPendingMessage } = usePendingMessage();
 
   // Handle pending messages from server error overlay or other sources
   useEffect(() => {
     if (pendingMessage) {
       textInput.setInput(pendingMessage);
+      setCaretPosition(pendingMessage.length);
       clearPendingMessage();
     }
   }, [pendingMessage, textInput, clearPendingMessage]);
 
+  // Keep caret position bounded as input changes
+  useEffect(() => {
+    if (caretPosition > textInput.value.length) {
+      setCaretPosition(textInput.value.length);
+    }
+  }, [caretPosition, textInput.value.length]);
+
+  // Parse active @file token from the current caret position
+  useEffect(() => {
+    const mention = findActiveFileMention(textInput.value, caretPosition);
+    setActiveMention(mention);
+
+    if (!mention) {
+      setMentionOpen(false);
+      setMentionSearchResults([]);
+      setHighlightedMentionIndex(0);
+      setIsSearchingMentions(false);
+      return;
+    }
+
+    setMentionOpen(true);
+  }, [textInput.value, caretPosition]);
+
+  // Debounced project file search for active mention
+  useEffect(() => {
+    if (!mentionOpen || !activeMention || !sessionCwd) {
+      return;
+    }
+
+    const requestId = ++mentionSearchRequestRef.current;
+    setIsSearchingMentions(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await sdk.find.files({
+          directory: sessionCwd,
+          query: activeMention.query,
+          type: "file",
+          limit: FILE_MENTION_SEARCH_LIMIT,
+        });
+
+        if (requestId !== mentionSearchRequestRef.current) return;
+
+        const results = (response.data ?? []).map((path) => ({
+          path,
+          displayName: getFileDisplayName(path),
+        }));
+        setMentionSearchResults(results);
+        setHighlightedMentionIndex(0);
+      } catch {
+        if (requestId !== mentionSearchRequestRef.current) return;
+        setMentionSearchResults([]);
+      } finally {
+        if (requestId === mentionSearchRequestRef.current) {
+          setIsSearchingMentions(false);
+        }
+      }
+    }, FILE_MENTION_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [activeMention, mentionOpen, sdk, sessionCwd]);
+
+  const syncCaretPosition = useCallback((target: HTMLTextAreaElement | null) => {
+    if (!target) return;
+    setCaretPosition(target.selectionStart ?? target.value.length);
+  }, []);
+
+  const selectMentionResult = useCallback((result: MentionSearchResult) => {
+    if (!activeMention) return;
+
+    const existing = mentionedFiles.some((file) => file.path === result.path);
+    if (existing) {
+      toast.info(`"${result.displayName}" is already mentioned`);
+    } else if (mentionedFiles.length >= FILE_MENTION_MAX_COUNT) {
+      toast.warning(`You can mention up to ${FILE_MENTION_MAX_COUNT} files per message`);
+    } else {
+      setMentionedFiles((prev) => [
+        ...prev,
+        {
+          id: result.path,
+          path: result.path,
+          displayName: result.displayName,
+        },
+      ]);
+    }
+
+    const next = removeFileMentionToken(textInput.value, activeMention);
+    textInput.setInput(next.text);
+    setCaretPosition(next.caretPosition);
+    setMentionOpen(false);
+    setMentionSearchResults([]);
+    setHighlightedMentionIndex(0);
+
+    requestAnimationFrame(() => {
+      const textarea = document.getElementById(composerTextareaId) as HTMLTextAreaElement | null;
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(next.caretPosition, next.caretPosition);
+    });
+  }, [activeMention, composerTextareaId, mentionedFiles, textInput]);
+
+  const removeMentionedFile = useCallback((id: string) => {
+    setMentionedFiles((prev) => prev.filter((file) => file.id !== id));
+  }, []);
+
+  const handleComposerKeyDownCapture = useCallback((e: ReactKeyboardEvent<HTMLFormElement>) => {
+    if (!mentionOpen) return;
+
+    const target = e.target as HTMLElement | null;
+    if (!target || target.id !== composerTextareaId) return;
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setMentionOpen(false);
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (mentionSearchResults.length === 0) return;
+      setHighlightedMentionIndex((prev) => (prev + 1) % mentionSearchResults.length);
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (mentionSearchResults.length === 0) return;
+      setHighlightedMentionIndex((prev) => (prev - 1 + mentionSearchResults.length) % mentionSearchResults.length);
+      return;
+    }
+
+    if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (mentionSearchResults.length === 0) return;
+      const selected = mentionSearchResults[Math.min(highlightedMentionIndex, mentionSearchResults.length - 1)];
+      if (selected) {
+        selectMentionResult(selected);
+      }
+    }
+  }, [
+    composerTextareaId,
+    highlightedMentionIndex,
+    mentionOpen,
+    mentionSearchResults,
+    selectMentionResult,
+  ]);
+
+  const resolveMentionedFileParts = useCallback(async () => {
+    const parts: import("ai").FileUIPart[] = [];
+    let tooLargeCount = 0;
+    let failedCount = 0;
+
+    for (const file of mentionedFiles) {
+      try {
+        const response = await sdk.file.read({
+          directory: sessionCwd ?? undefined,
+          path: file.path,
+        });
+        const content = response.data as MentionFileContent | undefined;
+        if (!content || typeof content.content !== "string") {
+          failedCount++;
+          continue;
+        }
+
+        const bytes = estimateMentionFileSizeBytes(content.content, content.encoding);
+        if (bytes > FILE_MENTION_MAX_SIZE_BYTES) {
+          tooLargeCount++;
+          continue;
+        }
+
+        const mimeType = content.mimeType || "text/plain";
+        parts.push({
+          type: "file",
+          filename: file.path,
+          mediaType: mimeType,
+          url: buildMentionDataUrl(content.content, mimeType, content.encoding),
+        });
+      } catch {
+        failedCount++;
+      }
+    }
+
+    return { parts, tooLargeCount, failedCount };
+  }, [mentionedFiles, sdk, sessionCwd]);
+
   const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
-    if (!text.trim() || isLoading) return;
-    await sendMessage(text.trim(), files);
+    if (isLoading) return;
+
+    const trimmedText = text.trim();
+    const inputFiles = files ?? [];
+    const hasMentionedFiles = mentionedFiles.length > 0;
+    if (!trimmedText && inputFiles.length === 0 && !hasMentionedFiles) return;
+
+    let mentionParts: import("ai").FileUIPart[] = [];
+    if (hasMentionedFiles) {
+      if (!sessionCwd) {
+        toast.error("Session path is unavailable for file mentions");
+        return;
+      }
+
+      const resolved = await resolveMentionedFileParts();
+      mentionParts = resolved.parts;
+
+      if (resolved.tooLargeCount > 0) {
+        toast.warning(
+          `Skipped ${resolved.tooLargeCount} mentioned ${resolved.tooLargeCount === 1 ? "file" : "files"} over 200KB`,
+        );
+      }
+      if (resolved.failedCount > 0) {
+        toast.warning(
+          `Could not attach ${resolved.failedCount} mentioned ${resolved.failedCount === 1 ? "file" : "files"}`,
+        );
+      }
+    }
+
+    const mergedFiles = [...inputFiles, ...mentionParts];
+    if (!trimmedText && mergedFiles.length === 0) {
+      toast.error("All mentioned files were skipped. Add text or mention smaller files.");
+      return;
+    }
+
+    try {
+      await sendMessage(trimmedText, mergedFiles.length > 0 ? mergedFiles : undefined);
+      setMentionedFiles([]);
+      setMentionOpen(false);
+      setMentionSearchResults([]);
+      setHighlightedMentionIndex(0);
+    } catch {
+      toast.error("Failed to send message");
+    }
   };
 
   const handleButtonClick = () => {
@@ -583,6 +938,7 @@ function ChatInputArea({
 
         <PromptInput
           onSubmit={async ({ text, files }) => handleSubmit(text, files)}
+          onKeyDownCapture={handleComposerKeyDownCapture}
           className={cn(isLoading && "opacity-80")}
         >
           <PromptInputAttachments>
@@ -591,13 +947,75 @@ function ChatInputArea({
           <PromptInputScreenReferences className="px-3 pt-2">
             {(ref) => <PromptInputScreenReference data={ref} />}
           </PromptInputScreenReferences>
+          {mentionedFiles.length > 0 && (
+            <div className="flex w-full flex-wrap items-start justify-start gap-1.5 px-3 pt-2">
+              {mentionedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="group relative inline-flex h-6 cursor-default select-none items-center gap-1 rounded-[5px] pl-1.5 pr-1 bg-gradient-to-b from-foreground/[0.06] to-foreground/[0.03] ring-1 ring-inset ring-foreground/[0.08]"
+                >
+                  <ClipboardText size={10} className="text-foreground/45" />
+                  <span className="max-w-[220px] truncate text-[12px] font-medium tracking-tight text-foreground/70 group-hover:text-foreground/85">
+                    {file.path}
+                  </span>
+                  <button
+                    aria-label={`Remove ${file.displayName}`}
+                    className="ml-0.5 flex size-4 shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-foreground/10"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeMentionedFile(file.id);
+                    }}
+                    type="button"
+                  >
+                    <CloseCircle size={10} className="text-foreground/50" />
+                    <span className="sr-only">Remove</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <PromptInputBody>
             <PromptInputTextarea
+              id={composerTextareaId}
+              data-chat-composer-textarea
               placeholder="Describe what to design..."
               disabled={isLoading}
               className="min-h-[56px] max-h-[200px]"
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+                syncCaretPosition(event.currentTarget)
+              }
+              onClick={(event) => syncCaretPosition(event.currentTarget)}
+              onKeyUp={(event) => syncCaretPosition(event.currentTarget)}
+              onSelect={(event) => syncCaretPosition(event.currentTarget as HTMLTextAreaElement)}
             />
           </PromptInputBody>
+          {mentionOpen && (
+            <div className="w-full px-3 pb-1">
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 bg-card shadow-sm">
+                {isSearchingMentions ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Searching files...</div>
+                ) : mentionSearchResults.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No files found</div>
+                ) : (
+                  mentionSearchResults.map((result, index) => (
+                    <button
+                      key={result.path}
+                      type="button"
+                      className={cn(
+                        "flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40",
+                        index === highlightedMentionIndex && "bg-muted/50",
+                      )}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectMentionResult(result)}
+                    >
+                      <span className="truncate font-medium">{result.displayName}</span>
+                      <span className="truncate text-xs text-muted-foreground">{result.path}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
           <PromptInputFooter>
             {/* Left side - agent selector, model selector, thinking mode */}
             <PromptInputTools className="min-w-0 flex-1">
@@ -612,14 +1030,14 @@ function ChatInputArea({
             <div className="flex items-center gap-1">
               <PromptInputAddAttachmentButton />
               <PromptInputSubmit
-                disabled={!hasInput && !isLoading}
+                disabled={!hasSubmittableInput && !isLoading}
                 onClick={isLoading ? handleButtonClick : undefined}
                 type={isLoading ? "button" : "submit"}
                 className={cn(
                   "size-9 rounded-xl transition-all duration-200",
                   isLoading
                     ? "bg-destructive/90 text-destructive-foreground hover:bg-destructive shadow-lg shadow-destructive/25"
-                    : hasInput
+                    : hasSubmittableInput
                       ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                       : "bg-muted text-muted-foreground",
                 )}
@@ -699,6 +1117,7 @@ export function ChatView() {
   const {
     messages,
     currentSessionId,
+    currentSession,
     isLoading,
     isServerReady,
     error,
@@ -930,6 +1349,7 @@ export function ChatView() {
             isLoading={isLoading}
             sendMessage={sendMessage}
             stopSession={stopSession}
+            sessionCwd={currentSession?.cwd ?? null}
           />
         </div>
 

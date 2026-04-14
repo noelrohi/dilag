@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { parseMessageText, HighlightedText } from "./chat-view";
+import {
+  parseMessageText,
+  HighlightedText,
+  findActiveFileMention,
+  removeFileMentionToken,
+  estimateMentionFileSizeBytes,
+  buildMentionDataUrl,
+} from "./chat-view";
 
 describe("parseMessageText", () => {
   describe("screen context removal", () => {
@@ -139,5 +146,58 @@ describe("HighlightedText", () => {
       expect(screen.getByText("@home-v2")).toHaveClass("text-primary");
       expect(screen.getByText("@user_profile-settings")).toHaveClass("text-primary");
     });
+  });
+});
+
+describe("findActiveFileMention", () => {
+  it("detects active mention token with path characters", () => {
+    const text = "Please open @src/components/button.tsx";
+    const mention = findActiveFileMention(text, text.length);
+    expect(mention).toEqual({
+      start: 12,
+      end: text.length,
+      query: "src/components/button.tsx",
+    });
+  });
+
+  it("does not treat email addresses as mentions", () => {
+    const mention = findActiveFileMention("Contact user@example.com", 24);
+    expect(mention).toBeNull();
+  });
+
+  it("returns null when @ is not token-leading", () => {
+    const mention = findActiveFileMention("Check(@src/app.tsx)", 19);
+    expect(mention).toBeNull();
+  });
+});
+
+describe("removeFileMentionToken", () => {
+  it("removes mention token and keeps spacing valid", () => {
+    const text = "Please edit @src/app.tsx now";
+    const result = removeFileMentionToken(text, { start: 12, end: 24 });
+    expect(result.text).toBe("Please edit now");
+    expect(result.caretPosition).toBe(12);
+  });
+});
+
+describe("mention file content helpers", () => {
+  it("estimates byte size for utf-8 content", () => {
+    expect(estimateMentionFileSizeBytes("abc")).toBe(3);
+  });
+
+  it("estimates byte size for base64 content", () => {
+    expect(estimateMentionFileSizeBytes("YWJj", "base64")).toBe(3);
+  });
+
+  it("builds data URL for plain text content", () => {
+    const url = buildMentionDataUrl("hello", "text/plain");
+    expect(url.startsWith("data:text/plain;base64,")).toBe(true);
+    const encoded = url.split(",")[1];
+    expect(atob(encoded)).toBe("hello");
+  });
+
+  it("uses existing base64 payload when encoding is base64", () => {
+    const url = buildMentionDataUrl("aGVsbG8=", "text/plain", "base64");
+    expect(url).toBe("data:text/plain;base64,aGVsbG8=");
   });
 });
