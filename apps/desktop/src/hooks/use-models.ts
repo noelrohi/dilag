@@ -92,35 +92,10 @@ function isModelFree(
 }
 
 /**
- * Filter to latest models (within 6 months, most recent per provider+family)
- */
-function filterLatestModels(models: Model[]): Model[] {
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-  // Group by provider + family, keep most recent
-  const grouped = new Map<string, Model>();
-  for (const model of models) {
-    if (!model.releaseDate) continue;
-    const releaseDate = new Date(model.releaseDate);
-    if (releaseDate < sixMonthsAgo) continue;
-
-    const key = `${model.providerID}:${model.family || model.id}`;
-    const existing = grouped.get(key);
-    if (!existing || new Date(model.releaseDate) > new Date(existing.releaseDate!)) {
-      grouped.set(key, model);
-    }
-  }
-
-  // Return filtered models (latest property already set based on name)
-  return Array.from(grouped.values());
-}
-
-/**
  * Transform raw provider data into Model array with hot/free flags
  */
 function transformProviderData(
-  all: Array<{
+  providers: Array<{
     id: string;
     name: string;
     models: Record<
@@ -139,8 +114,7 @@ function transformProviderData(
   const models: Model[] = [];
   const seenModels = new Set<string>();
 
-  for (const provider of all) {
-    // Extract all models from provider
+  for (const provider of providers) {
     for (const [key, model] of Object.entries(provider.models)) {
       const modelID = model.id || key;
       const dedupeKey = `${provider.id}:${modelID}`;
@@ -163,17 +137,13 @@ function transformProviderData(
     }
   }
 
-  // Filter to latest models only, then sort
-  const latestModels = filterLatestModels(models);
-
-  // Sort: hot models first, then alphabetically by name
-  latestModels.sort((a, b) => {
+  models.sort((a, b) => {
     if (a.hot && !b.hot) return -1;
     if (!a.hot && b.hot) return 1;
     return a.name.localeCompare(b.name);
   });
 
-  return latestModels;
+  return models;
 }
 
 /**
@@ -189,9 +159,12 @@ export function useProviderData() {
       if (!response.data) {
         throw new Error("No provider data received");
       }
+      const connectedProviders = response.data.connected ?? [];
+      const connectedSet = new Set(connectedProviders);
+      const connected = response.data.all.filter((p) => connectedSet.has(p.id));
       return {
-        models: transformProviderData(response.data.all),
-        connectedProviders: response.data.connected ?? [],
+        models: transformProviderData(connected),
+        connectedProviders,
       };
     },
     staleTime: 1000 * 60 * 5, // 5 minutes - models don't change often
