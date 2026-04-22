@@ -5,6 +5,12 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-04-22
+
+### Fixed
+
+- **Model Picker Outdated**: The picker now lists every model from connected providers instead of hard-filtering to one-per-family-within-six-months. Previously, models without a `release_date`, models slightly older than six months, or the second-place model in a family were silently dropped — making the picker appear to lag behind the provider's actual catalog. Mirrors opencode's approach of keeping the full list and using the recency heuristic only for default highlighting.
+
 ## [0.5.2] - 2026-04-14
 
 ### Fixed
