@@ -281,6 +281,18 @@ export function getChatActivityLabel({
   return fallback
 }
 
+export function isAssistantMessageStreaming(
+  message: Pick<SessionMessage, "isStreaming" | "time">,
+  sessionStatus: SessionStatus,
+): boolean {
+  return (
+    !!message.isStreaming &&
+    message.time.completed === undefined &&
+    sessionStatus !== "idle" &&
+    sessionStatus !== "error"
+  )
+}
+
 const BUSY_FALLBACKS = [
   "Thinking",
   "Designing",
@@ -601,9 +613,13 @@ function AssistantMessage({
 }) {
   const parts = useMessageParts(message.id)
   const sessionError = useSessionError(message.sessionID)
-  const renderableParts = getRenderableAssistantParts(parts, !!message.isStreaming)
+  const sessionStatus = useSessionStore(
+    (state) => state.sessionStatus[message.sessionID] ?? "unknown",
+  )
+  const isStreaming = isAssistantMessageStreaming(message, sessionStatus)
+  const renderableParts = getRenderableAssistantParts(parts, isStreaming)
 
-  if (!message.isStreaming && renderableParts.length === 0 && !sessionError) {
+  if (!isStreaming && renderableParts.length === 0 && !sessionError) {
     return null
   }
 
@@ -620,17 +636,17 @@ function AssistantMessage({
             className="animate-stream-in"
             style={{ animationDelay: `${partIndex * 50}ms` }}
           >
-            <MessagePart part={part} isStreaming={!!message.isStreaming} />
+            <MessagePart part={part} isStreaming={isStreaming} />
           </div>
         ))}
 
         {/* Thinking indicator - show when streaming and no renderable parts yet */}
-        {message.isStreaming && renderableParts.length === 0 && <ThinkingIndicator />}
+        {isStreaming && renderableParts.length === 0 && <ThinkingIndicator />}
 
         {/* Inline error - show on last assistant message when session has error */}
-        {isLast && !message.isStreaming && sessionError && <InlineErrorCard error={sessionError} />}
+        {isLast && !isStreaming && sessionError && <InlineErrorCard error={sessionError} />}
       </MessageContent>
-      {!message.isStreaming && isLast && (
+      {!isStreaming && isLast && (
         <MessageActions>
           <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
             <Copy size={14} />

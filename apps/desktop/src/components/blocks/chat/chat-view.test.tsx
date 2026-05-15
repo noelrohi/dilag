@@ -9,6 +9,7 @@ import {
   buildMentionDataUrl,
   getRenderableAssistantParts,
   getChatActivityLabel,
+  isAssistantMessageStreaming,
   parseSkillBlock,
 } from "./chat-view"
 import type { MessagePart } from "@/context/session-store"
@@ -316,5 +317,41 @@ describe("getChatActivityLabel", () => {
         fallback: "Thinking",
       }),
     ).toBeUndefined()
+  })
+})
+
+describe("isAssistantMessageStreaming", () => {
+  it("treats stale streaming messages as complete when the session is idle", () => {
+    expect(
+      isAssistantMessageStreaming(
+        {
+          isStreaming: true,
+          time: { created: 1000 },
+        },
+        "idle",
+      ),
+    ).toBe(false)
+  })
+
+  it("only streams while the message is incomplete and the session is active", () => {
+    expect(
+      isAssistantMessageStreaming(
+        {
+          isStreaming: true,
+          time: { created: 1000 },
+        },
+        "running",
+      ),
+    ).toBe(true)
+
+    expect(
+      isAssistantMessageStreaming(
+        {
+          isStreaming: true,
+          time: { created: 1000, completed: 2000 },
+        },
+        "running",
+      ),
+    ).toBe(false)
   })
 })

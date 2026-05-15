@@ -12,7 +12,7 @@ interface ToolPartProps {
 }
 
 // Tools that should be expanded by default
-const DEFAULT_OPEN_TOOLS = ["todowrite", "question"]
+const DEFAULT_OPEN_TOOLS = ["read", "todowrite", "question"]
 
 export function ToolPart({ tool, state }: ToolPartProps) {
   const config = getToolConfig(tool)
