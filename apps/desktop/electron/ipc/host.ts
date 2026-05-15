@@ -17,6 +17,7 @@ import {
   isAgentRuntimeRunning,
   listAgentProviders,
   listAgentQuestions,
+  loginAgentOAuthProvider,
   navigateAgentTree,
   promptAgentSession,
   rejectAgentQuestion,
@@ -75,6 +76,9 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.agent.setApiKey, (_event, args: { providerID: string; apiKey: string }) =>
     setAgentApiKey(args),
   )
+  ipcMain.handle(CHANNELS.agent.loginOAuthProvider, (_event, args: { providerID: string }) =>
+    loginAgentOAuthProvider(args, (url) => shell.openExternal(url)),
+  )
   ipcMain.handle(CHANNELS.agent.createSession, (_event, args: { directory: string }) =>
     createAgentSessionForDirectory(args),
   )
@@ -96,6 +100,7 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
         text: string
         images?: Array<{ type: "image"; data: string; mimeType: string }>
         model?: { providerID: string; modelID: string } | null
+        thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
       },
     ) => promptAgentSession(args),
   )

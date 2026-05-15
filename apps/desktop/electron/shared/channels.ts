@@ -16,6 +16,7 @@ export const CHANNELS = {
     getProviderData: "agent:get-provider-data",
     listProviders: "agent:list-providers",
     setApiKey: "agent:set-api-key",
+    loginOAuthProvider: "agent:login-oauth-provider",
     createSession: "agent:create-session",
     getSession: "agent:get-session",
     getMessages: "agent:get-messages",

@@ -14,6 +14,7 @@ import type {
   AgentQuestionRequest,
   AgentRuntimeInfo,
   AgentSessionInfo,
+  AgentThinkingLevel,
   AgentTreeNode,
   DesignFile,
   FileNode,
@@ -52,6 +53,7 @@ export interface DesktopBridge {
     getProviderData(): Promise<AgentProviderData>
     listProviders(): Promise<AgentProvider[]>
     setApiKey(args: { providerID: string; apiKey: string }): Promise<void>
+    loginOAuthProvider(args: { providerID: string }): Promise<void>
     createSession(args: { directory: string }): Promise<AgentSessionInfo>
     getSession(args: { sessionID: string; directory: string }): Promise<AgentSessionInfo>
     getMessages(args: { sessionID: string; directory: string }): Promise<AgentMessage[]>
@@ -61,6 +63,7 @@ export interface DesktopBridge {
       text: string
       images?: AgentImageContent[]
       model?: { providerID: string; modelID: string } | null
+      thinkingLevel?: AgentThinkingLevel
     }): Promise<void>
     abort(args: { sessionID: string }): Promise<void>
     renameSession(args: { sessionID: string; name: string }): Promise<void>
@@ -172,6 +175,7 @@ export type {
   AgentQuestionRequest,
   AgentRuntimeInfo,
   AgentSessionInfo,
+  AgentThinkingLevel,
   AgentTreeNode,
   DesignFile,
   FileNode,

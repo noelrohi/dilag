@@ -15,6 +15,7 @@ import type {
   AgentQuestionRequest,
   AgentRuntimeInfo,
   AgentSessionInfo,
+  AgentThinkingLevel,
   AgentTreeNode as BridgeAgentTreeNode,
 } from "@dilag/desktop-bridge"
 import fsp from "node:fs/promises"
@@ -43,6 +44,8 @@ type PiMessage = {
   errorMessage?: string
   stopReason?: string
 }
+
+type RequestedAgentModel = { providerID: string; modelID: string }
 
 type RuntimeSession = {
   id: string
@@ -74,6 +77,7 @@ type PiSessionTreeNode = {
 
 const sessions = new Map<string, RuntimeSession>()
 const pendingQuestions = new Map<string, PendingQuestion>()
+const OAUTH_PROVIDER_IDS = new Set(["openai-codex", "github-copilot"])
 
 let eventSender: EventSender | undefined
 let piModulePromise: Promise<typeof import("@earendil-works/pi-coding-agent")> | undefined
@@ -132,6 +136,7 @@ export async function getAgentProviderData(): Promise<AgentProviderData> {
     cost: model.cost,
     contextWindow: model.contextWindow,
     maxTokens: model.maxTokens,
+    variants: getThinkingLevelVariants(model),
   }))
   const connectedProviders = [...new Set(models.map((model) => model.providerID))]
   const first = models[0]
@@ -140,6 +145,24 @@ export async function getAgentProviderData(): Promise<AgentProviderData> {
     connectedProviders,
     defaultModel: first ? { providerID: first.providerID, modelID: first.id } : null,
   }
+}
+
+function getThinkingLevelVariants(model: {
+  reasoning?: boolean
+  thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>>
+}) {
+  if (!model.reasoning) return undefined
+  const levels: AgentThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"]
+  const available = levels.filter((level) => {
+    const mapped = model.thinkingLevelMap?.[level]
+    if (mapped === null) return false
+    if (level === "xhigh") return mapped !== undefined
+    return true
+  })
+  return Object.fromEntries(available.map((level) => [level, {}])) as Record<
+    AgentThinkingLevel,
+    Record<string, unknown>
+  >
 }
 
 export async function listAgentProviders(): Promise<AgentProvider[]> {
@@ -155,6 +178,7 @@ export async function listAgentProviders(): Promise<AgentProvider[]> {
       name: humanizeProviderName(id),
       connected: availableProviders.has(id),
       modelCount,
+      authType: OAUTH_PROVIDER_IDS.has(id) ? ("oauth" as const) : ("api-key" as const),
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -163,6 +187,25 @@ export async function setAgentApiKey(args: { providerID: string; apiKey: string 
   const pi = await loadPi()
   const authStorage = pi.AuthStorage.create(path.join(getPiAgentDir(), "auth.json"))
   authStorage.set(args.providerID, { type: "api_key", key: args.apiKey })
+}
+
+export async function loginAgentOAuthProvider(
+  args: { providerID: string },
+  openExternal: (url: string) => Promise<void>,
+): Promise<void> {
+  const pi = await loadPi()
+  const authStorage = pi.AuthStorage.create(path.join(getPiAgentDir(), "auth.json"))
+  await authStorage.login(args.providerID, {
+    onAuth: async ({ url }) => {
+      await openExternal(url)
+    },
+    onPrompt: async () => {
+      throw new Error("Browser OAuth callback did not complete. Please try again.")
+    },
+    onProgress: (message) => {
+      console.log(`[pi oauth:${args.providerID}] ${message}`)
+    },
+  })
 }
 
 export async function createAgentSessionForDirectory(args: {
@@ -196,9 +239,15 @@ export async function promptAgentSession(args: {
   directory: string
   text: string
   images?: Array<{ type: "image"; data: string; mimeType: string }>
-  model?: { providerID: string; modelID: string } | null
+  model?: RequestedAgentModel | null
+  thinkingLevel?: AgentThinkingLevel
 }): Promise<void> {
-  const runtime = await ensureRuntimeSession(args.sessionID, args.directory, args.model)
+  const runtime = await ensureRuntimeSession(
+    args.sessionID,
+    args.directory,
+    args.model,
+    args.thinkingLevel,
+  )
   emitSessionStatus(runtime.id, "running")
   void runtime.session.prompt(args.text, { images: args.images }).catch((error: unknown) => {
     emitSessionError(runtime.id, error)
@@ -297,9 +346,10 @@ export async function navigateAgentTree(args: {
 
 async function createRuntimeSession(
   cwd: string,
-  requestedModel?: { providerID: string; modelID: string } | null,
+  requestedModel?: RequestedAgentModel | null,
+  thinkingLevel?: AgentThinkingLevel,
 ): Promise<RuntimeSession> {
-  const { session } = await createPiSession(cwd, undefined, requestedModel)
+  const { session } = await createPiSession(cwd, undefined, requestedModel, thinkingLevel)
   const runtime = bindRuntimeSession(session, cwd)
   sessions.set(runtime.id, runtime)
   return runtime
@@ -308,26 +358,50 @@ async function createRuntimeSession(
 async function ensureRuntimeSession(
   sessionID: string,
   cwd: string,
-  requestedModel?: { providerID: string; modelID: string } | null,
+  requestedModel?: RequestedAgentModel | null,
+  thinkingLevel?: AgentThinkingLevel,
 ): Promise<RuntimeSession> {
   const existing = sessions.get(sessionID)
-  if (existing) return existing
+  if (existing) {
+    await applyRuntimeModelOptions(existing, requestedModel, thinkingLevel)
+    return existing
+  }
 
   const sessionFile = await findSessionFile(cwd, sessionID)
   const pi = await loadPi()
   const sessionManager = sessionFile
     ? pi.SessionManager.open(sessionFile, getPiSessionDir(cwd), cwd)
     : pi.SessionManager.create(cwd, getPiSessionDir(cwd))
-  const { session } = await createPiSession(cwd, sessionManager, requestedModel)
+  const { session } = await createPiSession(cwd, sessionManager, requestedModel, thinkingLevel)
   const runtime = bindRuntimeSession(session, cwd)
   sessions.set(runtime.id, runtime)
   return runtime
 }
 
+async function applyRuntimeModelOptions(
+  runtime: RuntimeSession,
+  requestedModel?: RequestedAgentModel | null,
+  thinkingLevel?: AgentThinkingLevel,
+): Promise<void> {
+  if (requestedModel) {
+    const current = runtime.session.model
+    if (current?.provider !== requestedModel.providerID || current?.id !== requestedModel.modelID) {
+      const registry = await createModelRegistry()
+      const model = registry.find(requestedModel.providerID, requestedModel.modelID)
+      if (model) await runtime.session.setModel(model)
+    }
+  }
+
+  if (thinkingLevel) {
+    runtime.session.setThinkingLevel(thinkingLevel)
+  }
+}
+
 async function createPiSession(
   cwd: string,
   sessionManager?: SessionManager,
-  requestedModel?: { providerID: string; modelID: string } | null,
+  requestedModel?: RequestedAgentModel | null,
+  thinkingLevel?: AgentThinkingLevel,
 ) {
   await ensureDilagPiResources(cwd)
   const pi = await loadPi()
@@ -340,6 +414,7 @@ async function createPiSession(
     cwd,
     agentDir: getPiAgentDir(),
     model,
+    thinkingLevel,
     modelRegistry: registry,
     sessionManager,
     customTools: [questionTool],

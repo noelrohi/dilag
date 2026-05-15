@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { bridge } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
 
@@ -12,69 +12,27 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const [stage, setStage] = useState<SetupStage>("checking")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const checkDependencies = async () => {
+  const checkDependencies = useCallback(async () => {
     setStage("checking")
     setErrorMessage(null)
 
     try {
-      const opencodeResult = (await bridge.opencode!.checkInstallation()) as {
-        installed: boolean
-        version: string | null
-        error: string | null
-      }
-
-      if (!opencodeResult.installed) {
-        setStage("missing")
-        return
-      }
-
-      const bunResult = (await bridge.opencode!.checkBunInstallation()) as {
-        installed: boolean
-        version: string | null
-        error: string | null
-      }
-
-      if (!bunResult.installed) {
-        setStage("missing")
-        return
-      }
-
+      await bridge.agent.start()
       setStage("installed")
       setTimeout(onComplete, 600)
     } catch (err) {
       setStage("error")
       setErrorMessage(err instanceof Error ? err.message : String(err))
     }
-  }
+  }, [onComplete])
 
   const handleInstall = async () => {
-    setStage("installing")
-    setErrorMessage(null)
-
-    try {
-      const result = (await bridge.opencode!.installDependencies()) as {
-        stage: string
-        message: string
-        completed: boolean
-        error: string | null
-      }
-
-      if (result.completed) {
-        // Re-check to confirm installation
-        await checkDependencies()
-      } else {
-        setStage("error")
-        setErrorMessage(result.error || result.message)
-      }
-    } catch (err) {
-      setStage("error")
-      setErrorMessage(err instanceof Error ? err.message : String(err))
-    }
+    await checkDependencies()
   }
 
   useEffect(() => {
     checkDependencies()
-  }, [])
+  }, [checkDependencies])
 
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-background">
@@ -104,9 +62,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           {stage === "missing" && (
             <>
               <p className="text-sm text-foreground">Install required dependencies</p>
-              <p className="text-xs text-muted-foreground">
-                OpenCode and Bun are needed to continue
-              </p>
+              <p className="text-xs text-muted-foreground">Pi runtime could not be initialized</p>
             </>
           )}
 

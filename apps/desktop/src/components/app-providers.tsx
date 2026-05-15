@@ -31,7 +31,7 @@ interface AppProvidersProps {
  * 1. ErrorBoundary - Catches React errors
  * 2. ThemeProvider - Dark/light mode
  * 3. QueryClientProvider - React Query for server state
- * 4. GlobalEventsProvider - SSE connection to OpenCode
+ * 4. GlobalEventsProvider - Pi agent event bridge
  * 5. NotificationProvider - Audio notifications
  * 6. UpdaterProvider - App updates
  * 7. MenuEventsProvider - Native menu events

@@ -28,6 +28,7 @@ const desktopBridgeMock: DesktopBridge = {
     getProviderData: vi.fn(),
     listProviders: vi.fn(),
     setApiKey: vi.fn(),
+    loginOAuthProvider: vi.fn(),
     createSession: vi.fn(),
     getSession: vi.fn(),
     getMessages: vi.fn(),
