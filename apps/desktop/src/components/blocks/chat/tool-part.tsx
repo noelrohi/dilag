@@ -46,7 +46,11 @@ export function ToolPart({ tool, state }: ToolPartProps) {
   const statusLabel =
     state.status === "completed" ? "Success" : state.status === "error" ? "Failed" : "Running"
   const StatusIcon =
-    state.status === "completed" ? CheckCircle : state.status === "error" ? DangerTriangle : ClockCircle
+    state.status === "completed"
+      ? CheckCircle
+      : state.status === "error"
+        ? DangerTriangle
+        : ClockCircle
 
   return (
     <Collapsible defaultOpen={defaultOpen}>

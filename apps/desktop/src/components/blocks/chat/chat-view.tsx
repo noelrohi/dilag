@@ -1361,8 +1361,9 @@ export function ChatView() {
                 while (turnStart > 0 && messages[turnStart - 1].role === "assistant") turnStart--
                 const turnAssistantMessages = messages
                   .slice(turnStart, index + 1)
-                  .filter((item): item is SessionMessage & { role: "assistant" } =>
-                    item.role === "assistant",
+                  .filter(
+                    (item): item is SessionMessage & { role: "assistant" } =>
+                      item.role === "assistant",
                   )
 
                 return message.role === "user" ? (

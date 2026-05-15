@@ -259,27 +259,29 @@ export const TOOLS: Record<string, ToolConfig> = {
       return (
         <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words">
           {parts.flatMap((part, partIndex) =>
-            part.value.split(/(\r\n|\r|\n)/).reduce<ReactNode[]>((nodes, segment, index, segments) => {
-              if (segment === "\n" || segment === "\r" || segment === "\r\n") return nodes
-              if (segment === "" && index === segments.length - 1) return nodes
-              const lineBreak = index < segments.length - 1 ? "\n" : ""
-              nodes.push(
-                <span
-                  key={`${partIndex}-${index}`}
-                  className={cn(
-                    "block min-h-[1.35em]",
-                    part.added && "text-emerald-300 bg-emerald-500/10",
-                    part.removed && "text-red-300 bg-red-500/10",
-                    !part.added && !part.removed && "text-[#e2e2e2]",
-                  )}
-                >
-                  {part.added ? "+ " : part.removed ? "- " : "  "}
-                  {segment}
-                  {lineBreak}
-                </span>,
-              )
-              return nodes
-            }, []),
+            part.value
+              .split(/(\r\n|\r|\n)/)
+              .reduce<ReactNode[]>((nodes, segment, index, segments) => {
+                if (segment === "\n" || segment === "\r" || segment === "\r\n") return nodes
+                if (segment === "" && index === segments.length - 1) return nodes
+                const lineBreak = index < segments.length - 1 ? "\n" : ""
+                nodes.push(
+                  <span
+                    key={`${partIndex}-${index}`}
+                    className={cn(
+                      "block min-h-[1.35em]",
+                      part.added && "text-emerald-300 bg-emerald-500/10",
+                      part.removed && "text-red-300 bg-red-500/10",
+                      !part.added && !part.removed && "text-[#e2e2e2]",
+                    )}
+                  >
+                    {part.added ? "+ " : part.removed ? "- " : "  "}
+                    {segment}
+                    {lineBreak}
+                  </span>,
+                )
+                return nodes
+              }, []),
           )}
         </pre>
       )
@@ -344,7 +346,11 @@ export const TOOLS: Record<string, ToolConfig> = {
       return pattern
     },
     content: (p) =>
-      p.output && <PlainToolOutput text={p.output.length > 1000 ? `${p.output.slice(0, 1000)}...` : p.output} />,
+      p.output && (
+        <PlainToolOutput
+          text={p.output.length > 1000 ? `${p.output.slice(0, 1000)}...` : p.output}
+        />
+      ),
   },
 
   list: {
@@ -369,7 +375,11 @@ export const TOOLS: Record<string, ToolConfig> = {
       return path
     },
     content: (p) =>
-      p.output && <PlainToolOutput text={p.output.length > 1500 ? `${p.output.slice(0, 1500)}...` : p.output} />,
+      p.output && (
+        <PlainToolOutput
+          text={p.output.length > 1500 ? `${p.output.slice(0, 1500)}...` : p.output}
+        />
+      ),
   },
 
   grep: {
@@ -393,7 +403,11 @@ export const TOOLS: Record<string, ToolConfig> = {
       return pattern
     },
     content: (p) =>
-      p.output && <PlainToolOutput text={p.output.length > 1000 ? `${p.output.slice(0, 1000)}...` : p.output} />,
+      p.output && (
+        <PlainToolOutput
+          text={p.output.length > 1000 ? `${p.output.slice(0, 1000)}...` : p.output}
+        />
+      ),
   },
 
   webfetch: {
@@ -439,7 +453,9 @@ export const TOOLS: Record<string, ToolConfig> = {
           )}
           {p.output && (
             <div className="mt-2 pt-2 border-t border-neutral-700/70">
-              <PlainToolOutput text={p.output.length > 2000 ? `${p.output.slice(0, 2000)}\n...` : p.output} />
+              <PlainToolOutput
+                text={p.output.length > 2000 ? `${p.output.slice(0, 2000)}\n...` : p.output}
+              />
             </div>
           )}
         </div>
@@ -512,7 +528,9 @@ export const TOOLS: Record<string, ToolConfig> = {
             </div>
           )}
           {p.output && !summary && (
-            <PlainToolOutput text={p.output.length > 500 ? `${p.output.slice(0, 500)}...` : p.output} />
+            <PlainToolOutput
+              text={p.output.length > 500 ? `${p.output.slice(0, 500)}...` : p.output}
+            />
           )}
         </div>
       )
@@ -596,9 +614,7 @@ export const TOOLS: Record<string, ToolConfig> = {
       // Show input for debugging if no recognized keys
       const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined
       if (!name && Object.keys(p.input).length > 0) {
-        return (
-          <PlainToolOutput text={JSON.stringify(p.input, null, 2)} />
-        )
+        return <PlainToolOutput text={JSON.stringify(p.input, null, 2)} />
       }
       return null
     },
@@ -710,11 +726,11 @@ export const DEFAULT_TOOL: ToolConfig = {
     const hasInput = Object.keys(p.input).length > 0
     return (
       <>
-        {hasInput && (
-          <PlainToolOutput text={JSON.stringify(p.input, null, 2).slice(0, 500)} />
-        )}
+        {hasInput && <PlainToolOutput text={JSON.stringify(p.input, null, 2).slice(0, 500)} />}
         {p.output && (
-          <PlainToolOutput text={p.output.length > 500 ? `${p.output.slice(0, 500)}...` : p.output} />
+          <PlainToolOutput
+            text={p.output.length > 500 ? `${p.output.slice(0, 500)}...` : p.output}
+          />
         )}
       </>
     )
