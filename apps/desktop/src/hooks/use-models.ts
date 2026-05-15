@@ -237,7 +237,7 @@ export function useModels() {
     setIsRestarting(true)
     try {
       console.log("[useModels] Restarting OpenCode server...")
-      const port = await bridge.opencode.restart()
+      const port = await bridge.opencode!.restart()
       console.log("[useModels] Server restarted on port:", port)
       // Poll for server readiness (up to 10s)
       for (let i = 0; i < 20; i++) {

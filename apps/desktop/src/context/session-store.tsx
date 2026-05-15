@@ -621,7 +621,7 @@ export const useSessionStore = create<SessionState>()(
               type: sdkPart.type as MessagePart["type"],
               text: "text" in sdkPart ? sdkPart.text : undefined,
               tool: "tool" in sdkPart ? sdkPart.tool : undefined,
-              state: "state" in sdkPart ? sdkPart.state : undefined,
+              state: "state" in sdkPart ? (sdkPart.state as MessagePart["state"]) : undefined,
               mime: "mime" in sdkPart ? sdkPart.mime : undefined,
               url: "url" in sdkPart ? sdkPart.url : undefined,
               filename: "filename" in sdkPart ? sdkPart.filename : undefined,

@@ -288,7 +288,7 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
     async function init() {
       console.log("[GlobalEvents] Starting OpenCode server...")
       try {
-        const port = await bridge.opencode.start()
+        const port = await bridge.opencode!.start()
         console.log("[GlobalEvents] Server started on port", port)
 
         if (!mountedRef.current) return

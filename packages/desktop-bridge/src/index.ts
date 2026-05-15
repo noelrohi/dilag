@@ -35,6 +35,14 @@ export interface DesktopBridge {
     resetAllData(): Promise<void>
   }
 
+  opencode?: {
+    checkInstallation(): Promise<unknown>
+    checkBunInstallation(): Promise<unknown>
+    installDependencies(): Promise<unknown>
+    start(): Promise<unknown>
+    restart(): Promise<unknown>
+  }
+
   agent: {
     getInfo(): Promise<AgentRuntimeInfo>
     start(): Promise<AgentRuntimeInfo>

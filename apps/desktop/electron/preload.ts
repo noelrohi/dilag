@@ -28,6 +28,13 @@ const bridge: DesktopBridge = {
     getInfo: () => ipcRenderer.invoke(CHANNELS.app.getInfo),
     resetAllData: () => ipcRenderer.invoke(CHANNELS.app.resetAllData),
   },
+  opencode: {
+    checkInstallation: async () => ({ installed: true }),
+    checkBunInstallation: async () => ({ installed: true }),
+    installDependencies: async () => ({ success: true }),
+    start: () => ipcRenderer.invoke(CHANNELS.agent.start),
+    restart: () => ipcRenderer.invoke(CHANNELS.agent.restart),
+  },
   agent: {
     getInfo: () => ipcRenderer.invoke(CHANNELS.agent.getInfo),
     start: () => ipcRenderer.invoke(CHANNELS.agent.start),
