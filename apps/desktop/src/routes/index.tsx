@@ -5,6 +5,7 @@ import {
   useProjectMutations,
   useProjectsList,
 } from "@/hooks/use-projects"
+import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import { bridge } from "@/lib/bridge"
 import { AddCircle, AddSquare, History } from "@solar-icons/react"
 import { Button } from "@dilag/ui/button"
@@ -19,16 +20,30 @@ export const Route = createFileRoute("/")({
 function HomePage() {
   const navigate = useNavigate()
   const [projectName, setProjectName] = useState("")
-  const { data: projects = [] } = useProjectsList()
+  const { data: projects = [], isLoading: isLoadingProjects } = useProjectsList()
   const { createProject, addExistingProject, dismissLegacyNotice } = useProjectMutations()
   const { data: legacyNotice } = useLegacySessionsNotice(projects.length === 0)
 
   useEffect(() => {
+    const cachedProjectId = localStorage.getItem("dilag-last-project-id")
+    if (cachedProjectId) {
+      navigate({
+        to: "/project/$projectId",
+        params: { projectId: cachedProjectId },
+        replace: true,
+      })
+    }
+  }, [navigate])
+
+  useEffect(() => {
+    if (isLoadingProjects) return
+
     const project = getDefaultProject(projects)
     if (project) {
+      localStorage.setItem("dilag-last-project-id", project.id)
       navigate({ to: "/project/$projectId", params: { projectId: project.id }, replace: true })
     }
-  }, [navigate, projects])
+  }, [isLoadingProjects, navigate, projects])
 
   const handleStartFromScratch = async () => {
     const name = projectName.trim()
@@ -42,6 +57,10 @@ function HomePage() {
     if (!folder) return
     const project = await addExistingProject({ path: folder })
     navigate({ to: "/project/$projectId", params: { projectId: project.id } })
+  }
+
+  if (isLoadingProjects) {
+    return <HomeLoadingState />
   }
 
   return (
@@ -152,6 +171,20 @@ function HomePage() {
               )}
             </section>
           </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function HomeLoadingState() {
+  return (
+    <div className="h-full flex flex-col bg-background">
+      <PageHeader />
+      <main className="flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
+          <DilagIcon animated className="size-9 text-primary" />
+          <span>Opening your workspace…</span>
         </div>
       </main>
     </div>

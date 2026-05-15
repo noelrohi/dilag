@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react"
 import { createFileRoute, Outlet, useMatch, useNavigate, useParams } from "@tanstack/react-router"
 import type { FileUIPart } from "ai"
+import { useEffect } from "react"
 
 export const Route = createFileRoute("/project/$projectId")({
   component: ProjectComposerPage,
@@ -33,10 +34,16 @@ function ProjectComposerPage() {
     shouldThrow: false,
   })
   const navigate = useNavigate()
-  const { data: projects = [] } = useProjectsList()
+  const { data: projects = [], isLoading: isLoadingProjects } = useProjectsList()
   const { updateProject, touchProject } = useProjectMutations()
   const { createSessionInProject, isServerReady } = useSessions()
   const project = projects.find((item) => item.id === projectId)
+
+  useEffect(() => {
+    if (project) {
+      localStorage.setItem("dilag-last-project-id", project.id)
+    }
+  }, [project])
 
   const handleSubmit = async (text: string, files?: FileUIPart[]) => {
     if (!project || (!text.trim() && (!files || files.length === 0))) return
@@ -67,7 +74,7 @@ function ProjectComposerPage() {
       <div className="h-full flex flex-col bg-background">
         <PageHeader />
         <main className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-          Project not found
+          {isLoadingProjects ? "Opening your workspace…" : "Project not found"}
         </main>
       </div>
     )

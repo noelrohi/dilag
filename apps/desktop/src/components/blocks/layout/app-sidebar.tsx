@@ -4,13 +4,16 @@ import {
   MagicStick,
   Settings,
   PlugCircle,
-  Star,
+  Pin,
   AddSquare,
   AddCircle,
   MenuDots,
   TrashBinMinimalistic,
   SidebarMinimalistic,
-  AltArrowDown,
+  Folder,
+  FolderOpen,
+  FolderPathConnect,
+  Pen,
 } from "@solar-icons/react"
 import {
   Sidebar,
@@ -61,8 +64,7 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const { sessions, deleteSession } = useSessions()
   const { data: projects = [] } = useProjectsList()
-  const { createProject, addExistingProject, updateProject, removeProject, touchProject } =
-    useProjectMutations()
+  const { createProject, addExistingProject, updateProject, removeProject } = useProjectMutations()
 
   const pinnedProjects = useMemo(() => projects.filter((project) => project.pinned), [projects])
   const regularProjects = useMemo(() => projects.filter((project) => !project.pinned), [projects])
@@ -84,11 +86,6 @@ export function AppSidebar() {
     }
     return map
   }, [sessions])
-
-  const openProject = async (project: ProjectMeta) => {
-    await touchProject(project.id)
-    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
-  }
 
   const handleNewDesign = () => {
     const project = getDefaultProject(projects)
@@ -164,13 +161,13 @@ export function AppSidebar() {
                     key={project.id}
                     project={project}
                     sessions={sessionsByProject.get(project.id) ?? []}
-                    onOpenProject={openProject}
                     onToggleExpanded={() =>
                       updateProject({ id: project.id, updates: { expanded: !project.expanded } })
                     }
                     onTogglePinned={() =>
                       updateProject({ id: project.id, updates: { pinned: !project.pinned } })
                     }
+                    onRename={(name) => updateProject({ id: project.id, updates: { name } })}
                     onRemove={() => removeProject(project.id)}
                     onDeleteSession={deleteSession}
                   />
@@ -234,13 +231,13 @@ export function AppSidebar() {
                   key={project.id}
                   project={project}
                   sessions={sessionsByProject.get(project.id) ?? []}
-                  onOpenProject={openProject}
                   onToggleExpanded={() =>
                     updateProject({ id: project.id, updates: { expanded: !project.expanded } })
                   }
                   onTogglePinned={() =>
                     updateProject({ id: project.id, updates: { pinned: !project.pinned } })
                   }
+                  onRename={(name) => updateProject({ id: project.id, updates: { name } })}
                   onRemove={() => removeProject(project.id)}
                   onDeleteSession={deleteSession}
                 />
@@ -284,39 +281,35 @@ export function AppSidebar() {
 function ProjectItem({
   project,
   sessions,
-  onOpenProject,
   onToggleExpanded,
   onTogglePinned,
+  onRename,
   onRemove,
   onDeleteSession,
 }: {
   project: ProjectMeta
   sessions: SessionMeta[]
-  onOpenProject: (project: ProjectMeta) => void
   onToggleExpanded: () => void
   onTogglePinned: () => void
+  onRename: (name: string) => void
   onRemove: () => void
   onDeleteSession: (sessionId: string) => void
 }) {
   const navigate = useNavigate()
-
+  const location = useLocation()
   return (
     <>
       <SidebarMenuItem className="group/item">
-        <SidebarMenuButton onClick={() => onOpenProject(project)}>
+        <SidebarMenuButton onClick={onToggleExpanded}>
           <button
             className="-ml-1 p-0.5 rounded hover:bg-sidebar-accent"
             onClick={(event) => {
               event.stopPropagation()
               onToggleExpanded()
             }}
+            aria-label={project.expanded ? "Collapse project" : "Expand project"}
           >
-            <AltArrowDown
-              size={13}
-              className={
-                project.expanded ? "transition-transform" : "-rotate-90 transition-transform"
-              }
-            />
+            {project.expanded ? <FolderOpen size={14} /> : <Folder size={14} />}
           </button>
           <span className="truncate text-sm">{project.name}</span>
         </SidebarMenuButton>
@@ -331,13 +324,25 @@ function ProjectItem({
           </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start" className="w-44">
             <DropdownMenuItem onClick={onTogglePinned}>
-              <Star size={16} className="mr-2" />
-              {project.pinned ? "Unpin" : "Pin"}
+              <Pin size={16} className="mr-2" />
+              {project.pinned ? "Unpin project" : "Pin project"}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => bridge.shell.openExternal(`file://${encodeURI(project.path)}`)}
             >
-              Reveal in Finder
+              <FolderPathConnect size={16} className="mr-2" />
+              Open in Finder
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                const name = window.prompt("Project name", project.name)?.trim()
+                if (name && name !== project.name) {
+                  onRename(name)
+                }
+              }}
+            >
+              <Pen size={16} className="mr-2" />
+              Rename project
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -345,7 +350,7 @@ function ProjectItem({
               className="text-destructive focus:text-destructive"
             >
               <TrashBinMinimalistic size={16} className="mr-2" />
-              Remove from Projects
+              Remove
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -357,43 +362,50 @@ function ProjectItem({
             <div className="pl-8 pr-2 py-1 text-xs text-muted-foreground/60">No chats</div>
           </SidebarMenuItem>
         ) : (
-          sessions.map((session) => (
-            <SidebarMenuItem key={session.id} className="group/chat">
-              <SidebarMenuButton
-                className="pl-8"
-                onClick={() =>
-                  navigate({
-                    to: "/project/$projectId/session/$sessionId",
-                    params: { projectId: project.id, sessionId: session.id },
-                  })
-                }
-              >
-                <span className="truncate text-sm">{session.name}</span>
-              </SidebarMenuButton>
-              <span className="absolute right-2 top-1.5 text-xs text-muted-foreground group-hover/chat:opacity-0 transition-opacity pointer-events-none">
-                {formatRelativeTime(session.updated_at ?? session.created_at)}
-              </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuAction
-                    className="opacity-0 group-hover/chat:opacity-100 transition-opacity"
-                    showOnHover
-                  >
-                    <MenuDots size={16} />
-                  </SidebarMenuAction>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" align="start" className="w-40">
-                  <DropdownMenuItem
-                    onClick={() => onDeleteSession(session.id)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <TrashBinMinimalistic size={16} className="mr-2" />
-                    Delete chat
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </SidebarMenuItem>
-          ))
+          sessions.map((session) => {
+            const isSessionActive =
+              location.pathname === `/project/${project.id}/session/${session.id}` ||
+              location.pathname === `/studio/${session.id}`
+
+            return (
+              <SidebarMenuItem key={session.id} className="group/chat">
+                <SidebarMenuButton
+                  isActive={isSessionActive}
+                  className="pl-8"
+                  onClick={() =>
+                    navigate({
+                      to: "/project/$projectId/session/$sessionId",
+                      params: { projectId: project.id, sessionId: session.id },
+                    })
+                  }
+                >
+                  <span className="truncate text-sm">{session.name}</span>
+                </SidebarMenuButton>
+                <span className="absolute right-2 top-1.5 text-xs text-muted-foreground transition-opacity pointer-events-none group-hover/menu-item:opacity-0 group-focus-within/menu-item:opacity-0 peer-hover/menu-button:opacity-0">
+                  {formatRelativeTime(session.updated_at ?? session.created_at)}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuAction
+                      className="opacity-0 group-hover/chat:opacity-100 transition-opacity"
+                      showOnHover
+                    >
+                      <MenuDots size={16} />
+                    </SidebarMenuAction>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" align="start" className="w-40">
+                    <DropdownMenuItem
+                      onClick={() => onDeleteSession(session.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <TrashBinMinimalistic size={16} className="mr-2" />
+                      Delete chat
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+            )
+          })
         ))}
     </>
   )

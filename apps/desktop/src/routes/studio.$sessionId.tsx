@@ -94,16 +94,27 @@ export function StudioPageContent({
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
   const { size: chatSize, updateSize, minSize } = useChatWidth()
 
-  const { selectSession, sendMessage, sessions, isServerReady, isLoading, forkSessionDesignsOnly } =
-    useSessions()
+  const {
+    selectSession,
+    sendMessage,
+    sessions,
+    isServerReady,
+    isLoading,
+    isLoadingSessions,
+    forkSessionDesignsOnly,
+  } = useSessions()
   const { updateSession } = useSessionMutations()
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId)
-  const { data: designs = [] } = useSessionDesigns(currentSession?.cwd)
+  const { data: designs = [], isLoading: isLoadingDesigns } = useSessionDesigns(currentSession?.cwd)
   const isWritingScreen = useIsWritingScreen(currentSession?.id ?? null)
 
-  // Show canvas loading when the AI is actively running or a write/edit tool is pending
-  const isCanvasLoading = isLoading || isWritingScreen
+  // Show canvas loading when session/design metadata is hydrating, the AI is actively
+  // running, or a write/edit tool is pending. This avoids flashing the "No screens yet"
+  // empty state while existing screens are still being loaded from disk.
+  const isHydratingCanvas =
+    isLoadingSessions || (!!currentSession?.cwd && isLoadingDesigns && designs.length === 0)
+  const isCanvasLoading = isHydratingCanvas || isLoading || isWritingScreen
 
   // Auto-generate PNG assets for designs
   usePngGenerator(designs, currentSession?.cwd, currentSession?.platform)
