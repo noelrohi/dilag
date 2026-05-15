@@ -61,6 +61,7 @@ async function loadDesignsFromDir(dir: string, seen: Set<string>, out: DesignFil
     seen.add(entry.name)
     out.push({
       filename: entry.name,
+      file_path: filePath,
       title: extractHtmlAttr(html, "data-title") ?? titleFromFilename(entry.name),
       screen_type: extractHtmlAttr(html, "data-screen-type") ?? "web",
       html,
@@ -73,8 +74,9 @@ async function loadDesignsFromDir(dir: string, seen: Set<string>, out: DesignFil
 export async function loadDesignsForSession(sessionCwd: string): Promise<DesignFile[]> {
   const designs: DesignFile[] = []
   const seen = new Set<string>()
-  await loadDesignsFromDir(sessionCwd, seen, designs)
+  await loadDesignsFromDir(path.join(sessionCwd, ".designs"), seen, designs)
   await loadDesignsFromDir(path.join(sessionCwd, "screens"), seen, designs)
+  await loadDesignsFromDir(sessionCwd, seen, designs)
   return designs.sort((a, b) => a.modified_at - b.modified_at)
 }
 

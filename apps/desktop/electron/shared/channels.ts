@@ -18,6 +18,7 @@ export const CHANNELS = {
     setApiKey: "agent:set-api-key",
     loginOAuthProvider: "agent:login-oauth-provider",
     createSession: "agent:create-session",
+    listSessions: "agent:list-sessions",
     getSession: "agent:get-session",
     getMessages: "agent:get-messages",
     prompt: "agent:prompt",
@@ -44,6 +45,16 @@ export const CHANNELS = {
     loadMeta: "sessions:load-meta",
     deleteMeta: "sessions:delete-meta",
     toggleFavorite: "sessions:toggle-favorite",
+  },
+  projects: {
+    list: "projects:list",
+    create: "projects:create",
+    addExisting: "projects:add-existing",
+    update: "projects:update",
+    remove: "projects:remove",
+    touch: "projects:touch",
+    getLegacyNotice: "projects:get-legacy-notice",
+    dismissLegacyNotice: "projects:dismiss-legacy-notice",
   },
   designs: {
     loadForSession: "designs:load-for-session",
@@ -80,6 +91,7 @@ export const CHANNELS = {
   },
   dialog: {
     save: "dialog:save",
+    openDirectory: "dialog:open-directory",
   },
   shell: {
     openExternal: "shell:open-external",

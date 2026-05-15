@@ -46,6 +46,7 @@ const bridge: DesktopBridge = {
     setApiKey: (args) => ipcRenderer.invoke(CHANNELS.agent.setApiKey, args),
     loginOAuthProvider: (args) => ipcRenderer.invoke(CHANNELS.agent.loginOAuthProvider, args),
     createSession: (args) => ipcRenderer.invoke(CHANNELS.agent.createSession, args),
+    listSessions: (args) => ipcRenderer.invoke(CHANNELS.agent.listSessions, args),
     getSession: (args) => ipcRenderer.invoke(CHANNELS.agent.getSession, args),
     getMessages: (args) => ipcRenderer.invoke(CHANNELS.agent.getMessages, args),
     prompt: (args) => ipcRenderer.invoke(CHANNELS.agent.prompt, args),
@@ -72,6 +73,16 @@ const bridge: DesktopBridge = {
     loadMeta: () => ipcRenderer.invoke(CHANNELS.sessions.loadMeta),
     deleteMeta: (args) => ipcRenderer.invoke(CHANNELS.sessions.deleteMeta, args),
     toggleFavorite: (args) => ipcRenderer.invoke(CHANNELS.sessions.toggleFavorite, args),
+  },
+  projects: {
+    list: () => ipcRenderer.invoke(CHANNELS.projects.list),
+    create: (args) => ipcRenderer.invoke(CHANNELS.projects.create, args),
+    addExisting: (args) => ipcRenderer.invoke(CHANNELS.projects.addExisting, args),
+    update: (args) => ipcRenderer.invoke(CHANNELS.projects.update, args),
+    remove: (args) => ipcRenderer.invoke(CHANNELS.projects.remove, args),
+    touch: (args) => ipcRenderer.invoke(CHANNELS.projects.touch, args),
+    getLegacyNotice: () => ipcRenderer.invoke(CHANNELS.projects.getLegacyNotice),
+    dismissLegacyNotice: () => ipcRenderer.invoke(CHANNELS.projects.dismissLegacyNotice),
   },
   designs: {
     loadForSession: (args) => ipcRenderer.invoke(CHANNELS.designs.loadForSession, args),
@@ -108,6 +119,7 @@ const bridge: DesktopBridge = {
   },
   dialog: {
     save: (options) => ipcRenderer.invoke(CHANNELS.dialog.save, options),
+    openDirectory: () => ipcRenderer.invoke(CHANNELS.dialog.openDirectory),
   },
   shell: {
     openExternal: (url) => ipcRenderer.invoke(CHANNELS.shell.openExternal, url),

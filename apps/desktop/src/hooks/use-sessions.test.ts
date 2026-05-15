@@ -104,13 +104,15 @@ describe("use-sessions", () => {
         await result.current.sendMessage("Hello")
       })
 
-      expect(mockPrompt).toHaveBeenCalledWith({
-        sessionID: "session-1",
-        directory: "/mock/cwd/1",
-        text: "/skill:web-design Hello",
-        images: [],
-        model: null,
-      })
+      expect(mockPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionID: "session-1",
+          directory: "/mock/cwd/1",
+          text: "/skill:dilag-web-design Hello",
+          images: [],
+          model: null,
+        }),
+      )
     })
 
     it("uses the selected model when one exists", async () => {
@@ -164,7 +166,7 @@ describe("use-sessions", () => {
 
       expect(mockPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
-          text: "/skill:web-design Hello with image",
+          text: "/skill:dilag-web-design Hello with image",
           images: [{ type: "image", mimeType: "image/png", data: "abc" }],
         }),
       )

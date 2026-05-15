@@ -18,6 +18,7 @@ export interface Violation {
 
 export interface DesignFile {
   filename: string
+  file_path: string
   title: string
   screen_type: string
   html: string
@@ -42,7 +43,9 @@ export function isSessionDesignFileChange(file: string, sessionCwd: string): boo
 
   return (
     relativePath.endsWith(".html") &&
-    (relativePath.startsWith("screens/") || !relativePath.includes("/"))
+    (relativePath.startsWith(".designs/") ||
+      relativePath.startsWith("screens/") ||
+      !relativePath.includes("/"))
   )
 }
 

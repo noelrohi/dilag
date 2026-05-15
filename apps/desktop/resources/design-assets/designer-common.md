@@ -2,7 +2,7 @@
 
 Use the `write` tool — never inline HTML in your reply.
 
-- Path: `screens/<kebab-name>.html`
+- Path: `.designs/<kebab-name>.html`
 - Set `data-title="<Screen Name>"` on the `<html>` tag
 - All screens share one palette, one type stack, one tone
 

@@ -20,6 +20,28 @@ export interface SessionMeta {
   parentID?: string
   platform?: Platform
   favorite?: boolean
+  projectId?: string
+}
+
+export interface ProjectMeta {
+  id: string
+  name: string
+  path: string
+  platform: Platform
+  pinned: boolean
+  expanded: boolean
+  created_at: string
+  last_opened_at: string
+}
+
+export interface AgentSessionSummary {
+  id: string
+  cwd: string
+  name?: string
+  created_at: string
+  updated_at: string
+  message_count: number
+  first_message: string
 }
 
 export type ViolationRule =
@@ -37,6 +59,7 @@ export interface Violation {
 
 export interface DesignFile {
   filename: string
+  file_path: string
   title: string
   screen_type: string
   html: string

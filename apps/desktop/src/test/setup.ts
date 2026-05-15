@@ -30,6 +30,7 @@ const desktopBridgeMock: DesktopBridge = {
     setApiKey: vi.fn(),
     loginOAuthProvider: vi.fn(),
     createSession: vi.fn(),
+    listSessions: vi.fn(),
     getSession: vi.fn(),
     getMessages: vi.fn(),
     prompt: vi.fn(),
@@ -51,6 +52,16 @@ const desktopBridgeMock: DesktopBridge = {
     loadMeta: vi.fn(),
     deleteMeta: vi.fn(),
     toggleFavorite: vi.fn(),
+  },
+  projects: {
+    list: vi.fn(),
+    create: vi.fn(),
+    addExisting: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    touch: vi.fn(),
+    getLegacyNotice: vi.fn(),
+    dismissLegacyNotice: vi.fn(),
   },
   designs: {
     loadForSession: vi.fn(),
@@ -75,7 +86,7 @@ const desktopBridgeMock: DesktopBridge = {
     onViteError: vi.fn(() => noopUnsubscribe),
   },
   fs: { stat: vi.fn(), writeFile: vi.fn() },
-  dialog: { save: vi.fn() },
+  dialog: { save: vi.fn(), openDirectory: vi.fn() },
   shell: { openExternal: vi.fn() },
   updater: {
     check: vi.fn(),

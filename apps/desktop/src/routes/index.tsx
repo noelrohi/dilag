@@ -1,223 +1,159 @@
-import {
-  PromptInput,
-  PromptInputAddAttachmentButton,
-  PromptInputAttachment,
-  PromptInputAttachments,
-  PromptInputScreenReferences,
-  PromptInputScreenReference,
-  PromptInputBody,
-  PromptInputFooter,
-  PromptInputProvider,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-  usePromptInputController,
-} from "@/components/ai-elements/prompt-input"
 import { PageHeader } from "@/components/blocks/layout/page-header"
-import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
-import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
-import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
-import { useSessions } from "@/hooks/use-sessions"
-import { type Platform } from "@/context/session-store"
-import { cn } from "@/lib/utils"
-import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react"
+import {
+  getDefaultProject,
+  useLegacySessionsNotice,
+  useProjectMutations,
+  useProjectsList,
+} from "@/hooks/use-projects"
+import { bridge } from "@/lib/bridge"
+import { AddCircle, AddSquare, History } from "@solar-icons/react"
+import { Button } from "@dilag/ui/button"
+import { Input } from "@dilag/ui/input"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { parseAsStringLiteral, useQueryState } from "nuqs"
-
-const SUGGESTIONS = [
-  "A habit tracking app",
-  "A recipe finder with search",
-  "A workout timer",
-  "A notes app with markdown",
-]
+import { useEffect, useState } from "react"
 
 export const Route = createFileRoute("/")({
-  component: LandingPage,
+  component: HomePage,
 })
 
-function LandingPage() {
+function HomePage() {
   const navigate = useNavigate()
-  const { createSession, isServerReady } = useSessions()
-  const [platform, setPlatform] = useQueryState(
-    "platform",
-    parseAsStringLiteral(["web", "mobile"] as const).withDefault("web"),
-  )
+  const [projectName, setProjectName] = useState("")
+  const { data: projects = [] } = useProjectsList()
+  const { createProject, addExistingProject, dismissLegacyNotice } = useProjectMutations()
+  const { data: legacyNotice } = useLegacySessionsNotice(projects.length === 0)
 
-  const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
-    if (!text.trim() && (!files || files.length === 0)) return
-    localStorage.setItem("dilag-initial-prompt", text)
-    localStorage.setItem("dilag-initial-platform", platform)
-    if (files && files.length > 0) {
-      localStorage.setItem("dilag-initial-files", JSON.stringify(files))
-    } else {
-      localStorage.removeItem("dilag-initial-files")
+  useEffect(() => {
+    const project = getDefaultProject(projects)
+    if (project) {
+      navigate({ to: "/project/$projectId", params: { projectId: project.id }, replace: true })
     }
-    const sessionId = await createSession(undefined, platform)
-    if (sessionId) {
-      navigate({ to: "/studio/$sessionId", params: { sessionId } })
-    }
+  }, [navigate, projects])
+
+  const handleStartFromScratch = async () => {
+    const name = projectName.trim()
+    if (!name) return
+    const project = await createProject({ name })
+    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
+  }
+
+  const handleUseExistingFolder = async () => {
+    const folder = await bridge.dialog.openDirectory()
+    if (!folder) return
+    const project = await addExistingProject({ path: folder })
+    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
   }
 
   return (
     <div className="h-full flex flex-col bg-background relative overflow-hidden">
       <PageHeader />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20"
-        style={{
-          background: `
-            radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.7 0.1 255 / 15%), transparent),
-            radial-gradient(ellipse 60% 40% at 100% 100%, oklch(0.7 0.08 200 / 10%), transparent)
-          `,
-        }}
-      />
-
-      {/* Connection status indicator */}
-      {!isServerReady && (
-        <div className="absolute top-2 right-3 flex items-center gap-1.5 z-10">
-          <div className="size-1.5 rounded-full bg-amber-500/80" />
-          <span className="text-[10px] text-muted-foreground">connecting</span>
-        </div>
-      )}
-
-      <main className="relative flex-1 flex flex-col overflow-auto">
-        <div className="flex-1 flex items-center justify-center px-6 py-16">
-          <div className="w-full max-w-2xl">
-            <div
-              className="animate-in fade-in slide-in-from-bottom-6 duration-700 text-center mb-10"
-              style={{ animationFillMode: "backwards" }}
-            >
-              <h1 className="text-[42px] md:text-[52px] font-medium leading-[1.1] tracking-[-0.03em] whitespace-nowrap text-balance">
-                <span className="text-foreground">What would you like</span>{" "}
-                <span className="text-muted-foreground/50">to design?</span>
-              </h1>
-            </div>
-
-            <div
-              className="animate-in fade-in slide-in-from-bottom-6 duration-700"
-              style={{
-                animationDelay: "100ms",
-                animationFillMode: "backwards",
-              }}
-            >
-              <PlatformToggle value={platform} onChange={setPlatform} />
-
-              <PromptInputProvider>
-                <ComposerInput onSubmit={handleSubmit} disabled={!isServerReady} />
-              </PromptInputProvider>
-
-              <div className="flex justify-center gap-2 mt-8">
-                {SUGGESTIONS.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => handleSubmit(suggestion)}
-                    disabled={!isServerReady}
-                    className="px-4 py-1.5 text-[13px] text-muted-foreground hover:text-foreground border border-border/60 hover:border-border rounded-full transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
+      <main className="flex-1 overflow-auto px-8 py-10">
+        <div className="mx-auto flex min-h-full w-full max-w-5xl items-center">
+          <div className="grid w-full gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <section className="space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-xs text-muted-foreground">
+                <span className="size-1.5 rounded-full bg-primary" />
+                Projects are local folders
               </div>
-            </div>
+              <div className="space-y-3">
+                <h1 className="max-w-md text-[44px] font-medium leading-[0.98] tracking-[-0.045em]">
+                  Choose where your designs live.
+                </h1>
+                <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+                  Create a fresh workspace or open an existing folder. Chats are grouped under the
+                  Project, and generated screens are saved as
+                  <code className="mx-1 rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 text-xs">
+                    .designs/*.html
+                  </code>
+                  .
+                </p>
+              </div>
+            </section>
+
+            <section className="space-y-3">
+              <div className="rounded-3xl border border-border/70 bg-card/70 p-2 shadow-2xl shadow-black/20 backdrop-blur">
+                <div className="grid gap-2 md:grid-cols-2">
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      handleStartFromScratch()
+                    }}
+                    className="flex min-h-[220px] flex-col rounded-2xl border border-border/70 bg-background/70 p-5"
+                  >
+                    <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                      <AddCircle size={18} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <h2 className="text-base font-medium">Start from scratch</h2>
+                      <p className="text-sm leading-5 text-muted-foreground">
+                        Creates a new folder under
+                        <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">~/dilag</code>
+                        and opens an empty composer.
+                      </p>
+                    </div>
+                    <div className="mt-auto space-y-2 pt-5">
+                      <Input
+                        value={projectName}
+                        onChange={(event) => setProjectName(event.target.value)}
+                        placeholder="Project name"
+                        className="h-9"
+                      />
+                      <Button type="submit" className="w-full" disabled={!projectName.trim()}>
+                        Create project
+                      </Button>
+                    </div>
+                  </form>
+
+                  <button
+                    onClick={handleUseExistingFolder}
+                    className="group flex min-h-[220px] flex-col rounded-2xl border border-border/70 bg-muted/20 p-5 text-left transition-colors hover:bg-muted/35"
+                  >
+                    <div className="mb-5 flex size-10 items-center justify-center rounded-xl border border-border bg-background transition-transform group-hover:-translate-y-0.5">
+                      <AddSquare size={18} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <h2 className="text-base font-medium">Use an existing folder</h2>
+                      <p className="text-sm leading-5 text-muted-foreground">
+                        Pick any local folder and Dilag will list Pi chats for that Project.
+                      </p>
+                    </div>
+                    <div className="mt-auto pt-5 text-sm font-medium text-foreground">
+                      Open folder →
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {legacyNotice?.hasLegacySessions && !legacyNotice.dismissed && (
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                  <div className="flex gap-3">
+                    <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-background">
+                      <History size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div>
+                        <h2 className="text-sm font-medium">Old sessions found</h2>
+                        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                          Your previous Dilag sessions are still on this device. Add any session
+                          folder as a Project to keep working with it.
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={handleUseExistingFolder}>
+                          Use an existing folder
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => dismissLegacyNotice()}>
+                          Dismiss
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
         </div>
       </main>
-    </div>
-  )
-}
-
-function ComposerInput({
-  onSubmit,
-  disabled,
-}: {
-  onSubmit: (text: string, files?: import("ai").FileUIPart[]) => void
-  disabled: boolean
-}) {
-  const { textInput } = usePromptInputController()
-  const hasInput = textInput.value.trim().length > 0
-
-  return (
-    <PromptInput
-      onSubmit={async ({ text, files }) => onSubmit(text, files)}
-      className="border border-border bg-card transition-colors duration-200 focus-within:border-primary/50"
-    >
-      <PromptInputAttachments>
-        {(attachment) => <PromptInputAttachment data={attachment} />}
-      </PromptInputAttachments>
-      <PromptInputScreenReferences className="px-3 pt-2">
-        {(ref) => <PromptInputScreenReference data={ref} />}
-      </PromptInputScreenReferences>
-      <PromptInputBody>
-        <PromptInputTextarea
-          placeholder="Describe your app..."
-          disabled={disabled}
-          className="min-h-[100px] max-h-[200px]"
-        />
-      </PromptInputBody>
-      <PromptInputFooter className="border-t-0">
-        {/* Left side - agent selector, model selector, thinking mode */}
-        <PromptInputTools>
-          <AgentSelectorButton />
-          <ModelSelectorButton />
-          <ThinkingModeSelector />
-        </PromptInputTools>
-
-        <div className="flex-1" />
-
-        {/* Right side - attachment menu + submit */}
-        <div className="flex items-center gap-1">
-          <PromptInputAddAttachmentButton />
-          <PromptInputSubmit
-            disabled={!hasInput || disabled}
-            className={cn(
-              "size-9 rounded-xl transition-all duration-200",
-              hasInput && !disabled
-                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
-            <ArrowUp size={16} />
-          </PromptInputSubmit>
-        </div>
-      </PromptInputFooter>
-    </PromptInput>
-  )
-}
-
-function PlatformToggle({
-  value,
-  onChange,
-}: {
-  value: Platform
-  onChange: (platform: Platform) => void
-}) {
-  return (
-    <div className="flex justify-center mb-6">
-      <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/30">
-        <button
-          onClick={() => onChange("web")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
-            value === "web"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Monitor size={16} />
-          Web
-        </button>
-        <button
-          onClick={() => onChange("mobile")}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
-            value === "mobile"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Smartphone size={16} />
-          Mobile
-        </button>
-      </div>
     </div>
   )
 }

@@ -14,11 +14,14 @@ import type {
   AgentQuestionRequest,
   AgentRuntimeInfo,
   AgentSessionInfo,
+  AgentSessionSummary,
   AgentThinkingLevel,
   AgentTreeNode,
   DesignFile,
   FileNode,
   MenuEventId,
+  Platform,
+  ProjectMeta,
   SaveDialogOptions,
   SessionMeta,
   SkillInfo,
@@ -55,6 +58,7 @@ export interface DesktopBridge {
     setApiKey(args: { providerID: string; apiKey: string }): Promise<void>
     loginOAuthProvider(args: { providerID: string }): Promise<void>
     createSession(args: { directory: string }): Promise<AgentSessionInfo>
+    listSessions(args: { directory: string }): Promise<AgentSessionSummary[]>
     getSession(args: { sessionID: string; directory: string }): Promise<AgentSessionInfo>
     getMessages(args: { sessionID: string; directory: string }): Promise<AgentMessage[]>
     prompt(args: {
@@ -66,8 +70,8 @@ export interface DesktopBridge {
       thinkingLevel?: AgentThinkingLevel
     }): Promise<void>
     abort(args: { sessionID: string }): Promise<void>
-    renameSession(args: { sessionID: string; name: string }): Promise<void>
-    deleteSession(args: { sessionID: string }): Promise<void>
+    renameSession(args: { sessionID: string; name: string; directory?: string }): Promise<void>
+    deleteSession(args: { sessionID: string; directory?: string }): Promise<void>
     listQuestions(): Promise<AgentQuestionRequest[]>
     replyQuestion(args: { requestID: string; answers: string[][] }): Promise<void>
     rejectQuestion(args: { requestID: string }): Promise<void>
@@ -97,6 +101,20 @@ export interface DesktopBridge {
     loadMeta(): Promise<SessionMeta[]>
     deleteMeta(args: { sessionId: string }): Promise<void>
     toggleFavorite(args: { sessionId: string }): Promise<boolean>
+  }
+
+  projects: {
+    list(): Promise<ProjectMeta[]>
+    create(args: { name: string; platform?: Platform }): Promise<ProjectMeta>
+    addExisting(args: { path: string; platform?: Platform }): Promise<ProjectMeta>
+    update(args: {
+      id: string
+      updates: Partial<Pick<ProjectMeta, "name" | "platform" | "pinned" | "expanded">>
+    }): Promise<ProjectMeta>
+    remove(args: { id: string }): Promise<void>
+    touch(args: { id: string }): Promise<ProjectMeta>
+    getLegacyNotice(): Promise<{ hasLegacySessions: boolean; dismissed: boolean }>
+    dismissLegacyNotice(): Promise<void>
   }
 
   designs: {
@@ -143,6 +161,7 @@ export interface DesktopBridge {
 
   dialog: {
     save(options: SaveDialogOptions): Promise<string | null>
+    openDirectory(): Promise<string | null>
   }
 
   shell: {
@@ -175,11 +194,13 @@ export type {
   AgentQuestionRequest,
   AgentRuntimeInfo,
   AgentSessionInfo,
+  AgentSessionSummary,
   AgentThinkingLevel,
   AgentTreeNode,
   DesignFile,
   FileNode,
   MenuEventId,
+  ProjectMeta,
   SaveDialogOptions,
   SessionMeta,
   SkillInfo,

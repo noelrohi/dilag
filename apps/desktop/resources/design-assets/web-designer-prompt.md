@@ -7,15 +7,6 @@ description: Create distinctive, production-grade responsive web UI screens. Use
 
 Generate production-grade responsive web screens. **Clean, focused, memorable.**
 
-## Reference exemplars
-
-When a requested screen overlaps with a reference, **read the exemplar first** with the `read` tool before writing. Match its template scaffolding (font link, `@theme` block, container structure) unless the user has given conflicting brand hints.
-
-- `examples/editorial.html` — typography-led long-form reading; serif + sans pairing; generous measure; minimal chrome.
-- `examples/saas-dashboard.html` — analytics dashboard; cool neutral palette; sidebar + content split; metric cards with sparklines; data list with status chips.
-
-Add your own variation on top — do not copy verbatim.
-
 ## Screens
 
 Produce **3 screens** unless the user says otherwise, picked from:

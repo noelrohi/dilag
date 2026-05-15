@@ -16,7 +16,6 @@ import {
   useSessionsList,
   useCurrentSession,
   useSessionMutations,
-  createSessionDir,
   sessionKeys,
 } from "@/hooks/use-session-data"
 import { useGlobalEvents, useConnectionStatus, type Event } from "@/context/global-events"
@@ -27,6 +26,7 @@ import { bridge } from "@/lib/bridge"
 import type {
   AgentImageContent as BridgeAgentImageContent,
   AgentMessage as BridgeAgentMessage,
+  ProjectMeta,
 } from "@dilag/desktop-bridge"
 import type { FileUIPart } from "ai"
 import { formatElementWithAncestry, minifyHtml } from "@/lib/html-utils"
@@ -85,7 +85,6 @@ export function useSessions() {
 
   // React Query mutations
   const {
-    createSession: saveSession,
     updateSession: saveSessionUpdate,
     deleteSession: removeSession,
     toggleFavorite: toggleSessionFavorite,
@@ -257,29 +256,38 @@ export function useSessions() {
             updates.updated_at = new Date(info.time.updated).toISOString()
           }
 
-          // Only save if there are updates
+          // Pi SDK is the source of truth for project sessions. Keep legacy
+          // session metadata in sync only for old sessions without a project.
           if (Object.keys(updates).length > 0) {
-            await saveSessionUpdate({
-              id: currentSessionId,
-              updates,
-            })
+            if (currentSession?.projectId) {
+              queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+            } else {
+              await saveSessionUpdate({
+                id: currentSessionId,
+                updates,
+              })
+            }
           }
         }
       }
     })
 
     return unsubscribe
-  }, [currentSessionId, subscribeToSession, saveSessionUpdate])
+  }, [currentSessionId, subscribeToSession, saveSessionUpdate, currentSession, queryClient])
 
   const createSession = useCallback(
     async (name?: string, platform: "web" | "mobile" = "web"): Promise<string | null> => {
       try {
         setError(null)
 
-        const dirId = crypto.randomUUID()
-        const cwd = await createSessionDir(dirId)
+        const projects = await bridge.projects.list()
+        const sortedProjects = [...projects].sort(
+          (a, b) => new Date(b.last_opened_at).getTime() - new Date(a.last_opened_at).getTime(),
+        )
+        const project = sortedProjects.find((item) => item.pinned) ?? sortedProjects[0]
+        if (!project) throw new Error("Create a project before starting a design")
+        const cwd = project.path
 
-        // No project initialization needed - AI generates HTML screens directly
         const response = await bridge.agent.createSession({ directory: cwd })
         const sessionId = response.id
 
@@ -291,11 +299,15 @@ export function useSessions() {
           created_at: now,
           updated_at: now,
           cwd,
-          platform,
+          platform: project.platform ?? platform,
+          projectId: project.id,
         }
 
-        // Save to the desktop bridge and update React Query cache.
-        await saveSession(sessionMeta)
+        // Update React Query cache optimistically. Pi SDK owns persistence.
+        queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
+          old ? [...old, sessionMeta] : [sessionMeta],
+        )
+        queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
 
         // Update Zustand client state
         setCurrentSessionId(sessionId)
@@ -308,7 +320,39 @@ export function useSessions() {
         return null
       }
     },
-    [sessions.length, setError, setCurrentSessionId, setMessages, saveSession],
+    [sessions.length, setError, setCurrentSessionId, setMessages, queryClient],
+  )
+
+  const createSessionInProject = useCallback(
+    async (project: ProjectMeta, name?: string): Promise<string | null> => {
+      try {
+        setError(null)
+        const response = await bridge.agent.createSession({ directory: project.path })
+        const now = new Date().toISOString()
+        const sessionMeta: SessionMeta = {
+          id: response.id,
+          name: name ?? "New chat",
+          created_at: now,
+          updated_at: now,
+          cwd: project.path,
+          platform: project.platform,
+          projectId: project.id,
+          favorite: project.pinned,
+        }
+        queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
+          old ? [...old, sessionMeta] : [sessionMeta],
+        )
+        setCurrentSessionId(response.id)
+        setMessages(response.id, [])
+        queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+        return response.id
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to create chat")
+        console.error("Failed to create project chat:", err)
+        return null
+      }
+    },
+    [queryClient, setCurrentSessionId, setError, setMessages],
   )
 
   const selectSession = useCallback(
@@ -325,15 +369,25 @@ export function useSessions() {
   const deleteSession = useCallback(
     async (sessionId: string) => {
       try {
+        const session = sessions.find((item) => item.id === sessionId)
+
         // Delete from the agent runtime (may not exist if never sent a message)
         await withErrorHandler(
-          () => bridge.agent.deleteSession({ sessionID: sessionId }),
+          () => bridge.agent.deleteSession({ sessionID: sessionId, directory: session?.cwd }),
           `deleteSession(${sessionId})`,
           undefined, // Continue on error - session may not exist in the runtime
         )
 
-        // Delete local metadata (React Query mutation)
-        await removeSession(sessionId)
+        if (session?.projectId) {
+          queryClient.setQueryData<SessionMeta[]>(
+            sessionKeys.list(),
+            (old) => old?.filter((item) => item.id !== sessionId) ?? [],
+          )
+          queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+        } else {
+          // Delete legacy local metadata (React Query mutation)
+          await removeSession(sessionId)
+        }
 
         // Clear Zustand real-time data
         clearSessionData(sessionId)
@@ -342,7 +396,7 @@ export function useSessions() {
         console.error("Failed to delete session:", err)
       }
     },
-    [removeSession, clearSessionData, setError],
+    [sessions, queryClient, removeSession, clearSessionData, setError],
   )
 
   const stopSession = useCallback(async () => {
@@ -439,11 +493,8 @@ export function useSessions() {
     try {
       setError(null)
 
-      // Create a new session directory
-      const dirId = crypto.randomUUID()
-      const cwd = await createSessionDir(dirId)
-
-      // Create session in the agent runtime with the new directory
+      // Create a new chat in the same project folder.
+      const cwd = currentSession.cwd
       const response = await bridge.agent.createSession({ directory: cwd })
       const newSessionId = response.id
 
@@ -463,10 +514,14 @@ export function useSessions() {
         cwd,
         parentID: currentSessionId,
         platform: currentSession.platform,
+        projectId: currentSession.projectId,
+        favorite: currentSession.favorite,
       }
 
-      // Save to the desktop bridge and update React Query cache.
-      await saveSession(sessionMeta)
+      queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
+        old ? [...old, sessionMeta] : [sessionMeta],
+      )
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
 
       // Switch to the new session
       setCurrentSessionId(newSessionId)
@@ -478,7 +533,7 @@ export function useSessions() {
       console.error("Failed to fork session with designs:", err)
       return null
     }
-  }, [currentSessionId, currentSession, saveSession, setCurrentSessionId, setMessages, setError])
+  }, [currentSessionId, currentSession, queryClient, setCurrentSessionId, setMessages, setError])
 
   const sendMessage = useCallback(
     async (content: string, files?: FileUIPart[]) => {
@@ -526,7 +581,7 @@ export function useSessions() {
         // On first message, prepend skill instruction
         const platform = currentSession.platform ?? "web"
         const isFirstMessage = messages.length === 0
-        const skillHint = isFirstMessage ? `/skill:${platform}-design ` : ""
+        const skillHint = isFirstMessage ? `/skill:dilag-${platform}-design ` : ""
 
         let promptText = skillHint + content
 
@@ -677,6 +732,7 @@ export function useSessions() {
     sessionStatus,
     connectionStatus,
     createSession,
+    createSessionInProject,
     selectSession,
     deleteSession,
     sendMessage,

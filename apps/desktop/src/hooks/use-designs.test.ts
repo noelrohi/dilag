@@ -16,6 +16,7 @@ import { useSessionStore } from "@/context/session-store"
 export function makeDesignFile(overrides: Partial<DesignFile> = {}): DesignFile {
   return {
     filename: "home.html",
+    file_path: "/sessions/abc/.designs/home.html",
     title: "Home",
     screen_type: "web",
     html: "<!DOCTYPE html><html><body></body></html>",
@@ -147,7 +148,13 @@ describe("isSessionDesignFileChange", () => {
     expect(isSessionDesignFileChange("screens/home.html", "/sessions/abc")).toBe(true)
   })
 
-  it("matches root html files because the backend loader supports session-root designs", () => {
+  it("matches .designs html files", () => {
+    expect(isSessionDesignFileChange("/sessions/abc/.designs/home.html", "/sessions/abc")).toBe(
+      true,
+    )
+  })
+
+  it("matches root html files because the backend loader supports legacy session-root designs", () => {
     expect(isSessionDesignFileChange("/sessions/abc/home.html", "/sessions/abc")).toBe(true)
   })
 

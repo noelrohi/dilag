@@ -14,6 +14,8 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StudioSessionIdRouteImport } from './routes/studio.$sessionId'
+import { Route as ProjectProjectIdRouteImport } from './routes/project.$projectId'
+import { Route as ProjectProjectIdSessionSessionIdRouteImport } from './routes/project.$projectId.session.$sessionId'
 
 const SkillsRoute = SkillsRouteImport.update({
   id: '/skills',
@@ -40,20 +42,35 @@ const StudioSessionIdRoute = StudioSessionIdRouteImport.update({
   path: '/studio/$sessionId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectProjectIdRoute = ProjectProjectIdRouteImport.update({
+  id: '/project/$projectId',
+  path: '/project/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectProjectIdSessionSessionIdRoute =
+  ProjectProjectIdSessionSessionIdRouteImport.update({
+    id: '/session/$sessionId',
+    path: '/session/$sessionId',
+    getParentRoute: () => ProjectProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRoute
   '/settings': typeof SettingsRoute
   '/skills': typeof SkillsRoute
+  '/project/$projectId': typeof ProjectProjectIdRouteWithChildren
   '/studio/$sessionId': typeof StudioSessionIdRoute
+  '/project/$projectId/session/$sessionId': typeof ProjectProjectIdSessionSessionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/projects': typeof ProjectsRoute
   '/settings': typeof SettingsRoute
   '/skills': typeof SkillsRoute
+  '/project/$projectId': typeof ProjectProjectIdRouteWithChildren
   '/studio/$sessionId': typeof StudioSessionIdRoute
+  '/project/$projectId/session/$sessionId': typeof ProjectProjectIdSessionSessionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,20 +78,38 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRoute
   '/settings': typeof SettingsRoute
   '/skills': typeof SkillsRoute
+  '/project/$projectId': typeof ProjectProjectIdRouteWithChildren
   '/studio/$sessionId': typeof StudioSessionIdRoute
+  '/project/$projectId/session/$sessionId': typeof ProjectProjectIdSessionSessionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/projects' | '/settings' | '/skills' | '/studio/$sessionId'
+  fullPaths:
+    | '/'
+    | '/projects'
+    | '/settings'
+    | '/skills'
+    | '/project/$projectId'
+    | '/studio/$sessionId'
+    | '/project/$projectId/session/$sessionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/projects' | '/settings' | '/skills' | '/studio/$sessionId'
+  to:
+    | '/'
+    | '/projects'
+    | '/settings'
+    | '/skills'
+    | '/project/$projectId'
+    | '/studio/$sessionId'
+    | '/project/$projectId/session/$sessionId'
   id:
     | '__root__'
     | '/'
     | '/projects'
     | '/settings'
     | '/skills'
+    | '/project/$projectId'
     | '/studio/$sessionId'
+    | '/project/$projectId/session/$sessionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -82,6 +117,7 @@ export interface RootRouteChildren {
   ProjectsRoute: typeof ProjectsRoute
   SettingsRoute: typeof SettingsRoute
   SkillsRoute: typeof SkillsRoute
+  ProjectProjectIdRoute: typeof ProjectProjectIdRouteWithChildren
   StudioSessionIdRoute: typeof StudioSessionIdRoute
 }
 
@@ -122,14 +158,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StudioSessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/project/$projectId': {
+      id: '/project/$projectId'
+      path: '/project/$projectId'
+      fullPath: '/project/$projectId'
+      preLoaderRoute: typeof ProjectProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/project/$projectId/session/$sessionId': {
+      id: '/project/$projectId/session/$sessionId'
+      path: '/session/$sessionId'
+      fullPath: '/project/$projectId/session/$sessionId'
+      preLoaderRoute: typeof ProjectProjectIdSessionSessionIdRouteImport
+      parentRoute: typeof ProjectProjectIdRoute
+    }
   }
 }
+
+interface ProjectProjectIdRouteChildren {
+  ProjectProjectIdSessionSessionIdRoute: typeof ProjectProjectIdSessionSessionIdRoute
+}
+
+const ProjectProjectIdRouteChildren: ProjectProjectIdRouteChildren = {
+  ProjectProjectIdSessionSessionIdRoute: ProjectProjectIdSessionSessionIdRoute,
+}
+
+const ProjectProjectIdRouteWithChildren =
+  ProjectProjectIdRoute._addFileChildren(ProjectProjectIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProjectsRoute: ProjectsRoute,
   SettingsRoute: SettingsRoute,
   SkillsRoute: SkillsRoute,
+  ProjectProjectIdRoute: ProjectProjectIdRouteWithChildren,
   StudioSessionIdRoute: StudioSessionIdRoute,
 }
 export const routeTree = rootRouteImport
