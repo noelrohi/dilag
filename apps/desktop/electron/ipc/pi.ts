@@ -47,7 +47,14 @@ type PiMessage = {
 }
 
 type RequestedAgentModel = { providerID: string; modelID: string }
-type AgentToolState = NonNullable<AgentMessagePart["state"]>
+type AgentToolState = {
+  status: "pending" | "running" | "completed" | "error"
+  input?: unknown
+  output?: string
+  error?: string
+  metadata?: Record<string, unknown>
+  time?: { start?: number; end?: number }
+}
 type PiMessagePhase = "start" | "update" | "end"
 
 type RuntimeSession = {
@@ -837,7 +844,7 @@ function emitToolPart(
     runtime.activeMessageId ??
     `${sessionID}:assistant:active`
   runtime.toolMessageIds.set(toolCallId, messageID)
-  const state = toolState(toolName, status, input, output)
+  const state = toolState(toolName, status, input, output, runtime.toolStates.get(toolCallId))
   runtime.toolStates.set(toolCallId, state)
   emitAgentEvent({
     type: "message.updated",
@@ -945,14 +952,16 @@ function toolState(
   status: "running" | "completed" | "error",
   input?: unknown,
   output?: unknown,
+  previous?: AgentToolState,
 ): AgentToolState {
+  const start = previous?.time?.start ?? Date.now()
   return {
     status,
-    input,
+    input: input ?? previous?.input,
     output: output === undefined ? undefined : toolResultText(output),
     error: status === "error" ? toolResultText(output) : undefined,
     metadata: toolResultMetadata(toolName, output),
-    time: { start: Date.now(), end: status === "running" ? undefined : Date.now() },
+    time: { start, end: status === "running" ? undefined : Date.now() },
   }
 }
 

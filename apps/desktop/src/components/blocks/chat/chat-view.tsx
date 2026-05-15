@@ -33,9 +33,12 @@ import {
   useSessionStore,
   usePendingQuestions,
   useRunningQuestionTools,
+  useRunningPermissionTools,
+  type SessionStatus,
   type Message as SessionMessage,
 } from "@/context/session-store"
 import { Button } from "@dilag/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
 import { MessagePart } from "./message-part"
 import {
@@ -49,6 +52,7 @@ import {
   MessageContent,
   MessageActions,
   MessageAction,
+  MessageResponse,
 } from "@/components/ai-elements/message"
 import { useElapsedTime } from "@/hooks/use-elapsed-time"
 import {
@@ -216,11 +220,65 @@ function wouldRenderContent(part: MessagePartType): boolean {
   }
 }
 
-export function getRenderableAssistantParts(parts: MessagePartType[]): MessagePartType[] {
+export function getRenderableAssistantParts(
+  parts: MessagePartType[],
+  isStreaming: boolean,
+): MessagePartType[] {
+  if (isStreaming) return parts.filter(wouldRenderContent)
   const nonReasoningParts = parts.filter(
     (part) => part.type !== "reasoning" && wouldRenderContent(part),
   )
   return nonReasoningParts.length > 0 ? parts.filter(wouldRenderContent) : []
+}
+
+export type ParsedSkillBlock = {
+  name: string
+  location: string
+  content: string
+  userMessage?: string
+}
+
+export function parseSkillBlock(text: string): ParsedSkillBlock | null {
+  const match = text.match(
+    /^<skill name="([^"]+)" location="([^"]+)">\n([\s\S]*?)\n<\/skill>(?:\n\n([\s\S]+))?$/,
+  )
+  if (!match) return null
+  return {
+    name: match[1],
+    location: match[2],
+    content: match[3],
+    userMessage: match[4]?.trim() || undefined,
+  }
+}
+
+export function getChatActivityLabel({
+  isLoading,
+  pendingQuestionCount,
+  runningQuestionToolCount,
+  runningTools,
+  sessionStatus,
+  fallback,
+}: {
+  isLoading: boolean
+  pendingQuestionCount: number
+  runningQuestionToolCount: number
+  runningTools: Array<{ tool: string }>
+  sessionStatus: SessionStatus
+  fallback: string
+}): string | undefined {
+  if (!isLoading) return undefined
+  if (pendingQuestionCount > 0) return "Waiting for your answer"
+  if (runningQuestionToolCount > 0) return "Preparing questions"
+
+  const tool = runningTools[0]?.tool
+  if (tool === "write" || tool === "edit") return "Writing screen"
+  if (tool === "read" || tool === "grep" || tool === "glob") return "Reading project"
+  if (tool === "bash") return "Running command"
+  if (tool === "webfetch" || tool === "websearch") return "Searching"
+  if (tool === "task") return "Delegating"
+
+  if (sessionStatus === "running" || sessionStatus === "busy") return "Thinking"
+  return fallback
 }
 
 const BUSY_FALLBACKS = [
@@ -390,6 +448,30 @@ export function HighlightedText({ text }: { text: string }) {
   )
 }
 
+function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
+  return (
+    <div className="mr-auto w-full max-w-[95%] animate-slide-up">
+      <Collapsible>
+        <CollapsibleTrigger
+          className={cn(
+            "group flex h-8 w-fit max-w-full items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-1.5",
+            "text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
+          )}
+        >
+          <MagicStick size={16} className="shrink-0 text-primary/70" />
+          <span className="font-medium text-foreground">Skill</span>
+          <span className="truncate">{skill.name}</span>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2 max-h-80 overflow-y-auto rounded-md border border-border/40 bg-muted/20 p-3 text-sm">
+          <div className="prose prose-sm prose-invert max-w-none">
+            <MessageResponse>{`**${skill.name}**\n\n${skill.content}`}</MessageResponse>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
+
 // Component that renders a user message with parts from the store
 function UserMessage({
   message,
@@ -410,48 +492,73 @@ function UserMessage({
 }) {
   const parts = useMessageParts(message.id)
   const rawTextContent = extractTextFromParts(parts)
-  const { cleanText, hasScreenRefs } = parseMessageText(rawTextContent)
+  const skillBlock = parseSkillBlock(rawTextContent)
+  const displayText = skillBlock?.userMessage ?? rawTextContent
+  const { cleanText, hasScreenRefs } = parseMessageText(displayText)
   const fileParts = parts.filter((p) => p.type === "file" && p.url)
 
   return (
-    <Message
-      from="user"
-      className="animate-slide-up ml-0!"
-      style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
-    >
-      <MessageContent className="ml-0! space-y-2">
-        {/* File attachments */}
-        {fileParts.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {fileParts.map((file) => (
-              <div
-                key={file.id}
-                className="relative rounded-lg overflow-hidden border border-border/50 bg-muted/30"
-              >
-                {file.mime?.startsWith("image/") ? (
-                  <img
-                    src={file.url}
-                    alt={file.filename || "Attached image"}
-                    className="max-w-[200px] max-h-[200px] object-contain"
-                  />
-                ) : (
-                  <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-                    <ClipboardText size={16} />
-                    <span className="truncate max-w-[150px]">{file.filename || "Attachment"}</span>
+    <>
+      {skillBlock && <SkillInvocationBlock skill={skillBlock} />}
+      {(cleanText || fileParts.length > 0) && (
+        <Message
+          from="user"
+          className="animate-slide-up ml-0!"
+          style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
+        >
+          <MessageContent className="ml-0! space-y-2">
+            {/* File attachments */}
+            {fileParts.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {fileParts.map((file) => (
+                  <div
+                    key={file.id}
+                    className="relative rounded-lg overflow-hidden border border-border/50 bg-muted/30"
+                  >
+                    {file.mime?.startsWith("image/") ? (
+                      <img
+                        src={file.url}
+                        alt={file.filename || "Attached image"}
+                        className="max-w-[200px] max-h-[200px] object-contain"
+                      />
+                    ) : (
+                      <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
+                        <ClipboardText size={16} />
+                        <span className="truncate max-w-[150px]">
+                          {file.filename || "Attachment"}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-        {/* Text content with inline highlights for @ScreenName refs */}
-        {cleanText && (
-          <p className="whitespace-pre-wrap leading-relaxed">
-            {hasScreenRefs ? <HighlightedText text={cleanText} /> : cleanText}
-          </p>
-        )}
-      </MessageContent>
-      {!hideActions && (
+            )}
+            {/* Text content with inline highlights for @ScreenName refs */}
+            {cleanText && (
+              <p className="whitespace-pre-wrap leading-relaxed">
+                {hasScreenRefs ? <HighlightedText text={cleanText} /> : cleanText}
+              </p>
+            )}
+          </MessageContent>
+          {!hideActions && (
+            <MessageActions>
+              <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
+                <Copy size={14} />
+              </MessageAction>
+              <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
+                <BranchingPathsUp size={14} />
+              </MessageAction>
+              <MessageAction tooltip="Revert to here" onClick={() => onRevert(message.id)}>
+                <UndoLeft size={14} />
+              </MessageAction>
+              <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
+                <ClockCircle size={14} />
+              </MessageAction>
+            </MessageActions>
+          )}
+        </Message>
+      )}
+      {skillBlock && !cleanText && fileParts.length === 0 && !hideActions && (
         <MessageActions>
           <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
             <Copy size={14} />
@@ -467,10 +574,9 @@ function UserMessage({
           </MessageAction>
         </MessageActions>
       )}
-    </Message>
+    </>
   )
 }
-
 // Component that renders an assistant message with parts from the store
 function AssistantMessage({
   message,
@@ -495,7 +601,7 @@ function AssistantMessage({
 }) {
   const parts = useMessageParts(message.id)
   const sessionError = useSessionError(message.sessionID)
-  const renderableParts = getRenderableAssistantParts(parts)
+  const renderableParts = getRenderableAssistantParts(parts, !!message.isStreaming)
 
   if (!message.isStreaming && renderableParts.length === 0 && !sessionError) {
     return null
@@ -514,7 +620,7 @@ function AssistantMessage({
             className="animate-stream-in"
             style={{ animationDelay: `${partIndex * 50}ms` }}
           >
-            <MessagePart part={part} />
+            <MessagePart part={part} isStreaming={!!message.isStreaming} />
           </div>
         ))}
 
@@ -1155,10 +1261,12 @@ export function ChatView() {
   const handleCopyText = useCallback(async (messageId: string) => {
     const state = useSessionStore.getState()
     const parts = state.parts[messageId] || []
-    const text = parts
+    const rawText = parts
       .filter((p) => p.type === "text" && p.text)
       .map((p) => p.text!)
       .join("")
+    const skillBlock = parseSkillBlock(rawText)
+    const text = skillBlock?.userMessage ?? rawText
     await navigator.clipboard.writeText(text)
   }, [])
 
@@ -1194,31 +1302,28 @@ export function ChatView() {
   // Activity cues (derived from available session events/state)
   const pendingQuestions = usePendingQuestions(currentSessionId)
   const runningQuestionTools = useRunningQuestionTools(currentSessionId)
+  const runningPermissionTools = useRunningPermissionTools(currentSessionId)
   const busyFallbackOnce = useBusyFallbackOnce(isLoading)
 
-  const activityLabel = useMemo(() => {
-    if (!isLoading) return undefined
-
-    if (pendingQuestions.length > 0) {
-      return "Waiting for your answer"
-    }
-
-    if (runningQuestionTools.length > 0) {
-      return "Preparing questions"
-    }
-
-    if (sessionStatus === "running") {
-      return "Thinking"
-    }
-
-    return busyFallbackOnce
-  }, [
-    isLoading,
-    pendingQuestions.length,
-    runningQuestionTools.length,
-    sessionStatus,
-    busyFallbackOnce,
-  ])
+  const activityLabel = useMemo(
+    () =>
+      getChatActivityLabel({
+        isLoading,
+        pendingQuestionCount: pendingQuestions.length,
+        runningQuestionToolCount: runningQuestionTools.length,
+        runningTools: runningPermissionTools,
+        sessionStatus,
+        fallback: busyFallbackOnce,
+      }),
+    [
+      isLoading,
+      pendingQuestions.length,
+      runningQuestionTools.length,
+      runningPermissionTools,
+      sessionStatus,
+      busyFallbackOnce,
+    ],
+  )
 
   // Memoize turn start times (each user message starts a new turn)
   // Returns the most recent user message timestamp before a given index

@@ -8,6 +8,8 @@ import {
   estimateMentionFileSizeBytes,
   buildMentionDataUrl,
   getRenderableAssistantParts,
+  getChatActivityLabel,
+  parseSkillBlock,
 } from "./chat-view"
 import type { MessagePart } from "@/context/session-store"
 
@@ -64,6 +66,29 @@ describe("parseMessageText", () => {
       const { hasScreenRefs } = parseMessageText("Contact user@example.com")
       expect(hasScreenRefs).toBe(true) // @example matches
     })
+  })
+})
+
+describe("parseSkillBlock", () => {
+  it("extracts Pi skill wrapper content and user-authored prompt", () => {
+    const input = `<skill name="web-design" location="/Users/rohi/.dilag/sessions/abc/.agents/skills/web-design/SKILL.md">
+# Web Design
+
+Follow the design rules.
+</skill>
+
+Build a landing page`
+
+    expect(parseSkillBlock(input)).toEqual({
+      name: "web-design",
+      location: "/Users/rohi/.dilag/sessions/abc/.agents/skills/web-design/SKILL.md",
+      content: "# Web Design\n\nFollow the design rules.",
+      userMessage: "Build a landing page",
+    })
+  })
+
+  it("returns null for ordinary user messages", () => {
+    expect(parseSkillBlock("Build a landing page")).toBeNull()
   })
 })
 
@@ -216,7 +241,21 @@ describe("getRenderableAssistantParts", () => {
       },
     ]
 
-    expect(getRenderableAssistantParts(parts)).toEqual([])
+    expect(getRenderableAssistantParts(parts, false)).toEqual([])
+  })
+
+  it("shows reasoning-only content while the assistant is streaming", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "reasoning-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "reasoning",
+        text: "I should inspect the project.",
+      },
+    ]
+
+    expect(getRenderableAssistantParts(parts, true)).toEqual(parts)
   })
 
   it("keeps a completed tool row renderable after Pi message_end repeats the tool call", () => {
@@ -235,6 +274,47 @@ describe("getRenderableAssistantParts", () => {
       },
     ]
 
-    expect(getRenderableAssistantParts(parts)).toHaveLength(1)
+    expect(getRenderableAssistantParts(parts, false)).toHaveLength(1)
+  })
+})
+
+describe("getChatActivityLabel", () => {
+  it("prioritizes user-blocking questions", () => {
+    expect(
+      getChatActivityLabel({
+        isLoading: true,
+        pendingQuestionCount: 1,
+        runningQuestionToolCount: 0,
+        runningTools: [{ tool: "write" }],
+        sessionStatus: "running",
+        fallback: "Thinking",
+      }),
+    ).toBe("Waiting for your answer")
+  })
+
+  it("uses specific labels for running tools", () => {
+    expect(
+      getChatActivityLabel({
+        isLoading: true,
+        pendingQuestionCount: 0,
+        runningQuestionToolCount: 0,
+        runningTools: [{ tool: "write" }],
+        sessionStatus: "idle",
+        fallback: "Thinking",
+      }),
+    ).toBe("Writing screen")
+  })
+
+  it("returns undefined when idle", () => {
+    expect(
+      getChatActivityLabel({
+        isLoading: false,
+        pendingQuestionCount: 0,
+        runningQuestionToolCount: 0,
+        runningTools: [],
+        sessionStatus: "idle",
+        fallback: "Thinking",
+      }),
+    ).toBeUndefined()
   })
 })

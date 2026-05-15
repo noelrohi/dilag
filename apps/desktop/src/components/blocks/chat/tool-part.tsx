@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { AltArrowRight } from "@solar-icons/react"
 import { getToolConfig, isStructuredSubtitle, type ToolRenderProps } from "@/lib/tool-registry"
 import type { ToolState } from "@/context/session-store"
 import { cn } from "@/lib/utils"
 import { Shimmer } from "@/components/ai-elements/shimmer"
+import { useElapsedTime } from "@/hooks/use-elapsed-time"
 
 interface ToolPartProps {
   tool: string
@@ -15,23 +15,10 @@ interface ToolPartProps {
 const DEFAULT_OPEN_TOOLS = ["todowrite", "question"]
 
 export function ToolPart({ tool, state }: ToolPartProps) {
-  const [elapsed, setElapsed] = useState(0)
   const config = getToolConfig(tool)
   const Icon = config.icon
   const defaultOpen = DEFAULT_OPEN_TOOLS.includes(tool)
-
-  // Timer for running tools
-  useEffect(() => {
-    if (state.status !== "running") {
-      setElapsed(0)
-      return
-    }
-    const start = Date.now()
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - start) / 1000))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [state.status])
+  const elapsed = useElapsedTime(state.time?.start ?? Date.now(), state.time?.end)
 
   // Build render props from state
   const props: ToolRenderProps = {
@@ -82,8 +69,8 @@ export function ToolPart({ tool, state }: ToolPartProps) {
               </span>
             )}
           </div>
-          {state.status === "running" && elapsed > 0 && (
-            <span className="text-xs tabular-nums text-muted-foreground shrink-0">{elapsed}s</span>
+          {state.status === "running" && (
+            <span className="text-xs tabular-nums text-muted-foreground shrink-0">{elapsed}</span>
           )}
         </div>
         {hasContent && (
