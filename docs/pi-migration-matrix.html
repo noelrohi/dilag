@@ -691,7 +691,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Implemented embedded SDK service in Electron main under the neutral <code>agent</code> bridge.</td>
+                  <td>
+                    Implemented embedded SDK service in Electron main under the neutral
+                    <code>agent</code> bridge.
+                  </td>
                 </tr>
 
                 <tr data-risk="low" data-state="ready">
@@ -714,7 +717,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>Added <code>@earendil-works/pi-coding-agent</code>, direct <code>typebox</code>, and removed <code>@opencode-ai/sdk</code>.</td>
+                  <td>
+                    Added <code>@earendil-works/pi-coding-agent</code>, direct <code>typebox</code>,
+                    and removed <code>@opencode-ai/sdk</code>.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -738,7 +744,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>Deleted the binary fetch script, sidecar IPC service, bridge namespace, and Electron package resources.</td>
+                  <td>
+                    Deleted the binary fetch script, sidecar IPC service, bridge namespace, and
+                    Electron package resources.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -756,9 +765,7 @@
                     Replace with product language: <code>bridge.agent</code> or
                     <code>bridge.runtime</code>, not <code>bridge.pi</code> everywhere.
                   </td>
-                  <td>
-                    Add new namespace, migrate call sites, then delete old namespace.
-                  </td>
+                  <td>Add new namespace, migrate call sites, then delete old namespace.</td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
                   <td><code>bridge.agent</code> is the only runtime namespace in desktop code.</td>
@@ -787,7 +794,11 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Pi events flow over <code>bridge.agent.onEvent</code> and are projected into Dilag event shapes, including messages, tools, status, questions, and file changes.</td>
+                  <td>
+                    Pi events flow over <code>bridge.agent.onEvent</code> and are projected into
+                    Dilag event shapes, including messages, tools, status, questions, and file
+                    changes.
+                  </td>
                 </tr>
 
                 <tr data-risk="high" data-state="ready">
@@ -797,8 +808,9 @@
                   </td>
                   <td>
                     <span class="status live">Live</span>
-                    Dilag creates a session directory, calls <code>bridge.agent.createSession</code>,
-                    saves local metadata, then loads messages by Pi session ID.
+                    Dilag creates a session directory, calls
+                    <code>bridge.agent.createSession</code>, saves local metadata, then loads
+                    messages by Pi session ID.
                   </td>
                   <td>
                     <span class="status ready">Ready</span>
@@ -811,7 +823,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Renderer create/select/delete/load uses Pi session IDs and JSONL-backed sessions.</td>
+                  <td>
+                    Renderer create/select/delete/load uses Pi session IDs and JSONL-backed
+                    sessions.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -836,7 +851,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>Prompt send now calls <code>bridge.agent.prompt</code>; screen-context text and image attachments are preserved.</td>
+                  <td>
+                    Prompt send now calls <code>bridge.agent.prompt</code>; screen-context text and
+                    image attachments are preserved.
+                  </td>
                 </tr>
 
                 <tr data-risk="high" data-state="ready">
@@ -846,8 +864,8 @@
                   </td>
                   <td>
                     <span class="status live">Live</span>
-                    UI expects normalized messages with <code>info</code> and separate parts keyed by
-                    message ID.
+                    UI expects normalized messages with <code>info</code> and separate parts keyed
+                    by message ID.
                   </td>
                   <td>
                     <span class="status ready">Ready</span>
@@ -861,7 +879,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Added one-way Pi-to-Dilag message/part projection for persisted messages and live message/tool events.</td>
+                  <td>
+                    Added one-way Pi-to-Dilag message/part projection for persisted messages and
+                    live message/tool events.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -885,7 +906,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td><code>use-models.ts</code> now reads Pi provider data from <code>bridge.agent.getProviderData()</code>.</td>
+                  <td>
+                    <code>use-models.ts</code> now reads Pi provider data from
+                    <code>bridge.agent.getProviderData()</code>.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -908,7 +932,9 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>First-run selection now falls back to Pi's first available authenticated model.</td>
+                  <td>
+                    First-run selection now falls back to Pi's first available authenticated model.
+                  </td>
                 </tr>
 
                 <tr data-risk="high" data-state="ready">
@@ -932,7 +958,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Session startup writes Dilag <code>mobile-design</code> and <code>web-design</code> skills into local <code>.agents/skills</code>.</td>
+                  <td>
+                    Session startup writes Dilag <code>mobile-design</code> and
+                    <code>web-design</code> skills into local <code>.agents/skills</code>.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -958,7 +987,11 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status low">Low</span></td>
-                  <td>Built-in Dilag skills are rendered into session-local <code>.agents/skills</code>; user-installed skills target <code>~/.agents/skills</code>.</td>
+                  <td>
+                    Built-in Dilag skills are rendered into session-local
+                    <code>.agents/skills</code>; user-installed skills target
+                    <code>~/.agents/skills</code>.
+                  </td>
                 </tr>
 
                 <tr data-risk="low" data-state="ready">
@@ -968,8 +1001,8 @@
                   </td>
                   <td>
                     <span class="status live">Live</span>
-                    The old runtime exposed <code>permission.list</code>, <code>permission.reply</code>,
-                    and <code>permission.asked/replied</code>
+                    The old runtime exposed <code>permission.list</code>,
+                    <code>permission.reply</code>, and <code>permission.asked/replied</code>
                     events.
                   </td>
                   <td>
@@ -983,7 +1016,10 @@
                   </td>
                   <td><span class="status skipped">Skipped</span></td>
                   <td><span class="status low">Low</span></td>
-                  <td>Pi bootstrap skips permission sync; permission UI is a no-op shim in the Pi runtime path.</td>
+                  <td>
+                    Pi bootstrap skips permission sync; permission UI is a no-op shim in the Pi
+                    runtime path.
+                  </td>
                 </tr>
 
                 <tr data-risk="low" data-state="ready">
@@ -1008,7 +1044,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>Added a Pi custom <code>question</code> tool that emits Dilag question events and uses the existing question UI.</td>
+                  <td>
+                    Added a Pi custom <code>question</code> tool that emits Dilag question events
+                    and uses the existing question UI.
+                  </td>
                 </tr>
 
                 <tr data-risk="high" data-state="ready">
@@ -1018,7 +1057,8 @@
                   </td>
                   <td>
                     <span class="status live">Live</span>
-                    Dilag timeline actions can navigate the Pi session tree by message/session entry.
+                    Dilag timeline actions can navigate the Pi session tree by message/session
+                    entry.
                   </td>
                   <td>
                     <span class="status ready">Ready</span>
@@ -1031,7 +1071,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Tree navigation is wired; design-only forks continue using Dilag metadata and file copy semantics.</td>
+                  <td>
+                    Tree navigation is wired; design-only forks continue using Dilag metadata and
+                    file copy semantics.
+                  </td>
                 </tr>
 
                 <tr data-risk="high" data-state="ready">
@@ -1054,7 +1097,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Timeline revert path calls <code>bridge.agent.navigateTree()</code>, reloads messages, and clears stale client revert state.</td>
+                  <td>
+                    Timeline revert path calls <code>bridge.agent.navigateTree()</code>, reloads
+                    messages, and clears stale client revert state.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -1077,7 +1123,9 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>Stop button maps to Pi abort; packaged bash cleanup still deserves manual QA.</td>
+                  <td>
+                    Stop button maps to Pi abort; packaged bash cleanup still deserves manual QA.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -1101,7 +1149,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>HTML screen context stays text-based; image data URLs are converted to Pi <code>ImageContent</code>.</td>
+                  <td>
+                    HTML screen context stays text-based; image data URLs are converted to Pi
+                    <code>ImageContent</code>.
+                  </td>
                 </tr>
 
                 <tr data-risk="high" data-state="ready">
@@ -1111,8 +1162,7 @@
                   </td>
                   <td>
                     <span class="status live">Live</span>
-                    Store handles agent <code>session.diff</code> and file watcher/project
-                    events.
+                    Store handles agent <code>session.diff</code> and file watcher/project events.
                   </td>
                   <td>
                     <span class="status ready">Ready</span>
@@ -1120,12 +1170,15 @@
                     normalized <code>session.diff</code> event was found.
                   </td>
                   <td>
-                    Use existing filesystem polling for designs as the source of truth and synthesize
-                    diff/file watcher events from Pi write/edit tool results.
+                    Use existing filesystem polling for designs as the source of truth and
+                    synthesize diff/file watcher events from Pi write/edit tool results.
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status high">High</span></td>
-                  <td>Pi write/edit completions now emit <code>file.watcher.updated</code>, <code>project.updated</code>, and <code>session.diff</code>.</td>
+                  <td>
+                    Pi write/edit completions now emit <code>file.watcher.updated</code>,
+                    <code>project.updated</code>, and <code>session.diff</code>.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -1148,7 +1201,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>HTTP/SSE health logic is retired from the renderer; the bootstrap port remains only as a harmless compatibility value.</td>
+                  <td>
+                    HTTP/SSE health logic is retired from the renderer; the bootstrap port remains
+                    only as a harmless compatibility value.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -1173,7 +1229,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>Pi <code>agentDir</code>, auth, model registry, and session manager use Dilag-owned storage.</td>
+                  <td>
+                    Pi <code>agentDir</code>, auth, model registry, and session manager use
+                    Dilag-owned storage.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -1222,7 +1281,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status low">Low</span></td>
-                  <td>Pi sessions run in the Dilag session cwd and keep writing to <code>screens/</code>.</td>
+                  <td>
+                    Pi sessions run in the Dilag session cwd and keep writing to
+                    <code>screens/</code>.
+                  </td>
                 </tr>
 
                 <tr data-risk="medium" data-state="ready">
@@ -1232,7 +1294,8 @@
                   </td>
                   <td>
                     <span class="status live">Live</span>
-                    Tests now mock <code>bridge.agent</code> for sessions, setup wizard, and store behavior.
+                    Tests now mock <code>bridge.agent</code> for sessions, setup wizard, and store
+                    behavior.
                   </td>
                   <td>
                     <span class="status ready">Ready</span>
@@ -1245,7 +1308,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status medium">Medium</span></td>
-                  <td>Vitest covers prompt send, image attachments, abort, setup, tree navigation, session diffs, and file watcher events.</td>
+                  <td>
+                    Vitest covers prompt send, image attachments, abort, setup, tree navigation,
+                    session diffs, and file watcher events.
+                  </td>
                 </tr>
 
                 <tr data-risk="low" data-state="ready">
@@ -1268,7 +1334,10 @@
                   </td>
                   <td><span class="status done">Done</span></td>
                   <td><span class="status low">Low</span></td>
-                  <td>Updated web FAQ/integrations copy, root README, desktop README, AGENTS.md, architecture docs, and platform docs.</td>
+                  <td>
+                    Updated web FAQ/integrations copy, root README, desktop README, AGENTS.md,
+                    architecture docs, and platform docs.
+                  </td>
                 </tr>
               </tbody>
             </table>

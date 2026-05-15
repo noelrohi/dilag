@@ -143,9 +143,7 @@ describe("useSessionDesigns", () => {
 
 describe("isSessionDesignFileChange", () => {
   it("matches screen html files written with absolute or relative paths", () => {
-    expect(isSessionDesignFileChange("/sessions/abc/screens/home.html", "/sessions/abc")).toBe(
-      true,
-    )
+    expect(isSessionDesignFileChange("/sessions/abc/screens/home.html", "/sessions/abc")).toBe(true)
     expect(isSessionDesignFileChange("screens/home.html", "/sessions/abc")).toBe(true)
   })
 
@@ -154,9 +152,7 @@ describe("isSessionDesignFileChange", () => {
   })
 
   it("ignores non-html and nested non-screen files", () => {
-    expect(isSessionDesignFileChange("/sessions/abc/screens/home.png", "/sessions/abc")).toBe(
-      false,
-    )
+    expect(isSessionDesignFileChange("/sessions/abc/screens/home.png", "/sessions/abc")).toBe(false)
     expect(isSessionDesignFileChange("/sessions/abc/src/home.html", "/sessions/abc")).toBe(false)
   })
 })
