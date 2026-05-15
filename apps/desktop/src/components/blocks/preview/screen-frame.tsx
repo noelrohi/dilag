@@ -1,17 +1,38 @@
-import { cn } from "@/lib/utils";
-import { MenuDots, TrashBinMinimalistic, Copy, Code, Download, FolderOpen } from "@solar-icons/react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuShortcut } from "@dilag/ui/dropdown-menu";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuShortcut } from "@dilag/ui/context-menu";
-import { copyFilePath, copyToClipboard, downloadHtml } from "@/lib/design-export";
-import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer";
+import { cn } from "@/lib/utils"
+import {
+  MenuDots,
+  TrashBinMinimalistic,
+  Copy,
+  Code,
+  Download,
+  FolderOpen,
+} from "@solar-icons/react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuShortcut,
+} from "@dilag/ui/dropdown-menu"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  ContextMenuShortcut,
+} from "@dilag/ui/context-menu"
+import { copyFilePath, copyToClipboard, downloadHtml } from "@/lib/design-export"
+import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer"
 
 interface ScreenFrameProps {
-  title: string;
-  children: React.ReactNode;
-  filePath?: string;
-  html?: string;
-  onDelete?: () => void;
-  className?: string;
+  title: string
+  children: React.ReactNode
+  filePath?: string
+  html?: string
+  onDelete?: () => void
+  className?: string
 }
 
 export function ScreenFrame({
@@ -36,7 +57,7 @@ export function ScreenFrame({
           {/* Frame content with centered hover menu */}
           <div className="relative">
             {children}
-            
+
             {/* Centered menu trigger on hover */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/screen:opacity-100 transition-opacity duration-150 pointer-events-none">
               <DropdownMenu>
@@ -52,8 +73,8 @@ export function ScreenFrame({
                   {html && (
                     <DropdownMenuItem
                       onClick={(e) => {
-                        e.stopPropagation();
-                        copyToClipboard(html);
+                        e.stopPropagation()
+                        copyToClipboard(html)
                       }}
                     >
                       <Copy size={16} className="mr-2" />
@@ -64,8 +85,8 @@ export function ScreenFrame({
                   {filePath && (
                     <DropdownMenuItem
                       onClick={(e) => {
-                        e.stopPropagation();
-                        copyFilePath(filePath);
+                        e.stopPropagation()
+                        copyFilePath(filePath)
                       }}
                     >
                       <FolderOpen size={16} className="mr-2" />
@@ -77,8 +98,8 @@ export function ScreenFrame({
                       <DropdownMenuSeparator />
                       <CodeViewerDialog code={html} title={title}>
                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <Code size={16} className="mr-2" />
-                        View Code
+                          <Code size={16} className="mr-2" />
+                          View Code
                         </DropdownMenuItem>
                       </CodeViewerDialog>
                     </>
@@ -88,8 +109,8 @@ export function ScreenFrame({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={(e) => {
-                          e.stopPropagation();
-                          downloadHtml({ html, title });
+                          e.stopPropagation()
+                          downloadHtml({ html, title })
                         }}
                       >
                         <Download size={16} className="mr-2" />
@@ -103,8 +124,8 @@ export function ScreenFrame({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete();
+                          e.stopPropagation()
+                          onDelete()
                         }}
                         className="text-destructive focus:text-destructive focus:bg-destructive/10"
                       >
@@ -170,5 +191,5 @@ export function ScreenFrame({
         )}
       </ContextMenuContent>
     </ContextMenu>
-  );
+  )
 }

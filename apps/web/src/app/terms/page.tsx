@@ -1,4 +1,4 @@
-import { SiteHeader } from "@/components/site-header";
+import { SiteHeader } from "@/components/site-header"
 
 export default function TermsPage() {
   return (
@@ -19,14 +19,16 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Acceptance of Terms</h2>
               <p>
-                By using Dilag, you agree to these Terms of Service. If you do not agree, do not use the service.
+                By using Dilag, you agree to these Terms of Service. If you do not agree, do not use
+                the service.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Service Description</h2>
               <p>
-                Dilag is an AI-powered design studio for generating user interface concepts and code from natural language prompts.
+                Dilag is an AI-powered design studio for generating user interface concepts and code
+                from natural language prompts.
               </p>
             </section>
 
@@ -48,15 +50,21 @@ export default function TermsPage() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">Disclaimer and Liability</h2>
+              <h2 className="text-2xl font-semibold text-foreground mb-4">
+                Disclaimer and Liability
+              </h2>
               <p>
-                Dilag is provided &quot;as is&quot; without warranties. To the maximum extent permitted by law, Dilag is not liable for indirect or consequential damages.
+                Dilag is provided &quot;as is&quot; without warranties. To the maximum extent
+                permitted by law, Dilag is not liable for indirect or consequential damages.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Changes</h2>
-              <p>We may update these terms from time to time. Continued use constitutes acceptance of updates.</p>
+              <p>
+                We may update these terms from time to time. Continued use constitutes acceptance of
+                updates.
+              </p>
             </section>
 
             <section>
@@ -71,5 +79,5 @@ export default function TermsPage() {
         </div>
       </main>
     </div>
-  );
+  )
 }

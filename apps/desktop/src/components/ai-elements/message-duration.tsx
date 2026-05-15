@@ -1,24 +1,24 @@
-import { useElapsedTime } from "@/hooks/use-elapsed-time";
-import { cn } from "@/lib/utils";
-import { DilagIcon } from "@/components/blocks/branding/dilag-icon";
-import type { Message } from "@/context/session-store";
+import { useElapsedTime } from "@/hooks/use-elapsed-time"
+import { cn } from "@/lib/utils"
+import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
+import type { Message } from "@/context/session-store"
 
 interface MessageDurationProps {
-  message: Message;
-  className?: string;
+  message: Message
+  className?: string
 }
 
 export function MessageDuration({ message, className }: MessageDurationProps) {
-  const elapsed = useElapsedTime(message.time.created, message.time.completed);
+  const elapsed = useElapsedTime(message.time.created, message.time.completed)
   // Use time.completed as source of truth - isStreaming can be unreliable
-  const isComplete = message.time.completed !== undefined;
+  const isComplete = message.time.completed !== undefined
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 text-muted-foreground transition-opacity",
         isComplete ? "opacity-60" : "opacity-90",
-        className
+        className,
       )}
     >
       <DilagIcon animated={!isComplete} className="size-3.5" />
@@ -26,5 +26,5 @@ export function MessageDuration({ message, className }: MessageDurationProps) {
         {isComplete ? `Took ${elapsed}` : elapsed}
       </span>
     </span>
-  );
+  )
 }

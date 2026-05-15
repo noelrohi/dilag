@@ -1,20 +1,20 @@
-import { memo } from "react";
-import type { NodeProps } from "@xyflow/react";
-import { IPhoneFrame } from "@/components/blocks/preview/iphone-frame";
-import { DilagIcon } from "@/components/blocks/branding/dilag-icon";
-import { cn } from "@/lib/utils";
+import { memo } from "react"
+import type { NodeProps } from "@xyflow/react"
+import { IPhoneFrame } from "@/components/blocks/preview/iphone-frame"
+import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
+import { cn } from "@/lib/utils"
 
 // Matches the dimensions used in screen-node.tsx
-const WEB_WIDTH = 640;
-const WEB_HEIGHT = 400;
+const WEB_WIDTH = 640
+const WEB_HEIGHT = 400
 
 export interface GhostScreenNodeData extends Record<string, unknown> {
-  platform: "mobile" | "web";
+  platform: "mobile" | "web"
 }
 
 function GhostScreenNodeComponent({ data }: NodeProps) {
-  const { platform } = data as GhostScreenNodeData;
-  const isMobile = platform === "mobile";
+  const { platform } = data as GhostScreenNodeData
+  const isMobile = platform === "mobile"
 
   const ghostContent = (
     <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -24,9 +24,7 @@ function GhostScreenNodeComponent({ data }: NodeProps) {
         <DilagIcon animated className="size-8 text-primary" />
       </div>
       <div className="flex flex-col items-center gap-2">
-        <span className="text-sm font-medium text-foreground/70 animate-pulse">
-          Designing...
-        </span>
+        <span className="text-sm font-medium text-foreground/70 animate-pulse">Designing...</span>
         <div className="flex gap-1.5">
           <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:0ms]" />
           <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:300ms]" />
@@ -34,15 +32,12 @@ function GhostScreenNodeComponent({ data }: NodeProps) {
         </div>
       </div>
     </div>
-  );
+  )
 
   if (isMobile) {
     return (
       <div className="pointer-events-none select-none">
-        <IPhoneFrame
-          className="!bg-[#1a1a1a]/80"
-          screenClassName="!bg-black/50"
-        >
+        <IPhoneFrame className="!bg-[#1a1a1a]/80" screenClassName="!bg-black/50">
           <div
             className={cn(
               "w-full h-full rounded-[34px] overflow-hidden",
@@ -57,7 +52,7 @@ function GhostScreenNodeComponent({ data }: NodeProps) {
           <div className="h-4 w-24 mx-auto rounded-md bg-muted-foreground/15 animate-pulse" />
         </div>
       </div>
-    );
+    )
   }
 
   // Web platform ghost
@@ -81,15 +76,13 @@ function GhostScreenNodeComponent({ data }: NodeProps) {
           <div className="h-4 w-36 ml-3 rounded-md bg-muted-foreground/15 animate-pulse" />
         </div>
         {/* Content area */}
-        <div className="flex-1 h-[calc(100%-36px)]">
-          {ghostContent}
-        </div>
+        <div className="flex-1 h-[calc(100%-36px)]">{ghostContent}</div>
       </div>
       <div className="mt-3 text-center">
         <div className="h-4 w-28 mx-auto rounded-md bg-muted-foreground/15 animate-pulse" />
       </div>
     </div>
-  );
+  )
 }
 
-export const GhostScreenNode = memo(GhostScreenNodeComponent);
+export const GhostScreenNode = memo(GhostScreenNodeComponent)

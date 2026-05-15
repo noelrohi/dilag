@@ -28,9 +28,9 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `bun run dev` | Start dev server |
-| `bun run build` | Production build |
+| Command         | Description             |
+| --------------- | ----------------------- |
+| `bun run dev`   | Start dev server        |
+| `bun run build` | Production build        |
 | `bun run start` | Start production server |
-| `bun run lint` | Run ESLint |
+| `bun run lint`  | Run ESLint              |

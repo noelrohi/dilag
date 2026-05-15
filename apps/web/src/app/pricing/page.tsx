@@ -1,9 +1,9 @@
-import Link from "next/link";
-import { Button } from "@dilag/ui/button";
-import { Badge } from "@dilag/ui/badge";
-import { SiteHeader } from "@/components/site-header";
-import { DOWNLOAD_URL } from "@/lib/constants";
-import { Check, Sparkle, DownloadSimple } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link"
+import { Button } from "@dilag/ui/button"
+import { Badge } from "@dilag/ui/badge"
+import { SiteHeader } from "@/components/site-header"
+import { DOWNLOAD_URL } from "@/lib/constants"
+import { Check, Sparkle, DownloadSimple } from "@phosphor-icons/react/dist/ssr"
 
 export default function PricingPage() {
   return (
@@ -32,7 +32,9 @@ export default function PricingPage() {
           <div className="flex flex-col p-8 rounded-2xl border-2 border-primary bg-primary/5">
             <div className="mb-4">
               <h2 className="text-xl font-semibold mb-1">Dilag</h2>
-              <p className="text-sm text-muted-foreground">All features included, no account required</p>
+              <p className="text-sm text-muted-foreground">
+                All features included, no account required
+              </p>
             </div>
 
             <div className="mb-8">
@@ -65,10 +67,13 @@ export default function PricingPage() {
 
         <div className="text-center mt-10">
           <p className="text-sm text-muted-foreground">
-            Questions? <Link href="/faq" className="text-primary hover:text-primary/80 font-medium">Read the FAQ</Link>
+            Questions?{" "}
+            <Link href="/faq" className="text-primary hover:text-primary/80 font-medium">
+              Read the FAQ
+            </Link>
           </p>
         </div>
       </main>
     </div>
-  );
+  )
 }

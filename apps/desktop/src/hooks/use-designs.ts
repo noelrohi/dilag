@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { invoke } from "@tauri-apps/api/core";
+import { useQuery } from "@tanstack/react-query"
+import { bridge } from "@/lib/bridge"
 
 export type ViolationRule =
   | "keyframes"
@@ -7,24 +7,24 @@ export type ViolationRule =
   | "real_url"
   | "emoji_as_icon"
   | "animation_css"
-  | "decorative_animation";
+  | "decorative_animation"
 
 export interface Violation {
-  rule: ViolationRule;
-  snippet: string;
+  rule: ViolationRule
+  snippet: string
 }
 
 export interface DesignFile {
-  filename: string;
-  title: string;
-  screen_type: string;
-  html: string;
-  modified_at: number;
-  violations: Violation[];
+  filename: string
+  title: string
+  screen_type: string
+  html: string
+  modified_at: number
+  violations: Violation[]
 }
 
 async function loadSessionDesigns(sessionCwd: string): Promise<DesignFile[]> {
-  return invoke<DesignFile[]>("load_session_designs", { sessionCwd });
+  return bridge.designs.loadForSession({ sessionCwd })
 }
 
 /**
@@ -33,9 +33,8 @@ async function loadSessionDesigns(sessionCwd: string): Promise<DesignFile[]> {
  */
 export const designKeys = {
   all: ["designs"] as const,
-  session: (sessionCwd: string | undefined) =>
-    [...designKeys.all, "session", sessionCwd] as const,
-};
+  session: (sessionCwd: string | undefined) => [...designKeys.all, "session", sessionCwd] as const,
+}
 
 /**
  * Hook to fetch designs for a session
@@ -45,11 +44,11 @@ export function useSessionDesigns(sessionCwd: string | undefined) {
   return useQuery({
     queryKey: designKeys.session(sessionCwd),
     queryFn: () => {
-      if (!sessionCwd) throw new Error("No session cwd");
-      return loadSessionDesigns(sessionCwd);
+      if (!sessionCwd) throw new Error("No session cwd")
+      return loadSessionDesigns(sessionCwd)
     },
     enabled: !!sessionCwd,
     refetchInterval: 2000, // Poll every 2 seconds
     staleTime: 1000, // Consider data stale after 1 second
-  });
+  })
 }

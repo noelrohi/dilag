@@ -1,21 +1,21 @@
-import { memo } from "react";
-import { Button } from "@dilag/ui/button";
-import { MagicStick, Copy, CloseCircle } from "@solar-icons/react";
-import { cn } from "@/lib/utils";
-import type { ElementInfo } from "@/context/element-selection-store";
-import { toast } from "sonner";
+import { memo } from "react"
+import { Button } from "@dilag/ui/button"
+import { MagicStick, Copy, CloseCircle } from "@solar-icons/react"
+import { cn } from "@/lib/utils"
+import type { ElementInfo } from "@/context/element-selection-store"
+import { toast } from "sonner"
 
 interface ElementSelectionMenuProps {
   /** The selected element info */
-  element: ElementInfo;
+  element: ElementInfo
   /** Scale factor of the iframe */
-  scale: number;
+  scale: number
   /** Offset from the container */
-  offset?: { x: number; y: number };
+  offset?: { x: number; y: number }
   /** Callback when "Edit with AI" is clicked */
-  onEditWithAI: () => void;
+  onEditWithAI: () => void
   /** Callback to close/deselect */
-  onClose: () => void;
+  onClose: () => void
 }
 
 /**
@@ -35,18 +35,18 @@ function ElementSelectionMenuComponent({
     y: element.rect.y * scale + offset.y,
     width: element.rect.width * scale,
     height: element.rect.height * scale,
-  };
+  }
 
   // Position menu above the element, centered horizontally
   const menuStyle = {
     left: scaledRect.x + scaledRect.width / 2,
     top: scaledRect.y - 8, // 8px gap above element
-  };
+  }
 
   const handleCopySelector = () => {
-    navigator.clipboard.writeText(element.selector);
-    toast.success("Selector copied to clipboard");
-  };
+    navigator.clipboard.writeText(element.selector)
+    toast.success("Selector copied to clipboard")
+  }
 
   return (
     <div
@@ -55,7 +55,7 @@ function ElementSelectionMenuComponent({
         "bg-popover/95 backdrop-blur-sm rounded-lg shadow-lg",
         "border border-border",
         "transform -translate-x-1/2 -translate-y-full",
-        "animate-in fade-in-0 zoom-in-95 duration-150"
+        "animate-in fade-in-0 zoom-in-95 duration-150",
       )}
       style={menuStyle}
       onClick={(e) => e.stopPropagation()}
@@ -96,7 +96,7 @@ function ElementSelectionMenuComponent({
         <CloseCircle size={14} />
       </Button>
     </div>
-  );
+  )
 }
 
-export const ElementSelectionMenu = memo(ElementSelectionMenuComponent);
+export const ElementSelectionMenu = memo(ElementSelectionMenuComponent)

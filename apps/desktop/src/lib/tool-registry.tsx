@@ -1,5 +1,5 @@
-import type { ReactNode, FC } from "react";
-import type { ToolState } from "@/context/session-store";
+import type { ReactNode, FC } from "react"
+import type { ToolState } from "@/context/session-store"
 import {
   Monitor,
   Magnifer,
@@ -16,41 +16,41 @@ import {
   Pallete2,
   MagicStick,
   QuestionCircle,
-} from "@solar-icons/react";
-import { Streamdown } from "streamdown";
-import { cn } from "@/lib/utils";
+} from "@solar-icons/react"
+import { Streamdown } from "streamdown"
+import { cn } from "@/lib/utils"
 
 // Tool props passed to render functions
 export interface ToolRenderProps {
-  tool: string;
-  input: Record<string, unknown>;
-  output?: string;
-  error?: string;
-  status: ToolState["status"];
-  metadata?: Record<string, unknown>;
+  tool: string
+  input: Record<string, unknown>
+  output?: string
+  error?: string
+  status: ToolState["status"]
+  metadata?: Record<string, unknown>
 }
 
 // Structured subtitle with truncatable and fixed parts
 export interface StructuredSubtitle {
-  text: ReactNode;      // Truncatable part (filename, description)
-  suffix?: ReactNode;   // Fixed part (line counts, stats) - never truncated
+  text: ReactNode // Truncatable part (filename, description)
+  suffix?: ReactNode // Fixed part (line counts, stats) - never truncated
 }
 
 // Icon type that works with both Lucide and Solar icons
-type IconComponent = FC<{ size?: number; className?: string }>;
+type IconComponent = FC<{ size?: number; className?: string }>
 
 // Tool registration config
 export interface ToolConfig {
-  icon: IconComponent;
-  title: (props: ToolRenderProps) => string;
-  chipLabel?: (props: ToolRenderProps) => string | undefined;
-  subtitle?: (props: ToolRenderProps) => ReactNode | StructuredSubtitle;
-  content?: (props: ToolRenderProps) => ReactNode;
+  icon: IconComponent
+  title: (props: ToolRenderProps) => string
+  chipLabel?: (props: ToolRenderProps) => string | undefined
+  subtitle?: (props: ToolRenderProps) => ReactNode | StructuredSubtitle
+  content?: (props: ToolRenderProps) => ReactNode
 }
 
 // Type guard for structured subtitle
 export function isStructuredSubtitle(value: unknown): value is StructuredSubtitle {
-  return typeof value === "object" && value !== null && "text" in value;
+  return typeof value === "object" && value !== null && "text" in value
 }
 
 // Extract common input fields (try multiple possible keys)
@@ -74,10 +74,10 @@ const getInput = (props: ToolRenderProps) => ({
     props.input.new ??
     props.input.after) as string | undefined,
   content: props.input.content as string | undefined,
-});
+})
 
 // Get filename from path
-const filename = (path?: string) => path?.split("/").pop() || "";
+const filename = (path?: string) => path?.split("/").pop() || ""
 
 // Language map for file extensions
 const LANG_MAP: Record<string, string> = {
@@ -117,44 +117,38 @@ const LANG_MAP: Record<string, string> = {
   xml: "xml",
   vue: "vue",
   svelte: "svelte",
-};
+}
 
 // Get language from file extension for syntax highlighting
 const getLanguage = (path?: string, content?: string): string => {
   // Try to detect from file extension first
   if (path) {
-    const ext = path.split(".").pop()?.toLowerCase();
-    if (ext && LANG_MAP[ext]) return LANG_MAP[ext];
+    const ext = path.split(".").pop()?.toLowerCase()
+    if (ext && LANG_MAP[ext]) return LANG_MAP[ext]
   }
 
   // Fallback: detect from content
   if (content) {
-    const trimmed = content.trimStart();
-    if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html"))
-      return "html";
-    if (trimmed.startsWith("<?xml")) return "xml";
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json";
-    if (trimmed.startsWith("<!-") && trimmed.includes("<template"))
-      return "vue";
-    if (trimmed.startsWith("---")) return "yaml";
-    if (trimmed.startsWith("#!") && trimmed.includes("python")) return "python";
-    if (
-      trimmed.startsWith("#!") &&
-      (trimmed.includes("bash") || trimmed.includes("sh"))
-    )
-      return "bash";
-    if (trimmed.startsWith("package ") && trimmed.includes("func "))
-      return "go";
-    if (trimmed.startsWith("use ") || trimmed.includes("fn ")) return "rust";
+    const trimmed = content.trimStart()
+    if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) return "html"
+    if (trimmed.startsWith("<?xml")) return "xml"
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json"
+    if (trimmed.startsWith("<!-") && trimmed.includes("<template")) return "vue"
+    if (trimmed.startsWith("---")) return "yaml"
+    if (trimmed.startsWith("#!") && trimmed.includes("python")) return "python"
+    if (trimmed.startsWith("#!") && (trimmed.includes("bash") || trimmed.includes("sh")))
+      return "bash"
+    if (trimmed.startsWith("package ") && trimmed.includes("func ")) return "go"
+    if (trimmed.startsWith("use ") || trimmed.includes("fn ")) return "rust"
   }
 
-  return "text";
-};
+  return "text"
+}
 
 // Todo type
 interface Todo {
-  content: string;
-  status: "pending" | "in_progress" | "completed";
+  content: string
+  status: "pending" | "in_progress" | "completed"
 }
 
 // Tool registry - all tool configs in one place
@@ -165,35 +159,33 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: () => "Read",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
-      const file = filename(getInput(p).filePath);
+      const file = filename(getInput(p).filePath)
       // Use metadata.preview if available (first 20 lines from backend)
-      const preview = p.metadata?.preview as string | undefined;
-      const lines =
-        preview?.split("\n").length ?? p.output?.split("\n").length ?? 0;
-      if (!file) return undefined;
+      const preview = p.metadata?.preview as string | undefined
+      const lines = preview?.split("\n").length ?? p.output?.split("\n").length ?? 0
+      if (!file) return undefined
       return {
         text: file,
-        suffix: lines > 0 ? <span className="text-muted-foreground/70">({lines} lines)</span> : undefined,
-      };
+        suffix:
+          lines > 0 ? <span className="text-muted-foreground/70">({lines} lines)</span> : undefined,
+      }
     },
     content: (p) => {
-      const { filePath } = getInput(p);
+      const { filePath } = getInput(p)
       // Prefer metadata.preview for display (more concise)
-      const content = (p.metadata?.preview as string) ?? p.output;
-      if (!content) return null;
+      const content = (p.metadata?.preview as string) ?? p.output
+      if (!content) return null
 
-      const lang = getLanguage(filePath, content);
+      const lang = getLanguage(filePath, content)
       const truncated =
-        content.length > 3000
-          ? content.slice(0, 3000) + "\n// ... truncated"
-          : content;
-      const markdown = "```" + lang + "\n" + truncated + "\n```";
+        content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content
+      const markdown = "```" + lang + "\n" + truncated + "\n```"
 
       return (
         <div className="text-xs">
           <Streamdown>{markdown}</Streamdown>
         </div>
-      );
+      )
     },
   },
 
@@ -202,12 +194,12 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: () => "Edit",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
-      const { filePath } = getInput(p);
-      const file = filename(filePath);
+      const { filePath } = getInput(p)
+      const file = filename(filePath)
       const filediff = p.metadata?.filediff as
         | { additions?: number; deletions?: number }
-        | undefined;
-      if (!file && !filediff) return undefined;
+        | undefined
+      if (!file && !filediff) return undefined
       return {
         text: file,
         suffix: filediff && (
@@ -216,18 +208,18 @@ export const TOOLS: Record<string, ToolConfig> = {
             <span className="text-red-500">-{filediff.deletions ?? 0}</span>
           </>
         ),
-      };
+      }
     },
     content: (p) => {
-      const diff = p.metadata?.diff as string | undefined;
-      if (!diff) return null;
+      const diff = p.metadata?.diff as string | undefined
+      if (!diff) return null
 
-      const markdown = "```diff\n" + diff + "\n```";
+      const markdown = "```diff\n" + diff + "\n```"
       return (
         <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
           <Streamdown>{markdown}</Streamdown>
         </div>
-      );
+      )
     },
   },
 
@@ -235,33 +227,33 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: Monitor,
     title: () => "Shell",
     chipLabel: (p) => {
-      const desc = p.metadata?.description as string | undefined;
-      const { description, command } = getInput(p);
-      if (desc) return desc.slice(0, 25);
-      if (description) return description.slice(0, 25);
-      if (command) return command.slice(0, 20);
-      return undefined;
+      const desc = p.metadata?.description as string | undefined
+      const { description, command } = getInput(p)
+      if (desc) return desc.slice(0, 25)
+      if (description) return description.slice(0, 25)
+      if (command) return command.slice(0, 20)
+      return undefined
     },
     subtitle: (p) => {
-      const desc = p.metadata?.description as string | undefined;
-      const { description, command } = getInput(p);
-      const exit = p.metadata?.exit as number | null | undefined;
+      const desc = p.metadata?.description as string | undefined
+      const { description, command } = getInput(p)
+      const exit = p.metadata?.exit as number | null | undefined
       const exitIndicator =
         exit !== undefined && exit !== null && exit !== 0 ? (
           <span className="text-red-500">(exit {exit})</span>
-        ) : null;
+        ) : null
       return {
         text: desc || description || command?.slice(0, 50),
         suffix: exitIndicator,
-      };
+      }
     },
     content: (p) => {
-      const { command } = getInput(p);
-      const output = (p.metadata?.output as string) ?? p.output;
-      const exit = p.metadata?.exit as number | null | undefined;
-      const hasError = exit !== undefined && exit !== null && exit !== 0;
+      const { command } = getInput(p)
+      const output = (p.metadata?.output as string) ?? p.output
+      const exit = p.metadata?.exit as number | null | undefined
+      const hasError = exit !== undefined && exit !== null && exit !== 0
 
-      if (!command && !output) return null;
+      if (!command && !output) return null
 
       return (
         <div className="space-y-2">
@@ -272,16 +264,18 @@ export const TOOLS: Record<string, ToolConfig> = {
             </div>
           )}
           {output && (
-            <pre className={cn(
-              "text-xs font-mono leading-relaxed max-h-40 overflow-auto",
-              "whitespace-pre-wrap break-words",
-              hasError ? "text-red-400/80" : "text-muted-foreground"
-            )}>
+            <pre
+              className={cn(
+                "text-xs font-mono leading-relaxed max-h-40 overflow-auto",
+                "whitespace-pre-wrap break-words",
+                hasError ? "text-red-400/80" : "text-muted-foreground",
+              )}
+            >
               {output.length > 2000 ? output.slice(0, 2000) + "\n..." : output}
             </pre>
           )}
         </div>
-      );
+      )
     },
   },
 
@@ -290,31 +284,29 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: () => "Write",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
-      const { filePath, content } = getInput(p);
-      const file = filename(filePath);
-      const lines = content?.split("\n").length ?? 0;
-      if (!file && lines === 0) return undefined;
+      const { filePath, content } = getInput(p)
+      const file = filename(filePath)
+      const lines = content?.split("\n").length ?? 0
+      if (!file && lines === 0) return undefined
       return {
         text: file || "file",
         suffix: <span className="text-green-500">+{lines}</span>,
-      };
+      }
     },
     content: (p) => {
-      const { filePath, content } = getInput(p);
-      if (!content) return null;
+      const { filePath, content } = getInput(p)
+      if (!content) return null
 
-      const lang = getLanguage(filePath, content);
+      const lang = getLanguage(filePath, content)
       const truncated =
-        content.length > 3000
-          ? content.slice(0, 3000) + "\n// ... truncated"
-          : content;
-      const markdown = "```" + lang + "\n" + truncated + "\n```";
+        content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content
+      const markdown = "```" + lang + "\n" + truncated + "\n```"
 
       return (
         <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
           <Streamdown>{markdown}</Streamdown>
         </div>
-      );
+      )
     },
   },
 
@@ -322,14 +314,14 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: ClipboardList,
     title: () => "To-dos",
     subtitle: (p) => {
-      const todos = p.input.todos as Todo[] | undefined;
-      if (!todos?.length) return undefined;
-      const completed = todos.filter((t) => t.status === "completed").length;
-      return `${completed}/${todos.length}`;
+      const todos = p.input.todos as Todo[] | undefined
+      if (!todos?.length) return undefined
+      const completed = todos.filter((t) => t.status === "completed").length
+      return `${completed}/${todos.length}`
     },
     content: (p) => {
-      const todos = p.input.todos as Todo[] | undefined;
-      if (!todos?.length) return null;
+      const todos = p.input.todos as Todo[] | undefined
+      if (!todos?.length) return null
       return (
         <div className="space-y-1">
           {todos.map((todo, i) => (
@@ -351,7 +343,7 @@ export const TOOLS: Record<string, ToolConfig> = {
             </div>
           ))}
         </div>
-      );
+      )
     },
   },
 
@@ -360,16 +352,20 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: () => "Glob",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
-      const pattern = getInput(p).pattern;
-      const count = p.metadata?.count as number | undefined;
-      const truncated = p.metadata?.truncated as boolean | undefined;
+      const pattern = getInput(p).pattern
+      const count = p.metadata?.count as number | undefined
+      const truncated = p.metadata?.truncated as boolean | undefined
       if (count !== undefined) {
         return {
           text: pattern,
-          suffix: <span className="text-muted-foreground/70">({count} files{truncated ? "+" : ""})</span>,
-        };
+          suffix: (
+            <span className="text-muted-foreground/70">
+              ({count} files{truncated ? "+" : ""})
+            </span>
+          ),
+        }
       }
-      return pattern;
+      return pattern
     },
     content: (p) =>
       p.output && (
@@ -385,17 +381,21 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: () => "List",
     chipLabel: (p) => filename(getInput(p).filePath) || "directory",
     subtitle: (p) => {
-      const { filePath } = getInput(p);
-      const count = p.metadata?.count as number | undefined;
-      const truncated = p.metadata?.truncated as boolean | undefined;
-      const path = filePath ? filename(filePath) || filePath : "directory";
+      const { filePath } = getInput(p)
+      const count = p.metadata?.count as number | undefined
+      const truncated = p.metadata?.truncated as boolean | undefined
+      const path = filePath ? filename(filePath) || filePath : "directory"
       if (count !== undefined) {
         return {
           text: path,
-          suffix: <span className="text-muted-foreground/70">({count} items{truncated ? "+" : ""})</span>,
-        };
+          suffix: (
+            <span className="text-muted-foreground/70">
+              ({count} items{truncated ? "+" : ""})
+            </span>
+          ),
+        }
       }
-      return path;
+      return path
     },
     content: (p) =>
       p.output && (
@@ -411,16 +411,20 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: () => "Grep",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
-      const pattern = getInput(p).pattern;
-      const matches = p.metadata?.matches as number | undefined;
-      const truncated = p.metadata?.truncated as boolean | undefined;
+      const pattern = getInput(p).pattern
+      const matches = p.metadata?.matches as number | undefined
+      const truncated = p.metadata?.truncated as boolean | undefined
       if (matches !== undefined) {
         return {
           text: pattern,
-          suffix: <span className="text-muted-foreground/70">({matches} matches{truncated ? "+" : ""})</span>,
-        };
+          suffix: (
+            <span className="text-muted-foreground/70">
+              ({matches} matches{truncated ? "+" : ""})
+            </span>
+          ),
+        }
       }
-      return pattern;
+      return pattern
     },
     content: (p) =>
       p.output && (
@@ -435,29 +439,29 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: Global,
     title: () => "Fetch",
     chipLabel: (p) => {
-      const url = getInput(p).url;
+      const url = getInput(p).url
       try {
-        return url ? new URL(url).hostname : undefined;
+        return url ? new URL(url).hostname : undefined
       } catch {
-        return url?.slice(0, 20);
+        return url?.slice(0, 20)
       }
     },
     subtitle: (p) => {
-      const { url, prompt } = getInput(p);
+      const { url, prompt } = getInput(p)
       // Show hostname and prompt summary
-      let hostname = "";
+      let hostname = ""
       try {
-        hostname = url ? new URL(url).hostname : "";
+        hostname = url ? new URL(url).hostname : ""
       } catch {
-        hostname = url?.slice(0, 30) ?? "";
+        hostname = url?.slice(0, 30) ?? ""
       }
       const promptSummary = prompt
         ? ` - "${prompt.slice(0, 40)}${prompt.length > 40 ? "..." : ""}"`
-        : "";
-      return hostname + promptSummary;
+        : ""
+      return hostname + promptSummary
     },
     content: (p) => {
-      const { url, prompt } = getInput(p);
+      const { url, prompt } = getInput(p)
       return (
         <div className="space-y-2">
           {url && (
@@ -481,7 +485,7 @@ export const TOOLS: Record<string, ToolConfig> = {
             </div>
           )}
         </div>
-      );
+      )
     },
   },
 
@@ -490,14 +494,12 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: () => "Task",
     chipLabel: (p) => getInput(p).description?.slice(0, 25),
     subtitle: (p) => {
-      const { description } = getInput(p);
+      const { description } = getInput(p)
       const summary = p.metadata?.summary as
         | Array<{ tool: string; state: { status: string } }>
-        | undefined;
+        | undefined
       if (summary?.length) {
-        const completed = summary.filter(
-          (s) => s.state.status === "completed",
-        ).length;
+        const completed = summary.filter((s) => s.state.status === "completed").length
         return (
           <>
             {description}{" "}
@@ -505,19 +507,19 @@ export const TOOLS: Record<string, ToolConfig> = {
               ({completed}/{summary.length} tools)
             </span>
           </>
-        );
+        )
       }
-      return description;
+      return description
     },
     content: (p) => {
-      const { prompt } = getInput(p);
+      const { prompt } = getInput(p)
       const summary = p.metadata?.summary as
         | Array<{
-            id: string;
-            tool: string;
-            state: { status: string; title?: string };
+            id: string
+            tool: string
+            state: { status: string; title?: string }
           }>
-        | undefined;
+        | undefined
 
       return (
         <div className="space-y-2">
@@ -545,9 +547,7 @@ export const TOOLS: Record<string, ToolConfig> = {
                   />
                   <span className="text-muted-foreground">{s.tool}</span>
                   {s.state.title && (
-                    <span className="text-foreground/70 truncate">
-                      {s.state.title}
-                    </span>
+                    <span className="text-foreground/70 truncate">{s.state.title}</span>
                   )}
                 </div>
               ))}
@@ -560,7 +560,7 @@ export const TOOLS: Record<string, ToolConfig> = {
             </pre>
           )}
         </div>
-      );
+      )
     },
   },
 
@@ -568,25 +568,23 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: Pallete2,
     title: () => "Theme",
     chipLabel: (p) => {
-      const name = p.input.name as string | undefined;
-      return name?.slice(0, 20);
+      const name = p.input.name as string | undefined
+      return name?.slice(0, 20)
     },
     subtitle: (p) => {
-      const name = p.input.name as string | undefined;
-      const style = p.input.style as string | undefined;
+      const name = p.input.name as string | undefined
+      const style = p.input.style as string | undefined
       return (
         <>
           <Pallete2 size={12} className="inline mr-1 text-primary" />
           <span className="text-primary">{name ?? "Theme"}</span>
-          {style && (
-            <span className="text-muted-foreground ml-1">({style})</span>
-          )}
+          {style && <span className="text-muted-foreground ml-1">({style})</span>}
         </>
-      );
+      )
     },
     content: (p) => {
-      const name = p.input.name as string | undefined;
-      const style = p.input.style as string | undefined;
+      const name = p.input.name as string | undefined
+      const style = p.input.style as string | undefined
 
       // Extract color values from flat input
       const colorKeys = [
@@ -598,15 +596,13 @@ export const TOOLS: Record<string, ToolConfig> = {
         "card",
         "border",
         "destructive",
-      ];
+      ]
       const colors = colorKeys
         .map((key) => ({ key, value: p.input[key] as string }))
-        .filter((c) => c.value);
+        .filter((c) => c.value)
 
       if (colors.length === 0) {
-        return (
-          <div className="text-xs text-muted-foreground">Creating theme...</div>
-        );
+        return <div className="text-xs text-muted-foreground">Creating theme...</div>
       }
 
       return (
@@ -625,7 +621,7 @@ export const TOOLS: Record<string, ToolConfig> = {
             ))}
           </div>
         </div>
-      );
+      )
     },
   },
 
@@ -633,25 +629,23 @@ export const TOOLS: Record<string, ToolConfig> = {
     icon: MagicStick,
     title: (p) => {
       // Try different possible input keys for skill name
-      const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined;
-      if (!name) return "Skill";
+      const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined
+      if (!name) return "Skill"
       // Convert kebab-case to Title Case
       return name
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
+        .join(" ")
     },
     content: (p) => {
       // Show input for debugging if no recognized keys
-      const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined;
+      const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined
       if (!name && Object.keys(p.input).length > 0) {
         return (
-          <pre className="text-xs text-muted-foreground">
-            {JSON.stringify(p.input, null, 2)}
-          </pre>
-        );
+          <pre className="text-xs text-muted-foreground">{JSON.stringify(p.input, null, 2)}</pre>
+        )
       }
-      return null;
+      return null
     },
   },
 
@@ -659,54 +653,58 @@ export const TOOLS: Record<string, ToolConfig> = {
   question: {
     icon: QuestionCircle,
     title: (p) => {
-      const questions = p.input.questions as Array<{ header?: string }> | undefined;
-      const firstHeader = questions?.[0]?.header;
+      const questions = p.input.questions as Array<{ header?: string }> | undefined
+      const firstHeader = questions?.[0]?.header
       if (p.status === "completed") {
-        return "Asked question";
+        return "Asked question"
       }
-      return firstHeader || "Question";
+      return firstHeader || "Question"
     },
     chipLabel: (p) => {
-      const questions = p.input.questions as Array<{ header?: string }> | undefined;
-      return questions?.[0]?.header;
+      const questions = p.input.questions as Array<{ header?: string }> | undefined
+      return questions?.[0]?.header
     },
     subtitle: (p) => {
-      const questions = p.input.questions as Array<{ question?: string; header?: string }> | undefined;
-      const answers = p.metadata?.answers as string[][] | undefined;
-      const count = questions?.length ?? 0;
+      const questions = p.input.questions as
+        | Array<{ question?: string; header?: string }>
+        | undefined
+      const answers = p.metadata?.answers as string[][] | undefined
+      const count = questions?.length ?? 0
 
       if (p.status === "completed" && answers?.length) {
         // Clean count indicator when completed
         if (count === 1) {
           // For single question, show the first answer briefly
-          const firstAnswer = answers[0]?.[0];
+          const firstAnswer = answers[0]?.[0]
           if (firstAnswer) {
-            return firstAnswer.length > 30 ? firstAnswer.slice(0, 30) + "…" : firstAnswer;
+            return firstAnswer.length > 30 ? firstAnswer.slice(0, 30) + "…" : firstAnswer
           }
         }
         // For multiple questions, just show count
-        return `${count} answered`;
+        return `${count} answered`
       }
 
       // Show first question text when running/pending
-      const firstQuestion = questions?.[0]?.question;
+      const firstQuestion = questions?.[0]?.question
       if (firstQuestion) {
-        return firstQuestion.length > 50 ? firstQuestion.slice(0, 50) + "..." : firstQuestion;
+        return firstQuestion.length > 50 ? firstQuestion.slice(0, 50) + "..." : firstQuestion
       }
-      return undefined;
+      return undefined
     },
     content: (p) => {
-      const questions = p.input.questions as Array<{ question: string; header?: string; options?: Array<{ label: string }> }> | undefined;
-      const answers = p.metadata?.answers as string[][] | undefined;
+      const questions = p.input.questions as
+        | Array<{ question: string; header?: string; options?: Array<{ label: string }> }>
+        | undefined
+      const answers = p.metadata?.answers as string[][] | undefined
 
-      if (!questions?.length) return null;
+      if (!questions?.length) return null
 
       if (p.status === "completed" && answers) {
         // Light, minimal Q&A display
         return (
           <div className="space-y-1.5">
             {questions.map((q, idx) => {
-              const answer = answers[idx]?.join(", ") || "—";
+              const answer = answers[idx]?.join(", ") || "—"
               return (
                 <div key={idx} className="flex items-baseline gap-2 text-xs">
                   <span className="text-muted-foreground/50 shrink-0">
@@ -714,10 +712,10 @@ export const TOOLS: Record<string, ToolConfig> = {
                   </span>
                   <span className="text-muted-foreground">{answer}</span>
                 </div>
-              );
+              )
             })}
           </div>
-        );
+        )
       }
 
       // Show questions with options when running/pending
@@ -744,17 +742,17 @@ export const TOOLS: Record<string, ToolConfig> = {
             </div>
           ))}
         </div>
-      );
+      )
     },
   },
-};
+}
 
 // Default config for unknown tools
 export const DEFAULT_TOOL: ToolConfig = {
   icon: Settings,
   title: (p) => p.tool,
   content: (p) => {
-    const hasInput = Object.keys(p.input).length > 0;
+    const hasInput = Object.keys(p.input).length > 0
     return (
       <>
         {hasInput && (
@@ -769,11 +767,11 @@ export const DEFAULT_TOOL: ToolConfig = {
           </pre>
         )}
       </>
-    );
+    )
   },
-};
+}
 
 // Get tool config
 export function getToolConfig(name: string): ToolConfig {
-  return TOOLS[name] ?? DEFAULT_TOOL;
+  return TOOLS[name] ?? DEFAULT_TOOL
 }

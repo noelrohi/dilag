@@ -1,13 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { GlobalEventsProvider } from "@/context/global-events";
-import { MenuEventsProvider } from "@/context/menu-events";
-import { UpdaterProvider } from "@/context/updater-context";
-import { ThemeProvider } from "@/components/theme-provider";
-import { ErrorBoundary } from "@/components/blocks/errors/error-boundary";
-import { Toaster } from "@dilag/ui/sonner";
-import { NotificationProvider } from "@/context/notification";
-import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import { GlobalEventsProvider } from "@/context/global-events"
+import { MenuEventsProvider } from "@/context/menu-events"
+import { UpdaterProvider } from "@/context/updater-context"
+import { ThemeProvider } from "@/components/theme-provider"
+import { ErrorBoundary } from "@/components/blocks/errors/error-boundary"
+import { Toaster } from "@dilag/ui/sonner"
+import { NotificationProvider } from "@/context/notification"
+import type { ReactNode } from "react"
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,10 +17,10 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
   },
-});
+})
 
 interface AppProvidersProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
 /**
@@ -44,9 +44,7 @@ export function AppProviders({ children }: AppProvidersProps) {
           <GlobalEventsProvider>
             <NotificationProvider>
               <UpdaterProvider>
-                <MenuEventsProvider>
-                  {children}
-                </MenuEventsProvider>
+                <MenuEventsProvider>{children}</MenuEventsProvider>
               </UpdaterProvider>
             </NotificationProvider>
           </GlobalEventsProvider>
@@ -55,5 +53,5 @@ export function AppProviders({ children }: AppProvidersProps) {
         <Toaster />
       </ThemeProvider>
     </ErrorBoundary>
-  );
+  )
 }

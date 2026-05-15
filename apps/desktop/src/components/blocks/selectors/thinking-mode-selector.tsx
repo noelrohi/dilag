@@ -1,29 +1,31 @@
-import { Button } from "@dilag/ui/button";
-import { useModels } from "@/hooks/use-models";
-import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip";
+import { Button } from "@dilag/ui/button"
+import { useModels } from "@/hooks/use-models"
+import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
 
 // Colors for different thinking levels
 const variantColors: Record<string, string> = {
   low: "bg-blue-400",
   high: "bg-amber-400",
   max: "bg-rose-400",
-};
+}
 
 interface ThinkingModeSelectorProps {
-  className?: string;
+  className?: string
 }
 
 export function ThinkingModeSelector({ className }: ThinkingModeSelectorProps) {
-  const { variantList, currentVariant, cycleVariant } = useModels();
+  const { variantList, currentVariant, cycleVariant } = useModels()
 
   // Don't show if no variants available
   if (variantList.length === 0) {
-    return null;
+    return null
   }
 
-  const displayLabel = currentVariant ?? "Default";
-  const dotColor = currentVariant ? variantColors[currentVariant] ?? "bg-primary" : "bg-muted-foreground/50";
+  const displayLabel = currentVariant ?? "Default"
+  const dotColor = currentVariant
+    ? (variantColors[currentVariant] ?? "bg-primary")
+    : "bg-muted-foreground/50"
 
   return (
     <Tooltip>
@@ -43,5 +45,5 @@ export function ThinkingModeSelector({ className }: ThinkingModeSelectorProps) {
         <p>Thinking effort (click to cycle)</p>
       </TooltipContent>
     </Tooltip>
-  );
+  )
 }

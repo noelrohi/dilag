@@ -1,21 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@dilag/ui/dialog";
-import { Button } from "@dilag/ui/button";
-import { ArrowLeft, ArrowRight, CloseCircle } from "@solar-icons/react";
-import type { DesignFile } from "@/hooks/use-designs";
-import { cn } from "@/lib/utils";
-import { IPhoneFrame } from "./iphone-frame";
-import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
-import { getMobileViewportSize } from "@/lib/design-viewport";
+import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "@dilag/ui/dialog"
+import { Button } from "@dilag/ui/button"
+import { ArrowLeft, ArrowRight, CloseCircle } from "@solar-icons/react"
+import type { DesignFile } from "@/hooks/use-designs"
+import { cn } from "@/lib/utils"
+import { IPhoneFrame } from "./iphone-frame"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
+import { getMobileViewportSize } from "@/lib/design-viewport"
 
-const MOBILE_FRAME_SCREEN_WIDTH = 260; // matches iphone-frame screen width
+const MOBILE_FRAME_SCREEN_WIDTH = 260 // matches iphone-frame screen width
 
 interface PreviewCarouselProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  designs: DesignFile[];
-  initialIndex?: number;
-  platform?: "mobile" | "web";
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  designs: DesignFile[]
+  initialIndex?: number
+  platform?: "mobile" | "web"
 }
 
 export function PreviewCarousel({
@@ -25,53 +31,51 @@ export function PreviewCarousel({
   initialIndex = 0,
   platform = "web",
 }: PreviewCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex)
 
   // Reset index when designs change or dialog opens
   useEffect(() => {
     if (open) {
-      setCurrentIndex(Math.min(initialIndex, designs.length - 1));
+      setCurrentIndex(Math.min(initialIndex, designs.length - 1))
     }
-  }, [open, initialIndex, designs.length]);
+  }, [open, initialIndex, designs.length])
 
-  const currentDesign = designs[currentIndex];
+  const currentDesign = designs[currentIndex]
 
   const goNext = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % designs.length);
-  }, [designs.length]);
+    setCurrentIndex((prev) => (prev + 1) % designs.length)
+  }, [designs.length])
 
   const goPrev = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + designs.length) % designs.length);
-  }, [designs.length]);
+    setCurrentIndex((prev) => (prev - 1 + designs.length) % designs.length)
+  }, [designs.length])
 
   // Keyboard navigation
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        e.preventDefault();
-        goNext();
+        e.preventDefault()
+        goNext()
       } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        e.preventDefault();
-        goPrev();
+        e.preventDefault()
+        goPrev()
       }
-    };
+    }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, goNext, goPrev]);
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [open, goNext, goPrev])
 
-  const isMobile = platform === "mobile";
+  const isMobile = platform === "mobile"
   const mobileViewport = useMemo(() => {
-    if (!isMobile || !currentDesign) return null;
-    return getMobileViewportSize(currentDesign.html);
-  }, [currentDesign?.html, isMobile]);
-  const mobileScale = isMobile
-    ? MOBILE_FRAME_SCREEN_WIDTH / (mobileViewport?.width ?? 393)
-    : 1;
+    if (!isMobile || !currentDesign) return null
+    return getMobileViewportSize(currentDesign.html)
+  }, [currentDesign?.html, isMobile])
+  const mobileScale = isMobile ? MOBILE_FRAME_SCREEN_WIDTH / (mobileViewport?.width ?? 393) : 1
 
-  if (!currentDesign) return null;
+  if (!currentDesign) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -87,7 +91,7 @@ export function PreviewCarousel({
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:scale-95 data-[state=open]:scale-100",
-          "duration-200"
+          "duration-200",
         )}
       >
         {/* Accessibility - hidden title for screen readers */}
@@ -112,9 +116,7 @@ export function PreviewCarousel({
                       onClick={() => setCurrentIndex(index)}
                       className={cn(
                         "size-2 rounded-full transition-all duration-200",
-                        index === currentIndex
-                          ? "bg-white w-5"
-                          : "bg-white/25 hover:bg-white/40"
+                        index === currentIndex ? "bg-white w-5" : "bg-white/25 hover:bg-white/40",
                       )}
                     />
                   ))}
@@ -161,7 +163,7 @@ export function PreviewCarousel({
                     "bg-white/5 hover:bg-white/10 border border-white/10",
                     "text-white/60 hover:text-white",
                     "transition-all duration-200",
-                    "backdrop-blur-sm"
+                    "backdrop-blur-sm",
                   )}
                   onClick={goPrev}
                 >
@@ -176,7 +178,7 @@ export function PreviewCarousel({
                     "bg-white/5 hover:bg-white/10 border border-white/10",
                     "text-white/60 hover:text-white",
                     "transition-all duration-200",
-                    "backdrop-blur-sm"
+                    "backdrop-blur-sm",
                   )}
                   onClick={goNext}
                 >
@@ -189,7 +191,7 @@ export function PreviewCarousel({
             <div
               className={cn(
                 "relative transition-all duration-300 ease-out",
-                "flex items-center justify-center"
+                "flex items-center justify-center",
               )}
             >
               {isMobile ? (
@@ -217,7 +219,7 @@ export function PreviewCarousel({
                 <div
                   className={cn(
                     "relative bg-card rounded-lg overflow-hidden",
-                    "shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_25px_50px_-12px_rgba(0,0,0,0.8)]"
+                    "shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_25px_50px_-12px_rgba(0,0,0,0.8)]",
                   )}
                   style={{
                     width: 1000,
@@ -254,7 +256,7 @@ export function PreviewCarousel({
                       "text-xs font-medium truncate max-w-[120px]",
                       index === currentIndex
                         ? "bg-white/15 text-white"
-                        : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
+                        : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70",
                     )}
                   >
                     {design.title}
@@ -266,5 +268,5 @@ export function PreviewCarousel({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -152,13 +152,13 @@ dilag/
 
 ### Screen Overview Table
 
-| # | Screen | Route | File | Purpose |
-|---|--------|-------|------|---------|
-| 1 | Home | `/` | `routes/index.tsx` | Landing page with prompt composer and recent projects |
-| 2 | Studio | `/studio/$sessionId` | `routes/studio.$sessionId.tsx` | Main design workspace with chat and canvas |
-| 3 | Projects | `/projects` | `routes/projects.tsx` | Browse all projects with search and filtering |
-| 4 | Settings | `/settings` | `routes/settings.tsx` | App configuration, theme, model selection, updates |
-| 5 | Setup Wizard | (modal) | `blocks/setup-wizard.tsx` | OpenCode installation check/guidance |
+| #   | Screen       | Route                | File                           | Purpose                                               |
+| --- | ------------ | -------------------- | ------------------------------ | ----------------------------------------------------- |
+| 1   | Home         | `/`                  | `routes/index.tsx`             | Landing page with prompt composer and recent projects |
+| 2   | Studio       | `/studio/$sessionId` | `routes/studio.$sessionId.tsx` | Main design workspace with chat and canvas            |
+| 3   | Projects     | `/projects`          | `routes/projects.tsx`          | Browse all projects with search and filtering         |
+| 4   | Settings     | `/settings`          | `routes/settings.tsx`          | App configuration, theme, model selection, updates    |
+| 5   | Setup Wizard | (modal)              | `blocks/setup-wizard.tsx`      | OpenCode installation check/guidance                  |
 
 ---
 
@@ -209,14 +209,14 @@ dilag/
 
 #### UI Components Breakdown
 
-| Section | Component | Description |
-|---------|-----------|-------------|
-| Title Bar | Native Tauri | macOS transparent title bar with drag region |
-| Hero | Typography | Animated heading with gradient text |
-| Composer | `<PromptInput>` | Multi-line input with attachment support |
-| Model Selector | `<ModelSelector>` | Dropdown for Claude/GPT/Gemini selection |
-| Submit | `<Button>` | Purple arrow button, enabled when input present |
-| Projects Grid | `<ProjectCard>` | Clickable cards with screen thumbnails |
+| Section        | Component         | Description                                     |
+| -------------- | ----------------- | ----------------------------------------------- |
+| Title Bar      | Native Tauri      | macOS transparent title bar with drag region    |
+| Hero           | Typography        | Animated heading with gradient text             |
+| Composer       | `<PromptInput>`   | Multi-line input with attachment support        |
+| Model Selector | `<ModelSelector>` | Dropdown for Claude/GPT/Gemini selection        |
+| Submit         | `<Button>`        | Purple arrow button, enabled when input present |
+| Projects Grid  | `<ProjectCard>`   | Clickable cards with screen thumbnails          |
 
 #### User Interactions
 
@@ -317,16 +317,16 @@ dilag/
 
 #### UI Components Breakdown
 
-| Section | Component | Description |
-|---------|-----------|-------------|
-| Title Bar | `<div data-tauri-drag-region>` | Session title + chat toggle button |
-| Chat Pane | `<ChatView>` | Collapsible 360px pane with messages |
-| Messages | `<Message>` | User/assistant message bubbles |
-| Tool Display | `<MessagePart>` + `<ToolPart>` | Collapsible tool call details |
-| Composer | `<PromptInput>` | Input with model selector |
-| Browser Frame | `<BrowserFrame>` | Iframe with Vite dev server preview |
-| Web Preview | `<WebPreview>` | Viewport controls and iframe container |
-| Controls | Viewport toolbar | Desktop/Tablet/Mobile viewport toggles, refresh |
+| Section       | Component                      | Description                                     |
+| ------------- | ------------------------------ | ----------------------------------------------- |
+| Title Bar     | `<div data-tauri-drag-region>` | Session title + chat toggle button              |
+| Chat Pane     | `<ChatView>`                   | Collapsible 360px pane with messages            |
+| Messages      | `<Message>`                    | User/assistant message bubbles                  |
+| Tool Display  | `<MessagePart>` + `<ToolPart>` | Collapsible tool call details                   |
+| Composer      | `<PromptInput>`                | Input with model selector                       |
+| Browser Frame | `<BrowserFrame>`               | Iframe with Vite dev server preview             |
+| Web Preview   | `<WebPreview>`                 | Viewport controls and iframe container          |
+| Controls      | Viewport toolbar               | Desktop/Tablet/Mobile viewport toggles, refresh |
 
 #### User Interactions
 
@@ -584,20 +584,20 @@ dilag/
 
 > Base-level, atomic components from shadcn/ui built on Radix UI primitives.
 
-| Component | File | Props | Description |
-|-----------|------|-------|-------------|
-| `Button` | `button.tsx` | `variant`, `size` | Primary action trigger with variants (default, outline, ghost, destructive) |
-| `Input` | `input.tsx` | `type`, `placeholder` | Text input field with border styling |
-| `Card` | `card.tsx` | `children` | Container with header, content, footer slots |
-| `Dialog` | `dialog.tsx` | `open`, `onOpenChange` | Modal overlay dialog |
-| `DropdownMenu` | `dropdown-menu.tsx` | `children` | Popover menu with items |
-| `ScrollArea` | `scroll-area.tsx` | `className` | Custom scrollbar wrapper |
-| `Select` | `select.tsx` | `value`, `onValueChange` | Dropdown selection |
-| `Sidebar` | `sidebar.tsx` | `collapsible` | Collapsible navigation sidebar |
-| `Tooltip` | `tooltip.tsx` | `content` | Hover information tooltip |
-| `Tabs` | `tabs.tsx` | `value`, `onValueChange` | Tab panel switcher |
-| `Collapsible` | `collapsible.tsx` | `open`, `onOpenChange` | Expandable content section |
-| `Badge` | `badge.tsx` | `variant` | Small label/tag component |
+| Component      | File                | Props                    | Description                                                                 |
+| -------------- | ------------------- | ------------------------ | --------------------------------------------------------------------------- |
+| `Button`       | `button.tsx`        | `variant`, `size`        | Primary action trigger with variants (default, outline, ghost, destructive) |
+| `Input`        | `input.tsx`         | `type`, `placeholder`    | Text input field with border styling                                        |
+| `Card`         | `card.tsx`          | `children`               | Container with header, content, footer slots                                |
+| `Dialog`       | `dialog.tsx`        | `open`, `onOpenChange`   | Modal overlay dialog                                                        |
+| `DropdownMenu` | `dropdown-menu.tsx` | `children`               | Popover menu with items                                                     |
+| `ScrollArea`   | `scroll-area.tsx`   | `className`              | Custom scrollbar wrapper                                                    |
+| `Select`       | `select.tsx`        | `value`, `onValueChange` | Dropdown selection                                                          |
+| `Sidebar`      | `sidebar.tsx`       | `collapsible`            | Collapsible navigation sidebar                                              |
+| `Tooltip`      | `tooltip.tsx`       | `content`                | Hover information tooltip                                                   |
+| `Tabs`         | `tabs.tsx`          | `value`, `onValueChange` | Tab panel switcher                                                          |
+| `Collapsible`  | `collapsible.tsx`   | `open`, `onOpenChange`   | Expandable content section                                                  |
+| `Badge`        | `badge.tsx`         | `variant`                | Small label/tag component                                                   |
 
 ### Block Components (`src/components/blocks/`)
 
@@ -642,31 +642,31 @@ dilag/
 +-------------------------------------------------------------------------+
 ```
 
-| Block | File | Purpose |
-|-------|------|---------|
-| `ChatView` | `chat-view.tsx` | Full chat interface with messages and composer |
-| `BrowserFrame` | `browser-frame.tsx` | Browser frame with Vite iframe preview |
-| `WebPreview` | `web-preview.tsx` | Viewport controls and iframe container |
-| `MessagePart` | `message-part.tsx` | Renders different message part types (text, tool, reasoning) |
-| `ToolPart` | `tool-part.tsx` | Collapsible tool call display with icons |
-| `AppSidebar` | `app-sidebar.tsx` | Main navigation sidebar with links |
-| `SetupWizard` | `setup-wizard.tsx` | OpenCode and Bun installation check UI |
-| `UpdateDialog` | `update-dialog.tsx` | App update notification/download |
-| `AuthSettings` | `auth-settings.tsx` | Provider connection dialog |
+| Block          | File                | Purpose                                                      |
+| -------------- | ------------------- | ------------------------------------------------------------ |
+| `ChatView`     | `chat-view.tsx`     | Full chat interface with messages and composer               |
+| `BrowserFrame` | `browser-frame.tsx` | Browser frame with Vite iframe preview                       |
+| `WebPreview`   | `web-preview.tsx`   | Viewport controls and iframe container                       |
+| `MessagePart`  | `message-part.tsx`  | Renders different message part types (text, tool, reasoning) |
+| `ToolPart`     | `tool-part.tsx`     | Collapsible tool call display with icons                     |
+| `AppSidebar`   | `app-sidebar.tsx`   | Main navigation sidebar with links                           |
+| `SetupWizard`  | `setup-wizard.tsx`  | OpenCode and Bun installation check UI                       |
+| `UpdateDialog` | `update-dialog.tsx` | App update notification/download                             |
+| `AuthSettings` | `auth-settings.tsx` | Provider connection dialog                                   |
 
 ### AI Components (`src/components/ai-elements/`)
 
 > Chat and AI-specific components for conversation UI.
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| `PromptInput` | `prompt-input.tsx` | Composable input with attachments, tools, footer |
-| `ModelSelector` | `model-selector.tsx` | AI model picker with provider logos |
-| `Conversation` | `conversation.tsx` | Scrollable conversation container |
-| `Message` | `message.tsx` | Message bubble with role-based styling |
-| `Loader` | `loader.tsx` | Animated loading indicators |
-| `Reasoning` | `reasoning.tsx` | Collapsible chain-of-thought display |
-| `CodeBlock` | `code-block.tsx` | Syntax-highlighted code with Shiki |
+| Component       | File                 | Purpose                                          |
+| --------------- | -------------------- | ------------------------------------------------ |
+| `PromptInput`   | `prompt-input.tsx`   | Composable input with attachments, tools, footer |
+| `ModelSelector` | `model-selector.tsx` | AI model picker with provider logos              |
+| `Conversation`  | `conversation.tsx`   | Scrollable conversation container                |
+| `Message`       | `message.tsx`        | Message bubble with role-based styling           |
+| `Loader`        | `loader.tsx`         | Animated loading indicators                      |
+| `Reasoning`     | `reasoning.tsx`      | Collapsible chain-of-thought display             |
+| `CodeBlock`     | `code-block.tsx`     | Syntax-highlighted code with Shiki               |
 
 ---
 
@@ -718,55 +718,55 @@ interface SessionState {
   // ================================================================
   // Client State (persisted to localStorage)
   // ================================================================
-  currentSessionId: string | null;     // Active session
-  screenPositions: Record<string, ScreenPosition[]>; // Canvas layout
-  designMode: "mobile" | "web";        // Active design mode
-  webViewport: "desktop" | "tablet" | "mobile"; // Web preview viewport
+  currentSessionId: string | null // Active session
+  screenPositions: Record<string, ScreenPosition[]> // Canvas layout
+  designMode: "mobile" | "web" // Active design mode
+  webViewport: "desktop" | "tablet" | "mobile" // Web preview viewport
 
   // ================================================================
   // Real-time State (from SSE events)
   // ================================================================
-  messages: Record<string, Message[]>; // Keyed by sessionId
-  parts: Record<string, MessagePart[]>;// Keyed by messageId
-  sessionStatus: Record<string, SessionStatus>; // idle/running/error
-  sessionDiffs: Record<string, FileDiff[]>;     // File changes
+  messages: Record<string, Message[]> // Keyed by sessionId
+  parts: Record<string, MessagePart[]> // Keyed by messageId
+  sessionStatus: Record<string, SessionStatus> // idle/running/error
+  sessionDiffs: Record<string, FileDiff[]> // File changes
 
   // ================================================================
   // Server Connection
   // ================================================================
-  isServerReady: boolean;              // OpenCode server status
-  error: string | null;                // Last error message
+  isServerReady: boolean // OpenCode server status
+  error: string | null // Last error message
 
   // ================================================================
   // Debug
   // ================================================================
-  debugEvents: Event[];                // Last 500 SSE events
+  debugEvents: Event[] // Last 500 SSE events
 
   // ================================================================
   // Actions
   // ================================================================
-  setCurrentSessionId: (id: string | null) => void;
-  setScreenPositions: (sessionId: string, positions: ScreenPosition[]) => void;
-  setMessages: (sessionId: string, messages: Message[]) => void;
-  addMessage: (sessionId: string, message: Message) => void;
-  updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void;
-  updatePart: (messageId: string, part: MessagePart) => void;
-  setSessionStatus: (sessionId: string, status: SessionStatus) => void;
-  handleEvent: (event: Event) => void;
-  resetRealtimeState: () => void;
+  setCurrentSessionId: (id: string | null) => void
+  setScreenPositions: (sessionId: string, positions: ScreenPosition[]) => void
+  setMessages: (sessionId: string, messages: Message[]) => void
+  addMessage: (sessionId: string, message: Message) => void
+  updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void
+  updatePart: (messageId: string, part: MessagePart) => void
+  setSessionStatus: (sessionId: string, status: SessionStatus) => void
+  handleEvent: (event: Event) => void
+  resetRealtimeState: () => void
 }
 ```
 
 **Selectors & Hooks:**
 
-| Hook | Returns | Usage |
-|------|---------|-------|
-| `useCurrentSessionId()` | `string \| null` | Get active session ID |
-| `useSessionMessages(sessionId)` | `Message[]` | Get messages for session |
-| `useMessageParts(messageId)` | `MessagePart[]` | Get parts for message |
-| `useSessionStatus(sessionId)` | `SessionStatus` | Get session status |
-| `useScreenPositions(sessionId)` | `ScreenPosition[]` | Get canvas positions |
-| `useIsServerReady()` | `boolean` | Check if OpenCode ready |
+| Hook                            | Returns            | Usage                    |
+| ------------------------------- | ------------------ | ------------------------ |
+| `useCurrentSessionId()`         | `string \| null`   | Get active session ID    |
+| `useSessionMessages(sessionId)` | `Message[]`        | Get messages for session |
+| `useMessageParts(messageId)`    | `MessagePart[]`    | Get parts for message    |
+| `useSessionStatus(sessionId)`   | `SessionStatus`    | Get session status       |
+| `useScreenPositions(sessionId)` | `ScreenPosition[]` | Get canvas positions     |
+| `useIsServerReady()`            | `boolean`          | Check if OpenCode ready  |
 
 **State Flow Diagram:**
 
@@ -792,8 +792,8 @@ interface SessionState {
 
 ```typescript
 interface ModelState {
-  selectedModel: { providerID: string; modelID: string } | null;
-  setSelectedModel: (model: { providerID: string; modelID: string } | null) => void;
+  selectedModel: { providerID: string; modelID: string } | null
+  setSelectedModel: (model: { providerID: string; modelID: string } | null) => void
 }
 ```
 
@@ -801,11 +801,11 @@ interface ModelState {
 
 ### React Query Usage
 
-| Hook | Query Key | Purpose |
-|------|-----------|---------|
-| `useSessionsList()` | `["sessions", "list"]` | Fetch all sessions from Tauri |
+| Hook                     | Query Key                     | Purpose                             |
+| ------------------------ | ----------------------------- | ----------------------------------- |
+| `useSessionsList()`      | `["sessions", "list"]`        | Fetch all sessions from Tauri       |
 | `useSessionDesigns(cwd)` | `["designs", "session", cwd]` | Poll for design files (2s interval) |
-| `useProviderData()` | `["models", "providers"]` | Fetch available AI providers/models |
+| `useProviderData()`      | `["models", "providers"]`     | Fetch available AI providers/models |
 
 ---
 
@@ -855,15 +855,15 @@ interface ModelState {
 
 **Step-by-Step Breakdown:**
 
-| Step | Actor | Action | Details |
-|------|-------|--------|---------|
-| 1-2 | User | Enters prompt, clicks submit | Triggers `handleSubmit()` in `index.tsx:41` |
-| 3 | Frontend | Saves to localStorage | Keys: `dilag-initial-prompt`, `dilag-initial-files` |
-| 4-5 | Frontend | Creates session directory | Tauri command `create_session_dir` returns path |
-| 6 | Frontend | Creates OpenCode session | `sdk.session.create({ directory })` |
-| 7 | Frontend | Saves session metadata | Tauri command `save_session_metadata` |
-| 8 | Frontend | Updates Zustand | `setCurrentSessionId`, `setMessages([])` |
-| 9 | Frontend | Navigates | TanStack Router to `/studio/$sessionId` |
+| Step | Actor    | Action                       | Details                                             |
+| ---- | -------- | ---------------------------- | --------------------------------------------------- |
+| 1-2  | User     | Enters prompt, clicks submit | Triggers `handleSubmit()` in `index.tsx:41`         |
+| 3    | Frontend | Saves to localStorage        | Keys: `dilag-initial-prompt`, `dilag-initial-files` |
+| 4-5  | Frontend | Creates session directory    | Tauri command `create_session_dir` returns path     |
+| 6    | Frontend | Creates OpenCode session     | `sdk.session.create({ directory })`                 |
+| 7    | Frontend | Saves session metadata       | Tauri command `save_session_metadata`               |
+| 8    | Frontend | Updates Zustand              | `setCurrentSessionId`, `setMessages([])`            |
+| 9    | Frontend | Navigates                    | TanStack Router to `/studio/$sessionId`             |
 
 ### Message Sending Flow
 
@@ -990,15 +990,15 @@ interface ModelState {
 
 **Event Types Handled:**
 
-| Event Type | Handler | Effect |
-|------------|---------|--------|
-| `message.updated` | `addMessage` / `updateMessage` | Add or complete message |
-| `message.part.updated` | `updatePart` | Update part content/state |
-| `session.status` | `setSessionStatus` | Update running/idle/error |
-| `session.diff` | `setSessionDiffs` | Store file diff info |
-| `session.idle` | `setSessionStatus("idle")` | Mark session complete |
-| `session.error` | `setSessionStatus("error")` | Mark session failed |
-| `global.disposed` | `bootstrap()` | Re-sync all state |
+| Event Type             | Handler                        | Effect                    |
+| ---------------------- | ------------------------------ | ------------------------- |
+| `message.updated`      | `addMessage` / `updateMessage` | Add or complete message   |
+| `message.part.updated` | `updatePart`                   | Update part content/state |
+| `session.status`       | `setSessionStatus`             | Update running/idle/error |
+| `session.diff`         | `setSessionDiffs`              | Store file diff info      |
+| `session.idle`         | `setSessionStatus("idle")`     | Mark session complete     |
+| `session.error`        | `setSessionStatus("error")`    | Mark session failed       |
+| `global.disposed`      | `bootstrap()`                  | Re-sync all state         |
 
 ---
 
@@ -1077,32 +1077,34 @@ interface ModelState {
 ### OpenCode SDK Usage
 
 **Client Creation:**
+
 ```typescript
 // Port injected by Rust via window.__DILAG__ = { port }
-const port = window.__DILAG__?.port ?? 4096;
+const port = window.__DILAG__?.port ?? 4096
 const sdk = createOpencodeClient({
   baseUrl: `http://127.0.0.1:${port}`,
   fetch: customFetch, // Disables timeout for SSE
-});
+})
 ```
 
 **API Methods:**
 
-| Method | Parameters | Returns | Description |
-|--------|------------|---------|-------------|
-| `sdk.session.create` | `{ directory }` | `{ id }` | Create new session |
-| `sdk.session.get` | `{ sessionID, directory }` | Session details | Get session info |
-| `sdk.session.delete` | `{ sessionID, directory }` | - | Delete session |
-| `sdk.session.messages` | `{ sessionID, directory }` | `Message[]` | Get message history |
-| `sdk.session.prompt` | `{ sessionID, directory, agent, model, parts }` | - | Send prompt (fire & forget) |
-| `sdk.provider.list` | - | `{ all, connected }` | Get available providers |
-| `sdk.global.event` | - | AsyncIterator | SSE event stream |
+| Method                 | Parameters                                      | Returns              | Description                 |
+| ---------------------- | ----------------------------------------------- | -------------------- | --------------------------- |
+| `sdk.session.create`   | `{ directory }`                                 | `{ id }`             | Create new session          |
+| `sdk.session.get`      | `{ sessionID, directory }`                      | Session details      | Get session info            |
+| `sdk.session.delete`   | `{ sessionID, directory }`                      | -                    | Delete session              |
+| `sdk.session.messages` | `{ sessionID, directory }`                      | `Message[]`          | Get message history         |
+| `sdk.session.prompt`   | `{ sessionID, directory, agent, model, parts }` | -                    | Send prompt (fire & forget) |
+| `sdk.provider.list`    | -                                               | `{ all, connected }` | Get available providers     |
+| `sdk.global.event`     | -                                               | AsyncIterator        | SSE event stream            |
 
 ### AI Agent Configuration
 
 The Rust backend configures the build agent:
 
 #### Build Agent (`build`)
+
 - **Focus:** Web application generation
 - **Tools:** Full file system access via skill system
 - **Project Structure:** Vite + React + TanStack Router
@@ -1120,23 +1122,24 @@ Defines how OpenCode tools are displayed in the UI.
 
 ### Registered Tools
 
-| Tool | Icon | Description |
-|------|------|-------------|
-| `read` | `Glasses` | File read - shows preview with syntax highlighting |
-| `edit` | `Code2` | File edit - shows diff with +/- counts |
-| `write` | `FilePlus2` | File create - shows content with line count |
-| `bash` | `Terminal` | Shell command - shows command and output |
-| `glob` | `FolderSearch` | File pattern search - shows match count |
-| `grep` | `Search` | Content search - shows match count |
-| `list` | `FolderSearch` | Directory listing - shows item count |
-| `webfetch` | `Globe` | URL fetch - shows hostname and content |
-| `task` | `Bot` | Sub-agent task - shows tool summary |
-| `todowrite` | `ListChecks` | Todo list - shows completion progress |
-| `theme` | `Paintbrush` | Theme generation - shows color swatches |
+| Tool        | Icon           | Description                                        |
+| ----------- | -------------- | -------------------------------------------------- |
+| `read`      | `Glasses`      | File read - shows preview with syntax highlighting |
+| `edit`      | `Code2`        | File edit - shows diff with +/- counts             |
+| `write`     | `FilePlus2`    | File create - shows content with line count        |
+| `bash`      | `Terminal`     | Shell command - shows command and output           |
+| `glob`      | `FolderSearch` | File pattern search - shows match count            |
+| `grep`      | `Search`       | Content search - shows match count                 |
+| `list`      | `FolderSearch` | Directory listing - shows item count               |
+| `webfetch`  | `Globe`        | URL fetch - shows hostname and content             |
+| `task`      | `Bot`          | Sub-agent task - shows tool summary                |
+| `todowrite` | `ListChecks`   | Todo list - shows completion progress              |
+| `theme`     | `Paintbrush`   | Theme generation - shows color swatches            |
 
 ### Tool State
 
 Each tool progresses through states:
+
 - `pending` - Waiting to execute
 - `running` - Currently executing (shows elapsed timer)
 - `completed` - Finished successfully
@@ -1164,15 +1167,15 @@ Each tool progresses through states:
 
 ## Keyboard Shortcuts
 
-| Shortcut | Context | Action |
-|----------|---------|--------|
-| `Cmd+N` | Global | New session |
-| `Cmd+,` | Global | Open settings |
-| `Cmd+B` | Global | Toggle sidebar |
-| `Cmd+\` | Studio | Toggle chat pane |
-| `Ctrl+Scroll` | Canvas | Zoom in/out |
-| `Enter` | Composer | Send message |
-| `Shift+Enter` | Composer | New line |
+| Shortcut      | Context  | Action           |
+| ------------- | -------- | ---------------- |
+| `Cmd+N`       | Global   | New session      |
+| `Cmd+,`       | Global   | Open settings    |
+| `Cmd+B`       | Global   | Toggle sidebar   |
+| `Cmd+\`       | Studio   | Toggle chat pane |
+| `Ctrl+Scroll` | Canvas   | Zoom in/out      |
+| `Enter`       | Composer | Send message     |
+| `Shift+Enter` | Composer | New line         |
 
 ---
 
@@ -1196,6 +1199,7 @@ Each tool progresses through states:
 ```
 
 Theme managed via `next-themes` with `ThemeProvider`:
+
 - Stored in localStorage key: `dilag-theme`
 - Options: `light`, `dark`, `system`
 

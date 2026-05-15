@@ -1,19 +1,31 @@
-"use client";
+"use client"
 
-import { useState, useCallback } from "react";
-import { Alert, AlertTitle, AlertDescription } from "@dilag/ui/alert";
-import { Button } from "@dilag/ui/button";
-import { Textarea } from "@dilag/ui/textarea";
-import { cn } from "@/lib/utils";
-import { AltArrowDown, AltArrowUp, Magnifer, ShieldWarning, Monitor, FolderPathConnect, Global, Bolt, FolderOpen, File, Pen } from "@solar-icons/react";
-import type { PermissionRequest } from "@/context/session-store";
+import { useState, useCallback } from "react"
+import { Alert, AlertTitle, AlertDescription } from "@dilag/ui/alert"
+import { Button } from "@dilag/ui/button"
+import { Textarea } from "@dilag/ui/textarea"
+import { cn } from "@/lib/utils"
+import {
+  AltArrowDown,
+  AltArrowUp,
+  Magnifer,
+  ShieldWarning,
+  Monitor,
+  FolderPathConnect,
+  Global,
+  Bolt,
+  FolderOpen,
+  File,
+  Pen,
+} from "@solar-icons/react"
+import type { PermissionRequest } from "@/context/session-store"
 
-export type PermissionReply = "once" | "always" | "reject";
+export type PermissionReply = "once" | "always" | "reject"
 
 export interface PermissionPromptProps {
-  request: PermissionRequest;
-  onReply: (reply: PermissionReply, message?: string) => Promise<void>;
-  className?: string;
+  request: PermissionRequest
+  onReply: (reply: PermissionReply, message?: string) => Promise<void>
+  className?: string
 }
 
 // Map permission types to icons and labels
@@ -76,19 +88,19 @@ const PERMISSION_CONFIG: Record<
     label: "External Directory",
     colorClass: "text-rose-500",
   },
-};
+}
 
-const COMMAND_TRUNCATE_HEAD = 160;
-const COMMAND_TRUNCATE_TAIL = 80;
+const COMMAND_TRUNCATE_HEAD = 160
+const COMMAND_TRUNCATE_TAIL = 80
 
 function truncateMiddle(value: string, head = COMMAND_TRUNCATE_HEAD, tail = COMMAND_TRUNCATE_TAIL) {
   if (value.length <= head + tail + 3) {
-    return { text: value, truncated: false };
+    return { text: value, truncated: false }
   }
   return {
     text: `${value.slice(0, head)}...${value.slice(-tail)}`,
     truncated: true,
-  };
+  }
 }
 
 function getPermissionConfig(permission: string) {
@@ -98,59 +110,51 @@ function getPermissionConfig(permission: string) {
       label: permission,
       colorClass: "text-muted-foreground",
     }
-  );
+  )
 }
 
-export function PermissionPrompt({
-  request,
-  onReply,
-  className,
-}: PermissionPromptProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [showRejectInput, setShowRejectInput] = useState(false);
-  const [rejectMessage, setRejectMessage] = useState("");
-  const [expanded, setExpanded] = useState(false);
-  const [showFullCommand, setShowFullCommand] = useState(false);
+export function PermissionPrompt({ request, onReply, className }: PermissionPromptProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [showRejectInput, setShowRejectInput] = useState(false)
+  const [rejectMessage, setRejectMessage] = useState("")
+  const [expanded, setExpanded] = useState(false)
+  const [showFullCommand, setShowFullCommand] = useState(false)
 
-  const config = getPermissionConfig(request.permission);
-  const Icon = config.icon;
+  const config = getPermissionConfig(request.permission)
+  const Icon = config.icon
 
   const handleReply = useCallback(
     async (reply: PermissionReply) => {
-      setIsLoading(true);
+      setIsLoading(true)
       try {
         const message =
-          reply === "reject" && rejectMessage.trim()
-            ? rejectMessage.trim()
-            : undefined;
-        await onReply(reply, message);
+          reply === "reject" && rejectMessage.trim() ? rejectMessage.trim() : undefined
+        await onReply(reply, message)
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
     },
-    [onReply, rejectMessage]
-  );
+    [onReply, rejectMessage],
+  )
 
   // Extract useful metadata based on permission type
   const getMetadataDisplay = () => {
-    const { metadata, permission } = request;
-    if (!metadata || Object.keys(metadata).length === 0) return null;
+    const { metadata, permission } = request
+    if (!metadata || Object.keys(metadata).length === 0) return null
 
     if (permission === "bash") {
-      const command = metadata.command as string | undefined;
-      const description = metadata.description as string | undefined;
-      const truncation = command ? truncateMiddle(command) : null;
-      const showToggle = Boolean(truncation?.truncated);
+      const command = metadata.command as string | undefined
+      const description = metadata.description as string | undefined
+      const truncation = command ? truncateMiddle(command) : null
+      const showToggle = Boolean(truncation?.truncated)
       const commandDisplay = command
         ? showFullCommand || !truncation?.truncated
           ? command
           : truncation.text
-        : undefined;
+        : undefined
       return (
         <div className="space-y-1.5">
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
           {commandDisplay && (
             <div className="space-y-1">
               <pre className="text-xs font-mono bg-muted/50 rounded px-2 py-1.5 overflow-x-auto whitespace-pre-wrap break-all">
@@ -168,12 +172,12 @@ export function PermissionPrompt({
             </div>
           )}
         </div>
-      );
+      )
     }
 
     if (permission === "edit" || permission === "write") {
-      const filepath = metadata.filepath as string | undefined;
-      const diff = metadata.diff as string | undefined;
+      const filepath = metadata.filepath as string | undefined
+      const diff = metadata.diff as string | undefined
       return (
         <div className="space-y-1.5">
           {filepath && (
@@ -187,52 +191,50 @@ export function PermissionPrompt({
             </pre>
           )}
         </div>
-      );
+      )
     }
 
     if (permission === "read" || permission === "list") {
-      const path = (metadata.filePath ?? metadata.path) as string | undefined;
+      const path = (metadata.filePath ?? metadata.path) as string | undefined
       return path ? (
         <code className="text-xs text-muted-foreground font-mono bg-muted/30 px-1.5 py-0.5 rounded">
           {path}
         </code>
-      ) : null;
+      ) : null
     }
 
     if (permission === "glob") {
-      const pattern = metadata.pattern as string | undefined;
+      const pattern = metadata.pattern as string | undefined
       return pattern ? (
         <code className="text-xs text-muted-foreground font-mono bg-muted/30 px-1.5 py-0.5 rounded">
           {pattern}
         </code>
-      ) : null;
+      ) : null
     }
 
     if (permission === "grep") {
-      const pattern = metadata.pattern as string | undefined;
+      const pattern = metadata.pattern as string | undefined
       return pattern ? (
         <div className="text-sm">
           <span className="text-muted-foreground">Search: </span>
-          <code className="font-mono bg-muted/30 px-1.5 py-0.5 rounded">
-            {pattern}
-          </code>
+          <code className="font-mono bg-muted/30 px-1.5 py-0.5 rounded">{pattern}</code>
         </div>
-      ) : null;
+      ) : null
     }
 
     if (permission === "webfetch" || permission === "websearch") {
-      const url = metadata.url as string | undefined;
-      const query = metadata.query as string | undefined;
+      const url = metadata.url as string | undefined
+      const query = metadata.query as string | undefined
       return (
         <code className="text-xs text-muted-foreground font-mono bg-muted/30 px-1.5 py-0.5 rounded break-all">
           {url ?? query}
         </code>
-      );
+      )
     }
 
     if (permission === "task") {
-      const agentType = metadata.subagent_type as string | undefined;
-      const description = metadata.description as string | undefined;
+      const agentType = metadata.subagent_type as string | undefined
+      const description = metadata.description as string | undefined
       return (
         <div className="space-y-1">
           {agentType && (
@@ -240,39 +242,26 @@ export function PermissionPrompt({
               {agentType}
             </span>
           )}
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
-      );
+      )
     }
 
-    return null;
-  };
+    return null
+  }
 
   // Format patterns for display
-  const patternDisplay =
-    request.patterns.length > 0 ? request.patterns.join(", ") : null;
-  const metadataDisplay = getMetadataDisplay();
+  const patternDisplay = request.patterns.length > 0 ? request.patterns.join(", ") : null
+  const metadataDisplay = getMetadataDisplay()
 
   return (
-    <Alert
-      className={cn(
-        "flex flex-col gap-3 border-amber-500/30 bg-amber-500/5",
-        className
-      )}
-    >
+    <Alert className={cn("flex flex-col gap-3 border-amber-500/30 bg-amber-500/5", className)}>
       <Icon size={16} className={config.colorClass} />
 
       <div className="flex flex-col gap-2">
         <AlertTitle className="flex items-center gap-2">
           <span>Permission Required</span>
-          <span
-            className={cn(
-              "text-xs px-1.5 py-0.5 rounded-md bg-muted",
-              config.colorClass
-            )}
-          >
+          <span className={cn("text-xs px-1.5 py-0.5 rounded-md bg-muted", config.colorClass)}>
             {config.label}
           </span>
         </AlertTitle>
@@ -285,9 +274,7 @@ export function PermissionPrompt({
           {!metadataDisplay && patternDisplay && (
             <p className="text-sm">
               <span className="text-muted-foreground">Patterns: </span>
-              <code className="text-xs bg-muted px-1 rounded">
-                {patternDisplay}
-              </code>
+              <code className="text-xs bg-muted px-1 rounded">{patternDisplay}</code>
             </p>
           )}
 
@@ -298,11 +285,7 @@ export function PermissionPrompt({
               onClick={() => setExpanded(!expanded)}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              {expanded ? (
-                <AltArrowUp size={12} />
-              ) : (
-                <AltArrowDown size={12} />
-              )}
+              {expanded ? <AltArrowUp size={12} /> : <AltArrowDown size={12} />}
               {expanded ? "Hide" : "Show"} &quot;Allow always&quot; patterns
             </button>
           )}
@@ -352,11 +335,7 @@ export function PermissionPrompt({
             >
               Allow once
             </Button>
-            <Button
-              size="sm"
-              onClick={() => handleReply("always")}
-              disabled={isLoading}
-            >
+            <Button size="sm" onClick={() => handleReply("always")} disabled={isLoading}>
               Allow always
             </Button>
           </>
@@ -366,8 +345,8 @@ export function PermissionPrompt({
               variant="ghost"
               size="sm"
               onClick={() => {
-                setShowRejectInput(false);
-                setRejectMessage("");
+                setShowRejectInput(false)
+                setRejectMessage("")
               }}
               disabled={isLoading}
             >
@@ -385,5 +364,5 @@ export function PermissionPrompt({
         )}
       </div>
     </Alert>
-  );
+  )
 }

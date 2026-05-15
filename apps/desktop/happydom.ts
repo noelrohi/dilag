@@ -1,13 +1,13 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import "@testing-library/jest-dom";
+import { GlobalRegistrator } from "@happy-dom/global-registrator"
+import "@testing-library/jest-dom"
 
-GlobalRegistrator.register();
+GlobalRegistrator.register()
 
 global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
-};
+}
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -21,7 +21,7 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: () => {},
     dispatchEvent: () => false,
   }),
-});
+})
 
 const localStorageMock = {
   getItem: () => null,
@@ -30,5 +30,5 @@ const localStorageMock = {
   clear: () => {},
   length: 0,
   key: () => null,
-};
-Object.defineProperty(window, "localStorage", { value: localStorageMock });
+}
+Object.defineProperty(window, "localStorage", { value: localStorageMock })

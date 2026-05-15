@@ -1,33 +1,41 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
-import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
-import { toast } from "sonner";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react"
+import type { UpdateDownloadEvent } from "@dilag/desktop-bridge"
+import { toast } from "sonner"
+import { bridge } from "@/lib/bridge"
 
 export interface UpdateInfo {
-  version: string;
-  currentVersion: string;
-  body?: string;
+  version: string
+  currentVersion: string
+  body?: string
 }
 
 export interface UpdaterState {
-  checking: boolean;
-  updateAvailable: boolean;
-  updateInfo: UpdateInfo | null;
-  downloading: boolean;
-  downloadProgress: number;
-  error: string | null;
+  checking: boolean
+  updateAvailable: boolean
+  updateInfo: UpdateInfo | null
+  downloading: boolean
+  downloadProgress: number
+  error: string | null
 }
 
 interface UpdaterContextValue extends UpdaterState {
-  checkForUpdates: (silent?: boolean) => Promise<void>;
-  installUpdate: () => Promise<void>;
-  dismissUpdate: () => void;
+  checkForUpdates: (silent?: boolean) => Promise<void>
+  installUpdate: () => Promise<void>
+  dismissUpdate: () => void
 }
 
-const UpdaterContext = createContext<UpdaterContextValue | null>(null);
+const UpdaterContext = createContext<UpdaterContextValue | null>(null)
 
 interface UpdaterProviderProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
 export function UpdaterProvider({ children }: UpdaterProviderProps) {
@@ -38,23 +46,23 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
     downloading: false,
     downloadProgress: 0,
     error: null,
-  });
+  })
 
-  const [update, setUpdate] = useState<Update | null>(null);
-  const updateRef = useRef<Update | null>(null);
-  const hasCheckedRef = useRef(false);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null)
+  const updateRef = useRef<UpdateInfo | null>(null)
+  const hasCheckedRef = useRef(false)
 
-  const installUpdateRef = useRef<(() => Promise<void>) | null>(null);
+  const installUpdateRef = useRef<(() => Promise<void>) | null>(null)
 
   const checkForUpdates = useCallback(async (silent = false) => {
-    setState((prev) => ({ ...prev, checking: true, error: null }));
+    setState((prev) => ({ ...prev, checking: true, error: null }))
 
     try {
-      const updateResult = await check();
+      const updateResult = await bridge.updater.check()
 
       if (updateResult) {
-        setUpdate(updateResult);
-        updateRef.current = updateResult;
+        setUpdate(updateResult)
+        updateRef.current = updateResult
         setState((prev) => ({
           ...prev,
           checking: false,
@@ -64,7 +72,7 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
             currentVersion: updateResult.currentVersion,
             body: updateResult.body ?? undefined,
           },
-        }));
+        }))
 
         // Show toast notification for available update
         toast(`Update v${updateResult.version} available`, {
@@ -74,119 +82,115 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
             label: "Update Now",
             onClick: () => {
               // Use ref to call the latest installUpdate function
-              installUpdateRef.current?.();
+              installUpdateRef.current?.()
             },
           },
-        });
+        })
       } else {
         setState((prev) => ({
           ...prev,
           checking: false,
           updateAvailable: false,
-        }));
-        
+        }))
+
         // Show feedback only when manually checking (not silent)
         if (!silent) {
-          toast.success("You're on the latest version");
+          toast.success("You're on the latest version")
         }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to check for updates";
+      const message = error instanceof Error ? error.message : "Failed to check for updates"
       setState((prev) => ({
         ...prev,
         checking: false,
         error: message,
-      }));
-      
+      }))
+
       // Show error feedback only when manually checking (not silent)
       if (!silent) {
-        toast.error(message);
+        toast.error(message)
       }
     }
-  }, []);
+  }, [])
 
   const installUpdate = useCallback(async () => {
-    if (!update) return;
+    if (!update) return
 
-    setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0 }));
+    setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0 }))
 
     try {
-      let downloaded = 0;
-      let contentLength = 0;
+      let downloaded = 0
+      let contentLength = 0
 
-      await update.downloadAndInstall((event: DownloadEvent) => {
+      await bridge.updater.download((event: UpdateDownloadEvent) => {
         switch (event.event) {
           case "Started":
-            contentLength = event.data.contentLength ?? 0;
-            break;
+            contentLength = event.data.contentLength ?? 0
+            break
           case "Progress":
-            downloaded += event.data.chunkLength;
-            const progress = contentLength > 0 ? (downloaded / contentLength) * 100 : 0;
-            setState((prev) => ({ ...prev, downloadProgress: Math.round(progress) }));
-            break;
+            downloaded += event.data.chunkLength
+            const progress = contentLength > 0 ? (downloaded / contentLength) * 100 : 0
+            setState((prev) => ({ ...prev, downloadProgress: Math.round(progress) }))
+            break
           case "Finished":
-            setState((prev) => ({ ...prev, downloadProgress: 100 }));
-            break;
+            setState((prev) => ({ ...prev, downloadProgress: 100 }))
+            break
         }
-      });
+      })
 
-      await relaunch();
+      await bridge.updater.install()
     } catch (error) {
       setState((prev) => ({
         ...prev,
         downloading: false,
         error: error instanceof Error ? error.message : "Failed to install update",
-      }));
-      toast.error("Failed to install update");
+      }))
+      toast.error("Failed to install update")
     }
-  }, [update]);
+  }, [update])
 
   const dismissUpdate = useCallback(() => {
     setState((prev) => ({
       ...prev,
       updateAvailable: false,
       updateInfo: null,
-    }));
-    setUpdate(null);
-    updateRef.current = null;
-  }, []);
+    }))
+    setUpdate(null)
+    updateRef.current = null
+  }, [])
 
   // Keep installUpdateRef in sync with installUpdate for toast callback
   useEffect(() => {
-    installUpdateRef.current = installUpdate;
-  }, [installUpdate]);
+    installUpdateRef.current = installUpdate
+  }, [installUpdate])
 
   // Check for updates once on mount (with delay to not block app startup)
   // Use silent mode to avoid showing "up to date" toast on every app launch
   useEffect(() => {
-    if (hasCheckedRef.current) return;
-    hasCheckedRef.current = true;
+    if (hasCheckedRef.current) return
+    hasCheckedRef.current = true
 
     const timer = setTimeout(() => {
-      checkForUpdates(true); // silent = true for auto-check
-    }, 3000);
+      checkForUpdates(true) // silent = true for auto-check
+    }, 3000)
 
-    return () => clearTimeout(timer);
-  }, [checkForUpdates]);
+    return () => clearTimeout(timer)
+  }, [checkForUpdates])
 
   const value: UpdaterContextValue = {
     ...state,
     checkForUpdates,
     installUpdate,
     dismissUpdate,
-  };
+  }
 
-  return (
-    <UpdaterContext.Provider value={value}>
-      {children}
-    </UpdaterContext.Provider>
-  );
+  return <UpdaterContext.Provider value={value}>{children}</UpdaterContext.Provider>
 }
 
 export function useUpdaterContext() {
-  const context = useContext(UpdaterContext);
+  const context = useContext(UpdaterContext)
   if (!context) {
-    throw new Error("useUpdaterContext must be used within an UpdaterProvider");
+    throw new Error("useUpdaterContext must be used within an UpdaterProvider")
   }
-  return context;
+  return context
 }

@@ -4,19 +4,19 @@ Modular Tauri backend - organized by domain (unusual for Tauri apps).
 
 ## Structure
 
-| File | Purpose |
-|------|---------|
-| `lib.rs` | Entry, window, menu, command registration |
-| `main.rs` | Minimal entry (`dilag_lib::run()`) |
-| `sessions.rs` | Session CRUD (5 commands) |
-| `opencode.rs` | OpenCode server lifecycle (6 commands) |
-| `designs.rs` | Design file management (3 commands) |
-| `app_info.rs` | App metadata, reset (2 commands) |
-| `theme.rs` | macOS titlebar (1 command) |
-| `state.rs` | AppState (OpenCode PID) |
-| `error.rs` | AppError, AppResult types |
-| `paths.rs` | Path utilities |
-| `menu.rs` | Native menu setup |
+| File          | Purpose                                   |
+| ------------- | ----------------------------------------- |
+| `lib.rs`      | Entry, window, menu, command registration |
+| `main.rs`     | Minimal entry (`dilag_lib::run()`)        |
+| `sessions.rs` | Session CRUD (5 commands)                 |
+| `opencode.rs` | OpenCode server lifecycle (6 commands)    |
+| `designs.rs`  | Design file management (3 commands)       |
+| `app_info.rs` | App metadata, reset (2 commands)          |
+| `theme.rs`    | macOS titlebar (1 command)                |
+| `state.rs`    | AppState (OpenCode PID)                   |
+| `error.rs`    | AppError, AppResult types                 |
+| `paths.rs`    | Path utilities                            |
+| `menu.rs`     | Native menu setup                         |
 
 ## Command Patterns
 
@@ -58,11 +58,11 @@ pub type AppResult<T> = Result<T, AppError>;
 
 ## Anti-Patterns
 
-| Don't | Why |
-|-------|-----|
-| Remove `#![cfg_attr(...)]` in main.rs | Prevents Windows console window |
-| Use `Result<_, String>` everywhere | Use `AppResult<T>` for consistency |
-| Put all code in lib.rs | Keep modular by domain |
+| Don't                                 | Why                                |
+| ------------------------------------- | ---------------------------------- |
+| Remove `#![cfg_attr(...)]` in main.rs | Prevents Windows console window    |
+| Use `Result<_, String>` everywhere    | Use `AppResult<T>` for consistency |
+| Put all code in lib.rs                | Keep modular by domain             |
 
 ## Testing
 

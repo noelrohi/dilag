@@ -1,4 +1,4 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
@@ -16,8 +16,8 @@ const nextConfig: NextConfig = {
       { source: "/forgot-license", destination: "/download", permanent: true },
       { source: "/app", destination: "/download", permanent: true },
       { source: "/app/:path*", destination: "/download", permanent: true },
-    ];
+    ]
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig

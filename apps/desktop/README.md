@@ -14,6 +14,7 @@
 Dilag is a desktop application that transforms ideas into polished mobile and web designs. Simply describe what you want to design—"a habit tracking app," "a recipe finder with search"—and AI generates production-ready screens as HTML files. Iterate in real-time by chatting with the AI to refine and improve your designs.
 
 Perfect for:
+
 - 🚀 Rapid prototyping and UI design
 - 💡 Turning ideas into polished screens without design tools
 - 🔄 Iterating on designs through conversation
@@ -75,6 +76,7 @@ bun run tauri build
 ## Architecture
 
 ### Frontend Stack
+
 - **React 19** – UI framework
 - **TypeScript** – Type safety
 - **Vite** – Build tool
@@ -85,10 +87,12 @@ bun run tauri build
 - **TanStack Router** – File-based routing
 
 ### Backend Stack
+
 - **Tauri** – Desktop runtime (Rust)
 - **OpenCode SDK** – AI integration with SSE streaming
 
 ### Data Flow
+
 ```
 User Prompt
     ↓

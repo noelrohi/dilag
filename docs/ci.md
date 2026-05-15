@@ -25,7 +25,7 @@ The release workflow (`.github/workflows/release.yml`) triggers on version tags:
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 ```
 
 ### How to Release
@@ -35,6 +35,7 @@ bun release
 ```
 
 This runs `bumpp` which:
+
 1. Prompts for version bump type (patch/minor/major)
 2. Updates version in `package.json`
 3. Commits the change
@@ -77,6 +78,7 @@ This runs `bumpp` which:
 ### tauri-apps/tauri-action
 
 We use the official [tauri-action](https://github.com/tauri-apps/tauri-action) which:
+
 - **Caches the Tauri CLI** - Avoids slow `cargo install` on every build
 - **Handles building** - Runs `cargo tauri build` with proper flags
 - **Creates/updates releases** - Uploads DMG, tar.gz, and signature files
@@ -107,18 +109,19 @@ We use the official [tauri-action](https://github.com/tauri-apps/tauri-action) w
 
 ```ts
 // bump.config.ts
-import { defineConfig } from "bumpp";
-import { execSync } from "child_process";
+import { defineConfig } from "bumpp"
+import { execSync } from "child_process"
 
 export default defineConfig({
   execute: () => {
-    execSync("bun run sync-version-from-pkg", { stdio: "inherit" });
+    execSync("bun run sync-version-from-pkg", { stdio: "inherit" })
   },
   all: true,
-});
+})
 ```
 
 When you run `bun release`, bumpp:
+
 1. Bumps `package.json` version
 2. Runs the sync script to update other files
 3. Commits all changes together (via `all: true`)
@@ -126,11 +129,11 @@ When you run `bun release`, bumpp:
 
 ### Files Involved
 
-| File | Role |
-|------|------|
-| `package.json` | Source of truth, bumped by `bumpp` |
-| `src-tauri/tauri.conf.json` | Synced by execute hook |
-| `src-tauri/Cargo.toml` | Synced by execute hook |
+| File                        | Role                               |
+| --------------------------- | ---------------------------------- |
+| `package.json`              | Source of truth, bumped by `bumpp` |
+| `src-tauri/tauri.conf.json` | Synced by execute hook             |
+| `src-tauri/Cargo.toml`      | Synced by execute hook             |
 
 ### Sync Script
 
@@ -151,6 +154,7 @@ The `beforeBuildCommand` also runs the sync script as a safety net:
 ### macOS Requirements
 
 Apple requires apps distributed outside the App Store to be:
+
 1. **Code signed** - With a Developer ID certificate
 2. **Notarized** - Submitted to Apple for malware scanning
 
@@ -168,13 +172,13 @@ The workflow imports the Apple certificate into a temporary keychain:
   run: |
     KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
     KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-    
+
     echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
-    
+
     security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
     security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
     security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-    
+
     security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" \
       -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
     security set-key-partition-list -S apple-tool:,apple: \
@@ -185,12 +189,14 @@ The workflow imports the Apple certificate into a temporary keychain:
 ### Notarization
 
 Tauri automatically notarizes when these env variables are set:
+
 - `APPLE_SIGNING_IDENTITY`
 - `APPLE_ID`
 - `APPLE_PASSWORD` (app-specific password)
 - `APPLE_TEAM_ID`
 
 Notarization process:
+
 1. Tauri builds and signs the app
 2. Uploads to Apple's notarization service
 3. Waits for approval (usually 2-5 minutes)
@@ -265,6 +271,7 @@ App launches
 ### Signing Keys
 
 The updater uses minisign for verifying updates:
+
 - **Private key**: `TAURI_SIGNING_PRIVATE_KEY` (in GitHub secrets)
 - **Public key**: Embedded in `tauri.conf.json` → `plugins.updater.pubkey`
 
@@ -276,20 +283,21 @@ Updates are rejected if the signature doesn't match.
 
 Required secrets in repository settings:
 
-| Secret | Purpose |
-|--------|---------|
-| `TAURI_SIGNING_PRIVATE_KEY` | Minisign private key for update signatures |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password for signing key (can be empty) |
-| `APPLE_CERTIFICATE` | Base64-encoded .p12 certificate |
-| `APPLE_CERTIFICATE_PASSWORD` | Password for the .p12 file |
-| `APPLE_SIGNING_IDENTITY` | Certificate name (e.g., "Developer ID Application: Name (TEAM_ID)") |
-| `APPLE_ID` | Apple ID email for notarization |
-| `APPLE_PASSWORD` | App-specific password for notarization |
-| `APPLE_TEAM_ID` | 10-character team identifier |
+| Secret                               | Purpose                                                             |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `TAURI_SIGNING_PRIVATE_KEY`          | Minisign private key for update signatures                          |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password for signing key (can be empty)                             |
+| `APPLE_CERTIFICATE`                  | Base64-encoded .p12 certificate                                     |
+| `APPLE_CERTIFICATE_PASSWORD`         | Password for the .p12 file                                          |
+| `APPLE_SIGNING_IDENTITY`             | Certificate name (e.g., "Developer ID Application: Name (TEAM_ID)") |
+| `APPLE_ID`                           | Apple ID email for notarization                                     |
+| `APPLE_PASSWORD`                     | App-specific password for notarization                              |
+| `APPLE_TEAM_ID`                      | 10-character team identifier                                        |
 
 ### Generating Secrets
 
 **Tauri signing key:**
+
 ```bash
 cargo tauri signer generate -w ~/.tauri/dilag.key
 # Copy private key content to TAURI_SIGNING_PRIVATE_KEY
@@ -297,6 +305,7 @@ cargo tauri signer generate -w ~/.tauri/dilag.key
 ```
 
 **Apple certificate:**
+
 ```bash
 # Export from Keychain Access as .p12
 base64 -i certificate.p12 | pbcopy
@@ -304,6 +313,7 @@ base64 -i certificate.p12 | pbcopy
 ```
 
 **App-specific password:**
+
 1. Go to https://appleid.apple.com/account/manage
 2. Generate app-specific password
 3. Use as `APPLE_PASSWORD`
@@ -317,6 +327,7 @@ base64 -i certificate.p12 | pbcopy
 **Error:** `Unable to resolve action tauri-apps/tauri-action@v1`
 
 **Fix:** Use `@v0` instead of `@v1`:
+
 ```yaml
 uses: tauri-apps/tauri-action@v0
 ```
@@ -328,6 +339,7 @@ uses: tauri-apps/tauri-action@v0
 **Cause:** `tauri.conf.json` wasn't synced before build
 
 **Fix:** Ensure `beforeBuildCommand` includes version sync:
+
 ```json
 "beforeBuildCommand": "bun run sync-version-from-pkg && bun run build"
 ```
@@ -337,6 +349,7 @@ uses: tauri-apps/tauri-action@v0
 **Cause:** App not notarized or certificate not trusted
 
 **Fixes:**
+
 1. Ensure all `APPLE_*` secrets are set correctly
 2. Check workflow logs for notarization errors
 3. Verify certificate is "Developer ID Application" type
@@ -346,6 +359,7 @@ uses: tauri-apps/tauri-action@v0
 **Symptom:** App doesn't detect available updates
 
 **Checks:**
+
 1. Verify `dilag-latest.json` exists in release assets
 2. Check endpoint URL in `tauri.conf.json` is correct
 3. Ensure repo is public (private repos need auth)
@@ -364,13 +378,13 @@ uses: tauri-apps/tauri-action@v0
 
 Typical durations on GitHub-hosted `macos-latest`:
 
-| Step | Duration |
-|------|----------|
-| Setup (checkout, rust, bun) | ~2 min |
-| Install dependencies | ~1 min |
-| Tauri build (first time) | ~15 min |
-| Tauri build (cached) | ~8 min |
-| Notarization | ~3-5 min |
-| **Total per architecture** | **~20-25 min** |
+| Step                        | Duration       |
+| --------------------------- | -------------- |
+| Setup (checkout, rust, bun) | ~2 min         |
+| Install dependencies        | ~1 min         |
+| Tauri build (first time)    | ~15 min        |
+| Tauri build (cached)        | ~8 min         |
+| Notarization                | ~3-5 min       |
+| **Total per architecture**  | **~20-25 min** |
 
 Both architectures build in parallel, so total workflow time ≈ single build time.

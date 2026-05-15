@@ -1,6 +1,6 @@
-import type { Violation, ViolationRule } from "@/hooks/use-designs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip";
-import { DangerTriangle } from "@solar-icons/react";
+import type { Violation, ViolationRule } from "@/hooks/use-designs"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
+import { DangerTriangle } from "@solar-icons/react"
 
 const RULE_LABELS: Record<ViolationRule, string> = {
   keyframes: "@keyframes animation",
@@ -9,14 +9,14 @@ const RULE_LABELS: Record<ViolationRule, string> = {
   emoji_as_icon: "emoji as icon",
   animation_css: "CSS animation shorthand",
   decorative_animation: "Tailwind animate-* utility",
-};
+}
 
 interface Props {
-  violations: Violation[];
+  violations: Violation[]
 }
 
 export function ViolationBadge({ violations }: Props) {
-  if (violations.length === 0) return null;
+  if (violations.length === 0) return null
 
   return (
     <Tooltip>
@@ -44,5 +44,5 @@ export function ViolationBadge({ violations }: Props) {
         </div>
       </TooltipContent>
     </Tooltip>
-  );
+  )
 }

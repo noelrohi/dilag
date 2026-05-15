@@ -1,80 +1,112 @@
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { MagicStick, Settings, PlugCircle, Star, AddSquare, MenuDots, TrashBinMinimalistic, SortVertical, CheckCircle } from "@solar-icons/react";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@dilag/ui/sidebar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@dilag/ui/dropdown-menu";
-import { AuthSettings } from "@/components/blocks/auth/auth-settings";
-import { useSessions } from "@/hooks/use-sessions";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router"
+import { useMemo, useState } from "react"
+import {
+  MagicStick,
+  Settings,
+  PlugCircle,
+  Star,
+  AddSquare,
+  MenuDots,
+  TrashBinMinimalistic,
+  SortVertical,
+  CheckCircle,
+} from "@solar-icons/react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+} from "@dilag/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@dilag/ui/dropdown-menu"
+import { AuthSettings } from "@/components/blocks/auth/auth-settings"
+import { useSessions } from "@/hooks/use-sessions"
 
 function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return "";
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  if (diffMs < 0) return "now";
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ""
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  if (diffMs < 0) return "now"
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
 
-  if (diffMins < 1) return "now";
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffHours < 24) return `${diffHours}h`;
-  if (diffDays < 7) return `${diffDays}d`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`;
-  return `${Math.floor(diffDays / 30)}mo`;
+  if (diffMins < 1) return "now"
+  if (diffMins < 60) return `${diffMins}m`
+  if (diffHours < 24) return `${diffHours}h`
+  if (diffDays < 7) return `${diffDays}d`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`
+  return `${Math.floor(diffDays / 30)}mo`
 }
 
 export function AppSidebar() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { sessions, deleteSession, toggleFavorite } = useSessions();
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { sessions, deleteSession, toggleFavorite } = useSessions()
 
   // Filter state
-  const [sortBy, setSortBy] = useState<"created" | "updated">("updated");
-  const [showFilter, setShowFilter] = useState<"all" | "starred">("all");
+  const [sortBy, setSortBy] = useState<"created" | "updated">("updated")
+  const [showFilter, setShowFilter] = useState<"all" | "starred">("all")
 
   // Derive favorites and recent sessions based on filter state
   const { favorites, recent } = useMemo(() => {
     // Sort by selected field (updated_at falls back to created_at for older sessions)
-    const getTimestamp = (s: typeof sessions[0]) => {
+    const getTimestamp = (s: (typeof sessions)[0]) => {
       if (sortBy === "updated") {
-        return new Date(s.updated_at ?? s.created_at).getTime();
+        return new Date(s.updated_at ?? s.created_at).getTime()
       }
-      return new Date(s.created_at).getTime();
-    };
-    
-    const sorted = [...sessions].sort((a, b) => getTimestamp(b) - getTimestamp(a));
-    
+      return new Date(s.created_at).getTime()
+    }
+
+    const sorted = [...sessions].sort((a, b) => getTimestamp(b) - getTimestamp(a))
+
     // When showing starred only, put all favorites in "recent" section (no separate favorites section)
     if (showFilter === "starred") {
-      return { favorites: [], recent: sorted.filter((s) => s.favorite).slice(0, 100) };
+      return { favorites: [], recent: sorted.filter((s) => s.favorite).slice(0, 100) }
     }
-    
+
     // Default: favorites section + non-favorites in recent
-    const favs = sorted.filter((s) => s.favorite);
-    const nonFavs = sorted.filter((s) => !s.favorite).slice(0, 100);
-    return { favorites: favs, recent: nonFavs };
-  }, [sessions, sortBy, showFilter]);
+    const favs = sorted.filter((s) => s.favorite)
+    const nonFavs = sorted.filter((s) => !s.favorite).slice(0, 100)
+    return { favorites: favs, recent: nonFavs }
+  }, [sessions, sortBy, showFilter])
 
   const handleOpenProject = (sessionId: string) => {
-    navigate({ to: "/studio/$sessionId", params: { sessionId } });
-  };
+    navigate({ to: "/studio/$sessionId", params: { sessionId } })
+  }
 
   const handleNewDesign = () => {
-    navigate({ to: "/" });
-  };
+    navigate({ to: "/" })
+  }
 
   const handleToggleFavorite = (sessionId: string) => {
-    toggleFavorite(sessionId);
-  };
+    toggleFavorite(sessionId)
+  }
 
   const handleDelete = (sessionId: string) => {
-    deleteSession(sessionId);
-  };
+    deleteSession(sessionId)
+  }
 
   return (
     <Sidebar collapsible="offcanvas">
-      <SidebarHeader data-tauri-drag-region className="h-[42px] pb-1 border-b border-sidebar-border" />
+      <SidebarHeader
+        data-tauri-drag-region
+        className="h-[42px] pb-1 border-b border-sidebar-border"
+      />
 
       <SidebarContent>
         {/* Main Navigation */}
@@ -82,10 +114,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={handleNewDesign}
-                  tooltip="New design"
-                >
+                <SidebarMenuButton onClick={handleNewDesign} tooltip="New design">
                   <AddSquare size={16} />
                   <span>New design</span>
                 </SidebarMenuButton>
@@ -116,9 +145,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 {favorites.map((session) => (
                   <SidebarMenuItem key={session.id} className="group/item">
-                    <SidebarMenuButton
-                      onClick={() => handleOpenProject(session.id)}
-                    >
+                    <SidebarMenuButton onClick={() => handleOpenProject(session.id)}>
                       <span className="truncate text-sm">{session.name}</span>
                     </SidebarMenuButton>
                     <DropdownMenu>
@@ -166,11 +193,17 @@ export function AppSidebar() {
                   <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
                     Sort by
                   </DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => setSortBy("created")} className="flex items-center justify-between">
+                  <DropdownMenuItem
+                    onClick={() => setSortBy("created")}
+                    className="flex items-center justify-between"
+                  >
                     <span>Created</span>
                     {sortBy === "created" && <CheckCircle size={14} className="text-primary" />}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy("updated")} className="flex items-center justify-between">
+                  <DropdownMenuItem
+                    onClick={() => setSortBy("updated")}
+                    className="flex items-center justify-between"
+                  >
                     <span>Updated</span>
                     {sortBy === "updated" && <CheckCircle size={14} className="text-primary" />}
                   </DropdownMenuItem>
@@ -178,11 +211,17 @@ export function AppSidebar() {
                   <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
                     Show
                   </DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => setShowFilter("all")} className="flex items-center justify-between">
+                  <DropdownMenuItem
+                    onClick={() => setShowFilter("all")}
+                    className="flex items-center justify-between"
+                  >
                     <span>All</span>
                     {showFilter === "all" && <CheckCircle size={14} className="text-primary" />}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowFilter("starred")} className="flex items-center justify-between">
+                  <DropdownMenuItem
+                    onClick={() => setShowFilter("starred")}
+                    className="flex items-center justify-between"
+                  >
                     <span>Starred</span>
                     {showFilter === "starred" && <CheckCircle size={14} className="text-primary" />}
                   </DropdownMenuItem>
@@ -193,13 +232,15 @@ export function AppSidebar() {
               <SidebarMenu>
                 {recent.map((session) => (
                   <SidebarMenuItem key={session.id} className="group/item">
-                    <SidebarMenuButton
-                      onClick={() => handleOpenProject(session.id)}
-                    >
+                    <SidebarMenuButton onClick={() => handleOpenProject(session.id)}>
                       <span className="truncate text-sm">{session.name}</span>
                     </SidebarMenuButton>
                     <span className="absolute right-2 top-1.5 text-xs text-muted-foreground group-hover/item:opacity-0 transition-opacity pointer-events-none">
-                      {formatRelativeTime(sortBy === "updated" ? (session.updated_at ?? session.created_at) : session.created_at)}
+                      {formatRelativeTime(
+                        sortBy === "updated"
+                          ? (session.updated_at ?? session.created_at)
+                          : session.created_at,
+                      )}
                     </span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -261,5 +302,5 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }

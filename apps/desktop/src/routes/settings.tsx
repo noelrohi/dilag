@@ -1,55 +1,79 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { Sun, Moon, Monitor, SquareArrowRightUp, TrashBinMinimalistic, Refresh, Server, InfoCircle, Palette } from "@solar-icons/react";
-import { useTheme } from "@/components/theme-provider";
-import { useUpdaterContext } from "@/context/updater-context";
-import { PageHeader } from "@/components/blocks/layout/page-header";
-import { cn } from "@/lib/utils";
-import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@dilag/ui/dialog";
+import { createFileRoute } from "@tanstack/react-router"
+import { useState, useEffect } from "react"
+import {
+  Sun,
+  Moon,
+  Monitor,
+  SquareArrowRightUp,
+  TrashBinMinimalistic,
+  Refresh,
+  Server,
+  InfoCircle,
+  Palette,
+} from "@solar-icons/react"
+import { useTheme } from "@/components/theme-provider"
+import { useUpdaterContext } from "@/context/updater-context"
+import { PageHeader } from "@/components/blocks/layout/page-header"
+import { cn } from "@/lib/utils"
+import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@dilag/ui/dialog"
+import { bridge } from "@/lib/bridge"
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
-});
+})
 
 interface AppInfo {
-  version: string;
-  data_dir: string;
-  data_size_bytes: number;
+  version: string
+  data_dir: string
+  data_size_bytes: number
 }
 
 function SettingsPage() {
-  const { theme, setTheme } = useTheme();
-  const { checkForUpdates, checking, updateAvailable, updateInfo, installUpdate, downloading, downloadProgress } = useUpdaterContext();
+  const { theme, setTheme } = useTheme()
+  const {
+    checkForUpdates,
+    checking,
+    updateAvailable,
+    updateInfo,
+    installUpdate,
+    downloading,
+    downloadProgress,
+  } = useUpdaterContext()
 
-  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
-  const [resetting, setResetting] = useState(false);
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [resetting, setResetting] = useState(false)
 
   useEffect(() => {
-    invoke<AppInfo>("get_app_info").then(setAppInfo).catch(console.error);
-  }, []);
+    bridge.app.getInfo().then(setAppInfo).catch(console.error)
+  }, [])
 
   const handleResetData = async () => {
-    setResetting(true);
+    setResetting(true)
     try {
-      await invoke("reset_all_data");
+      await bridge.app.resetAllData()
     } catch (error) {
-      console.error("Failed to reset data:", error);
-      setResetting(false);
-      setResetDialogOpen(false);
+      console.error("Failed to reset data:", error)
+      setResetting(false)
+      setResetDialogOpen(false)
     }
-  };
+  }
 
   const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
-  };
+    if (bytes === 0) return "0 B"
+    const k = 1024
+    const sizes = ["B", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i]
+  }
 
   return (
     <div className="h-dvh flex flex-col bg-background">
@@ -61,15 +85,10 @@ function SettingsPage() {
             {/* Header */}
             <header className="px-1 mb-8">
               <h1 className="text-xl font-semibold text-foreground">Settings</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Manage your preferences
-              </p>
+              <p className="text-sm text-muted-foreground mt-0.5">Manage your preferences</p>
             </header>
             {/* Appearance Section */}
-            <SettingsSection
-              icon={<Palette size={16} />}
-              title="Appearance"
-            >
+            <SettingsSection icon={<Palette size={16} />} title="Appearance">
               <SettingsCard>
                 <SettingsRow label="Theme">
                   <ThemeSegment value={theme} onChange={setTheme} />
@@ -98,7 +117,7 @@ function SettingsPage() {
                   onClick={() => setResetDialogOpen(true)}
                   className={cn(
                     "w-full flex items-center gap-3 py-3 px-1",
-                    "text-destructive hover:text-destructive/80 transition-colors"
+                    "text-destructive hover:text-destructive/80 transition-colors",
                   )}
                 >
                   <TrashBinMinimalistic size={16} />
@@ -108,10 +127,7 @@ function SettingsPage() {
             </SettingsSection>
 
             {/* About Section */}
-            <SettingsSection
-              icon={<InfoCircle size={16} />}
-              title="About"
-            >
+            <SettingsSection icon={<InfoCircle size={16} />} title="About">
               <SettingsCard>
                 <SettingsRow label="Version">
                   <span className="text-sm font-mono tabular-nums text-muted-foreground">
@@ -128,7 +144,7 @@ function SettingsPage() {
                         "px-3 py-1.5 rounded-md text-xs font-medium",
                         "bg-primary text-primary-foreground",
                         "hover:bg-primary/90 transition-colors",
-                        "disabled:opacity-60"
+                        "disabled:opacity-60",
                       )}
                     >
                       {downloading ? `${downloadProgress}%` : `Install ${updateInfo.version}`}
@@ -141,7 +157,7 @@ function SettingsPage() {
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-md",
                         "text-xs text-muted-foreground",
                         "bg-muted/50 hover:bg-muted hover:text-foreground",
-                        "transition-colors disabled:opacity-60"
+                        "transition-colors disabled:opacity-60",
                       )}
                     >
                       <Refresh size={12} className={cn(checking && "animate-spin")} />
@@ -152,11 +168,13 @@ function SettingsPage() {
                 <SettingsDivider />
                 <div className="flex items-center gap-2 py-3 px-1">
                   <ExternalLinkButton
-                    onClick={() => openUrl("https://github.com/noelrohi/dilag")}
+                    onClick={() => bridge.shell.openExternal("https://github.com/noelrohi/dilag")}
                     label="GitHub"
                   />
                   <ExternalLinkButton
-                    onClick={() => openUrl("https://github.com/noelrohi/dilag#readme")}
+                    onClick={() =>
+                      bridge.shell.openExternal("https://github.com/noelrohi/dilag#readme")
+                    }
                     label="Documentation"
                   />
                 </div>
@@ -183,7 +201,7 @@ function SettingsPage() {
                 "flex-1 h-10 rounded-lg text-sm font-medium",
                 "bg-secondary text-secondary-foreground",
                 "hover:bg-secondary/80 transition-colors",
-                "disabled:opacity-50"
+                "disabled:opacity-50",
               )}
             >
               Cancel
@@ -195,7 +213,7 @@ function SettingsPage() {
                 "flex-1 h-10 rounded-lg text-sm font-medium",
                 "bg-destructive text-destructive-foreground",
                 "hover:bg-destructive/90 transition-colors",
-                "disabled:opacity-50"
+                "disabled:opacity-50",
               )}
             >
               {resetting ? "Resetting..." : "Reset"}
@@ -204,7 +222,7 @@ function SettingsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }
 
 function SettingsSection({
@@ -213,10 +231,10 @@ function SettingsSection({
   description,
   children,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  description?: string;
-  children: React.ReactNode;
+  icon: React.ReactNode
+  title: string
+  description?: string
+  children: React.ReactNode
 }) {
   return (
     <section className="mb-8">
@@ -232,7 +250,7 @@ function SettingsSection({
       </div>
       {children}
     </section>
-  );
+  )
 }
 
 function SettingsCard({ children }: { children: React.ReactNode }) {
@@ -240,40 +258,34 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
     <div className="rounded-xl bg-card border border-border/50 overflow-hidden">
       <div className="px-4 py-1">{children}</div>
     </div>
-  );
+  )
 }
 
-function SettingsRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function SettingsRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between min-h-[52px] py-2 px-1">
       <span className="text-sm text-foreground">{label}</span>
       {children}
     </div>
-  );
+  )
 }
 
 function SettingsDivider() {
-  return <div className="h-px bg-border/50 -mx-1" />;
+  return <div className="h-px bg-border/50 -mx-1" />
 }
 
 function ThemeSegment({
   value,
   onChange,
 }: {
-  value: string;
-  onChange: (value: "light" | "dark" | "system") => void;
+  value: string
+  onChange: (value: "light" | "dark" | "system") => void
 }) {
   const options = [
     { id: "light", icon: Sun, label: "Light" },
     { id: "dark", icon: Moon, label: "Dark" },
     { id: "system", icon: Monitor, label: "Auto" },
-  ] as const;
+  ] as const
 
   return (
     <div className="flex items-center p-1 rounded-lg bg-muted/50">
@@ -285,7 +297,7 @@ function ThemeSegment({
             "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150",
             value === id
               ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           <Icon size={14} />
@@ -293,16 +305,10 @@ function ThemeSegment({
         </button>
       ))}
     </div>
-  );
+  )
 }
 
-function ExternalLinkButton({
-  onClick,
-  label,
-}: {
-  onClick: () => void;
-  label: string;
-}) {
+function ExternalLinkButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
       onClick={onClick}
@@ -310,11 +316,11 @@ function ExternalLinkButton({
         "flex items-center gap-1.5 px-3 py-1.5 rounded-md",
         "text-xs text-muted-foreground",
         "bg-muted/50 hover:bg-muted hover:text-foreground",
-        "transition-colors"
+        "transition-colors",
       )}
     >
       {label}
       <SquareArrowRightUp size={12} />
     </button>
-  );
+  )
 }

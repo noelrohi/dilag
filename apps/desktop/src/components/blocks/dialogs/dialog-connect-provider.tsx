@@ -1,22 +1,22 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowLeft, Restart, DangerCircle, Copy, CheckCircle } from "@solar-icons/react";
-import { useSDK } from "@/context/global-events";
-import { Dialog, DialogContent } from "@dilag/ui/dialog";
-import { Input } from "@dilag/ui/input";
-import { Field, FieldLabel, FieldDescription } from "@dilag/ui/field";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { useState, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { ArrowLeft, Restart, DangerCircle, Copy, CheckCircle } from "@solar-icons/react"
+import { useSDK } from "@/context/global-events"
+import { Dialog, DialogContent } from "@dilag/ui/dialog"
+import { Input } from "@dilag/ui/input"
+import { Field, FieldLabel, FieldDescription } from "@dilag/ui/field"
+import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import { bridge } from "@/lib/bridge"
 
-type AuthState = "select-method" | "pending" | "api-key" | "oauth-code" | "oauth-auto" | "error";
+type AuthState = "select-method" | "pending" | "api-key" | "oauth-code" | "oauth-auto" | "error"
 
 interface DialogConnectProviderProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  providerId: string;
-  onBack: () => void;
-  onSuccess: () => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  providerId: string
+  onBack: () => void
+  onSuccess: () => void
 }
 
 export function DialogConnectProvider({
@@ -26,60 +26,60 @@ export function DialogConnectProvider({
   onBack,
   onSuccess,
 }: DialogConnectProviderProps) {
-  const sdk = useSDK();
-  const queryClient = useQueryClient();
+  const sdk = useSDK()
+  const queryClient = useQueryClient()
 
-  const [authState, setAuthState] = useState<AuthState>("select-method");
-  const [selectedMethodIndex, setSelectedMethodIndex] = useState<number | null>(null);
+  const [authState, setAuthState] = useState<AuthState>("select-method")
+  const [selectedMethodIndex, setSelectedMethodIndex] = useState<number | null>(null)
   const [authorization, setAuthorization] = useState<{
-    url?: string;
-    method?: "code" | "auto";
-    instructions?: string;
-  } | null>(null);
-  const [apiKey, setApiKey] = useState("");
-  const [authCode, setAuthCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+    url?: string
+    method?: "code" | "auto"
+    instructions?: string
+  } | null>(null)
+  const [apiKey, setApiKey] = useState("")
+  const [authCode, setAuthCode] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   // Fetch provider info
   const { data: provider } = useQuery({
     queryKey: ["provider", providerId],
     queryFn: async () => {
-      const response = await sdk.provider.list();
-      return response.data?.all?.find((p) => p.id === providerId);
+      const response = await sdk.provider.list()
+      return response.data?.all?.find((p) => p.id === providerId)
     },
     enabled: open && !!providerId,
-  });
+  })
 
   // Fetch auth methods for this provider
   const { data: authMethods = [] } = useQuery({
     queryKey: ["provider-auth", providerId],
     queryFn: async () => {
-      const response = await sdk.provider.auth();
-      const methods = response.data?.[providerId];
+      const response = await sdk.provider.auth()
+      const methods = response.data?.[providerId]
       // Default to API key if no methods defined
-      return methods ?? [{ type: "api" as const, label: "API key" }];
+      return methods ?? [{ type: "api" as const, label: "API key" }]
     },
     enabled: open && !!providerId,
-  });
+  })
 
   // Auto-select if only one method
   useEffect(() => {
     if (authMethods.length === 1 && authState === "select-method") {
-      selectMethod(0);
+      selectMethod(0)
     }
-  }, [authMethods, authState]);
+  }, [authMethods, authState])
 
   // Reset state when dialog closes or provider changes
   useEffect(() => {
     if (!open) {
-      setAuthState("select-method");
-      setSelectedMethodIndex(null);
-      setAuthorization(null);
-      setApiKey("");
-      setAuthCode("");
-      setError(null);
+      setAuthState("select-method")
+      setSelectedMethodIndex(null)
+      setAuthorization(null)
+      setApiKey("")
+      setAuthCode("")
+      setError(null)
     }
-  }, [open, providerId]);
+  }, [open, providerId])
 
   // API key mutation
   const apiKeyMutation = useMutation({
@@ -87,20 +87,20 @@ export function DialogConnectProvider({
       await sdk.auth.set({
         providerID: providerId,
         auth: { type: "api", key },
-      });
+      })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["auth", "providers"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "providers"] })
       toast.success(`${provider?.name} connected`, {
         description: `${provider?.name} models are now available to use.`,
-      });
-      onSuccess();
+      })
+      onSuccess()
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : "Failed to save API key");
-      setAuthState("error");
+      setError(err instanceof Error ? err.message : "Failed to save API key")
+      setAuthState("error")
     },
-  });
+  })
 
   // OAuth callback mutation
   const oauthCallbackMutation = useMutation({
@@ -109,107 +109,107 @@ export function DialogConnectProvider({
         providerID: providerId,
         code,
         method,
-      });
+      })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["auth", "providers"] });
+      queryClient.invalidateQueries({ queryKey: ["auth", "providers"] })
       toast.success(`${provider?.name} connected`, {
         description: `${provider?.name} models are now available to use.`,
-      });
-      onSuccess();
+      })
+      onSuccess()
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : "Authorization failed");
-      setAuthState("error");
+      setError(err instanceof Error ? err.message : "Authorization failed")
+      setAuthState("error")
     },
-  });
+  })
 
   async function selectMethod(index: number) {
-    const method = authMethods[index];
-    setSelectedMethodIndex(index);
-    setError(null);
+    const method = authMethods[index]
+    setSelectedMethodIndex(index)
+    setError(null)
 
     if (method.type === "api") {
-      setAuthState("api-key");
-      return;
+      setAuthState("api-key")
+      return
     }
 
     // OAuth flow
-    setAuthState("pending");
+    setAuthState("pending")
     try {
       const response = await sdk.provider.oauth.authorize({
         providerID: providerId,
         method: index,
-      });
+      })
 
       if (response.data?.url) {
         setAuthorization({
           url: response.data.url,
           method: response.data.method as "code" | "auto",
           instructions: response.data.instructions,
-        });
+        })
 
         // Open URL in browser
-        await openUrl(response.data.url);
+        await bridge.shell.openExternal(response.data.url)
 
         if (response.data.method === "auto") {
-          setAuthState("oauth-auto");
+          setAuthState("oauth-auto")
           // Start polling for completion
-          oauthCallbackMutation.mutate({ method: index });
+          oauthCallbackMutation.mutate({ method: index })
         } else {
-          setAuthState("oauth-code");
+          setAuthState("oauth-code")
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start authorization");
-      setAuthState("error");
+      setError(err instanceof Error ? err.message : "Failed to start authorization")
+      setAuthState("error")
     }
   }
 
   function handleSubmitApiKey(e: React.FormEvent) {
-    e.preventDefault();
-    if (!apiKey.trim()) return;
-    apiKeyMutation.mutate(apiKey.trim());
+    e.preventDefault()
+    if (!apiKey.trim()) return
+    apiKeyMutation.mutate(apiKey.trim())
   }
 
   function handleSubmitAuthCode(e: React.FormEvent) {
-    e.preventDefault();
-    if (!authCode.trim()) return;
-    oauthCallbackMutation.mutate({ code: authCode.trim(), method: selectedMethodIndex ?? 0 });
+    e.preventDefault()
+    if (!authCode.trim()) return
+    oauthCallbackMutation.mutate({ code: authCode.trim(), method: selectedMethodIndex ?? 0 })
   }
 
   function handleBack() {
     if (authMethods.length === 1) {
-      onBack();
-      return;
+      onBack()
+      return
     }
     if (authState !== "select-method") {
-      setAuthState("select-method");
-      setSelectedMethodIndex(null);
-      setAuthorization(null);
-      setApiKey("");
-      setAuthCode("");
-      setError(null);
-      return;
+      setAuthState("select-method")
+      setSelectedMethodIndex(null)
+      setAuthorization(null)
+      setApiKey("")
+      setAuthCode("")
+      setError(null)
+      return
     }
-    onBack();
+    onBack()
   }
 
-  const selectedMethod = selectedMethodIndex !== null ? authMethods[selectedMethodIndex] : null;
-  const [copied, setCopied] = useState(false);
+  const selectedMethod = selectedMethodIndex !== null ? authMethods[selectedMethodIndex] : null
+  const [copied, setCopied] = useState(false)
 
   const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const getTitle = () => {
     if (providerId === "anthropic" && selectedMethod?.label?.toLowerCase().includes("max")) {
-      return "Login with Claude Pro/Max";
+      return "Login with Claude Pro/Max"
     }
-    return `Connect ${provider?.name ?? providerId}`;
-  };
+    return `Connect ${provider?.name ?? providerId}`
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,7 +223,7 @@ export function DialogConnectProvider({
                 "size-8 rounded-lg flex items-center justify-center",
                 "transition-colors duration-150",
                 "hover:bg-muted/80 active:bg-muted",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               )}
             >
               <ArrowLeft size={16} className="text-muted-foreground" />
@@ -244,9 +244,7 @@ export function DialogConnectProvider({
           {/* Method Selection */}
           {authState === "select-method" && authMethods.length > 1 && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Select how you want to authenticate
-              </p>
+              <p className="text-sm text-muted-foreground">Select how you want to authenticate</p>
               <div className="space-y-1.5">
                 {authMethods.map((method, index) => (
                   <button
@@ -256,7 +254,7 @@ export function DialogConnectProvider({
                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
                       "transition-colors duration-150 text-left",
                       "hover:bg-muted/80 active:bg-muted",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     )}
                   >
                     <div className="size-4 rounded-full border-2 border-muted-foreground/30" />
@@ -294,17 +292,17 @@ export function DialogConnectProvider({
               {providerId === "opencode" ? (
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p>
-                    OpenCode Zen gives you access to a curated set of reliable
-                    optimized models for coding agents.
+                    OpenCode Zen gives you access to a curated set of reliable optimized models for
+                    coding agents.
                   </p>
                   <p>
-                    With a single API key you'll get access to models such as
-                    Claude, GPT, Gemini, GLM and more.
+                    With a single API key you'll get access to models such as Claude, GPT, Gemini,
+                    GLM and more.
                   </p>
                   <p>
                     Visit{" "}
                     <button
-                      onClick={() => openUrl("https://opencode.ai/zen")}
+                      onClick={() => bridge.shell.openExternal("https://opencode.ai/zen")}
                       className="text-primary hover:underline font-medium"
                     >
                       opencode.ai/zen
@@ -337,7 +335,7 @@ export function DialogConnectProvider({
                     "bg-primary text-primary-foreground",
                     "hover:bg-primary/90 transition-colors",
                     "disabled:opacity-50 disabled:cursor-not-allowed",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   )}
                 >
                   {apiKeyMutation.isPending ? (
@@ -360,12 +358,12 @@ export function DialogConnectProvider({
                 Complete authorization in your browser, then paste the code below.
               </p>
               <button
-                onClick={() => authorization.url && openUrl(authorization.url)}
+                onClick={() => authorization.url && bridge.shell.openExternal(authorization.url)}
                 className={cn(
                   "w-full h-9 rounded-lg text-sm font-medium",
                   "border border-border/50 bg-muted/30",
                   "hover:bg-muted/50 transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 )}
               >
                 Open {provider?.name} in browser
@@ -391,7 +389,7 @@ export function DialogConnectProvider({
                     "bg-primary text-primary-foreground",
                     "hover:bg-primary/90 transition-colors",
                     "disabled:opacity-50 disabled:cursor-not-allowed",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   )}
                 >
                   {oauthCallbackMutation.isPending ? (
@@ -428,15 +426,17 @@ export function DialogConnectProvider({
                     />
                     <button
                       type="button"
-                      onClick={() => handleCopyCode(
-                        authorization.instructions?.includes(":")
-                          ? authorization.instructions.split(":")[1]?.trim() ?? ""
-                          : authorization.instructions ?? ""
-                      )}
+                      onClick={() =>
+                        handleCopyCode(
+                          authorization.instructions?.includes(":")
+                            ? (authorization.instructions.split(":")[1]?.trim() ?? "")
+                            : (authorization.instructions ?? ""),
+                        )
+                      }
                       className={cn(
                         "absolute right-2 top-1/2 -translate-y-1/2",
                         "size-7 rounded flex items-center justify-center",
-                        "hover:bg-muted transition-colors"
+                        "hover:bg-muted transition-colors",
                       )}
                     >
                       {copied ? (
@@ -450,12 +450,12 @@ export function DialogConnectProvider({
                 </Field>
               )}
               <button
-                onClick={() => authorization.url && openUrl(authorization.url)}
+                onClick={() => authorization.url && bridge.shell.openExternal(authorization.url)}
                 className={cn(
                   "w-full h-9 rounded-lg text-sm font-medium",
                   "border border-border/50 bg-muted/30",
                   "hover:bg-muted/50 transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 )}
               >
                 Reopen browser window
@@ -469,5 +469,5 @@ export function DialogConnectProvider({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

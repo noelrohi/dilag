@@ -45,6 +45,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "dev": "tsc --watch"
   },
   "dependencies": {

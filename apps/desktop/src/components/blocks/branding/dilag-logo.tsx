@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
 export function DilagLogo({ className }: { className?: string }) {
   return (
@@ -31,5 +31,5 @@ export function DilagLogo({ className }: { className?: string }) {
         className="fill-foreground"
       />
     </svg>
-  );
+  )
 }

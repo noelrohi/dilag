@@ -1,94 +1,97 @@
-"use client";
+"use client"
 
-import { Button } from "@dilag/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible";
-import { Input } from "@dilag/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@dilag/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { AltArrowDown, Restart, ArrowLeft, ArrowRight, MaximizeSquare, MinimizeSquare, Monitor, Smartphone, Tablet } from "@solar-icons/react";
-import type { ComponentProps, ReactNode } from "react";
+import { Button } from "@dilag/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
+import { Input } from "@dilag/ui/input"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@dilag/ui/tooltip"
+import { cn } from "@/lib/utils"
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+  AltArrowDown,
+  Restart,
+  ArrowLeft,
+  ArrowRight,
+  MaximizeSquare,
+  MinimizeSquare,
+  Monitor,
+  Smartphone,
+  Tablet,
+} from "@solar-icons/react"
+import type { ComponentProps, ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 
 // =============================================================================
 // Types
 // =============================================================================
 
-export type WebViewport = "desktop" | "tablet" | "mobile";
+export type WebViewport = "desktop" | "tablet" | "mobile"
 
 export type ConsoleLog = {
-  level: "log" | "warn" | "error" | "info";
-  message: string;
-  timestamp: Date;
-};
+  level: "log" | "warn" | "error" | "info"
+  message: string
+  timestamp: Date
+}
 
 export type WebPreviewContextValue = {
   // URL state
-  url: string;
-  setUrl: (url: string) => void;
+  url: string
+  setUrl: (url: string) => void
   // Navigation history
-  history: string[];
-  historyIndex: number;
-  canGoBack: boolean;
-  canGoForward: boolean;
-  goBack: () => void;
-  goForward: () => void;
-  navigate: (url: string) => void;
-  refresh: () => void;
-  refreshKey: number;
+  history: string[]
+  historyIndex: number
+  canGoBack: boolean
+  canGoForward: boolean
+  goBack: () => void
+  goForward: () => void
+  navigate: (url: string) => void
+  refresh: () => void
+  refreshKey: number
   // Viewport
-  viewport: WebViewport;
-  setViewport: (viewport: WebViewport) => void;
+  viewport: WebViewport
+  setViewport: (viewport: WebViewport) => void
   // Full screen
-  isFullScreen: boolean;
-  toggleFullScreen: () => void;
+  isFullScreen: boolean
+  toggleFullScreen: () => void
   // Console
-  consoleOpen: boolean;
-  setConsoleOpen: (open: boolean) => void;
-  logs: ConsoleLog[];
-  addLog: (log: Omit<ConsoleLog, "timestamp">) => void;
-  clearLogs: () => void;
+  consoleOpen: boolean
+  setConsoleOpen: (open: boolean) => void
+  logs: ConsoleLog[]
+  addLog: (log: Omit<ConsoleLog, "timestamp">) => void
+  clearLogs: () => void
   // Loading
-  isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
-};
+  isLoading: boolean
+  setIsLoading: (loading: boolean) => void
+}
 
 export const VIEWPORT_SIZES: Record<WebViewport, { width: number; height: number }> = {
   desktop: { width: 1280, height: 800 },
   tablet: { width: 768, height: 1024 },
   mobile: { width: 375, height: 667 },
-};
+}
 
 // =============================================================================
 // Context
 // =============================================================================
 
-const WebPreviewContext = createContext<WebPreviewContextValue | null>(null);
+const WebPreviewContext = createContext<WebPreviewContextValue | null>(null)
 
 export const useWebPreview = () => {
-  const context = useContext(WebPreviewContext);
+  const context = useContext(WebPreviewContext)
   if (!context) {
-    throw new Error("WebPreview components must be used within a WebPreview");
+    throw new Error("WebPreview components must be used within a WebPreview")
   }
-  return context;
-};
+  return context
+}
 
 // =============================================================================
 // WebPreview (Root)
 // =============================================================================
 
 export type WebPreviewProps = ComponentProps<"div"> & {
-  defaultUrl?: string;
-  defaultViewport?: WebViewport;
-  onUrlChange?: (url: string) => void;
-  onViewportChange?: (viewport: WebViewport) => void;
-};
+  defaultUrl?: string
+  defaultViewport?: WebViewport
+  onUrlChange?: (url: string) => void
+  onViewportChange?: (viewport: WebViewport) => void
+}
 
 export const WebPreview = ({
   className,
@@ -100,68 +103,77 @@ export const WebPreview = ({
   ...props
 }: WebPreviewProps) => {
   // URL and navigation state
-  const [history, setHistory] = useState<string[]>(defaultUrl ? [defaultUrl] : []);
-  const [historyIndex, setHistoryIndex] = useState(defaultUrl ? 0 : -1);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [history, setHistory] = useState<string[]>(defaultUrl ? [defaultUrl] : [])
+  const [historyIndex, setHistoryIndex] = useState(defaultUrl ? 0 : -1)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Viewport state
-  const [viewport, setViewportState] = useState<WebViewport>(defaultViewport);
+  const [viewport, setViewportState] = useState<WebViewport>(defaultViewport)
 
   // UI state
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const [logs, setLogs] = useState<ConsoleLog[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false)
+  const [consoleOpen, setConsoleOpen] = useState(false)
+  const [logs, setLogs] = useState<ConsoleLog[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-  const url = historyIndex >= 0 ? history[historyIndex] : "";
+  const url = historyIndex >= 0 ? history[historyIndex] : ""
 
-  const setUrl = useCallback((newUrl: string) => {
-    if (historyIndex >= 0 && history[historyIndex] === newUrl) return;
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newUrl);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-    onUrlChange?.(newUrl);
-  }, [history, historyIndex, onUrlChange]);
+  const setUrl = useCallback(
+    (newUrl: string) => {
+      if (historyIndex >= 0 && history[historyIndex] === newUrl) return
+      const newHistory = history.slice(0, historyIndex + 1)
+      newHistory.push(newUrl)
+      setHistory(newHistory)
+      setHistoryIndex(newHistory.length - 1)
+      onUrlChange?.(newUrl)
+    },
+    [history, historyIndex, onUrlChange],
+  )
 
-  const navigate = useCallback((newUrl: string) => {
-    setUrl(newUrl);
-  }, [setUrl]);
+  const navigate = useCallback(
+    (newUrl: string) => {
+      setUrl(newUrl)
+    },
+    [setUrl],
+  )
 
   const goBack = useCallback(() => {
     if (historyIndex > 0) {
-      setHistoryIndex(historyIndex - 1);
-      onUrlChange?.(history[historyIndex - 1]);
+      setHistoryIndex(historyIndex - 1)
+      onUrlChange?.(history[historyIndex - 1])
     }
-  }, [historyIndex, history, onUrlChange]);
+  }, [historyIndex, history, onUrlChange])
 
   const goForward = useCallback(() => {
     if (historyIndex < history.length - 1) {
-      setHistoryIndex(historyIndex + 1);
-      onUrlChange?.(history[historyIndex + 1]);
+      setHistoryIndex(historyIndex + 1)
+      onUrlChange?.(history[historyIndex + 1])
     }
-  }, [historyIndex, history, onUrlChange]);
+  }, [historyIndex, history, onUrlChange])
 
   const refresh = useCallback(() => {
-    setRefreshKey((k) => k + 1);
-  }, []);
+    setRefreshKey((k) => k + 1)
+  }, [])
 
-  const setViewport = useCallback((v: WebViewport) => {
-    setViewportState(v);
-    onViewportChange?.(v);
-  }, [onViewportChange]);
+  const setViewport = useCallback(
+    (v: WebViewport) => {
+      setViewportState(v)
+      onViewportChange?.(v)
+    },
+    [onViewportChange],
+  )
 
   const toggleFullScreen = useCallback(() => {
-    setIsFullScreen((prev) => !prev);
-  }, []);
+    setIsFullScreen((prev) => !prev)
+  }, [])
 
   const addLog = useCallback((log: Omit<ConsoleLog, "timestamp">) => {
-    setLogs((prev) => [...prev, { ...log, timestamp: new Date() }]);
-  }, []);
+    setLogs((prev) => [...prev, { ...log, timestamp: new Date() }])
+  }, [])
 
   const clearLogs = useCallback(() => {
-    setLogs([]);
-  }, []);
+    setLogs([])
+  }, [])
 
   const contextValue: WebPreviewContextValue = {
     url,
@@ -186,7 +198,7 @@ export const WebPreview = ({
     clearLogs,
     isLoading,
     setIsLoading,
-  };
+  }
 
   return (
     <WebPreviewContext.Provider value={contextValue}>
@@ -194,21 +206,21 @@ export const WebPreview = ({
         className={cn(
           "flex size-full flex-col rounded-lg border bg-card overflow-hidden",
           isFullScreen && "fixed inset-0 z-50 rounded-none",
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     </WebPreviewContext.Provider>
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewNavigation
 // =============================================================================
 
-export type WebPreviewNavigationProps = ComponentProps<"div">;
+export type WebPreviewNavigationProps = ComponentProps<"div">
 
 export const WebPreviewNavigation = ({
   className,
@@ -216,23 +228,20 @@ export const WebPreviewNavigation = ({
   ...props
 }: WebPreviewNavigationProps) => (
   <div
-    className={cn(
-      "flex items-center gap-2 border-b bg-muted/30 px-3 py-2",
-      className
-    )}
+    className={cn("flex items-center gap-2 border-b bg-muted/30 px-3 py-2", className)}
     {...props}
   >
     {children}
   </div>
-);
+)
 
 // =============================================================================
 // WebPreviewNavigationButton
 // =============================================================================
 
 export type WebPreviewNavigationButtonProps = ComponentProps<typeof Button> & {
-  tooltip?: string;
-};
+  tooltip?: string
+}
 
 export const WebPreviewNavigationButton = ({
   onClick,
@@ -263,58 +272,46 @@ export const WebPreviewNavigationButton = ({
       )}
     </Tooltip>
   </TooltipProvider>
-);
+)
 
 // =============================================================================
 // WebPreviewNavigationButtons (Back/Forward)
 // =============================================================================
 
 export const WebPreviewNavigationButtons = () => {
-  const { canGoBack, canGoForward, goBack, goForward } = useWebPreview();
+  const { canGoBack, canGoForward, goBack, goForward } = useWebPreview()
 
   return (
     <div className="flex items-center">
-      <WebPreviewNavigationButton
-        onClick={goBack}
-        disabled={!canGoBack}
-        tooltip="Go back"
-      >
+      <WebPreviewNavigationButton onClick={goBack} disabled={!canGoBack} tooltip="Go back">
         <ArrowLeft size={16} />
       </WebPreviewNavigationButton>
-      <WebPreviewNavigationButton
-        onClick={goForward}
-        disabled={!canGoForward}
-        tooltip="Go forward"
-      >
+      <WebPreviewNavigationButton onClick={goForward} disabled={!canGoForward} tooltip="Go forward">
         <ArrowRight size={16} />
       </WebPreviewNavigationButton>
     </div>
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewRefresh
 // =============================================================================
 
 export const WebPreviewRefresh = () => {
-  const { refresh, isLoading } = useWebPreview();
+  const { refresh, isLoading } = useWebPreview()
 
   return (
-    <WebPreviewNavigationButton
-      onClick={refresh}
-      disabled={isLoading}
-      tooltip="Refresh"
-    >
+    <WebPreviewNavigationButton onClick={refresh} disabled={isLoading} tooltip="Refresh">
       <Restart size={16} className={cn(isLoading && "animate-spin")} />
     </WebPreviewNavigationButton>
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewUrl
 // =============================================================================
 
-export type WebPreviewUrlProps = ComponentProps<typeof Input>;
+export type WebPreviewUrlProps = ComponentProps<typeof Input>
 
 export const WebPreviewUrl = ({
   value,
@@ -323,52 +320,49 @@ export const WebPreviewUrl = ({
   className,
   ...props
 }: WebPreviewUrlProps) => {
-  const { url, navigate } = useWebPreview();
-  const [inputValue, setInputValue] = useState(url);
+  const { url, navigate } = useWebPreview()
+  const [inputValue, setInputValue] = useState(url)
 
   useEffect(() => {
-    setInputValue(url);
-  }, [url]);
+    setInputValue(url)
+  }, [url])
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value);
-    onChange?.(event);
-  };
+    setInputValue(event.target.value)
+    onChange?.(event)
+  }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
-      navigate(inputValue);
+      navigate(inputValue)
     }
-    onKeyDown?.(event);
-  };
+    onKeyDown?.(event)
+  }
 
   return (
     <Input
-      className={cn(
-        "h-8 flex-1 bg-background/50 text-sm font-mono",
-        className
-      )}
+      className={cn("h-8 flex-1 bg-background/50 text-sm font-mono", className)}
       onChange={onChange ?? handleChange}
       onKeyDown={handleKeyDown}
       placeholder="Enter URL..."
       value={value ?? inputValue}
       {...props}
     />
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewViewportSelector
 // =============================================================================
 
 export const WebPreviewViewportSelector = () => {
-  const { viewport, setViewport } = useWebPreview();
+  const { viewport, setViewport } = useWebPreview()
 
   const options: { id: WebViewport; icon: typeof Monitor; label: string }[] = [
     { id: "desktop", icon: Monitor, label: "Desktop" },
     { id: "tablet", icon: Tablet, label: "Tablet" },
     { id: "mobile", icon: Smartphone, label: "Mobile" },
-  ];
+  ]
 
   return (
     <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
@@ -378,49 +372,42 @@ export const WebPreviewViewportSelector = () => {
           onClick={() => setViewport(id)}
           tooltip={label}
           variant={viewport === id ? "secondary" : "ghost"}
-          className={cn(
-            "size-7",
-            viewport === id && "bg-background shadow-sm"
-          )}
+          className={cn("size-7", viewport === id && "bg-background shadow-sm")}
         >
           <Icon size={14} />
         </WebPreviewNavigationButton>
       ))}
     </div>
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewFullScreenToggle
 // =============================================================================
 
 export const WebPreviewFullScreenToggle = () => {
-  const { isFullScreen, toggleFullScreen } = useWebPreview();
+  const { isFullScreen, toggleFullScreen } = useWebPreview()
 
   return (
     <WebPreviewNavigationButton
       onClick={toggleFullScreen}
       tooltip={isFullScreen ? "Exit full screen" : "Full screen"}
     >
-      {isFullScreen ? (
-        <MinimizeSquare size={16} />
-      ) : (
-        <MaximizeSquare size={16} />
-      )}
+      {isFullScreen ? <MinimizeSquare size={16} /> : <MaximizeSquare size={16} />}
     </WebPreviewNavigationButton>
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewBody
 // =============================================================================
 
 export type WebPreviewBodyProps = ComponentProps<"div"> & {
-  src?: string;
-  loading?: ReactNode;
-  emptyState?: ReactNode;
-  iframeProps?: ComponentProps<"iframe">;
-};
+  src?: string
+  loading?: ReactNode
+  emptyState?: ReactNode
+  iframeProps?: ComponentProps<"iframe">
+}
 
 export const WebPreviewBody = ({
   className,
@@ -431,50 +418,47 @@ export const WebPreviewBody = ({
   children,
   ...props
 }: WebPreviewBodyProps) => {
-  const { url, refreshKey, viewport, setIsLoading, isLoading } = useWebPreview();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const { url, refreshKey, viewport, setIsLoading, isLoading } = useWebPreview()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
 
-  const currentSize = VIEWPORT_SIZES[viewport];
-  const iframeSrc = src ?? url;
+  const currentSize = VIEWPORT_SIZES[viewport]
+  const iframeSrc = src ?? url
 
   // Calculate scale to fit viewport in container
   useEffect(() => {
     const updateScale = () => {
-      if (!containerRef.current) return;
-      const padding = 48;
-      const maxWidth = containerRef.current.clientWidth - padding;
-      const maxHeight = containerRef.current.clientHeight - padding;
-      const scaleX = maxWidth / currentSize.width;
-      const scaleY = maxHeight / currentSize.height;
-      setScale(Math.min(scaleX, scaleY, 1));
-    };
-
-    updateScale();
-    const resizeObserver = new ResizeObserver(updateScale);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
+      if (!containerRef.current) return
+      const padding = 48
+      const maxWidth = containerRef.current.clientWidth - padding
+      const maxHeight = containerRef.current.clientHeight - padding
+      const scaleX = maxWidth / currentSize.width
+      const scaleY = maxHeight / currentSize.height
+      setScale(Math.min(scaleX, scaleY, 1))
     }
-    return () => resizeObserver.disconnect();
-  }, [currentSize.width, currentSize.height]);
+
+    updateScale()
+    const resizeObserver = new ResizeObserver(updateScale)
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+    return () => resizeObserver.disconnect()
+  }, [currentSize.width, currentSize.height])
 
   const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
+    setIsLoading(false)
+  }
 
   if (!iframeSrc && emptyState) {
     return (
       <div
         ref={containerRef}
-        className={cn(
-          "flex-1 flex items-center justify-center bg-muted/20",
-          className
-        )}
+        className={cn("flex-1 flex items-center justify-center bg-muted/20", className)}
         {...props}
       >
         {emptyState}
       </div>
-    );
+    )
   }
 
   return (
@@ -482,7 +466,7 @@ export const WebPreviewBody = ({
       ref={containerRef}
       className={cn(
         "flex-1 flex items-center justify-center overflow-hidden bg-muted/20 relative",
-        className
+        className,
       )}
       {...props}
     >
@@ -513,16 +497,16 @@ export const WebPreviewBody = ({
       {isLoading && loading}
       {children}
     </div>
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewConsole
 // =============================================================================
 
 export type WebPreviewConsoleProps = ComponentProps<"div"> & {
-  maxHeight?: number;
-};
+  maxHeight?: number
+}
 
 export const WebPreviewConsole = ({
   className,
@@ -530,18 +514,18 @@ export const WebPreviewConsole = ({
   children,
   ...props
 }: WebPreviewConsoleProps) => {
-  const { consoleOpen, setConsoleOpen, logs, clearLogs } = useWebPreview();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { consoleOpen, setConsoleOpen, logs, clearLogs } = useWebPreview()
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new logs appear
   useEffect(() => {
     if (scrollRef.current && consoleOpen) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [logs, consoleOpen]);
+  }, [logs, consoleOpen])
 
-  const errorCount = logs.filter((l) => l.level === "error").length;
-  const warnCount = logs.filter((l) => l.level === "warn").length;
+  const errorCount = logs.filter((l) => l.level === "error").length
+  const warnCount = logs.filter((l) => l.level === "warn").length
 
   return (
     <Collapsible
@@ -573,7 +557,7 @@ export const WebPreviewConsole = ({
             size={16}
             className={cn(
               "text-muted-foreground transition-transform duration-200",
-              consoleOpen && "rotate-180"
+              consoleOpen && "rotate-180",
             )}
           />
         </button>
@@ -594,15 +578,9 @@ export const WebPreviewConsole = ({
               Clear
             </Button>
           </div>
-          <div
-            ref={scrollRef}
-            className="overflow-y-auto font-mono text-xs"
-            style={{ maxHeight }}
-          >
+          <div ref={scrollRef} className="overflow-y-auto font-mono text-xs" style={{ maxHeight }}>
             {logs.length === 0 ? (
-              <p className="px-3 py-4 text-muted-foreground text-center">
-                No console output
-              </p>
+              <p className="px-3 py-4 text-muted-foreground text-center">No console output</p>
             ) : (
               <div className="divide-y divide-border/50">
                 {logs.map((log, index) => (
@@ -612,7 +590,7 @@ export const WebPreviewConsole = ({
                       "px-3 py-1.5 flex gap-2",
                       log.level === "error" && "bg-destructive/5 text-destructive",
                       log.level === "warn" && "bg-yellow-500/5 text-yellow-600",
-                      log.level === "info" && "text-blue-600"
+                      log.level === "info" && "text-blue-600",
                     )}
                   >
                     <span className="text-muted-foreground shrink-0">
@@ -628,20 +606,20 @@ export const WebPreviewConsole = ({
         </div>
       </CollapsibleContent>
     </Collapsible>
-  );
-};
+  )
+}
 
 // =============================================================================
 // WebPreviewViewportInfo
 // =============================================================================
 
 export const WebPreviewViewportInfo = ({ className }: { className?: string }) => {
-  const { viewport } = useWebPreview();
-  const size = VIEWPORT_SIZES[viewport];
+  const { viewport } = useWebPreview()
+  const size = VIEWPORT_SIZES[viewport]
 
   return (
     <span className={cn("text-xs text-muted-foreground tabular-nums", className)}>
       {size.width} × {size.height}
     </span>
-  );
-};
+  )
+}

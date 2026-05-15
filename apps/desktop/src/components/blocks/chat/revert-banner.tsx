@@ -1,9 +1,9 @@
-import { Restart } from "@solar-icons/react";
-import { cn } from "@/lib/utils";
+import { Restart } from "@solar-icons/react"
+import { cn } from "@/lib/utils"
 
 interface RevertBannerProps {
-  onUnrevert: () => void;
-  className?: string;
+  onUnrevert: () => void
+  className?: string
 }
 
 export function RevertBanner({ onUnrevert, className }: RevertBannerProps) {
@@ -12,12 +12,10 @@ export function RevertBanner({ onUnrevert, className }: RevertBannerProps) {
       className={cn(
         "flex items-center justify-center gap-3 px-4 py-1.5",
         "bg-amber-500/8 border-b border-amber-500/15",
-        className
+        className,
       )}
     >
-      <span className="text-xs text-amber-400/70">
-        Session reverted
-      </span>
+      <span className="text-xs text-amber-400/70">Session reverted</span>
       <button
         onClick={onUnrevert}
         className="flex items-center gap-1.5 text-xs text-amber-400/90 hover:text-amber-300 transition-colors"
@@ -26,5 +24,5 @@ export function RevertBanner({ onUnrevert, className }: RevertBannerProps) {
         Undo
       </button>
     </div>
-  );
+  )
 }

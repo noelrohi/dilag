@@ -1,94 +1,105 @@
-'use client'
+"use client"
 
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@dilag/ui/accordion'
-import Link from 'next/link'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@dilag/ui/accordion"
+import Link from "next/link"
 
 export default function FAQsFour() {
-    const faqItems = [
-        {
-            id: 'item-1',
-            question: 'What is Dilag?',
-            answer: 'Dilag is a native desktop app that uses AI to generate mobile and web UI designs from natural language descriptions. Describe what you want and iterate quickly.',
-        },
-        {
-            id: 'item-2',
-            question: 'What AI models are supported?',
-            answer: 'Dilag works with OpenCode, which supports Claude, GPT, Gemini, and other popular AI models. You can choose your preferred model in the app settings.',
-        },
-        {
-            id: 'item-3',
-            question: 'Can I export my designs?',
-            answer: 'Yes. Dilag generates real HTML and CSS code that you can copy into your projects.',
-        },
-        {
-            id: 'item-4',
-            question: 'Is Dilag free?',
-            answer: 'Yes. Dilag is fully free to use.',
-        },
-        {
-            id: 'item-5',
-            question: 'What platforms are supported?',
-            answer: 'Dilag currently runs on macOS (Apple Silicon and Intel). Windows support is in progress.',
-        },
-        {
-            id: 'item-6',
-            question: 'Do I need an internet connection?',
-            answer: 'Yes. Dilag needs internet access to communicate with cloud AI models in real time.',
-        },
-        {
-            id: 'item-7',
-            question: 'What do I need to run Dilag?',
-            answer: 'You need macOS and OpenCode installed. OpenCode powers the AI backend used by Dilag.',
-        },
-        {
-            id: 'item-8',
-            question: 'Do I need an account to use Dilag?',
-            answer: 'No. Download the app and start designing right away.',
-        },
-    ]
+  const faqItems = [
+    {
+      id: "item-1",
+      question: "What is Dilag?",
+      answer:
+        "Dilag is a native desktop app that uses AI to generate mobile and web UI designs from natural language descriptions. Describe what you want and iterate quickly.",
+    },
+    {
+      id: "item-2",
+      question: "What AI models are supported?",
+      answer:
+        "Dilag works with OpenCode, which supports Claude, GPT, Gemini, and other popular AI models. You can choose your preferred model in the app settings.",
+    },
+    {
+      id: "item-3",
+      question: "Can I export my designs?",
+      answer: "Yes. Dilag generates real HTML and CSS code that you can copy into your projects.",
+    },
+    {
+      id: "item-4",
+      question: "Is Dilag free?",
+      answer: "Yes. Dilag is fully free to use.",
+    },
+    {
+      id: "item-5",
+      question: "What platforms are supported?",
+      answer:
+        "Dilag currently runs on macOS (Apple Silicon and Intel). Windows support is in progress.",
+    },
+    {
+      id: "item-6",
+      question: "Do I need an internet connection?",
+      answer: "Yes. Dilag needs internet access to communicate with cloud AI models in real time.",
+    },
+    {
+      id: "item-7",
+      question: "What do I need to run Dilag?",
+      answer:
+        "You need macOS and OpenCode installed. OpenCode powers the AI backend used by Dilag.",
+    },
+    {
+      id: "item-8",
+      question: "Do I need an account to use Dilag?",
+      answer: "No. Download the app and start designing right away.",
+    },
+  ]
 
-    return (
-        <section className="py-16 md:py-24">
-            <div className="mx-auto max-w-5xl px-4 md:px-6">
-                <div className="mx-auto max-w-xl text-center">
-                    <h2 className="text-balance text-3xl font-bold md:text-4xl lg:text-5xl">Frequently Asked Questions</h2>
-                    <p className="text-muted-foreground mt-4 font-sans text-balance">Everything you need to know about Dilag and how it works.</p>
-                </div>
+  return (
+    <section className="py-16 md:py-24">
+      <div className="mx-auto max-w-5xl px-4 md:px-6">
+        <div className="mx-auto max-w-xl text-center">
+          <h2 className="text-balance text-3xl font-bold md:text-4xl lg:text-5xl">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-muted-foreground mt-4 font-sans text-balance">
+            Everything you need to know about Dilag and how it works.
+          </p>
+        </div>
 
-                <div className="mx-auto mt-12 max-w-xl">
-                    <Accordion
-                        type="single"
-                        collapsible
-                        className="bg-muted dark:bg-muted/50 w-full rounded-2xl p-1">
-                        {faqItems.map((item) => (
-                            <div
-                                className="group"
-                                key={item.id}>
-                                <AccordionItem
-                                    value={item.id}
-                                    className="data-[state=open]:bg-card dark:data-[state=open]:bg-muted peer rounded-xl border-none px-7 py-1 data-[state=open]:border-none data-[state=open]:shadow-sm">
-                                    <AccordionTrigger className="cursor-pointer font-sans text-base hover:no-underline">{item.question}</AccordionTrigger>
-                                    <AccordionContent>
-                                        <p className="font-sans text-base">{item.answer}</p>
-                                    </AccordionContent>
-                                </AccordionItem>
-                                <hr className="mx-7 border-dashed group-last:hidden peer-data-[state=open]:opacity-0" />
-                            </div>
-                        ))}
-                    </Accordion>
+        <div className="mx-auto mt-12 max-w-xl">
+          <Accordion
+            type="single"
+            collapsible
+            className="bg-muted dark:bg-muted/50 w-full rounded-2xl p-1"
+          >
+            {faqItems.map((item) => (
+              <div className="group" key={item.id}>
+                <AccordionItem
+                  value={item.id}
+                  className="data-[state=open]:bg-card dark:data-[state=open]:bg-muted peer rounded-xl border-none px-7 py-1 data-[state=open]:border-none data-[state=open]:shadow-sm"
+                >
+                  <AccordionTrigger className="cursor-pointer font-sans text-base hover:no-underline">
+                    {item.question}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <p className="font-sans text-base">{item.answer}</p>
+                  </AccordionContent>
+                </AccordionItem>
+                <hr className="mx-7 border-dashed group-last:hidden peer-data-[state=open]:opacity-0" />
+              </div>
+            ))}
+          </Accordion>
 
-                    <p className="text-muted-foreground mt-6 font-sans px-8">
-                        Can&apos;t find what you&apos;re looking for?{' '}
-                        <Link
-                            href="https://github.com/noelrohi/dilag/issues"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary font-medium hover:underline">
-                            Open an issue on GitHub
-                        </Link>
-                    </p>
-                </div>
-            </div>
-        </section>
-    )
+          <p className="text-muted-foreground mt-6 font-sans px-8">
+            Can&apos;t find what you&apos;re looking for?{" "}
+            <Link
+              href="https://github.com/noelrohi/dilag/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary font-medium hover:underline"
+            >
+              Open an issue on GitHub
+            </Link>
+          </p>
+        </div>
+      </div>
+    </section>
+  )
 }

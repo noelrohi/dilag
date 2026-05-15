@@ -1,7 +1,7 @@
-import Link from "next/link";
-import { Button } from "@dilag/ui/button";
-import { DilagLogo } from "./dilag-logo";
-import { DownloadSimple } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link"
+import { Button } from "@dilag/ui/button"
+import { DilagLogo } from "./dilag-logo"
+import { DownloadSimple } from "@phosphor-icons/react/dist/ssr"
 
 export function SiteHeader() {
   return (
@@ -13,13 +13,28 @@ export function SiteHeader() {
         </Link>
 
         <div className="hidden sm:flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full text-muted-foreground hover:text-foreground"
+            asChild
+          >
             <Link href="/pricing">Pricing</Link>
           </Button>
-          <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full text-muted-foreground hover:text-foreground"
+            asChild
+          >
             <Link href="/faq">FAQ</Link>
           </Button>
-          <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-full text-muted-foreground hover:text-foreground"
+            asChild
+          >
             <a href="https://github.com/noelrohi/dilag" target="_blank" rel="noopener noreferrer">
               GitHub
             </a>
@@ -34,5 +49,5 @@ export function SiteHeader() {
         </Button>
       </nav>
     </header>
-  );
+  )
 }

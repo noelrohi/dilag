@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, Magnifer, AltArrowDown } from "@solar-icons/react";
-import { useSDK } from "@/context/global-events";
-import { Dialog, DialogContent } from "@dilag/ui/dialog";
-import { Input } from "@dilag/ui/input";
-import { cn } from "@/lib/utils";
+import { useState, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { CheckCircle, Magnifer, AltArrowDown } from "@solar-icons/react"
+import { useSDK } from "@/context/global-events"
+import { Dialog, DialogContent } from "@dilag/ui/dialog"
+import { Input } from "@dilag/ui/input"
+import { cn } from "@/lib/utils"
 
 // Popular providers to show at top
 const POPULAR_PROVIDERS = [
@@ -14,12 +14,12 @@ const POPULAR_PROVIDERS = [
   "openai",
   "google",
   "openrouter",
-];
+]
 
 interface DialogSelectProviderProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSelectProvider: (providerId: string) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSelectProvider: (providerId: string) => void
 }
 
 export function DialogSelectProvider({
@@ -27,55 +27,55 @@ export function DialogSelectProvider({
   onOpenChange,
   onSelectProvider,
 }: DialogSelectProviderProps) {
-  const sdk = useSDK();
-  const [search, setSearch] = useState("");
-  const [othersExpanded, setOthersExpanded] = useState(false);
+  const sdk = useSDK()
+  const [search, setSearch] = useState("")
+  const [othersExpanded, setOthersExpanded] = useState(false)
 
   // Fetch all providers and connected status
   const { data: providerData } = useQuery({
     queryKey: ["providers", "all"],
     queryFn: async () => {
-      const response = await sdk.provider.list();
+      const response = await sdk.provider.list()
       return {
         all: response.data?.all ?? [],
         connected: response.data?.connected ?? [],
-      };
+      }
     },
     enabled: open,
-  });
+  })
 
-  const allProviders = providerData?.all ?? [];
-  const connectedProviders = providerData?.connected ?? [];
+  const allProviders = providerData?.all ?? []
+  const connectedProviders = providerData?.connected ?? []
 
   // Split providers into popular and others, apply search
   const { popularProviders, otherProviders } = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase()
 
     const popular = allProviders
       .filter((p) => POPULAR_PROVIDERS.includes(p.id))
-      .sort((a, b) => POPULAR_PROVIDERS.indexOf(a.id) - POPULAR_PROVIDERS.indexOf(b.id));
+      .sort((a, b) => POPULAR_PROVIDERS.indexOf(a.id) - POPULAR_PROVIDERS.indexOf(b.id))
 
     const others = allProviders
       .filter((p) => !POPULAR_PROVIDERS.includes(p.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => a.name.localeCompare(b.name))
 
     if (query) {
       return {
         popularProviders: popular.filter(
-          (p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query)
+          (p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query),
         ),
         otherProviders: others.filter(
-          (p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query)
+          (p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query),
         ),
-      };
+      }
     }
 
-    return { popularProviders: popular, otherProviders: others };
-  }, [allProviders, search]);
+    return { popularProviders: popular, otherProviders: others }
+  }, [allProviders, search])
 
   const handleSelect = (providerId: string) => {
-    onSelectProvider(providerId);
-  };
+    onSelectProvider(providerId)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,15 +83,16 @@ export function DialogSelectProvider({
         {/* Header */}
         <div className="px-5 pt-5 pb-4">
           <h2 className="text-base font-medium tracking-tight">Connect provider</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Select a provider to authenticate
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Select a provider to authenticate</p>
         </div>
 
         {/* Search */}
         <div className="px-5 pb-3">
           <div className="relative">
-            <Magnifer size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+            <Magnifer
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
+            />
             <Input
               placeholder="Search..."
               value={search}
@@ -104,14 +105,12 @@ export function DialogSelectProvider({
         {/* Provider list */}
         <div className="px-2 pb-3 max-h-[320px] overflow-y-auto">
           {popularProviders.length === 0 && otherProviders.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No providers found
-            </div>
+            <div className="py-8 text-center text-sm text-muted-foreground">No providers found</div>
           ) : (
             <div className="space-y-0.5">
               {/* Popular providers */}
               {popularProviders.map((provider) => {
-                const isConnected = connectedProviders.includes(provider.id);
+                const isConnected = connectedProviders.includes(provider.id)
                 return (
                   <button
                     key={provider.id}
@@ -120,7 +119,7 @@ export function DialogSelectProvider({
                       "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
                       "transition-colors duration-150",
                       "hover:bg-muted/80 active:bg-muted",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     )}
                   >
                     <div className="size-8 rounded-md bg-muted/50 flex items-center justify-center">
@@ -146,7 +145,7 @@ export function DialogSelectProvider({
                       </div>
                     )}
                   </button>
-                );
+                )
               })}
 
               {/* Other providers (collapsible) */}
@@ -157,14 +156,14 @@ export function DialogSelectProvider({
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2 mt-2",
                       "text-xs font-medium text-muted-foreground uppercase tracking-wider",
-                      "hover:text-foreground transition-colors"
+                      "hover:text-foreground transition-colors",
                     )}
                   >
                     <AltArrowDown
                       size={14}
                       className={cn(
                         "transition-transform duration-200",
-                        !othersExpanded && "-rotate-90"
+                        !othersExpanded && "-rotate-90",
                       )}
                     />
                     <span>Other providers ({otherProviders.length})</span>
@@ -172,7 +171,7 @@ export function DialogSelectProvider({
                   {othersExpanded && (
                     <div className="space-y-0.5">
                       {otherProviders.map((provider) => {
-                        const isConnected = connectedProviders.includes(provider.id);
+                        const isConnected = connectedProviders.includes(provider.id)
                         return (
                           <button
                             key={provider.id}
@@ -181,7 +180,7 @@ export function DialogSelectProvider({
                               "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
                               "transition-colors duration-150",
                               "hover:bg-muted/80 active:bg-muted",
-                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                             )}
                           >
                             <div className="size-8 rounded-md bg-muted/50 flex items-center justify-center">
@@ -200,7 +199,7 @@ export function DialogSelectProvider({
                               </div>
                             )}
                           </button>
-                        );
+                        )
                       })}
                     </div>
                   )}
@@ -211,5 +210,5 @@ export function DialogSelectProvider({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

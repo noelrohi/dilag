@@ -20,14 +20,14 @@ tsc --noEmit         # Type check
 
 ## Key Locations
 
-| Task | Location |
-|------|----------|
-| UI primitives | `src/components/ui/` |
-| AI components | `src/components/ai-elements/` |
-| Page sections | `src/components/blocks/` |
+| Task          | Location                                 |
+| ------------- | ---------------------------------------- |
+| UI primitives | `src/components/ui/`                     |
+| AI components | `src/components/ai-elements/`            |
+| Page sections | `src/components/blocks/`                 |
 | Rust commands | `src-tauri/src/` (see `AGENTS.md` there) |
-| State | `src/context/session-store.tsx` |
-| SSE events | `src/context/global-events.tsx` |
+| State         | `src/context/session-store.tsx`          |
+| SSE events    | `src/context/global-events.tsx`          |
 
 ## Docs
 

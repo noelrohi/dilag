@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 jobs:
   publish-tauri:
@@ -40,13 +40,13 @@ jobs:
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-          
+
           echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
-          
+
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          
+
           security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
@@ -70,7 +70,7 @@ jobs:
         run: |
           # Extract version number from tag (e.g., v0.2.0 -> 0.2.0)
           VERSION="${GITHUB_REF_NAME#v}"
-          
+
           # Extract the section for this version from CHANGELOG.md
           # Matches from "## [X.Y.Z]" until the next "## [" or end of file
           NOTES=$(awk -v ver="$VERSION" '
@@ -80,19 +80,19 @@ jobs:
             }
             found { print }
           ' CHANGELOG.md)
-          
+
           # If no changelog entry found, use a default message
           if [ -z "$NOTES" ]; then
             NOTES="Release ${{ github.ref_name }}"
           fi
-          
+
           # Output using heredoc delimiter for multiline support
           {
             echo "notes<<EOF"
             echo "$NOTES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-          
+
           echo "Extracted release notes for version $VERSION"
 
       - name: Build and release with Tauri Action
@@ -115,4 +115,3 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
-

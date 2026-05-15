@@ -1,10 +1,18 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { createOpencodeClient, type Event, type OpencodeClient } from "@opencode-ai/sdk/v2/client";
-import { extractSessionId } from "@/lib/event-guards";
-import { useSessionStore } from "@/context/session-store";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react"
+import { createOpencodeClient, type Event, type OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import { extractSessionId } from "@/lib/event-guards"
+import { useSessionStore } from "@/context/session-store"
+import { bridge } from "@/lib/bridge"
 
-export type { Event } from "@opencode-ai/sdk/v2/client";
+export type { Event } from "@opencode-ai/sdk/v2/client"
 export type {
   EventMessagePartUpdated,
   EventMessageUpdated,
@@ -17,291 +25,295 @@ export type {
   Part,
   ToolState,
   SnapshotFileDiff as FileDiff,
-} from "@opencode-ai/sdk/v2/client";
-
-declare global {
-  interface Window {
-    __DILAG__?: { port: number };
-  }
-}
+} from "@opencode-ai/sdk/v2/client"
 
 function getOpenCodePort(): number {
-  return window.__DILAG__?.port ?? 4096;
+  return bridge.bootstrap.port || 4096
 }
 
 // SSE Reconnection Configuration
 const SSE_CONFIG = {
-  defaultRetryDelay: 3000,      // 3 seconds initial delay
-  maxRetryDelay: 30000,         // 30 seconds max delay
-  maxRetryAttempts: undefined,  // Unlimited retries by default
-  backoffFactor: 2,             // Double delay each attempt
-};
-
-type EventHandler = (event: Event) => void;
-
-// Connection status type
-export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "reconnecting";
-
-interface GlobalEventsContextValue {
-  sdk: OpencodeClient;
-  subscribe: (handler: EventHandler) => () => void;
-  subscribeToSession: (sessionId: string, handler: EventHandler) => () => void;
-  connectionStatus: ConnectionStatus;
-  reconnectAttempt: number;
-  isConnected: boolean;
-  isServerReady: boolean;
-  serverError: string | null;
-  bootstrap: () => Promise<void>;
+  defaultRetryDelay: 3000, // 3 seconds initial delay
+  maxRetryDelay: 30000, // 30 seconds max delay
+  maxRetryAttempts: undefined, // Unlimited retries by default
+  backoffFactor: 2, // Double delay each attempt
 }
 
-const GlobalEventsContext = createContext<GlobalEventsContextValue | null>(null);
+type EventHandler = (event: Event) => void
+
+// Connection status type
+export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "reconnecting"
+
+interface GlobalEventsContextValue {
+  sdk: OpencodeClient
+  subscribe: (handler: EventHandler) => () => void
+  subscribeToSession: (sessionId: string, handler: EventHandler) => () => void
+  connectionStatus: ConnectionStatus
+  reconnectAttempt: number
+  isConnected: boolean
+  isServerReady: boolean
+  serverError: string | null
+  bootstrap: () => Promise<void>
+}
+
+const GlobalEventsContext = createContext<GlobalEventsContextValue | null>(null)
 
 export function GlobalEventsProvider({ children }: { children: ReactNode }) {
-  const [isServerReady, setIsServerReady] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
-  const [reconnectAttempt, setReconnectAttempt] = useState(0);
-  const handlersRef = useRef<Set<EventHandler>>(new Set());
-  const sessionHandlersRef = useRef<Map<string, Set<EventHandler>>>(new Map());
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const mountedRef = useRef(true);
-  const bootstrapCallbacksRef = useRef<Set<() => void>>(new Set());
+  const [isServerReady, setIsServerReady] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
+  const [reconnectAttempt, setReconnectAttempt] = useState(0)
+  const handlersRef = useRef<Set<EventHandler>>(new Set())
+  const sessionHandlersRef = useRef<Map<string, Set<EventHandler>>>(new Map())
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const mountedRef = useRef(true)
+  const bootstrapCallbacksRef = useRef<Set<() => void>>(new Set())
 
-  const sdkRef = useRef<OpencodeClient | null>(null);
+  const sdkRef = useRef<OpencodeClient | null>(null)
   if (!sdkRef.current) {
-    const port = getOpenCodePort();
+    const port = getOpenCodePort()
     const customFetch = (input: RequestInfo | URL, init?: RequestInit) => {
       if (init && typeof input === "string" && input.includes("/event")) {
         // @ts-expect-error - timeout is a non-standard property
-        if (init) init.timeout = false;
+        if (init) init.timeout = false
       }
-      return fetch(input, init);
-    };
-    
+      return fetch(input, init)
+    }
+
     sdkRef.current = createOpencodeClient({
       baseUrl: `http://127.0.0.1:${port}`,
       fetch: customFetch,
-    });
-    console.log("[GlobalEvents] SDK created with port:", port);
+    })
+    console.log("[GlobalEvents] SDK created with port:", port)
   }
-  const sdk = sdkRef.current;
+  const sdk = sdkRef.current
 
   // Subscribe to all events
   const subscribe = useCallback((handler: EventHandler): (() => void) => {
-    handlersRef.current.add(handler);
-    return () => handlersRef.current.delete(handler);
-  }, []);
+    handlersRef.current.add(handler)
+    return () => handlersRef.current.delete(handler)
+  }, [])
 
   // Subscribe to events for a specific session
-  const subscribeToSession = useCallback((sessionId: string, handler: EventHandler): (() => void) => {
-    if (!sessionHandlersRef.current.has(sessionId)) {
-      sessionHandlersRef.current.set(sessionId, new Set());
-    }
-    sessionHandlersRef.current.get(sessionId)!.add(handler);
-
-    return () => {
-      const handlers = sessionHandlersRef.current.get(sessionId);
-      handlers?.delete(handler);
-      if (handlers?.size === 0) {
-        sessionHandlersRef.current.delete(sessionId);
+  const subscribeToSession = useCallback(
+    (sessionId: string, handler: EventHandler): (() => void) => {
+      if (!sessionHandlersRef.current.has(sessionId)) {
+        sessionHandlersRef.current.set(sessionId, new Set())
       }
-    };
-  }, []);
+      sessionHandlersRef.current.get(sessionId)!.add(handler)
 
+      return () => {
+        const handlers = sessionHandlersRef.current.get(sessionId)
+        handlers?.delete(handler)
+        if (handlers?.size === 0) {
+          sessionHandlersRef.current.delete(sessionId)
+        }
+      }
+    },
+    [],
+  )
 
   // Calculate retry delay with exponential backoff
   const calculateRetryDelay = (attempt: number, serverRetryDelay?: number): number => {
     // If server provided a retry delay, use it
     if (serverRetryDelay !== undefined) {
-      return serverRetryDelay;
+      return serverRetryDelay
     }
     // Otherwise use exponential backoff
-    const delay = SSE_CONFIG.defaultRetryDelay * Math.pow(SSE_CONFIG.backoffFactor, attempt - 1);
-    return Math.min(delay, SSE_CONFIG.maxRetryDelay);
-  };
+    const delay = SSE_CONFIG.defaultRetryDelay * Math.pow(SSE_CONFIG.backoffFactor, attempt - 1)
+    return Math.min(delay, SSE_CONFIG.maxRetryDelay)
+  }
 
   // Bootstrap function to reload all state after reconnection
   const bootstrap = useCallback(async () => {
-    console.log("[GlobalEvents] Running bootstrap - syncing pending permissions and questions");
+    console.log("[GlobalEvents] Running bootstrap - syncing pending permissions and questions")
 
     // Sync pending permissions from server.
     // SDK v1.4 returns either `{ data }` or `{ data, response }` depending on the call path —
     // guard both shapes.
     try {
       const result = (await sdk.permission.list()) as {
-        data?: unknown;
-        response?: { ok: boolean };
-      };
-      const ok = result.response ? result.response.ok : true;
+        data?: unknown
+        response?: { ok: boolean }
+      }
+      const ok = result.response ? result.response.ok : true
       if (ok && Array.isArray(result.data)) {
-        const permissions = result.data as unknown as import("@/lib/event-guards").PermissionRequest[];
-        useSessionStore.getState().syncPendingPermissions(permissions);
-        console.log("[GlobalEvents] Synced", permissions.length, "pending permissions");
+        const permissions =
+          result.data as unknown as import("@/lib/event-guards").PermissionRequest[]
+        useSessionStore.getState().syncPendingPermissions(permissions)
+        console.log("[GlobalEvents] Synced", permissions.length, "pending permissions")
       }
     } catch (err) {
-      console.error("[GlobalEvents] Failed to sync permissions:", err);
+      console.error("[GlobalEvents] Failed to sync permissions:", err)
     }
 
     try {
       const result = (await sdk.question.list()) as {
-        data?: unknown;
-        response?: { ok: boolean };
-      };
-      const ok = result.response ? result.response.ok : true;
+        data?: unknown
+        response?: { ok: boolean }
+      }
+      const ok = result.response ? result.response.ok : true
       if (ok && Array.isArray(result.data)) {
-        const questions = result.data as unknown as import("@/lib/event-guards").QuestionRequest[];
-        useSessionStore.getState().syncPendingQuestions(questions);
-        console.log("[GlobalEvents] Synced", questions.length, "pending questions");
+        const questions = result.data as unknown as import("@/lib/event-guards").QuestionRequest[]
+        useSessionStore.getState().syncPendingQuestions(questions)
+        console.log("[GlobalEvents] Synced", questions.length, "pending questions")
       }
     } catch (err) {
-      console.error("[GlobalEvents] Failed to sync questions:", err);
+      console.error("[GlobalEvents] Failed to sync questions:", err)
     }
 
     // Notify all registered bootstrap callbacks
-    bootstrapCallbacksRef.current.forEach((callback) => callback());
-  }, [sdk]);
+    bootstrapCallbacksRef.current.forEach((callback) => callback())
+  }, [sdk])
 
   // Handle disposal events that require re-bootstrap
-  const handleDisposalEvent = useCallback((event: Event) => {
-    if (event.type === "global.disposed") {
-      console.log("[GlobalEvents] Global disposed - running full bootstrap");
-      bootstrap();
-    } else if (event.type === "server.instance.disposed") {
-      console.log("[GlobalEvents] Server instance disposed - running bootstrap");
-      bootstrap();
-    }
-  }, [bootstrap]);
+  const handleDisposalEvent = useCallback(
+    (event: Event) => {
+      if (event.type === "global.disposed") {
+        console.log("[GlobalEvents] Global disposed - running full bootstrap")
+        bootstrap()
+      } else if (event.type === "server.instance.disposed") {
+        console.log("[GlobalEvents] Server instance disposed - running bootstrap")
+        bootstrap()
+      }
+    },
+    [bootstrap],
+  )
 
   // Connect to SSE with reconnection logic
   const connectToSSE = useCallback(async () => {
-    let attempt = 0;
-    let serverRetryDelay: number | undefined;
+    let attempt = 0
+    let serverRetryDelay: number | undefined
 
     while (mountedRef.current) {
       // Check max retry attempts
       if (SSE_CONFIG.maxRetryAttempts !== undefined && attempt >= SSE_CONFIG.maxRetryAttempts) {
-        console.log("[GlobalEvents] Max retry attempts reached, giving up");
-        setConnectionStatus("disconnected");
-        break;
+        console.log("[GlobalEvents] Max retry attempts reached, giving up")
+        setConnectionStatus("disconnected")
+        break
       }
 
-      attempt++;
-      setReconnectAttempt(attempt);
-      
+      attempt++
+      setReconnectAttempt(attempt)
+
       if (attempt === 1) {
-        setConnectionStatus("connecting");
+        setConnectionStatus("connecting")
       } else {
-        setConnectionStatus("reconnecting");
-        console.log(`[GlobalEvents] Reconnection attempt ${attempt}...`);
+        setConnectionStatus("reconnecting")
+        console.log(`[GlobalEvents] Reconnection attempt ${attempt}...`)
       }
 
       try {
-        console.log("[GlobalEvents] Connecting to event stream...");
-        const events = await sdk.global.event();
+        console.log("[GlobalEvents] Connecting to event stream...")
+        const events = await sdk.global.event()
 
-        if (!mountedRef.current) break;
+        if (!mountedRef.current) break
 
         // Reset attempt counter on successful connection
-        attempt = 0;
-        setReconnectAttempt(0);
-        setConnectionStatus("connected");
-        console.log("[GlobalEvents] Connected to event stream");
+        attempt = 0
+        setReconnectAttempt(0)
+        setConnectionStatus("connected")
+        console.log("[GlobalEvents] Connected to event stream")
 
         // Run bootstrap to sync pending permissions/questions
         // Always run on reconnection, optionally on first connection too
-        await bootstrap();
+        await bootstrap()
 
         // Process events
         for await (const event of events.stream) {
-          if (!mountedRef.current) break;
+          if (!mountedRef.current) break
 
-          const payload = event.payload;
+          const payload = event.payload
 
-          handleDisposalEvent(payload);
-          useSessionStore.getState().handleEvent(payload);
+          handleDisposalEvent(payload)
+          useSessionStore.getState().handleEvent(payload)
 
           handlersRef.current.forEach((handler) => {
             try {
-              handler(payload);
+              handler(payload)
             } catch (err) {
-              console.error("[GlobalEvents] Handler error:", err);
+              console.error("[GlobalEvents] Handler error:", err)
             }
-          });
+          })
 
           // Notify session-specific handlers
-          const sessionId = extractSessionId(payload);
+          const sessionId = extractSessionId(payload)
           if (sessionId) {
-            const sessionHandlers = sessionHandlersRef.current.get(sessionId);
+            const sessionHandlers = sessionHandlersRef.current.get(sessionId)
             sessionHandlers?.forEach((handler) => {
               try {
-                handler(payload);
+                handler(payload)
               } catch (err) {
-                console.error("[GlobalEvents] Session handler error:", err);
+                console.error("[GlobalEvents] Session handler error:", err)
               }
-            });
+            })
           }
         }
 
         // Stream ended normally (server closed connection)
-        console.log("[GlobalEvents] Stream ended, will reconnect...");
+        console.log("[GlobalEvents] Stream ended, will reconnect...")
       } catch (err) {
-        console.error("[GlobalEvents] Connection error:", err);
-        
-        if (!mountedRef.current) break;
-        setConnectionStatus("reconnecting");
+        console.error("[GlobalEvents] Connection error:", err)
+
+        if (!mountedRef.current) break
+        setConnectionStatus("reconnecting")
       }
 
       // Calculate and wait for retry delay
-      const delay = calculateRetryDelay(attempt, serverRetryDelay);
-      console.log(`[GlobalEvents] Waiting ${delay}ms before retry...`);
-      
+      const delay = calculateRetryDelay(attempt, serverRetryDelay)
+      console.log(`[GlobalEvents] Waiting ${delay}ms before retry...`)
+
       await new Promise((resolve) => {
-        const timeout = setTimeout(resolve, delay);
+        const timeout = setTimeout(resolve, delay)
         // Allow abort to cancel the delay
         if (abortControllerRef.current) {
-          abortControllerRef.current.signal.addEventListener("abort", () => {
-            clearTimeout(timeout);
-            resolve(undefined);
-          }, { once: true });
+          abortControllerRef.current.signal.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(timeout)
+              resolve(undefined)
+            },
+            { once: true },
+          )
         }
-      });
+      })
     }
-  }, [sdk, bootstrap, handleDisposalEvent]);
+  }, [sdk, bootstrap, handleDisposalEvent])
 
   // Start server and connect to event stream
   useEffect(() => {
-    mountedRef.current = true;
-    abortControllerRef.current = new AbortController();
+    mountedRef.current = true
+    abortControllerRef.current = new AbortController()
 
     async function init() {
-      console.log("[GlobalEvents] Starting OpenCode server...");
+      console.log("[GlobalEvents] Starting OpenCode server...")
       try {
-        const port = await invoke<number>("start_opencode_server");
-        console.log("[GlobalEvents] Server started on port", port);
+        const port = await bridge.opencode.start()
+        console.log("[GlobalEvents] Server started on port", port)
 
-        if (!mountedRef.current) return;
-        setIsServerReady(true);
+        if (!mountedRef.current) return
+        setIsServerReady(true)
 
         // Start SSE connection with reconnection logic
-        await connectToSSE();
+        await connectToSSE()
       } catch (err) {
-        console.error("[GlobalEvents] Server start error:", err);
+        console.error("[GlobalEvents] Server start error:", err)
         if (mountedRef.current) {
-          setIsServerReady(false);
-          setServerError(err instanceof Error ? err.message : String(err));
-          setConnectionStatus("disconnected");
+          setIsServerReady(false)
+          setServerError(err instanceof Error ? err.message : String(err))
+          setConnectionStatus("disconnected")
         }
       }
     }
 
-    init();
+    init()
 
     return () => {
-      mountedRef.current = false;
-      abortControllerRef.current?.abort();
-      console.log("[GlobalEvents] Cleanup - disconnected");
-    };
-  }, [connectToSSE]);
+      mountedRef.current = false
+      abortControllerRef.current?.abort()
+      console.log("[GlobalEvents] Cleanup - disconnected")
+    }
+  }, [connectToSSE])
 
   return (
     <GlobalEventsContext.Provider
@@ -319,23 +331,23 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </GlobalEventsContext.Provider>
-  );
+  )
 }
 
 export function useGlobalEvents() {
-  const context = useContext(GlobalEventsContext);
+  const context = useContext(GlobalEventsContext)
   if (!context) {
-    throw new Error("useGlobalEvents must be used within a GlobalEventsProvider");
+    throw new Error("useGlobalEvents must be used within a GlobalEventsProvider")
   }
-  return context;
+  return context
 }
 
 export function useSDK() {
-  const { sdk } = useGlobalEvents();
-  return sdk;
+  const { sdk } = useGlobalEvents()
+  return sdk
 }
 
 export function useConnectionStatus() {
-  const { connectionStatus, reconnectAttempt } = useGlobalEvents();
-  return { connectionStatus, reconnectAttempt };
+  const { connectionStatus, reconnectAttempt } = useGlobalEvents()
+  return { connectionStatus, reconnectAttempt }
 }

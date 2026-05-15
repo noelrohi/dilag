@@ -1,9 +1,9 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
 interface IPhoneFrameProps {
-  children: React.ReactNode;
-  className?: string;
-  screenClassName?: string;
+  children: React.ReactNode
+  className?: string
+  screenClassName?: string
 }
 
 /**
@@ -17,7 +17,7 @@ export function IPhoneFrame({ children, className, screenClassName }: IPhoneFram
         "relative w-[280px] h-[584px] bg-[#1a1a1a] rounded-[44px] p-[10px] shadow-xl",
         // Outer highlight for realism
         "ring-1 ring-[#333] ring-inset",
-        className
+        className,
       )}
     >
       {/* Side button - right */}
@@ -33,11 +33,11 @@ export function IPhoneFrame({ children, className, screenClassName }: IPhoneFram
       <div
         className={cn(
           "relative w-[260px] h-[564px] bg-black rounded-[34px] overflow-visible",
-          screenClassName
+          screenClassName,
         )}
       >
         {children}
       </div>
     </div>
-  );
+  )
 }

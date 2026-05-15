@@ -1,16 +1,16 @@
-import { memo } from "react";
-import { cn } from "@/lib/utils";
-import type { ElementInfo } from "@/context/element-selection-store";
+import { memo } from "react"
+import { cn } from "@/lib/utils"
+import type { ElementInfo } from "@/context/element-selection-store"
 
 interface ElementHighlightProps {
   /** The element to highlight */
-  element: ElementInfo;
+  element: ElementInfo
   /** Whether this is the selected (not just hovered) element */
-  isSelected?: boolean;
+  isSelected?: boolean
   /** Scale factor of the iframe (mobile uses derived scale) */
-  scale: number;
+  scale: number
   /** Offset from the iframe container's top-left */
-  offset?: { x: number; y: number };
+  offset?: { x: number; y: number }
 }
 
 /**
@@ -29,10 +29,10 @@ function ElementHighlightComponent({
     y: element.rect.y * scale + offset.y,
     width: element.rect.width * scale,
     height: element.rect.height * scale,
-  };
+  }
 
   // Format tag name for badge
-  const tagDisplay = element.tagName.toLowerCase();
+  const tagDisplay = element.tagName.toLowerCase()
 
   return (
     <div
@@ -40,7 +40,7 @@ function ElementHighlightComponent({
         "absolute pointer-events-none z-20 transition-all duration-100",
         isSelected
           ? "border-2 border-primary bg-primary/5"
-          : "border-2 border-dashed border-primary/70 bg-primary/5"
+          : "border-2 border-dashed border-primary/70 bg-primary/5",
       )}
       style={{
         left: scaledRect.x,
@@ -55,7 +55,7 @@ function ElementHighlightComponent({
           "absolute -top-5 left-0 px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap",
           isSelected
             ? "bg-primary text-primary-foreground"
-            : "bg-primary/80 text-primary-foreground"
+            : "bg-primary/80 text-primary-foreground",
         )}
       >
         {tagDisplay}
@@ -72,7 +72,7 @@ function ElementHighlightComponent({
         </>
       )}
     </div>
-  );
+  )
 }
 
-export const ElementHighlight = memo(ElementHighlightComponent);
+export const ElementHighlight = memo(ElementHighlightComponent)
