@@ -73,6 +73,7 @@
     "@dilag/desktop-bridge": "workspace:*",
     "@dilag/ui": "workspace:*",
     "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@opencode-ai/sdk": "1.4.3",
     "@phosphor-icons/react": "^2.1.10",
     "@pierre/diffs": "^1.0.4",
     "@radix-ui/react-alert-dialog": "^1.1.15",
