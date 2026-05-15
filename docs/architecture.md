@@ -1,625 +1,134 @@
 # Dilag Architecture
 
-Technical documentation covering app initialization, data flow, and storage.
+This document describes the current desktop architecture after the OpenCode-to-Pi runtime migration. Dilag keeps a stable product bridge in the renderer while embedding the Pi coding-agent SDK in Electron main.
 
----
+## Goals
 
-## Table of Contents
+- Keep the renderer runtime-agnostic: React talks to `@dilag/desktop-bridge`, not to Pi directly.
+- Store all product data locally under `~/.dilag`.
+- Isolate Pi auth/session data under `~/.dilag/pi`.
+- Preserve the desktop product contract: provider connection, model selection, session creation, streaming chat, generated HTML screens, questions, and timeline navigation.
 
-1. [App Startup Flow](#app-startup-flow)
-2. [Storage & Persistence](#storage--persistence)
-3. [SSE Event System](#sse-event-system)
-4. [Session Lifecycle](#session-lifecycle)
-5. [Native Menu & Updater](#native-menu--updater)
-6. [State Management](#state-management)
+## Process Boundaries
 
----
-
-## App Startup Flow
-
-### New User (First Launch)
-
-```
-1. TAURI BACKEND INITIALIZES
-   └── lib.rs: run()
-       ├── Registers plugins (shell, opener, updater, process)
-       ├── Sets up native menu (App, File, Edit, View, Help)
-       ├── Creates AppState { opencode_pid: None }
-       ├── Creates main window with transparent title bar
-       └── Registers all Tauri commands
-
-2. REACT BOOTSTRAP (main.tsx)
-   └── bootstrap() async function
-       │
-       ├── invoke("check_opencode_installation")
-       │   │
-       │   │   TAURI BACKEND searches for OpenCode in:
-       │   ├── ~/.opencode/bin/opencode
-       │   ├── ~/.npm-global/bin/opencode
-       │   ├── ~/.bun/bin/opencode
-       │   ├── /opt/homebrew/bin/opencode
-       │   └── /usr/local/bin/opencode
-       │
-       ├── IF installed:
-       │   └── Render full app with RouterProvider
-       │
-       └── IF NOT installed:
-           └── Render SetupWizard
-               ├── Shows installation instructions
-               └── On complete: re-runs bootstrap()
-
-3. ROUTER MOUNTS (if OpenCode installed)
-   └── RouterProvider mounts __root.tsx
-
-4. ROOT LAYOUT MOUNTS
-   └── __root.tsx: RootLayout()
-       ├── Creates QueryClient (React Query)
-       │   └── Default: staleTime=1min, retry=1, no refetchOnWindowFocus
-       │
-        ├── Provider hierarchy (outer to inner):
-        │   ├── ErrorBoundary
-        │   ├── ThemeProvider (storageKey: "dilag-theme")
-        │   ├── QueryClientProvider
-        │   ├── GlobalEventsProvider  ← TRIGGERS BACKEND INIT
-        │   ├── NotificationProvider  ← Audio alerts
-        │   ├── UpdaterProvider       ← Auto-update checks
-        │   ├── MenuEventsProvider    ← Listens to native menu events
-        │   └── SidebarProvider
-       │
-       └── Also renders: UpdateDialog, Toaster, ReactQueryDevtools
-
-5. GLOBAL EVENTS PROVIDER INITIALIZES
-   └── global-events.tsx: GlobalEventsProvider()
-       │
-       ├── Reads dynamic port from window.__DILAG__.port (injected by Rust setup)
-       │
-       ├── Creates OpenCode SDK client (baseUrl: http://127.0.0.1:${port})
-       │
-       └── useEffect runs init():
-           │
-            ├── invoke("start_opencode_server")
-            │   │
-            │   │   TAURI BACKEND (lib.rs):
-            │   ├── Check if already running (no)
-            │   ├── Create ~/.dilag/ directory
-            │   ├── Create ~/.dilag/sessions/ directory
-            │   ├── Create ~/.dilag/opencode/opencode.json config
-            │   │   └── Contains "designer" and "web-designer" agents with system prompts
-            │   ├── Spawn: opencode serve --port ${port} --hostname 127.0.0.1
-
-           │   │   └── With XDG_CONFIG_HOME=~/.dilag (isolated config)
-           │   ├── Wait 500ms for server to start
-           │   └── Return dynamic port
-           │
-           ├── setIsServerReady(true)
-           │
-           ├── Connect to SSE: sdk.global.event()
-           │   └── Opens persistent connection to http://127.0.0.1:${port}/events
-           │
-           ├── setIsConnected(true)
-           │
-           └── Start event loop (for await...of events.stream)
-               └── Dispatches events to all subscribers
-
-6. HOME PAGE LOADS
-   └── index.lazy.tsx: LandingPage()
-       │
-       └── useSessions() hook initializes
-           │
-           ├── useSessionsList() → React Query fetches sessions
-           │   └── invoke("load_sessions_metadata")
-           │       └── Reads ~/.dilag/sessions.json (empty for new user)
-           │       └── Returns []
-           │
-           ├── Subscribe to global events (SSE)
-           │
-           └── useEffect: no sessions to auto-select
-
-7. UI RENDERS
-   └── Home screen displays:
-       ├── Header: "dilag" + "connecting..." (briefly)
-       ├── Composer: Empty textarea, model selector
-       ├── Recent Projects: Empty (no sessions)
-       └── Model selector fetches models via sdk.provider.list()
+```text
+React renderer
+  └─ window.dilag / @dilag/desktop-bridge
+      └─ Electron preload
+          └─ Electron main IPC handlers
+              └─ Pi SDK runtime + filesystem/native services
 ```
 
-**What gets created on first launch:**
+The renderer never imports Pi directly. All native and agent access goes through `@dilag/desktop-bridge` so the UI remains insulated from runtime-specific SDK types.
 
-| Path                              | Purpose                             |
-| --------------------------------- | ----------------------------------- |
-| `~/.dilag/`                       | App data root                       |
-| `~/.dilag/sessions/`              | Session working directories         |
-| `~/.dilag/sessions.json`          | Session metadata (empty)            |
-| `~/.dilag/opencode/opencode.json` | OpenCode config with designer agent |
+## App Startup
 
----
+1. Electron main starts from `apps/desktop/electron/main.ts`.
+2. `registerHostHandlers()` wires native IPC domains: app, agent, sessions, designs, project files, skills, menu, zoom, updater, filesystem, dialog, and shell.
+3. `initializeHost()` prepares the embedded Pi runtime.
+4. The renderer boots from `apps/desktop/src/main.tsx`, calls `bridge.agent.start()`, then renders the router.
+5. `GlobalEventsProvider` subscribes to `bridge.agent.onEvent()` and forwards normalized agent events into the Zustand session store.
 
-### Existing User (Returning)
+## Runtime Bridge
 
-```
-1-4. SAME AS NEW USER (OpenCode already installed)
+Pi is embedded in Electron main through `apps/desktop/electron/ipc/pi.ts`. The bridge namespace remains product-level and provider-neutral:
 
-5. GLOBAL EVENTS PROVIDER INITIALIZES
-   └── useEffect runs init():
-       │
-       ├── invoke("start_opencode_server")
-       │   │
-       │   │   TAURI BACKEND:
-       │   ├── ~/.dilag/ already exists ✓
-       │   ├── ~/.dilag/sessions/ already exists ✓
-       │   ├── Overwrites opencode.json (ensures agent prompt is current)
-       │   ├── Spawn OpenCode server on dynamic port
-       │   └── Return dynamic port
-       │
-       ├── setIsServerReady(true)
-       ├── Connect to SSE stream
-       └── setConnectionStatus("connected")
-
-6. HOME PAGE LOADS
-   └── useSessions() hook initializes
-       │
-       ├── useSessionsList() → fetches sessions
-       │   └── invoke("load_sessions_metadata")
-       │       └── Returns existing sessions array
-       │
-       ├── Subscribe to global events
-       │
-       └── useEffect for auto-select:
-           ├── sessions.length > 0 ✓
-           ├── currentSessionId === null
-           ├── Auto-select most recent session
-           └── Load messages: sdk.session.messages()
-
-7. ZUSTAND HYDRATES FROM LOCALSTORAGE
-   └── Restores persisted state:
-       ├── currentSessionId (last selected)
-       ├── screenPositions (canvas positions per session)
-       └── selectedModel (from dilag-model-store)
-
-8. UI RENDERS
-   └── Home screen with Recent Projects
-       │
-       └── For each project card:
-           └── invoke("load_session_designs", { sessionCwd })
-               └── Loads HTML from ~/.dilag/sessions/{id}/screens/
-               └── Renders thumbnail previews
+```ts
+bridge.agent.start()
+bridge.agent.getProviderData()
+bridge.agent.setApiKey({ providerID, apiKey })
+bridge.agent.createSession({ directory })
+bridge.agent.getMessages({ sessionID, directory })
+bridge.agent.prompt({ sessionID, directory, text, images, model })
+bridge.agent.abort({ sessionID })
+bridge.agent.getTree({ sessionID })
+bridge.agent.navigateTree({ sessionID, targetId })
+bridge.agent.onEvent(listener)
 ```
 
-**Key differences from new user:**
+Bridge request/response and event types live in `packages/desktop-bridge`. Runtime-specific conversion stays in the Electron host.
 
-| Aspect            | New User   | Existing User       |
-| ----------------- | ---------- | ------------------- |
-| `~/.dilag/`       | Created    | Exists              |
-| `sessions.json`   | Empty `[]` | Has session data    |
-| Recent Projects   | Hidden     | Shows up to 4 cards |
-| Zustand hydration | Defaults   | Restores state      |
-| Thumbnails        | None       | Loads from disk     |
+## Storage
 
----
+Dilag-owned data lives under `~/.dilag/`:
 
-## Storage & Persistence
-
-### File System (`~/.dilag/`)
-
-```
+```text
 ~/.dilag/
-├── sessions.json                    # Session metadata index
-├── opencode/
-│   └── opencode.json               # OpenCode config (design agent)
-└── sessions/
-    └── {session-uuid}/             # Per-session working directory
-        └── screens/                # Generated HTML screens
+├── sessions.json                  # Dilag session metadata
+├── sessions/
+│   └── {session-id}/
+│       ├── .agents/skills/        # Session-local generated design skills
+│       └── screens/               # Generated HTML screens
+└── pi/
+    ├── auth.json                  # Provider credentials for Pi auth storage
+    ├── models.json                # Model registry/cache data when present
+    └── sessions/                  # Pi JSONL session data
 ```
 
-**Bundled Resources:**
-The app generates HTML files with embedded Tailwind CSS v4, rendered directly on the canvas.
+Session-local design skills are rendered into `.agents/skills` inside each Dilag session directory. User-installed skills target `~/.agents/skills`.
 
-**sessions.json schema:**
+## Agent Events
 
-```json
-{
-  "sessions": [
-    {
-      "id": "uuid-string",
-      "name": "Building meditation app",
-      "created_at": "2025-12-17T06:48:00.000Z",
-      "cwd": "/Users/name/.dilag/sessions/uuid-string"
-    }
-  ]
-}
-```
+The Pi adapter projects Pi events into stable renderer events:
 
-**opencode.json** - Created/updated on each launch with the design agent configuration including the mobile-design and web-design skills for screen generation.
+- `message.updated`
+- `message.part.updated`
+- `session.status`
+- `session.idle`
+- `session.error`
+- `session.updated`
+- `session.diff`
+- `file.watcher.updated`
+- `project.updated`
+- `question.asked`
+- `question.replied`
+- `question.rejected`
 
----
-
-### LocalStorage
-
-| Key                    | Store         | Contents                                                 |
-| ---------------------- | ------------- | -------------------------------------------------------- |
-| `dilag-session-store`  | Zustand       | `{currentSessionId, screenPositions}`                    |
-| `dilag-model-store`    | Zustand       | `{selectedModel: {providerID, modelID}}`                 |
-| `dilag-initial-prompt` | Temporary     | Prompt passed from home to studio (cleared after use)    |
-| `dilag-initial-files`  | Temporary     | File attachments (JSON array) passed from home to studio |
-| `dilag-theme`          | ThemeProvider | `"dark" \| "light" \| "system"`                          |
-
-**Session store schema:**
-
-```json
-{
-  "currentSessionId": "uuid-string",
-  "screenPositions": {
-    "session-uuid": [
-      { "id": "home-screen.html", "x": 100, "y": 100 },
-      { "id": "profile.html", "x": 440, "y": 100 }
-    ]
-  }
-}
-```
-
-**Model store schema:**
-
-```json
-{
-  "selectedModel": {
-    "providerID": "opencode",
-    "modelID": "big-pickle"
-  }
-}
-```
-
-Default is `opencode/big-pickle` (free tier model).
-
----
-
-### OpenCode Data (External)
-
-OpenCode stores its own data separately:
-
-| Path                       | Purpose                                    |
-| -------------------------- | ------------------------------------------ |
-| `~/.local/share/opencode/` | Auth tokens, credentials                   |
-| `~/.dilag/opencode/`       | Config only (via XDG_CONFIG_HOME override) |
-
-This separation allows Dilag to use isolated config while sharing auth across OpenCode installations.
-
----
-
-## SSE Event System
-
-### Connection Flow
-
-```
-GlobalEventsProvider mounts
-    │
-    ├── Read port from window.__DILAG__.port (injected by Rust)
-    │
-    ├── Create SDK client (http://127.0.0.1:${port})
-    │
-    ├── connectToSSE() with reconnection loop:
-    │   │
-    │   └── while (mounted):
-    │       │
-    │       ├── setConnectionStatus("connecting" | "reconnecting")
-    │       │
-    │       ├── sdk.global.event()
-    │       │   └── GET http://127.0.0.1:${port}/events (SSE)
-    │       │
-    │       ├── On success:
-    │       │   ├── Reset attempt counter
-    │       │   ├── setConnectionStatus("connected")
-    │       │   └── If reconnection: trigger bootstrap()
-    │       │
-    │       ├── Process event stream:
-    │       │   for await (const event of events.stream) {
-    │       │       ├── Notify global handlers
-    │       │       └── Notify session-specific handlers
-    │       │   }
-    │       │
-    │       └── On disconnect/error:
-    │           ├── Exponential backoff: 3s → 6s → 12s → ... → 30s max
-    │           └── Retry indefinitely
-```
-
-### Connection States
-
-| State          | Description                   |
-| -------------- | ----------------------------- |
-| `disconnected` | No connection, not attempting |
-| `connecting`   | First connection attempt      |
-| `connected`    | Active SSE stream             |
-| `reconnecting` | Lost connection, retrying     |
-
-### Event Types
-
-| Event                  | Trigger             | Handler Action                   |
-| ---------------------- | ------------------- | -------------------------------- |
-| `message.updated`      | New/updated message | Add/update in Zustand `messages` |
-| `message.part.updated` | Streaming content   | Update in Zustand `parts`        |
-| `session.status`       | Status change       | Update `sessionStatus`           |
-| `session.diff`         | File changes        | Update `sessionDiffs`            |
-| `session.idle`         | Processing complete | Set status to "idle"             |
-| `session.error`        | Error occurred      | Set status to "error"            |
-
-### Subscription Pattern
-
-```typescript
-// Global subscription (all events)
-const unsubscribe = subscribe((event) => {
-  handleEvent(event)
-})
-
-// Session-specific subscription
-const unsubscribe = subscribeToSession(sessionId, (event) => {
-  // Only receives events for this session
-})
-```
-
----
+This keeps chat rendering, tool rendering, project-file diff badges, and the question UI independent of the underlying runtime.
 
 ## Session Lifecycle
 
-### Creation
+1. The renderer creates a Dilag session directory under `~/.dilag/sessions/{session-id}`.
+2. `bridge.agent.createSession()` creates or opens the matching Pi JSONL session.
+3. The renderer stores Dilag metadata in `sessions.json`.
+4. The first prompt is prefixed with the selected design skill, such as `/skill:web-design` or `/skill:mobile-design`.
+5. Prompts are sent through `bridge.agent.prompt()` with the selected model and optional image attachments.
+6. Pi streams normalized events back through `bridge.agent.onEvent()`.
+7. Pi tools write generated screens into the session `screens/` directory.
+8. The design loader reads `screens/*.html` from disk and updates the canvas.
 
-```
-User submits prompt on Home screen
-    │
-    ├── Save prompt to localStorage("dilag-initial-prompt")
-    │
-    ├── createSession()
-    │   ├── Generate UUID
-    │   ├── invoke("create_session_dir") → ~/.dilag/sessions/{uuid}/
-    │   ├── sdk.session.create({ directory })
-    │   ├── Save metadata to sessions.json
-    │   └── Update Zustand state
-    │
-    └── Navigate to /studio/{sessionId}
-        │
-        └── Studio mounts
-            ├── Read localStorage prompt
-            ├── Clear localStorage
-            └── sendMessage(prompt) after 500ms
-```
+## Messages And Timeline
 
-### Message Flow
+Persisted messages are loaded from the Pi session and projected into Dilag chat message shapes. Live message/tool updates use the same normalized event contract, so the chat UI does not render Pi SDK objects directly.
 
-```
-sendMessage(content)
-    │
-    ├── Set sessionStatus = "running"
-    │
-    ├── sdk.session.prompt({
-    │     sessionID,
-    │     directory,
-    │     agent: "build",
-    │     model: { providerID, modelID },
-    │     parts: [{ type: "text", text: content }]
-    │   })
-    │
-    └── SSE events stream back:
-        │
-        ├── message.updated (user message created)
-        ├── message.updated (assistant message created)
-        ├── message.part.updated (text streaming)
-        ├── message.part.updated (tool calls)
-        │   └── edit/write tools modify ~/.dilag/sessions/{id}/src/*
-        ├── session.status (running → idle)
-        └── session.idle
+Tree navigation replaces the old revert/unrevert model. Timeline actions call `bridge.agent.navigateTree()` and then reload messages from the Pi session.
+
+## Models And Auth
+
+`bridge.agent.getProviderData()` reads authenticated provider/model availability from Pi's `ModelRegistry`. On first run, Dilag falls back to the first available authenticated model. API keys entered in the provider dialog are written to Pi auth storage under `~/.dilag/pi`.
+
+## Generated Output
+
+Generated screens are plain HTML files in the session directory:
+
+```text
+~/.dilag/sessions/{session-id}/screens/*.html
 ```
 
-### Live Preview
+The canvas preview is runtime-independent. If valid screen files exist, the renderer can display them regardless of which agent runtime produced them.
 
-```
-Vite Dev Server (per-session)
-    │
-    ├── Started via invoke("start_vite_server", { sessionCwd })
-    │   └── Returns dynamic port number
-    │
-    ├── BrowserFrame embeds iframe pointing to http://localhost:{port}
-    │
-    └── File changes trigger HMR:
-        │
-        ├── AI writes/edits files in {cwd}/src/
-        ├── Vite detects file change
-        └── HMR updates preview instantly (no page reload)
-```
+## Migration Notes
 
-### Deletion
+`docs/pi-migration-matrix.html` is a migration tracking artifact for the OpenCode-to-Pi cutover. It should not be treated as the canonical architecture reference after the migration lands; this document and `docs/platform.md` are the maintained references.
 
-```
-User clicks delete on project card
-    │
-    ├── sdk.session.delete({ sessionID, directory })
-    │
-    ├── invoke("delete_session_metadata", { sessionId })
-    │   ├── Remove from sessions.json
-    │   └── Delete ~/.dilag/sessions/{id}/ directory
-    │
-    └── Clear Zustand state for session
-```
+## Quality Gates
 
----
+Use the root commands unless a narrower package command is enough:
 
-## Native Menu & Updater
-
-### Menu Events Flow
-
-```
-Rust backend defines native menu (lib.rs: setup_menu())
-    │
-    ├── App menu: About, Settings (Cmd+,), Check Updates, Quit
-    ├── File menu: New Session (Cmd+N), Close Window
-    ├── Edit menu: Standard clipboard operations
-    ├── View menu: Toggle Sidebar (Cmd+B), Toggle Chat (Cmd+\), Fullscreen
-    └── Help menu: Docs, GitHub, Report Issue
-        │
-        └── Menu item clicked
-            │
-            ├── on_menu_event handler (lib.rs)
-            │   └── app.emit("menu-event", event_id)
-            │
-            └── MenuEventsProvider (menu-events.tsx)
-                │
-                ├── listen("menu-event")
-                │
-                └── Switch on event_id:
-                    ├── "settings" → navigate("/settings")
-                    ├── "new-session" → createSession() + navigate to studio
-                    ├── "toggle-sidebar" → callback from registered component
-                    ├── "toggle-chat" → callback from registered component
-                    └── "check-updates" → checkForUpdates()
-```
-
-### Updater Flow
-
-```
-UpdaterProvider mounts
-    │
-    └── useEffect (3s delay)
-        │
-        └── checkForUpdates(silent=true)
-            │
-            ├── check() from @tauri-apps/plugin-updater
-            │
-            ├── IF update available:
-            │   ├── Show toast with "Update Now" action
-            │   └── Set updateInfo state
-            │
-            └── IF no update: silent (no toast on auto-check)
-
-User clicks "Update Now" (toast or Settings)
-    │
-    └── installUpdate()
-        │
-        ├── update.downloadAndInstall()
-        │   └── Progress events update downloadProgress state
-        │
-        └── relaunch() from @tauri-apps/plugin-process
-```
-
-### Theme Synchronization (macOS)
-
-```
-ThemeProvider detects theme change
-    │
-    ├── Apply "dark" or "light" class to document.documentElement
-    │
-    └── invoke("set_titlebar_theme", { isDark })
-        │
-        └── Tauri command (lib.rs: set_titlebar_theme)
-            │
-            └── objc2 API to set NSWindow backgroundColor
-                ├── Dark: oklch(0.14 0.01 250) → rgb(31, 32, 40)
-                └── Light: oklch(0.975 0.008 75) → rgb(247, 245, 242)
-```
-
-This ensures the native macOS titlebar (transparent style) matches the app's theme.
-
----
-
-## State Management
-
-Dilag uses a hybrid approach (TkDodo/KCD pattern):
-
-- **React Query**: Server state (sessions list, provider data)
-- **Zustand**: Client state (UI preferences) and real-time state (SSE data)
-
-### Zustand Stores
-
-#### Session Store (`session-store.tsx`)
-
-```typescript
-interface SessionState {
-  // Persisted (localStorage: dilag-session-store)
-  currentSessionId: string | null
-  screenPositions: Record<string, ScreenPosition[]>
-
-  // Real-time (from SSE, not persisted)
-  messages: Record<string, Message[]> // sessionId → messages
-  parts: Record<string, MessagePart[]> // messageId → parts
-  sessionStatus: Record<string, SessionStatus>
-  sessionDiffs: Record<string, FileDiff[]>
-  sessionErrors: Record<string, { name: string; message: string } | null>
-
-  // Connection state
-  isServerReady: boolean
-  error: string | null
-  debugEvents: Event[] // Last 500 SSE events for debugging
-}
-```
-
-**Persistence:** Only `currentSessionId` and `screenPositions` are persisted.
-Real-time data is cleared on page reload and refetched via SSE.
-
-#### Model Store (`use-models.ts`)
-
-```typescript
-interface ModelState {
-  selectedModel: { providerID: string; modelID: string } | null
-}
-```
-
-**Persistence:** Stored in `localStorage` as `dilag-model-store`.
-Default: `{ providerID: "opencode", modelID: "big-pickle" }`
-
-#### Design Mode Store (`design-mode-store.ts`)
-
-```typescript
-interface DesignModeState {
-  webViewport: "desktop" | "tablet" | "mobile"
-}
-```
-
-**Persistence:** Stored in `localStorage` as `dilag-design-mode`.
-
-- **Viewport Sizes:** Desktop (1280×800), Tablet (768×1024), Mobile (390×844)
-
-### React Query Keys
-
-```typescript
-// Sessions
-sessionKeys.all // ["sessions"]
-sessionKeys.list() // ["sessions", "list"]
-sessionKeys.detail(id) // ["sessions", "detail", id]
-
-// Designs
-designKeys.all // ["designs"]
-designKeys.session(cwd) // ["designs", "session", cwd]
-
-// Models/Providers
-modelKeys.all // ["models"]
-modelKeys.providers() // ["models", "providers"]
-```
-
-### Data Flow Summary
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     FRONTEND (React)                        │
-│                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐ │
-│  │ React Query │    │   Zustand   │    │  localStorage   │ │
-│  │             │    │             │    │                 │ │
-│  │ - sessions  │◄───│ - messages  │───►│ - session-store │ │
-│  │ - providers │    │ - parts     │    │ - model-store   │ │
-│  │ - designs   │    │ - status    │    │ - theme         │ │
-│  └──────┬──────┘    └──────▲──────┘    └─────────────────┘ │
-│         │                  │                                │
-│         │ invoke()         │ SSE events                     │
-└─────────┼──────────────────┼────────────────────────────────┘
-          │                  │
-          ▼                  │
-┌─────────────────────────────────────────────────────────────┐
-│                   TAURI (Rust Backend)                      │
-│                                                             │
-│  ┌─────────────────────┐    ┌─────────────────────────────┐ │
-│  │ Tauri Commands      │    │ OpenCode Server (dynamic)   │ │
-│  │                     │    │                             │ │
-│  │ - sessions.json     │    │ - SDK API calls             │ │
-│  │ - design files      │    │ - SSE event stream          │ │
-│  │ - server lifecycle  │    │ - Session management        │ │
-│  └─────────────────────┘    └─────────────────────────────┘ │
-│                                                             │
-│  Storage: ~/.dilag/                                         │
-└─────────────────────────────────────────────────────────────┘
+```bash
+bun run fmt:check
+bun run lint
+bun run typecheck
+bun run test
+bun run build
 ```

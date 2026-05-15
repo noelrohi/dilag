@@ -8,10 +8,7 @@ dist-electron
 release
 .next
 .turbo
-.opencode/
-.agents/
 skills-lock.json
-apps/desktop/resources/opencode/
 
 # Logs
 logs
@@ -43,6 +40,3 @@ lerna-debug.log*
 # Certificates
 Certificates.p12
 *.p12
-
-# Desktop app specific
-apps/desktop/fitness-prototype/

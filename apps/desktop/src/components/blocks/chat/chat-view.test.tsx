@@ -7,7 +7,12 @@ import {
   removeFileMentionToken,
   estimateMentionFileSizeBytes,
   buildMentionDataUrl,
+  getRenderableAssistantParts,
+  getChatActivityLabel,
+  isAssistantMessageStreaming,
+  parseSkillBlock,
 } from "./chat-view"
+import type { MessagePart } from "@/context/session-store"
 
 describe("parseMessageText", () => {
   describe("screen context removal", () => {
@@ -62,6 +67,29 @@ describe("parseMessageText", () => {
       const { hasScreenRefs } = parseMessageText("Contact user@example.com")
       expect(hasScreenRefs).toBe(true) // @example matches
     })
+  })
+})
+
+describe("parseSkillBlock", () => {
+  it("extracts Pi skill wrapper content and user-authored prompt", () => {
+    const input = `<skill name="web-design" location="/Users/rohi/.dilag/sessions/abc/.agents/skills/web-design/SKILL.md">
+# Web Design
+
+Follow the design rules.
+</skill>
+
+Build a landing page`
+
+    expect(parseSkillBlock(input)).toEqual({
+      name: "web-design",
+      location: "/Users/rohi/.dilag/sessions/abc/.agents/skills/web-design/SKILL.md",
+      content: "# Web Design\n\nFollow the design rules.",
+      userMessage: "Build a landing page",
+    })
+  })
+
+  it("returns null for ordinary user messages", () => {
+    expect(parseSkillBlock("Build a landing page")).toBeNull()
   })
 })
 
@@ -199,5 +227,131 @@ describe("mention file content helpers", () => {
   it("uses existing base64 payload when encoding is base64", () => {
     const url = buildMentionDataUrl("aGVsbG8=", "text/plain", "base64")
     expect(url).toBe("data:text/plain;base64,aGVsbG8=")
+  })
+})
+
+describe("getRenderableAssistantParts", () => {
+  it("hides completed assistant messages that only contain reasoning", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "reasoning-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "reasoning",
+        text: "I should inspect the project.",
+      },
+    ]
+
+    expect(getRenderableAssistantParts(parts, false)).toEqual([])
+  })
+
+  it("shows reasoning-only content while the assistant is streaming", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "reasoning-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "reasoning",
+        text: "I should inspect the project.",
+      },
+    ]
+
+    expect(getRenderableAssistantParts(parts, true)).toEqual(parts)
+  })
+
+  it("keeps a completed tool row renderable after Pi message_end repeats the tool call", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "tool-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "read",
+        state: {
+          status: "completed",
+          input: { path: "src/app.tsx" },
+          output: "contents",
+        },
+      },
+    ]
+
+    expect(getRenderableAssistantParts(parts, false)).toHaveLength(1)
+  })
+})
+
+describe("getChatActivityLabel", () => {
+  it("prioritizes user-blocking questions", () => {
+    expect(
+      getChatActivityLabel({
+        isLoading: true,
+        pendingQuestionCount: 1,
+        runningQuestionToolCount: 0,
+        runningTools: [{ tool: "write" }],
+        sessionStatus: "running",
+        fallback: "Thinking",
+      }),
+    ).toBe("Waiting for your answer")
+  })
+
+  it("uses specific labels for running tools", () => {
+    expect(
+      getChatActivityLabel({
+        isLoading: true,
+        pendingQuestionCount: 0,
+        runningQuestionToolCount: 0,
+        runningTools: [{ tool: "write" }],
+        sessionStatus: "idle",
+        fallback: "Thinking",
+      }),
+    ).toBe("Writing screen")
+  })
+
+  it("returns undefined when idle", () => {
+    expect(
+      getChatActivityLabel({
+        isLoading: false,
+        pendingQuestionCount: 0,
+        runningQuestionToolCount: 0,
+        runningTools: [],
+        sessionStatus: "idle",
+        fallback: "Thinking",
+      }),
+    ).toBeUndefined()
+  })
+})
+
+describe("isAssistantMessageStreaming", () => {
+  it("treats stale streaming messages as complete when the session is idle", () => {
+    expect(
+      isAssistantMessageStreaming(
+        {
+          isStreaming: true,
+          time: { created: 1000 },
+        },
+        "idle",
+      ),
+    ).toBe(false)
+  })
+
+  it("only streams while the message is incomplete and the session is active", () => {
+    expect(
+      isAssistantMessageStreaming(
+        {
+          isStreaming: true,
+          time: { created: 1000 },
+        },
+        "running",
+      ),
+    ).toBe(true)
+
+    expect(
+      isAssistantMessageStreaming(
+        {
+          isStreaming: true,
+          time: { created: 1000, completed: 2000 },
+        },
+        "running",
+      ),
+    ).toBe(false)
   })
 })

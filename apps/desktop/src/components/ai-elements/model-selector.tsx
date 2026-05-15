@@ -187,16 +187,25 @@ export type ModelSelectorLogoProps = Omit<ComponentProps<"img">, "src" | "alt"> 
     | (string & {})
 }
 
-export const ModelSelectorLogo = ({ provider, className, ...props }: ModelSelectorLogoProps) => (
-  <img
-    {...props}
-    alt={`${provider} logo`}
-    className={cn("size-3 dark:invert", className)}
-    height={12}
-    src={`https://models.dev/logos/${provider}.svg`}
-    width={12}
-  />
-)
+export function getModelSelectorLogoProvider(provider: string): string {
+  if (provider === "openai-codex" || provider === "openai-codex-responses") return "openai"
+  if (provider === "azure-openai-responses") return "azure"
+  return provider
+}
+
+export const ModelSelectorLogo = ({ provider, className, ...props }: ModelSelectorLogoProps) => {
+  const logoProvider = getModelSelectorLogoProvider(provider)
+  return (
+    <img
+      {...props}
+      alt={`${provider} logo`}
+      className={cn("size-3 dark:invert", className)}
+      height={12}
+      src={`https://models.dev/logos/${logoProvider}.svg`}
+      width={12}
+    />
+  )
+}
 
 export type ModelSelectorLogoGroupProps = ComponentProps<"div">
 

@@ -3,7 +3,7 @@
 > AI-powered design studio for mobile and web. Describe your app in natural language and generate production-ready screens in real time.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri%202-24c8db?logo=tauri)](https://tauri.app)
+[![Built with Electron](https://img.shields.io/badge/Built%20with-Electron-47848f?logo=electron)](https://www.electronjs.org)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript)](https://www.typescriptlang.org)
 
@@ -18,7 +18,7 @@ Dilag is a desktop application that turns ideas into polished mobile and web des
 ```
 dilag/
 ├── apps/
-│   ├── desktop/          # Tauri 2 desktop app (React + Rust)
+│   ├── desktop/          # Electron desktop app (React + Electron main/preload)
 │   └── web/              # Next.js marketing site
 ├── packages/
 │   └── ui/               # Shared UI components
@@ -37,7 +37,6 @@ dilag/
 ### Prerequisites
 
 - [Bun](https://bun.sh) 1.2+
-- [Rust](https://rustup.rs) 1.70+
 
 ### Install
 
@@ -70,12 +69,13 @@ bun run lint
 
 ## Desktop Tech Stack
 
-- Tauri 2 (Rust backend)
+- Electron main/preload host
 - React 19 + TypeScript
 - Vite + Tailwind CSS
 - shadcn/ui components
 - Zustand + React Query
 - TanStack Router
+- Pi embedded coding-agent runtime
 
 ## Web Tech Stack
 
@@ -99,6 +99,6 @@ Contributions are welcome via pull request.
 
 ## Acknowledgments
 
-- [Tauri](https://tauri.app) – Desktop runtime
-- [OpenCode](https://opencode.ai) – AI SDK
+- [Electron](https://www.electronjs.org) – Desktop runtime
+- [Pi](https://github.com/earendil-works/pi) – Embedded coding agent runtime
 - [shadcn/ui](https://ui.shadcn.com) – Component library

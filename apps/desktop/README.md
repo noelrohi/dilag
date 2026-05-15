@@ -3,7 +3,7 @@
 > AI-powered design studio for mobile and web. Describe your app in natural language and watch AI design production-ready screens in real-time.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Built with Tauri](https://img.shields.io/badge/Built%20with-Tauri-24c8db?logo=tauri)](https://tauri.app)
+[![Built with Electron](https://img.shields.io/badge/Built%20with-Electron-47848f?logo=electron)](https://www.electronjs.org)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178c6?logo=typescript)](https://www.typescriptlang.org)
 
@@ -40,7 +40,6 @@ Perfect for:
 ### Prerequisites
 
 - **Node.js** 18+ and **Bun**
-- **Rust** 1.70+ (for Tauri)
 - **VS Code** (recommended)
 
 ### Installation
@@ -53,8 +52,8 @@ cd dilag
 # Install dependencies
 bun install
 
-# Start the development server
-bun run tauri dev
+# Start the desktop app
+bun run dev
 ```
 
 ### Development Commands
@@ -63,14 +62,14 @@ bun run tauri dev
 # Vite dev server (frontend only)
 bun run dev
 
-# Full Tauri app (frontend + Rust backend)
-bun run tauri dev
+# Full Electron app
+bun run dev
 
 # Type checking
-tsc --noEmit
+bun run typecheck
 
 # Production build
-bun run tauri build
+bun run build
 ```
 
 ## Architecture
@@ -88,8 +87,8 @@ bun run tauri build
 
 ### Backend Stack
 
-- **Tauri** – Desktop runtime (Rust)
-- **OpenCode SDK** – AI integration with SSE streaming
+- **Electron** – Desktop runtime and native host
+- **Pi SDK** – Embedded coding-agent runtime
 
 ### Data Flow
 
@@ -98,7 +97,7 @@ User Prompt
     ↓
 Session Creation
     ↓
-AI Processing (OpenCode)
+AI Processing (Pi)
     ↓
 Screen Generation (HTML + Tailwind)
     ↓
@@ -117,7 +116,7 @@ dilag/
 │   │   ├── blocks/              # Page layouts and sections
 │   │   └── ui/                  # shadcn/ui primitives
 │   ├── context/
-│   │   ├── global-events.tsx    # SSE event provider
+│   │   ├── global-events.tsx    # Agent event provider
 │   │   └── session-store.tsx    # Zustand store
 │   ├── hooks/
 │   │   ├── use-designs.ts       # Design file polling
@@ -129,11 +128,10 @@ dilag/
 │   └── lib/
 │       ├── tool-registry.tsx    # Tool display configs
 │       └── utils.ts             # Utilities
-├── src-tauri/                    # Rust backend (Tauri)
-│   ├── src/
-│   │   ├── lib.rs              # Commands
-│   │   └── main.rs             # Entry point
-│   └── tauri.conf.json          # Tauri config
+├── electron/                     # Electron main/preload host
+│   ├── ipc/                     # Native IPC handlers
+│   ├── main.ts                  # Main process entry
+│   └── preload.ts               # Preload bridge
 ├── docs/
 │   ├── architecture.md          # Technical architecture
 │   └── platform.md              # UI and platform docs
@@ -171,11 +169,12 @@ Dilag stores everything locally on your machine:
 │   └── {project-uuid}/
 │       └── screens/            # Generated HTML screens
 ├── sessions.json               # Project metadata
-└── opencode/
-    └── opencode.json          # AI agent config
+└── pi/
+    ├── auth.json              # Pi provider credentials
+    └── sessions/              # Pi JSONL session data
 ```
 
-Sensitive data (API keys, tokens) is stored in `~/.local/share/opencode/` and isolated from your projects.
+Sensitive data for the embedded Pi runtime is stored under `~/.dilag/pi/` and isolated from project files.
 
 ## Development
 
@@ -215,7 +214,7 @@ tsc --noEmit
 ## Documentation
 
 - **[Platform Docs](./docs/platform.md)** – UI screens, components, user flows, tool registry
-- **[Architecture Docs](./docs/architecture.md)** – App startup, storage, SSE events, session lifecycle
+- **[Architecture Docs](./docs/architecture.md)** – App startup, storage, agent events, session lifecycle
 - **[AGENTS.md](./AGENTS.md)** – Development setup and conventions
 
 ## Contributing
@@ -233,19 +232,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ### Server won't start
 
 ```bash
-# Ensure no other instance is running
-lsof -i :4096
-
 # Clear cached data
-rm -rf ~/.dilag/opencode
-bun run tauri dev
+rm -rf ~/.dilag/pi
+bun run dev
 ```
 
 ### Preview not loading
 
 1. Check that Bun is installed (`bun --version`)
 2. Check `~/.dilag/sessions/{id}/` for project files
-3. Check browser console for errors (DevTools in Tauri dev mode)
+3. Check browser console for errors (DevTools in Electron dev mode)
 
 ## License
 
@@ -253,8 +249,8 @@ MIT © 2024-2026 Dilag
 
 ## Acknowledgments
 
-- [Tauri](https://tauri.app) – Desktop runtime
-- [OpenCode](https://opencode.ai) – AI integration
+- [Electron](https://www.electronjs.org) – Desktop runtime
+- [Pi](https://github.com/earendil-works/pi) – Embedded coding-agent runtime
 - [shadcn/ui](https://ui.shadcn.com) – Component library
 - [React](https://react.dev) – UI framework
 

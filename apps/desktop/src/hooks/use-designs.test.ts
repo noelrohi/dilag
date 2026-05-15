@@ -1,8 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
-import { renderHook, waitFor } from "@testing-library/react"
+import { act, renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createElement, type ReactNode } from "react"
-import { useSessionDesigns, type DesignFile, type Violation } from "./use-designs"
+import {
+  isSessionDesignFileChange,
+  useSessionDesigns,
+  type DesignFile,
+  type Violation,
+} from "./use-designs"
+import { useSessionStore } from "@/context/session-store"
 
 // ---------- Fixture factory ----------
 
@@ -42,6 +48,7 @@ describe("useSessionDesigns", () => {
 
   beforeEach(() => {
     mockLoadForSession.mockReset()
+    useSessionStore.setState({ recentFileChanges: [] })
   })
 
   it("returns DesignFile[] with empty violations when session is clean", async () => {
@@ -80,5 +87,72 @@ describe("useSessionDesigns", () => {
   it("does not fetch when sessionCwd is undefined", () => {
     renderHook(() => useSessionDesigns(undefined), { wrapper })
     expect(mockLoadForSession).not.toHaveBeenCalled()
+  })
+
+  it("refetches when a session screen html file changes", async () => {
+    const initial = makeDesignFile({ filename: "home.html", title: "Home" })
+    const updated = makeDesignFile({
+      filename: "home.html",
+      title: "Home Updated",
+      modified_at: initial.modified_at + 1,
+    })
+    mockLoadForSession.mockResolvedValueOnce([initial]).mockResolvedValueOnce([updated])
+
+    const { result } = renderHook(() => useSessionDesigns("/sessions/abc"), { wrapper })
+    await waitFor(() => expect(result.current.data).toEqual([initial]))
+
+    act(() => {
+      useSessionStore.setState({
+        recentFileChanges: [
+          {
+            file: "/sessions/abc/screens/home.html",
+            event: "change",
+            timestamp: Date.now(),
+          },
+        ],
+      })
+    })
+
+    await waitFor(() => expect(mockLoadForSession).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(result.current.data).toEqual([updated]))
+  })
+
+  it("does not refetch for non-design file changes in the same session", async () => {
+    const initial = makeDesignFile({ filename: "home.html", title: "Home" })
+    mockLoadForSession.mockResolvedValue([initial])
+
+    const { result } = renderHook(() => useSessionDesigns("/sessions/abc"), { wrapper })
+    await waitFor(() => expect(result.current.data).toEqual([initial]))
+
+    act(() => {
+      useSessionStore.setState({
+        recentFileChanges: [
+          {
+            file: "/sessions/abc/src/app.tsx",
+            event: "change",
+            timestamp: Date.now(),
+          },
+        ],
+      })
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mockLoadForSession).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("isSessionDesignFileChange", () => {
+  it("matches screen html files written with absolute or relative paths", () => {
+    expect(isSessionDesignFileChange("/sessions/abc/screens/home.html", "/sessions/abc")).toBe(true)
+    expect(isSessionDesignFileChange("screens/home.html", "/sessions/abc")).toBe(true)
+  })
+
+  it("matches root html files because the backend loader supports session-root designs", () => {
+    expect(isSessionDesignFileChange("/sessions/abc/home.html", "/sessions/abc")).toBe(true)
+  })
+
+  it("ignores non-html and nested non-screen files", () => {
+    expect(isSessionDesignFileChange("/sessions/abc/screens/home.png", "/sessions/abc")).toBe(false)
+    expect(isSessionDesignFileChange("/sessions/abc/src/home.html", "/sessions/abc")).toBe(false)
   })
 })

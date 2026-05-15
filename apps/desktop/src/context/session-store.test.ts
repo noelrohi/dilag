@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { useSessionStore } from "./session-store"
+import { act, renderHook } from "@testing-library/react"
+import { useIsWritingScreen, useSessionStore } from "./session-store"
 import type { Message, MessagePart } from "./session-store"
 
 describe("session-store", () => {
@@ -36,6 +37,49 @@ describe("session-store", () => {
       useSessionStore.getState().setScreenPositions("session-1", positions)
 
       expect(useSessionStore.getState().screenPositions["session-1"]).toEqual(positions)
+    })
+  })
+
+  describe("useIsWritingScreen", () => {
+    it("returns true while write or edit tools are pending or running", () => {
+      const sessionId = "session-1"
+      const messageId = "msg-1"
+
+      act(() => {
+        useSessionStore.getState().setMessages(sessionId, [
+          {
+            id: messageId,
+            sessionID: sessionId,
+            role: "assistant",
+            time: { created: 1000 },
+          },
+        ])
+        useSessionStore.getState().updatePart(messageId, {
+          id: "write-tool",
+          messageID: messageId,
+          sessionID: sessionId,
+          type: "tool",
+          tool: "write",
+          state: { status: "running", input: { filePath: "screens/home.html" } },
+        })
+      })
+
+      const { result, rerender } = renderHook(() => useIsWritingScreen(sessionId))
+      expect(result.current).toBe(true)
+
+      act(() => {
+        useSessionStore.getState().updatePart(messageId, {
+          id: "write-tool",
+          messageID: messageId,
+          sessionID: sessionId,
+          type: "tool",
+          tool: "write",
+          state: { status: "completed", input: { filePath: "screens/home.html" } },
+        })
+      })
+      rerender()
+
+      expect(result.current).toBe(false)
     })
   })
 
@@ -155,6 +199,41 @@ describe("session-store", () => {
       const parts = useSessionStore.getState().parts[messageId]
       expect(parts).toHaveLength(1)
       expect(parts[0].text).toBe("Updated text")
+    })
+
+    it("should not downgrade completed tool parts from a later stale pending update", () => {
+      const messageId = "msg-1"
+      const completedPart: MessagePart = {
+        id: "tool-1",
+        messageID: messageId,
+        sessionID: "session-1",
+        type: "tool",
+        tool: "read",
+        state: {
+          status: "completed",
+          input: { path: "src/app.tsx" },
+          output: "file contents",
+          metadata: { preview: "file contents" },
+        },
+      }
+
+      useSessionStore.getState().updatePart(messageId, completedPart)
+      useSessionStore.getState().updatePart(messageId, {
+        id: "tool-1",
+        messageID: messageId,
+        sessionID: "session-1",
+        type: "tool",
+        tool: "read",
+        state: {
+          status: "pending",
+          input: { path: "src/app.tsx" },
+        },
+      })
+
+      const parts = useSessionStore.getState().parts[messageId]
+      expect(parts).toHaveLength(1)
+      expect(parts[0].state?.status).toBe("completed")
+      expect(parts[0].state?.output).toBe("file contents")
     })
 
     it("should maintain part order by id", () => {
@@ -323,6 +402,29 @@ describe("session-store", () => {
       useSessionStore.getState().handleEvent(event as any)
 
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("running")
+    })
+
+    it("should stop streaming assistant messages when session becomes idle", () => {
+      const sessionId = "session-1"
+      useSessionStore.getState().setMessages(sessionId, [
+        {
+          id: "assistant-1",
+          sessionID: sessionId,
+          role: "assistant",
+          time: { created: 1000 },
+          isStreaming: true,
+        },
+      ])
+
+      useSessionStore.getState().handleEvent({
+        type: "session.idle",
+        properties: { sessionID: sessionId },
+      } as any)
+
+      const message = useSessionStore.getState().messages[sessionId][0]
+      expect(useSessionStore.getState().sessionStatus[sessionId]).toBe("idle")
+      expect(message.isStreaming).toBe(false)
+      expect(message.time.completed).toEqual(expect.any(Number))
     })
 
     it("should handle message.part.updated event", () => {

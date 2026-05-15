@@ -7,17 +7,18 @@ import { ErrorBoundary, InlineErrorFallback } from "@/components/blocks/errors/e
 
 interface MessagePartProps {
   part: MessagePartType
+  isStreaming?: boolean
 }
 
-export function MessagePart({ part }: MessagePartProps) {
+export function MessagePart({ part, isStreaming = false }: MessagePartProps) {
   return (
     <ErrorBoundary fallback={<InlineErrorFallback message="Failed to render message part" />}>
-      <MessagePartContent part={part} />
+      <MessagePartContent part={part} isStreaming={isStreaming} />
     </ErrorBoundary>
   )
 }
 
-function MessagePartContent({ part }: MessagePartProps) {
+function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
   switch (part.type) {
     case "text":
       if (!part.text?.trim()) return null
@@ -30,7 +31,7 @@ function MessagePartContent({ part }: MessagePartProps) {
     case "reasoning":
       if (!part.text?.trim()) return null
       return (
-        <Reasoning isStreaming={false} className="mb-0">
+        <Reasoning isStreaming={isStreaming} className="mb-0">
           <ReasoningTrigger />
           <ReasoningContent>{part.text}</ReasoningContent>
         </Reasoning>

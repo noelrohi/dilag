@@ -16,7 +16,7 @@ Dilag is an AI-powered design studio for mobile and web apps. This monorepo cont
 ```
 dilag/
 ├── apps/
-│   ├── desktop/              # Tauri desktop app
+│   ├── desktop/              # Electron desktop app
 │   │   ├── src/              # React frontend
 │   │   ├── electron/         # Electron main/preload host
 │   │   ├── src-tauri/        # Legacy Tauri backend kept during migration
@@ -66,10 +66,11 @@ bun run build
 
 ## Key Integrations
 
-### OpenCode SDK (AI)
+### Pi SDK (AI)
 
-- Desktop app spawns OpenCode server for AI generation through the native host
-- SSE streaming for real-time design updates
+- Desktop app embeds the Pi coding-agent SDK in Electron main
+- Renderer talks to the runtime through `@dilag/desktop-bridge` as `bridge.agent`
+- Pi data is isolated under `~/.dilag/pi`; session-local skills are written to `.agents/skills`
 
 ## Workspaces
 

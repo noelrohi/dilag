@@ -262,6 +262,17 @@ function binarySearchByTime(arr: Message[], timestamp: number): { index: number 
   return { index: low }
 }
 
+function isTerminalToolStatus(status: ToolState["status"] | undefined): boolean {
+  return status === "completed" || status === "error"
+}
+
+function shouldKeepExistingPart(existing: MessagePart, incoming: MessagePart): boolean {
+  if (existing.type !== "tool" || incoming.type !== "tool") return false
+  const existingStatus = existing.state?.status
+  const incomingStatus = incoming.state?.status
+  return isTerminalToolStatus(existingStatus) && !isTerminalToolStatus(incomingStatus)
+}
+
 export const useSessionStore = create<SessionState>()(
   persist(
     immer((set, get) => ({
@@ -334,6 +345,7 @@ export const useSessionStore = create<SessionState>()(
 
           const result = binarySearch(parts, part.id, (p) => p.id)
           if (result.found) {
+            if (shouldKeepExistingPart(parts[result.index], part)) return
             parts[result.index] = part
           } else {
             parts.splice(result.index, 0, part)
@@ -699,7 +711,17 @@ export const useSessionStore = create<SessionState>()(
         }
 
         if (isEventSessionIdle(event)) {
-          setSessionStatus(event.properties.sessionID, "idle")
+          const { sessionID } = event.properties
+          const completed = Date.now()
+          set((state) => {
+            state.sessionStatus[sessionID] = "idle"
+            for (const message of state.messages[sessionID] ?? []) {
+              if (message.isStreaming) {
+                message.isStreaming = false
+                message.time.completed ??= completed
+              }
+            }
+          })
           return
         }
 
