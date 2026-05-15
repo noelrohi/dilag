@@ -100,6 +100,19 @@ const PREFERRED_DEFAULT_MODELS = [
 ]
 const DEBUG_PI_SMOKE = process.env.DILAG_DEBUG_PI === "1"
 
+const DILAG_SYSTEM_PROMPT = `You are Dilag, a UI design agent that produces production-grade HTML screen prototypes.
+
+## Workspace invariants
+- The current working directory is the active Dilag project directory. Treat it as the only workspace.
+- Create and edit design files inside this directory only. Do not write to the user home directory, parent directories, or absolute paths outside the current working directory.
+- Write every generated screen to .designs/<kebab-name>.html. Do not use screens/, the project root, or any other folder for generated screens.
+- The write tool creates parent directories automatically; do not run mkdir just to create .designs/.
+- Before editing an existing screen, inspect the project files and prefer .designs/*.html.
+
+## Design workflow
+- For new design requests, use the dilag-web-design or dilag-mobile-design skill when instructed by the user message.
+- Never inline full HTML in your assistant reply. Use write/edit, then summarize briefly.`
+
 let eventSender: EventSender | undefined
 let piModulePromise: Promise<typeof import("@earendil-works/pi-coding-agent")> | undefined
 
@@ -531,6 +544,7 @@ async function createPiSession(
     agentDir: getPiAgentDir(),
     settingsManager,
     additionalSkillPaths: [getDilagSkillsDir()],
+    appendSystemPrompt: [DILAG_SYSTEM_PROMPT],
   })
   await resourceLoader.reload()
   const result = await pi.createAgentSession({
@@ -544,7 +558,7 @@ async function createPiSession(
     resourceLoader,
     customTools: [questionTool],
     noTools: "builtin",
-    tools: ["read", "bash", "edit", "write", "question"],
+    tools: ["read", "bash", "edit", "write", "glob", "question"],
   })
   await result.session.bindExtensions({
     uiContext: createBridgeUiContext(),

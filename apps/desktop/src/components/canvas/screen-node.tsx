@@ -87,7 +87,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
     return injectInspector(withScrollbar)
   }, [design.html])
 
-  const filePath = sessionCwd ? `${sessionCwd}/screens/${design.filename}` : undefined
+  const filePath = design.file_path ?? (sessionCwd ? `${sessionCwd}/.designs/${design.filename}` : undefined)
 
   // Handle messages from iframe
   useEffect(() => {

@@ -5,7 +5,7 @@ This document describes the current desktop architecture. Dilag keeps a stable p
 ## Goals
 
 - Keep the renderer runtime-agnostic: React talks to `@dilag/desktop-bridge`, not to Pi directly.
-- Store all product data locally under `~/.dilag`.
+- Store Dilag app metadata locally in SQLite under `~/.dilag`, while generated HTML lives in each project cwd.
 - Isolate Pi auth/session data under `~/.dilag/pi`.
 - Preserve the desktop product contract: provider connection, model selection, session creation, streaming chat, generated HTML screens, questions, and timeline navigation.
 
@@ -50,22 +50,23 @@ Bridge request/response and event types live in `packages/desktop-bridge`. Runti
 
 ## Storage
 
-Dilag-owned data lives under `~/.dilag/`:
+Dilag-owned app state lives under `~/.dilag/`; generated designs live in project folders:
 
 ```text
 ~/.dilag/
-├── sessions.json                  # Dilag session metadata
-├── sessions/
-│   └── {session-id}/
-│       ├── .agents/skills/        # Session-local generated design skills
-│       └── screens/               # Generated HTML screens
-└── pi/
-    ├── auth.json                  # Provider credentials for Pi auth storage
-    ├── models.json                # Model registry/cache data when present
-    └── sessions/                  # Pi JSONL session data
+├── state.sqlite                   # Project registry and app state
+├── pi/
+│   ├── auth.json                  # Provider credentials for Pi auth storage
+│   ├── models.json                # Model registry/cache data when present
+│   └── sessions/                  # Pi JSONL session data, keyed by project cwd
+└── skills/                        # Built-in Dilag design skills for Pi
+
+{project-cwd}/
+└── .designs/                      # Generated HTML screens
+    └── **/*.html
 ```
 
-Session-local design skills are rendered into `.agents/skills` inside each Dilag session directory. User-installed skills target `~/.agents/skills`.
+`~/.dilag/sessions.json` and `~/.dilag/sessions/{session-id}` are legacy-only migration surfaces. New project/session state comes from SQLite plus Pi sessions keyed by project cwd. User-installed skills target `~/.agents/skills`.
 
 ## Agent Events
 
@@ -88,14 +89,14 @@ This keeps chat rendering, tool rendering, project-file diff badges, and the que
 
 ## Session Lifecycle
 
-1. The renderer creates a Dilag session directory under `~/.dilag/sessions/{session-id}`.
-2. `bridge.agent.createSession()` creates or opens the matching Pi JSONL session.
-3. The renderer stores Dilag metadata in `sessions.json`.
-4. The first prompt is prefixed with the selected design skill, such as `/skill:web-design` or `/skill:mobile-design`.
+1. The renderer selects or creates a project registered in `~/.dilag/state.sqlite`.
+2. `bridge.agent.createSession({ directory: project.path })` creates or opens the matching Pi JSONL session for that project cwd.
+3. The sessions list is derived from Pi sessions across SQLite-registered projects.
+4. The first prompt is prefixed with the selected design skill, such as `/skill:dilag-web-design` or `/skill:dilag-mobile-design`.
 5. Prompts are sent through `bridge.agent.prompt()` with the selected model and optional image attachments.
 6. Pi streams normalized events back through `bridge.agent.onEvent()`.
-7. Pi tools write generated screens into the session `screens/` directory.
-8. The design loader reads `screens/*.html` from disk and updates the canvas.
+7. Pi tools write generated screens into `{project-cwd}/.designs/`.
+8. The design loader reads `{project-cwd}/.designs/**/*.html` from disk and updates the canvas.
 
 ## Messages And Timeline
 
@@ -109,10 +110,10 @@ Tree navigation replaces the old revert/unrevert model. Timeline actions call `b
 
 ## Generated Output
 
-Generated screens are plain HTML files in the session directory:
+Generated screens are plain HTML files in the active project cwd:
 
 ```text
-~/.dilag/sessions/{session-id}/screens/*.html
+{project-cwd}/.designs/**/*.html
 ```
 
 The canvas preview is runtime-independent. If valid screen files exist, the renderer can display them regardless of which agent runtime produced them.

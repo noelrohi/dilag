@@ -21,7 +21,7 @@ async function saveSessionsStore(store: SessionsStore) {
 
 export async function createSessionDir(sessionId: string): Promise<string> {
   const sessionDir = path.join(getSessionsDir(), sessionId)
-  await fsp.mkdir(path.join(sessionDir, "screens"), { recursive: true })
+  await fsp.mkdir(path.join(sessionDir, ".designs"), { recursive: true })
   return sessionDir
 }
 

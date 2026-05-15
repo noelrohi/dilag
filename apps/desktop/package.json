@@ -22,8 +22,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "release": "bumpp",
-    "sync-version": "bun scripts/sync-version.ts",
-    "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts"
+    "check:stale": "node scripts/check-stale-tauri.mjs"
   },
   "build": {
     "appId": "com.rohi.dilag",

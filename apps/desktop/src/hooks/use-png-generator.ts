@@ -21,7 +21,8 @@ export function usePngGenerator(
       platform === "mobile" ? { width: 393, height: 852 } : { width: 1280, height: 800 }
 
     const generate = async (design: DesignFile) => {
-      const pngPath = `${sessionCwd}/screens/${design.filename.replace(".html", ".png")}`
+      const basePath = design.file_path?.replace(/\.html$/, ".png")
+      const pngPath = basePath ?? `${sessionCwd}/.designs/${design.filename.replace(".html", ".png")}`
 
       // Skip if already generating (mark immediately to prevent race condition)
       if (generating.current.has(pngPath)) return

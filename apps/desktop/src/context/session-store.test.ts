@@ -60,7 +60,7 @@ describe("session-store", () => {
           sessionID: sessionId,
           type: "tool",
           tool: "write",
-          state: { status: "running", input: { filePath: "screens/home.html" } },
+          state: { status: "running", input: { filePath: ".designs/home.html" } },
         })
       })
 
@@ -74,7 +74,7 @@ describe("session-store", () => {
           sessionID: sessionId,
           type: "tool",
           tool: "write",
-          state: { status: "completed", input: { filePath: "screens/home.html" } },
+          state: { status: "completed", input: { filePath: ".designs/home.html" } },
         })
       })
       rerender()
@@ -453,14 +453,14 @@ describe("session-store", () => {
         type: "session.diff" as const,
         properties: {
           sessionID: "session-1",
-          diff: [{ file: "screens/home.html", additions: 12, deletions: 3 }],
+          diff: [{ file: ".designs/home.html", additions: 12, deletions: 3 }],
         },
       }
 
       useSessionStore.getState().handleEvent(event as any)
 
       expect(useSessionStore.getState().sessionDiffs["session-1"]).toEqual([
-        { file: "screens/home.html", additions: 12, deletions: 3 },
+        { file: ".designs/home.html", additions: 12, deletions: 3 },
       ])
     })
 
@@ -468,7 +468,7 @@ describe("session-store", () => {
       const event = {
         type: "file.watcher.updated" as const,
         properties: {
-          file: "screens/home.html",
+          file: ".designs/home.html",
           event: "change" as const,
         },
       }
@@ -476,7 +476,7 @@ describe("session-store", () => {
       useSessionStore.getState().handleEvent(event as any)
 
       expect(useSessionStore.getState().recentFileChanges).toMatchObject([
-        { file: "screens/home.html", event: "change" },
+        { file: ".designs/home.html", event: "change" },
       ])
     })
   })

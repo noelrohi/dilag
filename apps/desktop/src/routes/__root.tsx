@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react"
 import { createRootRoute, Outlet } from "@tanstack/react-router"
 import { NuqsAdapter } from "nuqs/adapters/tanstack-router"
 import { SidebarProvider, SidebarInset } from "@dilag/ui/sidebar"
@@ -21,10 +22,10 @@ function RootLayout() {
   return (
     <AppProviders>
       <NuqsAdapter>
-        <SidebarProvider defaultOpen={true}>
+        <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "19rem" } as CSSProperties}>
           <AutoCollapseSidebar />
           <AppSidebar />
-          <SidebarInset className="h-svh">
+          <SidebarInset className="h-svh overflow-hidden border border-border/80 bg-background shadow-sm ring-1 ring-white/5">
             <Outlet />
           </SidebarInset>
         </SidebarProvider>

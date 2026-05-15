@@ -165,16 +165,17 @@ Dilag stores everything locally on your machine:
 
 ```
 ~/.dilag/
-├── sessions/                    # Design project directories
-│   └── {project-uuid}/
-│       └── screens/            # Generated HTML screens
-├── sessions.json               # Project metadata
+├── state.sqlite               # Project registry and app state
+├── skills/                    # Dilag design skills loaded by Pi
 └── pi/
     ├── auth.json              # Pi provider credentials
-    └── sessions/              # Pi JSONL session data
+    └── sessions/              # Pi JSONL session data keyed by project cwd
+
+{project-cwd}/
+└── .designs/**/*.html         # Generated HTML screens
 ```
 
-Sensitive data for the embedded Pi runtime is stored under `~/.dilag/pi/` and isolated from project files.
+Sensitive data for the embedded Pi runtime is stored under `~/.dilag/pi/` and generated screens are stored in the project cwd.
 
 ## Development
 
@@ -240,7 +241,7 @@ bun run dev
 ### Preview not loading
 
 1. Check that Bun is installed (`bun --version`)
-2. Check `~/.dilag/sessions/{id}/` for project files
+2. Check `{project-cwd}/.designs/` for generated HTML files
 3. Check browser console for errors (DevTools in Electron dev mode)
 
 ## License

@@ -54,11 +54,15 @@ export function validateHtml(html: string): Violation[] {
 async function loadDesignsFromDir(dir: string, seen: Set<string>, out: DesignFile[]) {
   if (!fs.existsSync(dir)) return
   for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith(".html") || seen.has(entry.name)) continue
     const filePath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      await loadDesignsFromDir(filePath, seen, out)
+      continue
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".html") || seen.has(filePath)) continue
     const html = await fsp.readFile(filePath, "utf8")
     const stat = await fsp.stat(filePath)
-    seen.add(entry.name)
+    seen.add(filePath)
     out.push({
       filename: entry.name,
       file_path: filePath,
@@ -75,8 +79,6 @@ export async function loadDesignsForSession(sessionCwd: string): Promise<DesignF
   const designs: DesignFile[] = []
   const seen = new Set<string>()
   await loadDesignsFromDir(path.join(sessionCwd, ".designs"), seen, designs)
-  await loadDesignsFromDir(path.join(sessionCwd, "screens"), seen, designs)
-  await loadDesignsFromDir(sessionCwd, seen, designs)
   return designs.sort((a, b) => a.modified_at - b.modified_at)
 }
 

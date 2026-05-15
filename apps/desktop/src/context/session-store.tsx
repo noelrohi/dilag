@@ -166,7 +166,8 @@ interface SessionState {
   pendingQuestions: Record<string, QuestionRequest[]> // Keyed by sessionId
   vcsBranch: VcsBranchState
   recentFileChanges: FileWatcherEvent[]
-  sessionFileWrites: Record<string, SessionFileWriteState> // Keyed by session cwd
+  designRefreshTick: number
+  sessionFileWrites: Record<string, SessionFileWriteState> // Keyed by project cwd
 
   // Server connection state
   isServerReady: boolean
@@ -205,6 +206,7 @@ interface SessionState {
   syncPendingQuestions: (questions: QuestionRequest[]) => void
   setVcsBranch: (branch: string | null) => void
   addFileChange: (event: FileWatcherEvent) => void
+  bumpDesignRefresh: () => void
   trackFileWrite: (sessionCwd: string, filePath: string) => void
 
   // Actions - Server state
@@ -291,6 +293,7 @@ export const useSessionStore = create<SessionState>()(
       pendingQuestions: {},
       vcsBranch: { branch: null, lastUpdated: 0 },
       recentFileChanges: [],
+      designRefreshTick: 0,
       sessionFileWrites: {},
       isServerReady: false,
       error: null,
@@ -535,6 +538,12 @@ export const useSessionStore = create<SessionState>()(
             state.recentFileChanges = state.recentFileChanges.slice(-49)
           }
           state.recentFileChanges.push(event)
+          state.designRefreshTick += 1
+        }),
+
+      bumpDesignRefresh: () =>
+        set((state) => {
+          state.designRefreshTick += 1
         }),
 
       trackFileWrite: (sessionCwd, filePath) =>
@@ -621,6 +630,7 @@ export const useSessionStore = create<SessionState>()(
           removePendingQuestion,
           setVcsBranch,
           addFileChange,
+          bumpDesignRefresh,
         } = get()
 
         addDebugEvent(event)
@@ -758,7 +768,7 @@ export const useSessionStore = create<SessionState>()(
 
         // Handle project updates
         if (isEventProjectUpdated(event)) {
-          // For now just acknowledge - could be used to refresh project info
+          bumpDesignRefresh()
           return
         }
 
@@ -877,6 +887,7 @@ export const usePendingQuestions = (sessionId: string | null) =>
 export const useVcsBranch = () => useSessionStore((state) => state.vcsBranch.branch)
 
 export const useRecentFileChanges = () => useSessionStore((state) => state.recentFileChanges)
+export const useDesignRefreshTick = () => useSessionStore((state) => state.designRefreshTick)
 
 export const useSessionHasFiles = (sessionCwd: string | null) =>
   useSessionStore((state) =>

@@ -201,16 +201,10 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(
     CHANNELS.designs.copyBetweenSessions,
     async (_event, args: { sourceCwd: string; destCwd: string }) => {
-      const copied = await copyHtmlFiles(
+      await copyHtmlFiles(
         path.join(args.sourceCwd, ".designs"),
         path.join(args.destCwd, ".designs"),
       )
-      if (copied === 0) {
-        await copyHtmlFiles(
-          path.join(args.sourceCwd, "screens"),
-          path.join(args.destCwd, ".designs"),
-        )
-      }
     },
   )
   ipcMain.handle(CHANNELS.designs.delete, (_event, args: { filePath: string }) =>

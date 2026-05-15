@@ -43,9 +43,7 @@ export function isSessionDesignFileChange(file: string, sessionCwd: string): boo
 
   return (
     relativePath.endsWith(".html") &&
-    (relativePath.startsWith(".designs/") ||
-      relativePath.startsWith("screens/") ||
-      !relativePath.includes("/"))
+    relativePath.startsWith(".designs/")
   )
 }
 
@@ -70,11 +68,11 @@ export function useSessionDesigns(sessionCwd: string | undefined) {
     for (let index = state.recentFileChanges.length - 1; index >= 0; index -= 1) {
       const change = state.recentFileChanges[index]
       if (isSessionDesignFileChange(change.file, sessionCwd)) {
-        return `${change.file}:${change.event}:${change.timestamp}`
+        return `${change.file}:${change.event}:${change.timestamp}:${state.designRefreshTick}`
       }
     }
 
-    return null
+    return state.designRefreshTick > 0 ? `refresh:${state.designRefreshTick}` : null
   })
 
   useEffect(() => {

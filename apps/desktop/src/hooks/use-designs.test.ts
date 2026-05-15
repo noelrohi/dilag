@@ -90,7 +90,7 @@ describe("useSessionDesigns", () => {
     expect(mockLoadForSession).not.toHaveBeenCalled()
   })
 
-  it("refetches when a session screen html file changes", async () => {
+  it("refetches when a session .designs html file changes", async () => {
     const initial = makeDesignFile({ filename: "home.html", title: "Home" })
     const updated = makeDesignFile({
       filename: "home.html",
@@ -106,7 +106,7 @@ describe("useSessionDesigns", () => {
       useSessionStore.setState({
         recentFileChanges: [
           {
-            file: "/sessions/abc/screens/home.html",
+            file: "/sessions/abc/.designs/home.html",
             event: "change",
             timestamp: Date.now(),
           },
@@ -143,23 +143,17 @@ describe("useSessionDesigns", () => {
 })
 
 describe("isSessionDesignFileChange", () => {
-  it("matches screen html files written with absolute or relative paths", () => {
-    expect(isSessionDesignFileChange("/sessions/abc/screens/home.html", "/sessions/abc")).toBe(true)
-    expect(isSessionDesignFileChange("screens/home.html", "/sessions/abc")).toBe(true)
-  })
-
-  it("matches .designs html files", () => {
+  it("matches .designs html files written with absolute or relative paths", () => {
     expect(isSessionDesignFileChange("/sessions/abc/.designs/home.html", "/sessions/abc")).toBe(
       true,
     )
+    expect(isSessionDesignFileChange(".designs/home.html", "/sessions/abc")).toBe(true)
   })
 
-  it("matches root html files because the backend loader supports legacy session-root designs", () => {
-    expect(isSessionDesignFileChange("/sessions/abc/home.html", "/sessions/abc")).toBe(true)
-  })
-
-  it("ignores non-html and nested non-screen files", () => {
-    expect(isSessionDesignFileChange("/sessions/abc/screens/home.png", "/sessions/abc")).toBe(false)
+  it("ignores root, screens, non-html, and nested non-design files", () => {
+    expect(isSessionDesignFileChange("/sessions/abc/home.html", "/sessions/abc")).toBe(false)
+    expect(isSessionDesignFileChange("/sessions/abc/screens/home.html", "/sessions/abc")).toBe(false)
+    expect(isSessionDesignFileChange("/sessions/abc/.designs/home.png", "/sessions/abc")).toBe(false)
     expect(isSessionDesignFileChange("/sessions/abc/src/home.html", "/sessions/abc")).toBe(false)
   })
 })

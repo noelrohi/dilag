@@ -4,13 +4,12 @@ Dilag is an AI-powered design studio for mobile and web apps. The desktop app tu
 
 ## Product Model
 
-A Dilag project is a local design session with:
+A Dilag project is a local folder registered in SQLite with:
 
-- metadata in `~/.dilag/sessions.json`
-- a session workspace in `~/.dilag/sessions/{session-id}`
-- generated screen files in `screens/*.html`
-- chat history backed by the embedded agent runtime
-- session-local design skills under `.agents/skills`
+- project metadata in `~/.dilag/state.sqlite`
+- generated screen files in `{project-cwd}/.designs/**/*.html`
+- chat history backed by the embedded agent runtime under `~/.dilag/pi`
+- Dilag design skills loaded from `~/.dilag/skills`
 
 ## Tech Stack
 
@@ -33,9 +32,9 @@ Web:          Next.js 16 marketing site
 1. User launches the desktop app.
 2. User connects at least one AI provider and selects a model.
 3. User describes a mobile or web app idea on Home.
-4. Dilag creates a session workspace and starts an agent session.
+4. Dilag creates or selects a project cwd and starts an agent session there.
 5. The first prompt activates the matching design skill.
-6. The agent writes HTML screens into the session `screens/` directory.
+6. The agent writes HTML screens into `{project-cwd}/.designs/`.
 7. The canvas renders generated screens.
 8. User continues iterating through chat in Studio.
 
@@ -43,12 +42,12 @@ Web:          Next.js 16 marketing site
 
 1. Renderer calls `bridge.agent.start()`.
 2. `GlobalEventsProvider` subscribes to `bridge.agent.onEvent()`.
-3. A session directory is created under `~/.dilag/sessions/{id}`.
-4. The Electron host creates or opens an agent session.
-5. First prompt is prefixed with `/skill:web-design` or `/skill:mobile-design`.
-6. Agent tools write HTML into `screens/`.
+3. Projects are loaded from `~/.dilag/state.sqlite`.
+4. The Electron host creates or opens an agent session in the selected project cwd.
+5. First prompt is prefixed with `/skill:dilag-web-design` or `/skill:dilag-mobile-design`.
+6. Agent tools write HTML into `{project-cwd}/.designs/`.
 7. The design loader reads generated files and refreshes the canvas.
-8. Follow-up chat prompts update or add screens in the same session cwd.
+8. Follow-up chat prompts update or add screens in the same project cwd.
 
 ## Agent Bridge
 
@@ -96,14 +95,14 @@ Dilag keeps its question UI by registering a runtime-backed `question` tool. The
 
 ## Permissions
 
-Runtime permission prompts are intentionally skipped for the Pi path. Tool scope, session cwd isolation, design skills, and prompt guardrails are the enforcement model.
+Runtime permission prompts are intentionally skipped for the Pi path. Tool scope, project cwd isolation, design skills, and prompt guardrails are the enforcement model.
 
 ## Generated Output
 
-Generated screens are plain HTML files:
+Generated screens are plain HTML files in the active project cwd:
 
 ```text
-~/.dilag/sessions/{session-id}/screens/*.html
+{project-cwd}/.designs/**/*.html
 ```
 
 The preview system is runtime-independent: if the files exist and validate, the canvas can render them.
@@ -123,7 +122,7 @@ Use this checklist when validating the desktop app:
 - Home can create a new mobile-design session.
 - Studio loads the created session and existing messages.
 - A prompt streams assistant output and tool activity.
-- Generated `screens/*.html` files appear and render on the canvas.
+- Generated `.designs/**/*.html` files appear and render on the canvas.
 - Follow-up chat updates or adds screens.
 - Question prompts can be answered or rejected.
 - Abort stops an in-flight prompt cleanly.
