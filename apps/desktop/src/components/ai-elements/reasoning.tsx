@@ -3,7 +3,7 @@
 import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { Lightbulb, AltArrowDown } from "@solar-icons/react"
+import { Lightbulb } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
 import { createContext, memo, useContext, useEffect, useState } from "react"
 import { Streamdown } from "streamdown"
@@ -126,24 +126,26 @@ export const ReasoningTrigger = memo(
     getThinkingMessage = defaultGetThinkingMessage,
     ...props
   }: ReasoningTriggerProps) => {
-    const { isStreaming, isOpen, duration } = useReasoning()
+    const { isStreaming, duration } = useReasoning()
 
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+          "group grid h-8 w-full grid-cols-[16px_minmax(0,1fr)] items-center gap-2.5 rounded-md px-2 py-1.5 text-left",
+          "text-sm text-muted-foreground select-none cursor-default transition-colors",
+          "hover:bg-muted/30 hover:text-foreground data-[state=open]:bg-muted/20 data-[state=open]:text-foreground",
           className,
         )}
         {...props}
       >
         {children ?? (
           <>
-            <Lightbulb size={16} />
-            {getThinkingMessage(isStreaming, duration)}
-            <AltArrowDown
-              size={16}
-              className={cn("transition-transform", isOpen ? "rotate-180" : "rotate-0")}
-            />
+            <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/80">
+              <Lightbulb className="size-[15px] stroke-[1.75]" />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-left">
+              {getThinkingMessage(isStreaming, duration)}
+            </span>
           </>
         )}
       </CollapsibleTrigger>

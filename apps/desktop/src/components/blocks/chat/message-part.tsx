@@ -31,7 +31,7 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
     case "reasoning":
       if (!part.text?.trim()) return null
       return (
-        <Reasoning isStreaming={isStreaming} className="mb-0">
+        <Reasoning isStreaming={isStreaming} defaultOpen={false} className="mb-0">
           <ReasoningTrigger />
           <ReasoningContent>{part.text}</ReasoningContent>
         </Reasoning>

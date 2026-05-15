@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi, type Mock } from "vitest"
 import { renderHook, act, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createElement, type ReactNode } from "react"
+import type { ProjectMeta } from "@dilag/desktop-bridge"
+import type { SessionMeta } from "@/context/session-store"
 
 vi.mock("@/context/global-events", () => ({
   useGlobalEvents: vi.fn(() => ({
@@ -42,10 +44,11 @@ vi.mock("@/hooks/use-agents", () => ({
   },
 }))
 
-const mockSessions = [
+const baseMockSessions: SessionMeta[] = [
   { id: "session-1", name: "Test Session", created_at: "2024-01-01", cwd: "/mock/cwd/1" },
   { id: "session-2", name: "Another Session", created_at: "2024-01-02", cwd: "/mock/cwd/2" },
 ]
+const mockSessions = baseMockSessions.map((session) => ({ ...session }))
 
 import { useSessions } from "./use-sessions"
 import { useSessionStore } from "@/context/session-store"
@@ -53,6 +56,7 @@ import { useModelStore } from "@/hooks/use-models"
 import { useCurrentSession } from "@/hooks/use-session-data"
 
 const mockPrompt = vi.mocked(window.desktopBridge!.agent.prompt)
+const mockCreateAgentSession = vi.mocked(window.desktopBridge!.agent.createSession)
 const mockAbort = vi.mocked(window.desktopBridge!.agent.abort)
 const mockNavigateTree = vi.mocked(window.desktopBridge!.agent.navigateTree)
 const mockGetSession = vi.mocked(window.desktopBridge!.agent.getSession)
@@ -70,7 +74,17 @@ function createWrapper() {
 describe("use-sessions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSessions.splice(
+      0,
+      mockSessions.length,
+      ...baseMockSessions.map((session) => ({ ...session })),
+    )
     mockPrompt.mockResolvedValue(undefined)
+    mockCreateAgentSession.mockResolvedValue({
+      id: "session-new",
+      cwd: "/mock/cwd/new",
+      title: "New chat",
+    })
     mockAbort.mockResolvedValue(undefined)
     mockNavigateTree.mockResolvedValue({ cancelled: false })
     mockGetSession.mockResolvedValue({
@@ -97,6 +111,60 @@ describe("use-sessions", () => {
   })
 
   describe("sendMessage", () => {
+    it("creates a project chat and sends the first prompt in the project cwd", async () => {
+      const project: ProjectMeta = {
+        id: "project-1",
+        name: "Checkout app",
+        path: "/mock/projects/checkout-app",
+        platform: "mobile",
+        pinned: false,
+        expanded: true,
+        created_at: "2026-05-15T00:00:00.000Z",
+        last_opened_at: "2026-05-15T00:00:00.000Z",
+      }
+
+      mockCreateAgentSession.mockImplementationOnce(async ({ directory }) => {
+        mockSessions.push({
+          id: "project-session-1",
+          name: "New chat",
+          created_at: "2026-05-15T00:00:00.000Z",
+          updated_at: "2026-05-15T00:00:00.000Z",
+          cwd: directory,
+          platform: project.platform,
+          projectId: project.id,
+          favorite: project.pinned,
+        })
+        return { id: "project-session-1", cwd: directory, title: "New chat" }
+      })
+
+      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await expect(result.current.createSessionInProject(project)).resolves.toBe(
+          "project-session-1",
+        )
+      })
+
+      await waitFor(() => {
+        expect(result.current.currentSession?.cwd).toBe(project.path)
+      })
+
+      await act(async () => {
+        await result.current.sendMessage("Build a checkout flow")
+      })
+
+      expect(mockCreateAgentSession).toHaveBeenCalledWith({ directory: project.path })
+      expect(mockPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionID: "project-session-1",
+          directory: project.path,
+          text: "/skill:dilag-mobile-design Build a checkout flow",
+          images: [],
+          model: null,
+        }),
+      )
+    })
+
     it("sends prompts through the Pi bridge with the first-run skill hint", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
@@ -188,7 +256,7 @@ describe("use-sessions", () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       await act(async () => {
-        await result.current.sendMessage("Hello")
+        await expect(result.current.sendMessage("Hello")).rejects.toThrow("API Error")
       })
 
       await waitFor(() => {
