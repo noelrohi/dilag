@@ -39,19 +39,27 @@ function track(child, scope) {
   children.add(child)
   child.stdout?.on("data", (buf) => log(scope, buf))
   child.stderr?.on("data", (buf) => log(scope, buf))
+  child.on("error", (err) => log(scope, `failed to spawn: ${err.message}`))
   child.on("exit", () => children.delete(child))
   return child
 }
 
-async function isPortOpen(port) {
+async function isHostPortOpen(port, host) {
   return new Promise((resolve) => {
-    const socket = net.createConnection({ port, host: "127.0.0.1" })
+    const socket = net.createConnection({ port, host })
     socket.once("connect", () => {
       socket.end()
       resolve(true)
     })
     socket.once("error", () => resolve(false))
   })
+}
+
+async function isPortOpen(port) {
+  for (const host of ["127.0.0.1", "::1", "localhost"]) {
+    if (await isHostPortOpen(port, host)) return true
+  }
+  return false
 }
 
 async function findOpenPort(startPort) {
@@ -86,6 +94,11 @@ function spawnElectron() {
   )
   electronProc.on("exit", (code, signal) => {
     if (signal === "SIGTERM" || signal === "SIGKILL") return
+    if (code && code !== 0) {
+      log("electron", `exited with code ${code}`)
+      shutdown(code)
+      return
+    }
     if (code === 0 || code == null) {
       shutdown(0)
     }

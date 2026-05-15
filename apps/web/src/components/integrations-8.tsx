@@ -22,8 +22,8 @@ export default function IntegrationsSection() {
                 Connect any AI provider
               </h2>
               <p className="text-muted-foreground">
-                Dilag uses OpenCode under the hood, giving you access to dozens of AI models through
-                multiple providers.
+                Connect your preferred AI provider and use leading models for design generation,
+                iteration, and refinement.
               </p>
             </div>
           </div>
@@ -47,9 +47,9 @@ export default function IntegrationsSection() {
                   description="Gemini for multimodal design."
                 />
                 <Integration
-                  provider="opencode"
-                  name="OpenCode Zen"
-                  description="Zero-config, just works."
+                  provider="mistral"
+                  name="Mistral"
+                  description="Fast, capable open models."
                 />
                 <Integration
                   provider="cerebras"

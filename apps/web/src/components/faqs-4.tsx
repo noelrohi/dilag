@@ -15,7 +15,7 @@ export default function FAQsFour() {
       id: "item-2",
       question: "What AI models are supported?",
       answer:
-        "Dilag works with OpenCode, which supports Claude, GPT, Gemini, and other popular AI models. You can choose your preferred model in the app settings.",
+        "Dilag supports Claude, GPT, Gemini, Mistral, OpenRouter, and other popular AI model providers. You can choose your preferred model in the app settings.",
     },
     {
       id: "item-3",
@@ -42,7 +42,7 @@ export default function FAQsFour() {
       id: "item-7",
       question: "What do I need to run Dilag?",
       answer:
-        "You need macOS and OpenCode installed. OpenCode powers the AI backend used by Dilag.",
+        "You need macOS and an API key for at least one supported AI provider. Dilag embeds its agent runtime directly in the desktop app.",
     },
     {
       id: "item-8",

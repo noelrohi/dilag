@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dilag Pi Migration Matrix</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3f6f1;
+        --ink: #121713;
+        --muted: #5e6a60;
+        --panel: #fbfdf8;
+        --panel-2: #ffffff;
+        --line: #cfdbd0;
+        --line-strong: #152217;
+        --green: #14784f;
+        --green-soft: #dff2e8;
+        --amber: #9a6510;
+        --amber-soft: #fff1cf;
+        --red: #b83c2e;
+        --red-soft: #ffe1dc;
+        --blue: #286f9f;
+        --blue-soft: #deedf7;
+        --black-soft: #e5e9e1;
+        --shadow: 0 22px 60px rgb(22 31 22 / 10%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgb(18 23 19 / 0.045) 1px, transparent 1px),
+          linear-gradient(rgb(18 23 19 / 0.045) 1px, transparent 1px), var(--bg);
+        background-size: 22px 22px;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.48;
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      code {
+        padding: 2px 5px;
+        border: 1px solid rgb(18 23 19 / 0.1);
+        border-radius: 5px;
+        background: rgb(18 23 19 / 0.045);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.92em;
+      }
+
+      .page {
+        width: min(1480px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 34px 0 64px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) 410px;
+        gap: 22px;
+        align-items: stretch;
+        border-top: 5px solid var(--line-strong);
+        padding-top: 22px;
+      }
+
+      .hero-main,
+      .field-card,
+      .matrix-shell,
+      .board,
+      .note {
+        background: rgb(251 253 248 / 0.94);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+      }
+
+      .hero-main {
+        min-height: 360px;
+        padding: 26px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: var(--green);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 940px;
+        margin-top: 16px;
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: clamp(46px, 7vw, 104px);
+        line-height: 0.88;
+        font-weight: 900;
+      }
+
+      h2 {
+        font-size: clamp(28px, 4vw, 48px);
+        line-height: 1;
+      }
+
+      h3 {
+        font-size: 17px;
+        line-height: 1.18;
+      }
+
+      .lede {
+        max-width: 880px;
+        margin: 24px 0 0;
+        color: #344136;
+        font-size: 18px;
+      }
+
+      .stamp {
+        padding: 22px;
+        border: 2px solid var(--line-strong);
+        background: var(--panel-2);
+      }
+
+      .stamp h2 {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+      }
+
+      .stamp dl {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 13px 18px;
+        margin: 22px 0 0;
+      }
+
+      .stamp dt {
+        color: var(--muted);
+      }
+
+      .stamp dd {
+        margin: 0;
+        font-weight: 800;
+        text-align: right;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 22px;
+      }
+
+      .pill,
+      .status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        min-height: 28px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .pill {
+        gap: 6px;
+        padding: 4px 10px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: #38463b;
+      }
+
+      .status {
+        padding: 4px 9px;
+        border: 1px solid transparent;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        text-transform: uppercase;
+      }
+
+      .status.live,
+      .status.low,
+      .status.done {
+        background: var(--green-soft);
+        color: var(--green);
+        border-color: color-mix(in srgb, var(--green), white 62%);
+      }
+
+      .status.partial,
+      .status.medium {
+        background: var(--amber-soft);
+        color: var(--amber);
+        border-color: color-mix(in srgb, var(--amber), white 62%);
+      }
+
+      .status.gap,
+      .status.high {
+        background: var(--red-soft);
+        color: var(--red);
+        border-color: color-mix(in srgb, var(--red), white 64%);
+      }
+
+      .status.ready,
+      .status.research {
+        background: var(--blue-soft);
+        color: var(--blue);
+        border-color: color-mix(in srgb, var(--blue), white 64%);
+      }
+
+      .status.not-started,
+      .status.skipped {
+        background: var(--black-soft);
+        color: #384238;
+        border-color: #cdd5cb;
+      }
+
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .kpi {
+        padding: 16px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+      }
+
+      .kpi strong {
+        display: block;
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: 34px;
+        line-height: 1;
+      }
+
+      .kpi span {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 18px;
+        border-top: 2px solid var(--line-strong);
+        padding-top: 17px;
+      }
+
+      .section-head p {
+        max-width: 680px;
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .board {
+        padding: 18px;
+      }
+
+      .board-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .field-card {
+        padding: 18px;
+      }
+
+      .field-card h3 {
+        margin-top: 12px;
+        text-transform: uppercase;
+        font-size: 14px;
+      }
+
+      .field-card p,
+      .note p {
+        margin: 10px 0 0;
+        color: #39453b;
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .filters button {
+        cursor: pointer;
+        min-height: 34px;
+        padding: 6px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--panel-2);
+        color: #344136;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .filters button[aria-pressed="true"] {
+        border-color: var(--green);
+        background: var(--green-soft);
+        color: var(--green);
+      }
+
+      .matrix-shell {
+        overflow: hidden;
+      }
+
+      .matrix-scroll {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        min-width: 1180px;
+        border-collapse: collapse;
+        background: var(--panel-2);
+      }
+
+      caption {
+        padding: 18px;
+        text-align: left;
+        color: var(--muted);
+      }
+
+      th,
+      td {
+        vertical-align: top;
+        border-top: 1px solid var(--line);
+        padding: 14px;
+        text-align: left;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #eef4ee;
+        color: #2c382e;
+        font-size: 12px;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      td:first-child,
+      th:first-child {
+        width: 205px;
+      }
+
+      td:nth-child(2),
+      th:nth-child(2) {
+        width: 245px;
+      }
+
+      td:nth-child(3),
+      th:nth-child(3) {
+        width: 245px;
+      }
+
+      .component {
+        font-weight: 900;
+      }
+
+      .subtle {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .source-list {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .source-list li {
+        display: flex;
+        align-items: start;
+        gap: 7px;
+      }
+
+      .source-list li::before {
+        content: "";
+        flex: 0 0 auto;
+        width: 7px;
+        height: 7px;
+        margin-top: 8px;
+        border-radius: 999px;
+        background: var(--green);
+      }
+
+      .notes-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .note {
+        padding: 18px;
+      }
+
+      .note h3 {
+        margin-bottom: 8px;
+      }
+
+      .note ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        color: #39453b;
+      }
+
+      .note li + li {
+        margin-top: 6px;
+      }
+
+      .phase-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .phase {
+        display: grid;
+        grid-template-columns: 84px minmax(0, 1fr) 170px;
+        gap: 14px;
+        align-items: center;
+        padding: 14px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+      }
+
+      .phase strong {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+        font-size: 24px;
+      }
+
+      .phase p {
+        margin: 3px 0 0;
+        color: var(--muted);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 980px) {
+        .hero,
+        .board-grid,
+        .notes-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .kpis {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .section-head {
+          display: block;
+        }
+
+        .section-head p {
+          margin-top: 10px;
+        }
+
+        .phase {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .page {
+          width: min(100% - 22px, 1480px);
+          padding-top: 22px;
+        }
+
+        .hero-main,
+        .stamp,
+        .board,
+        .field-card,
+        .note {
+          padding: 16px;
+        }
+
+        .kpis {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div class="hero-main">
+          <div>
+            <p class="eyebrow">Dilag Runtime Research / OpenCode to Pi</p>
+            <h1>Pi Migration Matrix</h1>
+            <p class="lede">
+              Migration-only tracker for replacing Dilag's OpenCode backend with Pi while preserving
+              the desktop studio contract: session creation, real-time chat, model selection,
+              generated HTML screens, skills, and release packaging. Canonical runtime documentation
+              lives in <code>docs/architecture.md</code> and product behavior documentation lives in
+              <code>docs/platform.md</code>.
+            </p>
+          </div>
+          <div class="meta">
+            <span class="pill">Generated: 2026-05-15</span>
+            <span class="pill">Pi repo: earendil-works/pi</span>
+            <span class="pill">Current Pi release: v0.74.0</span>
+            <span class="pill">Decision: Pi SDK in Electron main</span>
+            <span class="pill">Decision: Dilag-isolated Pi data</span>
+          </div>
+        </div>
+
+        <aside class="stamp" aria-label="Repository research summary">
+          <h2>Research Stamp</h2>
+          <dl>
+            <dt>Source</dt>
+            <dd>gh CLI clone</dd>
+            <dt>Pi license</dt>
+            <dd>MIT</dd>
+            <dt>Latest release</dt>
+            <dd>2026-05-07</dd>
+            <dt>Latest push seen</dt>
+            <dd>2026-05-14</dd>
+            <dt>Best integration</dt>
+            <dd>SDK first</dd>
+          </dl>
+        </aside>
+      </header>
+
+      <section class="board" aria-label="Top level status">
+        <div class="kpis">
+          <div class="kpi">
+            <strong>24</strong>
+            <span>Tracked migration rows</span>
+          </div>
+          <div class="kpi">
+            <strong>24</strong>
+            <span>Pi implementation rows tracked as ready in Dilag</span>
+          </div>
+          <div class="kpi">
+            <strong>8</strong>
+            <span>High-risk API or behavior changes</span>
+          </div>
+          <div class="kpi">
+            <strong>2</strong>
+            <span>Viable Pi integration paths: SDK or RPC</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Research Read</h2>
+          <p>
+            Pi has useful building blocks, but it does not expose an OpenCode-compatible HTTP
+            server. Treat this as an adapter migration, not a package swap.
+          </p>
+        </div>
+        <div class="board-grid" style="margin-top: 16px">
+          <article class="field-card">
+            <span class="status ready">Pi capability</span>
+            <h3>SDK embedding</h3>
+            <p>
+              <code>@earendil-works/pi-coding-agent</code> exports <code>createAgentSession</code>,
+              <code>createAgentSessionRuntime</code>, <code>AuthStorage</code>,
+              <code>ModelRegistry</code>, and <code>SessionManager</code>. This is the cleanest
+              Electron-main integration path.
+            </p>
+          </article>
+          <article class="field-card">
+            <span class="status partial">Fallback path</span>
+            <h3>RPC mode</h3>
+            <p>
+              <code>pi --mode rpc</code> streams strict JSONL over stdio with prompt, state, model,
+              session, compaction, bash, and extension UI commands. Good for process isolation,
+              heavier for renderer-facing state.
+            </p>
+          </article>
+          <article class="field-card">
+            <span class="status high">Main gap</span>
+            <h3>No OpenCode HTTP API</h3>
+            <p>
+              Dilag currently calls <code>sdk.session.*</code>, <code>sdk.provider.list</code>,
+              <code>sdk.question.*</code>, and <code>sdk.global.event</code>. Pi events and session
+              operations need a translation layer.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Migration Matrix</h2>
+          <p>
+            Use the filters while planning. The "Dilag now" column is what is implemented today; the
+            "Pi path" column is the researched replacement; the status columns track migration work.
+          </p>
+        </div>
+
+        <div class="filters" aria-label="Matrix filters">
+          <button type="button" data-filter="all" aria-pressed="true">All rows</button>
+          <button type="button" data-filter="high" aria-pressed="false">High risk</button>
+          <button type="button" data-filter="medium" aria-pressed="false">Medium risk</button>
+          <button type="button" data-filter="ready" aria-pressed="false">Ready to implement</button>
+          <button type="button" data-filter="gap" aria-pressed="false">No direct parity</button>
+        </div>
+
+        <div class="matrix-shell" style="margin-top: 14px">
+          <div class="matrix-scroll">
+            <table>
+              <caption>
+                Legend:
+                <span class="status live">Live</span>
+                OpenCode behavior exists today.
+                <span class="status ready">Ready</span>
+                Pi path is clear.
+                <span class="status partial">Partial</span>
+                adapter or product decision required.
+                <span class="status gap">Gap</span>
+                no direct Pi equivalent found.
+              </caption>
+              <thead>
+                <tr>
+                  <th>Surface</th>
+                  <th>Dilag now</th>
+                  <th>Pi path</th>
+                  <th>Migration work</th>
+                  <th>State</th>
+                  <th>Risk</th>
+                  <th>Owner notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">Runtime boundary</span>
+                    <span class="subtle">Architecture decision</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Electron now embeds Pi in the main process and the renderer talks to
+                    <code>bridge.agent</code>.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Decision: embed Pi SDK in Electron main. RPC mode stays as a fallback only if a
+                    process boundary becomes necessary later.
+                  </td>
+                  <td>
+                    Create a main-process <code>pi</code> service and expose a stable bridge API. Do
+                    not make the renderer import Pi directly.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Implemented embedded SDK service in Electron main under the neutral <code>agent</code> bridge.</td>
+                </tr>
+
+                <tr data-risk="low" data-state="ready">
+                  <td>
+                    <span class="component">Dependency switch</span>
+                    <span class="subtle">package.json</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    <code>apps/desktop</code> depends on <code>@opencode-ai/sdk</code>.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Add <code>@earendil-works/pi-coding-agent</code>; it brings
+                    <code>pi-agent-core</code> and <code>pi-ai</code>.
+                  </td>
+                  <td>
+                    Add Pi package and remove the old SDK dependency once the adapter is feature
+                    complete.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>Added <code>@earendil-works/pi-coding-agent</code>, direct <code>typebox</code>, and removed <code>@opencode-ai/sdk</code>.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Sidecar packaging</span>
+                    <span class="subtle">Electron resources</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    <code>resources/opencode</code>, <code>fetch-opencode.ts</code>, and
+                    <code>electron-builder.extraResources</code> bundle binaries.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    SDK embedding removes the need for sidecar binary downloads. RPC mode would need
+                    CLI packaging or a local Node entrypoint, but it is no longer the chosen path.
+                  </td>
+                  <td>
+                    Delete OpenCode binary fetch/bundle flow after SDK cutover. No Pi sidecar should
+                    be needed.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>Deleted the binary fetch script, sidecar IPC service, bridge namespace, and Electron package resources.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Bridge contract</span>
+                    <span class="subtle">desktop-bridge</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    <code>bridge.opencode.start()</code>, <code>restart()</code>,
+                    <code>checkInstallation()</code>, and bootstrap port.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Replace with product language: <code>bridge.agent</code> or
+                    <code>bridge.runtime</code>, not <code>bridge.pi</code> everywhere.
+                  </td>
+                  <td>
+                    Add new namespace, migrate call sites, then delete old namespace.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td><code>bridge.agent</code> is the only runtime namespace in desktop code.</td>
+                </tr>
+
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">Event stream</span>
+                    <span class="subtle">global-events.tsx</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    The old path used SSE events like
+                    <code>message.updated</code>, <code>message.part.updated</code>, and
+                    <code>session.idle</code>.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi SDK emits <code>message_update</code>, <code>message_start</code>,
+                    <code>message_end</code>, <code>tool_execution_*</code>,
+                    <code>agent_start</code>, and <code>agent_end</code>.
+                  </td>
+                  <td>
+                    Build <code>PiEventAdapter</code> that normalizes Pi events into Dilag's
+                    existing <code>Message</code> and <code>MessagePart</code> store shapes.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Pi events flow over <code>bridge.agent.onEvent</code> and are projected into Dilag event shapes, including messages, tools, status, questions, and file changes.</td>
+                </tr>
+
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">Session lifecycle</span>
+                    <span class="subtle">create / select / delete</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Dilag creates a session directory, calls <code>bridge.agent.createSession</code>,
+                    saves local metadata, then loads messages by Pi session ID.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi sessions are JSONL files managed by <code>SessionManager</code> and runtime
+                    operations like <code>newSession()</code> and <code>switchSession()</code>.
+                  </td>
+                  <td>
+                    Decide whether Dilag's session ID becomes Pi's session ID, session file path, or
+                    a metadata wrapper around Pi's JSONL file.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Renderer create/select/delete/load uses Pi session IDs and JSONL-backed sessions.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Prompt send</span>
+                    <span class="subtle">sendMessage</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    <code>bridge.agent.prompt</code> receives <code>sessionID</code>,
+                    <code>directory</code>, <code>agent</code>, <code>model</code>,
+                    <code>parts</code>, and <code>variant</code>.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi SDK uses <code>session.prompt(text, { images, streamingBehavior })</code>.
+                    Model and tools are session configuration, not prompt payload.
+                  </td>
+                  <td>
+                    Convert text/file parts before prompt. Move model and skill selection into
+                    session setup or pre-prompt setters.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>Prompt send now calls <code>bridge.agent.prompt</code>; screen-context text and image attachments are preserved.</td>
+                </tr>
+
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">Message model</span>
+                    <span class="subtle">store + chat UI</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    UI expects normalized messages with <code>info</code> and separate parts keyed by
+                    message ID.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi messages are <code>AgentMessage</code> unions: <code>user</code>,
+                    <code>assistant</code>, <code>toolResult</code>, <code>bashExecution</code>,
+                    summaries, and custom messages.
+                  </td>
+                  <td>
+                    Write a one-way Pi-to-Dilag projection first; defer rewriting the chat UI until
+                    behavior is stable.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Added one-way Pi-to-Dilag message/part projection for persisted messages and live message/tool events.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Model list</span>
+                    <span class="subtle">use-models.ts</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    <code>sdk.provider.list()</code> returns connected providers and provider model
+                    maps.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi <code>ModelRegistry.getAvailable()</code> or RPC
+                    <code>get_available_models</code> returns full model objects.
+                  </td>
+                  <td>
+                    Replace provider-list query and transform Pi model fields into Dilag's
+                    <code>Model</code> shape.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td><code>use-models.ts</code> now reads Pi provider data from <code>bridge.agent.getProviderData()</code>.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Default model</span>
+                    <span class="subtle">selectedModel store</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Defaults to the first authenticated model returned by Pi.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Decision: use Pi's first available authenticated model on first run.
+                  </td>
+                  <td>
+                    Store provider/model as product preference, resolve through Pi model registry,
+                    and handle missing model gracefully. Seed first-run selection from
+                    <code>ModelRegistry.getAvailable()</code>.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>First-run selection now falls back to Pi's first available authenticated model.</td>
+                </tr>
+
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">Design agent prompt</span>
+                    <span class="subtle">BUILD_AGENT_PROMPT</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Dilag now materializes design skills and system context for Pi sessions.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi <code>DefaultResourceLoader</code> supports
+                    <code>systemPromptOverride</code>, context files, skills, prompts, extensions,
+                    and custom tools.
+                  </td>
+                  <td>
+                    Port the Dilag build prompt into a Pi resource loader. Configure tools as read,
+                    write, edit, and restricted bash.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Session startup writes Dilag <code>mobile-design</code> and <code>web-design</code> skills into local <code>.agents/skills</code>.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Mobile/web skills</span>
+                    <span class="subtle">design-assets</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Electron writes <code>mobile-design</code> and <code>web-design</code> skills
+                    under the session-local <code>.agents/skills</code> directory.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Decision: use the repo/user <code>.agents/*</code> skill convention for Dilag
+                    skills. Pi can discover <code>.agents/skills</code> locally and
+                    <code>~/.agents/skills</code> globally.
+                  </td>
+                  <td>
+                    Store built-in <code>mobile-design</code> and <code>web-design</code> skills
+                    under <code>.agents/skills</code> or sync them there from
+                    <code>resources/design-assets</code>.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status low">Low</span></td>
+                  <td>Built-in Dilag skills are rendered into session-local <code>.agents/skills</code>; user-installed skills target <code>~/.agents/skills</code>.</td>
+                </tr>
+
+                <tr data-risk="low" data-state="ready">
+                  <td>
+                    <span class="component">Permissions</span>
+                    <span class="subtle">intentionally skipped</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    The old runtime exposed <code>permission.list</code>, <code>permission.reply</code>,
+                    and <code>permission.asked/replied</code>
+                    events.
+                  </td>
+                  <td>
+                    <span class="status ready">Skipped</span>
+                    Decision: do not migrate permission prompts for the Pi cutover.
+                  </td>
+                  <td>
+                    Remove permission bootstrap, pending permission state, permission list UI, and
+                    stuck-permission warning logic from the Pi path. Rely on scoped tools and prompt
+                    guardrails.
+                  </td>
+                  <td><span class="status skipped">Skipped</span></td>
+                  <td><span class="status low">Low</span></td>
+                  <td>Pi bootstrap skips permission sync; permission UI is a no-op shim in the Pi runtime path.</td>
+                </tr>
+
+                <tr data-risk="low" data-state="ready">
+                  <td>
+                    <span class="component">Questions</span>
+                    <span class="subtle">question tool</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Pi custom-tool events back Dilag's multi-question UI.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi core built-in tools are <code>read</code>, <code>bash</code>,
+                    <code>edit</code>, <code>write</code>, <code>grep</code>, <code>find</code>, and
+                    <code>ls</code>. The Pi repo includes <code>question</code> and
+                    <code>questionnaire</code> extension examples that register user-input tools.
+                  </td>
+                  <td>
+                    Decision: keep Dilag's question UI via a Pi extension/custom tool based on the
+                    Pi <code>questionnaire</code> pattern.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>Added a Pi custom <code>question</code> tool that emits Dilag question events and uses the existing question UI.</td>
+                </tr>
+
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">Forking</span>
+                    <span class="subtle">timeline actions</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Dilag timeline actions can navigate the Pi session tree by message/session entry.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi supports tree navigation, <code>fork()</code>, <code>clone()</code>, and
+                    session parent tracking in JSONL headers.
+                  </td>
+                  <td>
+                    Map Dilag message IDs to Pi session entry IDs. Keep design-file copy behavior
+                    separate from chat-history fork behavior.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Tree navigation is wired; design-only forks continue using Dilag metadata and file copy semantics.</td>
+                </tr>
+
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">Revert / unrevert</span>
+                    <span class="subtle">replace with tree navigation</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    The old runtime had <code>session.revert</code> and <code>unrevert</code>; Dilag
+                    filters hidden messages.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Decision: replace old revert/unrevert semantics with Pi tree navigation.
+                  </td>
+                  <td>
+                    Replace timeline revert actions and copy with tree navigation. Map visible chat
+                    messages to Pi session entries.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Timeline revert path calls <code>bridge.agent.navigateTree()</code>, reloads messages, and clears stale client revert state.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Stop / abort</span>
+                    <span class="subtle">chat controls</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    <code>bridge.agent.abort</code> stops a running session.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi SDK has <code>session.abort()</code>; RPC has <code>abort</code> and
+                    <code>abort_bash</code>.
+                  </td>
+                  <td>
+                    Map stop button to Pi abort and update stuck-tool fallback logic around Pi
+                    events.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>Stop button maps to Pi abort; packaged bash cleanup still deserves manual QA.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Attachments</span>
+                    <span class="subtle">images and HTML context</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Dilag sends image/file parts, and converts referenced HTML screens into compact
+                    text context.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi prompt options support image attachments. Arbitrary files should become text
+                    context or resources.
+                  </td>
+                  <td>
+                    Keep HTML-to-text context path. Convert image data URLs into Pi
+                    <code>ImageContent</code>. Decide behavior for other files.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>HTML screen context stays text-based; image data URLs are converted to Pi <code>ImageContent</code>.</td>
+                </tr>
+
+                <tr data-risk="high" data-state="ready">
+                  <td>
+                    <span class="component">File diffs</span>
+                    <span class="subtle">canvas refresh signals</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Store handles agent <code>session.diff</code> and file watcher/project
+                    events.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi tool execution events expose write/edit/bash activity, but no direct
+                    normalized <code>session.diff</code> event was found.
+                  </td>
+                  <td>
+                    Use existing filesystem polling for designs as the source of truth and synthesize
+                    diff/file watcher events from Pi write/edit tool results.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status high">High</span></td>
+                  <td>Pi write/edit completions now emit <code>file.watcher.updated</code>, <code>project.updated</code>, and <code>session.diff</code>.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Health and reconnect</span>
+                    <span class="subtle">server ready state</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Renderer uses the Electron agent event bridge and runtime start/restart calls.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    SDK mode should not need HTTP health. RPC mode needs child-process liveness and
+                    JSONL stream health.
+                  </td>
+                  <td>
+                    Replace port health with runtime readiness: session created, subscriptions
+                    active, child process alive if RPC.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>HTTP/SSE health logic is retired from the renderer; the bootstrap port remains only as a harmless compatibility value.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Auth storage</span>
+                    <span class="subtle">credentials and settings</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Dilag isolates Pi config, auth, and session data under <code>~/.dilag/pi</code>.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi defaults to <code>~/.pi/agent/auth.json</code>, <code>models.json</code>,
+                    <code>settings.json</code>, and <code>sessions/</code>. SDK accepts custom
+                    paths, and CLI mode also supports <code>PI_CODING_AGENT_DIR</code>.
+                  </td>
+                  <td>
+                    Decision: keep Pi data isolated under Dilag, likely <code>~/.dilag/pi</code>.
+                    Pass custom <code>agentDir</code>, <code>AuthStorage.create(path)</code>,
+                    <code>SettingsManager.create(...)</code>, and <code>SessionManager</code> paths.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>Pi <code>agentDir</code>, auth, model registry, and session manager use Dilag-owned storage.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Skill install UI</span>
+                    <span class="subtle">skills.ts</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Uses <code>npx skills add ... -g</code> and manages global
+                    <code>~/.agents/skills</code>.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi uses native skill discovery paths and the installer targets global
+                    <code>~/.agents/skills</code>.
+                  </td>
+                  <td>
+                    Update installer target and sync destination for Pi. Use
+                    <code>.agents/skills</code> / <code>~/.agents/skills</code> as the canonical
+                    skill convention.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status low">Low</span></td>
+                  <td>Installer no longer targets a runtime-specific skill adapter.</td>
+                </tr>
+
+                <tr data-risk="low" data-state="ready">
+                  <td>
+                    <span class="component">Generated screens</span>
+                    <span class="subtle">screens/*.html</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    AI writes HTML files under each session's <code>screens/</code> directory. Dilag
+                    loads and previews those files independently of the agent runtime.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Pi write/edit tools can write the same files when cwd is the session directory
+                    and prompt/tool guardrails are ported.
+                  </td>
+                  <td>
+                    Preserve cwd and output instructions. Existing design loader should keep
+                    working.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status low">Low</span></td>
+                  <td>Pi sessions run in the Dilag session cwd and keep writing to <code>screens/</code>.</td>
+                </tr>
+
+                <tr data-risk="medium" data-state="ready">
+                  <td>
+                    <span class="component">Tests</span>
+                    <span class="subtle">Vitest coverage</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Tests now mock <code>bridge.agent</code> for sessions, setup wizard, and store behavior.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    Test the adapter against Pi event fixtures. Pi repo has rich event/session tests
+                    to copy fixture style from.
+                  </td>
+                  <td>
+                    Add unit tests for prompt conversion, event projection, tree navigation, file
+                    diff events, and setup before deleting old runtime code paths.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status medium">Medium</span></td>
+                  <td>Vitest covers prompt send, image attachments, abort, setup, tree navigation, session diffs, and file watcher events.</td>
+                </tr>
+
+                <tr data-risk="low" data-state="ready">
+                  <td>
+                    <span class="component">Marketing copy</span>
+                    <span class="subtle">apps/web + docs</span>
+                  </td>
+                  <td>
+                    <span class="status live">Live</span>
+                    Website, README, and architecture docs describe Pi as the embedded AI runtime.
+                  </td>
+                  <td>
+                    <span class="status ready">Ready</span>
+                    After implementation, update product copy to "Pi-powered" or provider-neutral
+                    phrasing.
+                  </td>
+                  <td>
+                    Delay until runtime migration works. Then update web integration sections, FAQ,
+                    desktop README, and architecture docs.
+                  </td>
+                  <td><span class="status done">Done</span></td>
+                  <td><span class="status low">Low</span></td>
+                  <td>Updated web FAQ/integrations copy, root README, desktop README, AGENTS.md, architecture docs, and platform docs.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Recommended Phases</h2>
+          <p>
+            This path keeps OpenCode working while a Pi adapter is developed behind a contained
+            runtime interface.
+          </p>
+        </div>
+        <div class="phase-list">
+          <div class="phase">
+            <strong>01</strong>
+            <div>
+              <h3>Define the runtime adapter contract</h3>
+              <p>
+                Create a provider-neutral interface for sessions, models, prompt sending, events,
+                abort, and status.
+              </p>
+            </div>
+            <span class="status done">Done</span>
+          </div>
+          <div class="phase">
+            <strong>02</strong>
+            <div>
+              <h3>Embed Pi SDK in Electron main</h3>
+              <p>
+                Wire <code>AuthStorage</code>, <code>ModelRegistry</code>,
+                <code>SessionManager</code>, and <code>createAgentSessionRuntime</code> with a
+                Dilag-owned cwd and <code>~/.dilag/pi</code> agent directory.
+              </p>
+            </div>
+            <span class="status done">Done</span>
+          </div>
+          <div class="phase">
+            <strong>03</strong>
+            <div>
+              <h3>Project events into existing UI shapes</h3>
+              <p>
+                Keep the renderer store and chat components stable while translating Pi events into
+                Dilag messages and parts.
+              </p>
+            </div>
+            <span class="status done">Done</span>
+          </div>
+          <div class="phase">
+            <strong>04</strong>
+            <div>
+              <h3>Port prompts, skills, and tool policy</h3>
+              <p>
+                Move the design agent instructions into Pi resource loading and validate HTML screen
+                generation end to end.
+              </p>
+            </div>
+            <span class="status done">Done</span>
+          </div>
+          <div class="phase">
+            <strong>05</strong>
+            <div>
+              <h3>Retire OpenCode paths</h3>
+              <p>
+                Remove OpenCode SDK, binary fetching, packaging resources, bridge namespace, setup
+                copy, and web/docs references.
+              </p>
+            </div>
+            <span class="status done">Done</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <h2>Source Pointers</h2>
+          <p>Primary files used to build this matrix.</p>
+        </div>
+        <div class="notes-grid" style="margin-top: 16px">
+          <article class="note">
+            <h3>Dilag migrated surface</h3>
+            <ul>
+              <li>
+                <code>apps/desktop/electron/ipc/pi.ts</code> embedded Pi runtime, config, design
+                skills, events, questions, and tree navigation.
+              </li>
+              <li><code>packages/desktop-bridge/src/index.ts</code> bridge contract.</li>
+              <li><code>apps/desktop/src/context/global-events.tsx</code> agent event setup.</li>
+              <li>
+                <code>apps/desktop/src/hooks/use-sessions.ts</code> session and prompt operations.
+              </li>
+              <li>
+                <code>apps/desktop/src/context/session-store.tsx</code> event-to-UI state mapping.
+              </li>
+              <li><code>apps/desktop/src/hooks/use-models.ts</code> provider/model loading.</li>
+            </ul>
+          </article>
+          <article class="note">
+            <h3>Pi researched surface</h3>
+            <ul>
+              <li>
+                <code>packages/coding-agent/docs/sdk.md</code> SDK embedding and runtime APIs.
+              </li>
+              <li><code>packages/coding-agent/docs/rpc.md</code> JSONL RPC mode.</li>
+              <li>
+                <code>packages/coding-agent/src/modes/rpc/rpc-types.ts</code> command and response
+                types.
+              </li>
+              <li>
+                <code>packages/coding-agent/src/core/agent-session.ts</code> session event types and
+                prompt API.
+              </li>
+              <li>
+                <code>packages/coding-agent/docs/session-format.md</code> JSONL session format and
+                tree entries.
+              </li>
+              <li>
+                <code>packages/coding-agent/examples/sdk/README.md</code> working SDK examples.
+              </li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const buttons = Array.from(document.querySelectorAll("[data-filter]"))
+      const rows = Array.from(document.querySelectorAll("tbody tr"))
+
+      function setFilter(filter) {
+        for (const button of buttons) {
+          button.setAttribute("aria-pressed", String(button.dataset.filter === filter))
+        }
+        for (const row of rows) {
+          const show =
+            filter === "all" ||
+            row.dataset.risk === filter ||
+            row.dataset.state === filter ||
+            (filter === "gap" && row.dataset.state === "gap")
+          row.classList.toggle("hidden", !show)
+        }
+      }
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => setFilter(button.dataset.filter))
+      }
+    </script>
+  </body>
+</html>
