@@ -488,7 +488,9 @@ function AssistantMessage({
 }) {
   const parts = useMessageParts(message.id)
   const sessionError = useSessionError(message.sessionID)
-  const nonReasoningParts = parts.filter((part) => part.type !== "reasoning" && wouldRenderContent(part))
+  const nonReasoningParts = parts.filter(
+    (part) => part.type !== "reasoning" && wouldRenderContent(part),
+  )
   const renderableParts = nonReasoningParts.length > 0 ? parts.filter(wouldRenderContent) : []
 
   if (!message.isStreaming && renderableParts.length === 0 && !sessionError) {

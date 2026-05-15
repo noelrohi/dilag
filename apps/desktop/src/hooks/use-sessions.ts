@@ -135,7 +135,10 @@ export function useSessions() {
       // Load messages
       let response
       try {
-        response = await bridge.agent.getMessages({ sessionID: sessionId, directory: directory ?? "" })
+        response = await bridge.agent.getMessages({
+          sessionID: sessionId,
+          directory: directory ?? "",
+        })
       } catch (err) {
         // Session might not exist in the agent runtime yet - this is expected
         console.debug(`[loadSessionMessages(${sessionId})] Session may not exist yet:`, err)
@@ -475,14 +478,7 @@ export function useSessions() {
       console.error("Failed to fork session with designs:", err)
       return null
     }
-  }, [
-    currentSessionId,
-    currentSession,
-    saveSession,
-    setCurrentSessionId,
-    setMessages,
-    setError,
-  ])
+  }, [currentSessionId, currentSession, saveSession, setCurrentSessionId, setMessages, setError])
 
   const sendMessage = useCallback(
     async (content: string, files?: FileUIPart[]) => {
@@ -521,7 +517,9 @@ export function useSessions() {
         console.log("[sendMessage] agent:", agentName)
         console.log(
           "[sendMessage] model:",
-          selectedModel ? `${selectedModel.providerID}/${selectedModel.modelID}` : "first available",
+          selectedModel
+            ? `${selectedModel.providerID}/${selectedModel.modelID}`
+            : "first available",
         )
         console.log("[sendMessage] directory:", directory)
 

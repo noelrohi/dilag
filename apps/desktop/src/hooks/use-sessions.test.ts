@@ -231,9 +231,7 @@ describe("use-sessions", () => {
 
   describe("tree navigation", () => {
     it("uses Pi tree navigation for timeline revert", async () => {
-      useSessionStore
-        .getState()
-        .setSessionRevert("session-1", { messageID: "stale-message" })
+      useSessionStore.getState().setSessionRevert("session-1", { messageID: "stale-message" })
 
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
