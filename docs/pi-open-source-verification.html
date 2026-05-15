@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dilag Pi Open Source Verification Checklist</title>
+    <style>
+      :root { color-scheme: light; --bg:#f6f4ee; --ink:#15140f; --muted:#686357; --panel:#fffdf7; --line:#d8d0be; --green:#177245; --amber:#9b6415; --red:#a33a2d; --blue:#266c99; --soft:#eee8d9; --shadow:0 18px 50px rgb(28 23 12 / 10%); }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin:0; color:var(--ink); background:radial-gradient(circle at 20% 0%, #fff9df 0, transparent 32rem), linear-gradient(90deg, rgb(21 20 15 / .045) 1px, transparent 1px), linear-gradient(rgb(21 20 15 / .045) 1px, transparent 1px), var(--bg); background-size:auto, 24px 24px, 24px 24px; font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height:1.5; }
+      a { color:var(--blue); text-underline-offset:3px; }
+      code { padding:2px 5px; border:1px solid rgb(21 20 15 / .12); border-radius:5px; background:rgb(21 20 15 / .045); font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.92em; }
+      .page { width:min(1380px, calc(100vw - 32px)); margin:0 auto; padding:34px 0 64px; }
+      .hero { display:grid; grid-template-columns:minmax(0, 1.3fr) 390px; gap:20px; align-items:stretch; border-top:5px solid #1f1b14; }
+      .card { background:rgb(255 253 247 / .92); border:1px solid var(--line); box-shadow:var(--shadow); border-radius:22px; }
+      .intro { padding:32px; }
+      .eyebrow { margin:0 0 12px; color:var(--amber); text-transform:uppercase; letter-spacing:.13em; font-size:12px; font-weight:800; }
+      h1 { margin:0; max-width:880px; font-size:clamp(38px, 5.5vw, 82px); line-height:.94; letter-spacing:-.055em; }
+      h2 { margin:0 0 14px; font-size:28px; letter-spacing:-.03em; }
+      h3 { margin:0 0 8px; font-size:18px; }
+      p { margin:0 0 12px; color:var(--muted); }
+      .summary { padding:24px; display:grid; gap:14px; }
+      .stat { padding:16px; border:1px solid var(--line); border-radius:16px; background:#fff; }
+      .stat b { display:block; font-size:28px; letter-spacing:-.04em; }
+      .nav { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
+      .pill, .tag { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:999px; padding:7px 10px; background:#fff; color:#403b32; font-size:13px; font-weight:700; text-decoration:none; }
+      .grid { display:grid; grid-template-columns:280px minmax(0, 1fr); gap:20px; margin-top:20px; align-items:start; }
+      aside { position:sticky; top:16px; padding:18px; }
+      aside a { display:block; padding:9px 10px; border-radius:10px; color:#403b32; text-decoration:none; font-weight:700; }
+      aside a:hover { background:var(--soft); }
+      section { padding:24px; margin-bottom:20px; }
+      .checklist { display:grid; gap:10px; }
+      .item { display:grid; grid-template-columns:28px minmax(0, 1fr) auto; gap:12px; align-items:start; padding:14px; border:1px solid var(--line); border-radius:14px; background:#fff; }
+      input[type="checkbox"] { width:18px; height:18px; margin-top:3px; accent-color:var(--green); }
+      .owner { color:var(--muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+      .criteria { color:var(--muted); font-size:14px; }
+      table { width:100%; border-collapse:collapse; overflow:hidden; border-radius:16px; border:1px solid var(--line); background:#fff; }
+      th, td { padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top; text-align:left; }
+      th { background:#eee8d9; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+      tr:last-child td { border-bottom:0; }
+      .ok { color:var(--green); font-weight:800; } .todo { color:var(--amber); font-weight:800; } .risk { color:var(--red); font-weight:800; }
+      .prompt { white-space:pre-wrap; padding:16px; border:1px dashed #8f856e; border-radius:16px; background:#fffaf0; color:#39342b; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:13px; }
+      @media (max-width: 900px) { .hero, .grid { grid-template-columns:1fr; } aside { position:static; } }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="hero">
+        <div class="card intro">
+          <p class="eyebrow">Pi migration · public repo proof plan</p>
+          <h1>Open source verification checklist for Dilag's embedded Pi runtime.</h1>
+          <p style="max-width: 850px; margin-top: 22px">This document is intentionally different from <code>docs/pi-migration-matrix.html</code>: it is not a migration status board. It is a proof harness for comparing Dilag's Electron/React Pi embedding against upstream Pi SDK behavior and public apps that wrap Pi.</p>
+          <div class="nav">
+            <a class="pill" href="#sources">Public sources</a>
+            <a class="pill" href="#checklist">Checklist</a>
+            <a class="pill" href="#results">Verified results</a>
+            <a class="pill" href="#agent-prompt">Background agent prompt</a>
+            <a class="pill" href="#evidence">Evidence format</a>
+          </div>
+        </div>
+        <div class="card summary">
+          <div class="stat"><b>2</b><span>public repositories pinned by commit SHA for repeatable verification</span></div>
+          <div class="stat"><b>22</b><span><code>bridge.agent</code> methods mapped to Electron Pi adapter calls</span></div>
+          <div class="stat"><b>9/9</b><span>verification checklist items completed with evidence or follow-up notes</span></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <aside class="card">
+          <a href="#goal">Goal</a>
+          <a href="#sources">Public sources</a>
+          <a href="#comparison">Comparison matrix</a>
+          <a href="#checklist">Verification checklist</a>
+          <a href="#results">Verified results</a>
+          <a href="#agent-prompt">Background agent prompt</a>
+          <a href="#evidence">Evidence log template</a>
+        </aside>
+        <div>
+          <section id="goal" class="card">
+            <h2>Goal</h2>
+            <p>Prove that Dilag's embedded Pi integration follows public, observable Pi usage patterns instead of relying on accidental behavior. Each checklist item should end with code links, test output, or a short note explaining why Dilag intentionally diverges.</p>
+            <p><span class="tag">Scope</span> Electron main/preload bridge, renderer session flow, provider/model auth, session persistence, event streaming, abort/restart, tree navigation, skills/resources, and filesystem isolation under <code>~/.dilag/pi</code>.</p>
+          </section>
+
+          <section id="sources" class="card">
+            <h2>Public sources to verify against</h2>
+            <table>
+              <thead><tr><th>Source</th><th>Why it matters</th><th>Initial status</th></tr></thead>
+              <tbody>
+                <tr><td><a href="https://github.com/earendil-works/pi/tree/a8af0b5e99e3309c5cbc3301c276302512789ca5">earendil-works/pi @ a8af0b5</a></td><td>Authoritative monorepo for <code>@earendil-works/pi-coding-agent</code>, SDK docs, package APIs, and examples.</td><td class="ok">Pinned by <code>git ls-remote</code></td></tr>
+                <tr><td><a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/docs/sdk.md">Pi SDK docs @ a8af0b5</a></td><td>Defines <code>createAgentSession</code>, <code>createAgentSessionRuntime</code>, session lifecycle, events, auth storage, model registry, compaction, tree navigation, and resource loading.</td><td class="ok">Mapped to Dilag adapter</td></tr>
+                <tr><td><a href="https://github.com/earendil-works/pi/tree/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/examples/sdk">Pi SDK examples @ a8af0b5</a></td><td>Runnable embedding examples from minimal session creation to fuller runtime control.</td><td class="ok">Inspected examples 01, 03, 09, 11, 13</td></tr>
+                <tr><td><a href="https://github.com/minghinmatthewlam/pi-gui/tree/3b42e19b835ac67277e6793bcf5ae27e76fbc1dc">minghinmatthewlam/pi-gui @ 3b42e19</a></td><td>Public Electron desktop shell around <code>@earendil-works/pi-coding-agent</code> with session listing/resume, prompt sending, desktop state, and a Pi SDK adapter.</td><td class="ok">Compared desktop wrapper choices</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="comparison" class="card">
+            <h2>Comparison matrix</h2>
+            <table>
+              <thead><tr><th>Dilag behavior</th><th>Public proof target</th><th>Acceptance criteria</th></tr></thead>
+              <tbody>
+                <tr><td>Start/restart/stop runtime from Electron main</td><td>Pi SDK runtime lifecycle</td><td>Runtime is created once, disposed cleanly, and restart rehydrates providers/models without duplicate event listeners.</td></tr>
+                <tr><td>Create/get/delete sessions through <code>bridge.agent</code></td><td>SDK session/runtime APIs and pi-gui session driver</td><td>Session IDs, directories, titles, and timestamps round-trip without renderer-only state becoming authoritative.</td></tr>
+                <tr><td>Prompt with text, images, selected agent, and model</td><td>SDK <code>prompt()</code> options and event stream</td><td>Renderer payload matches supported SDK inputs; unsupported fields are adapted intentionally in main process.</td></tr>
+                <tr><td>Stream assistant, tool, diff, question, and file-watch events</td><td>SDK <code>subscribe()</code> event envelope</td><td>Every emitted event is normalized by type guards and covered by tests.</td></tr>
+                <tr><td>Provider auth and model selection</td><td><code>AuthStorage</code>, <code>ModelRegistry</code>, provider docs</td><td>Credentials stay under Dilag's Pi home; UI state does not leak secrets; model refresh follows provider changes.</td></tr>
+                <tr><td>Tree navigation/revert UI</td><td>SDK <code>navigateTree()</code></td><td>Dilag uses Pi's tree cursor model rather than legacy revert semantics; tests cover previous/specific message navigation.</td></tr>
+                <tr><td>Abort current generation</td><td>SDK <code>abort()</code></td><td>Abort is idempotent, updates UI to idle, and does not orphan session state.</td></tr>
+                <tr><td>Skills/resources installation</td><td>Pi resource loader and skills docs</td><td>Installed skills are discoverable by Pi while session-local skills remain isolated from app assets.</td></tr>
+                <tr><td>Filesystem isolation</td><td>Public SDK storage conventions plus Dilag requirement</td><td>Pi data lives under <code>~/.dilag/pi</code>; workspace files are only touched through explicit session directories/tools.</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="checklist" class="card">
+            <h2>Checklist for the background verification agent</h2>
+            <div class="checklist">
+              <label class="item"><input type="checkbox" checked /><span><b>Clone or inspect public references.</b><div class="criteria">Captured <code>earendil-works/pi</code> <code>a8af0b5e99e3309c5cbc3301c276302512789ca5</code> and <code>minghinmatthewlam/pi-gui</code> <code>3b42e19b835ac67277e6793bcf5ae27e76fbc1dc</code>.</div></span><span class="owner">evidence</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Build a Dilag ↔ SDK API map.</b><div class="criteria"><code>packages/desktop-bridge/src/index.ts</code> methods map through <code>preload.ts</code>, <code>host.ts</code>, and <code>apps/desktop/electron/ipc/pi.ts</code>.</div></span><span class="owner">contract</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Compare lifecycle handling with public desktop wrapper patterns.</b><div class="criteria">Dilag owns a session map in Electron main; pi-gui uses <code>SessionSupervisor</code> over <code>createAgentSessionRuntime</code>. Both unsubscribe and rebind session-local listeners.</div></span><span class="owner">electron</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Verify provider/model auth behavior.</b><div class="criteria">Dilag uses custom <code>AuthStorage</code>/<code>ModelRegistry</code> files under <code>~/.dilag/pi</code>, matching SDK custom storage support and pi-gui's app-owned agent directory pattern.</div></span><span class="owner">security</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Prove session CRUD and resume semantics.</b><div class="criteria">Dilag creates/opens/list/deletes with <code>SessionManager.create/open/list</code> under cwd-encoded session directories; rename uses Pi session metadata.</div></span><span class="owner">sessions</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Prove streaming event normalization.</b><div class="criteria">Pi events are normalized in <code>handlePiSessionEvent</code>; renderer tests cover idle completion, reasoning-only messages, stale tool updates, and repeated tool-call endings.</div></span><span class="owner">events</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Run existing Dilag tests and add missing regression coverage.</b><div class="criteria">Targeted regressions exist for idle chat streams and provider-logo mapping. Full desktop test/typecheck results are recorded below.</div></span><span class="owner">tests</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Document intentional divergences.</b><div class="criteria">Differences are listed as Dilag product decisions unless marked as follow-up.</div></span><span class="owner">notes</span></label>
+              <label class="item"><input type="checkbox" checked /><span><b>Update this HTML with evidence links.</b><div class="criteria">This revision replaces the template state with pinned sources, line-level local references, test output, and remaining live-auth validation risk.</div></span><span class="owner">finalize</span></label>
+            </div>
+          </section>
+
+          <section id="results" class="card">
+            <h2>Verified results</h2>
+            <h3>Public reference findings</h3>
+            <table>
+              <thead><tr><th>Area</th><th>Public evidence</th><th>Dilag evidence</th><th>Result</th></tr></thead>
+              <tbody>
+                <tr><td>SDK embedding</td><td><a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/docs/sdk.md#L18-L38">SDK quick start</a> creates <code>AuthStorage</code>, <code>ModelRegistry</code>, <code>createAgentSession</code>, subscribes to events, and calls <code>prompt()</code>. Example <a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/examples/sdk/01-minimal.ts#L8-L25">01-minimal</a> does the same.</td><td><code>apps/desktop/electron/ipc/pi.ts:411-438</code> creates Pi sessions with cwd, custom agent dir, model registry, prompt tools, and extension bindings.</td><td class="ok">Aligned</td></tr>
+                <tr><td>Runtime replacement</td><td><a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/docs/sdk.md#L120-L181">SDK runtime docs</a> require re-subscribing after runtime/session replacement. Example <a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/examples/sdk/13-session-runtime.ts#L38-L67">13-session-runtime</a> shows that rebind pattern.</td><td><code>apps/desktop/electron/ipc/pi.ts:488-504</code> binds a single subscription per runtime session. <code>stop</code>/<code>delete</code> unsubscribe before abort/removal.</td><td class="ok">Aligned, with simpler per-session map</td></tr>
+                <tr><td>Provider auth/model registry</td><td><a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/docs/sdk.md#L412-L445">SDK docs</a> support custom <code>auth.json</code>/<code>models.json</code>. <a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/examples/sdk/09-api-keys-and-oauth.ts#L22-L32">Example 09</a> demonstrates custom auth/model storage.</td><td><code>apps/desktop/electron/ipc/pi.ts:196-219</code> writes API keys/OAuth through <code>AuthStorage</code>; <code>pi.ts:515-519</code> creates <code>ModelRegistry</code> under <code>~/.dilag/pi</code>.</td><td class="ok">Aligned</td></tr>
+                <tr><td>Sessions and tree navigation</td><td><a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/docs/session-format.md#L361-L374">SessionManager docs</a> list create/open/continue/list APIs. <a href="https://github.com/earendil-works/pi/blob/a8af0b5e99e3309c5cbc3301c276302512789ca5/packages/coding-agent/docs/sdk.md#L743-L768">SDK tree docs</a> list <code>getEntries()</code>, <code>getTree()</code>, and branching.</td><td><code>apps/desktop/electron/ipc/pi.ts:369-390</code> opens/creates sessions; <code>pi.ts:325-355</code> exposes tree and <code>navigateTree()</code>.</td><td class="ok">Aligned</td></tr>
+                <tr><td>Public desktop wrapper</td><td><a href="https://github.com/minghinmatthewlam/pi-gui/blob/3b42e19b835ac67277e6793bcf5ae27e76fbc1dc/README.md#L3-L5">pi-gui README</a> says it wraps the upstream Pi runtime. Its driver keeps auth/model dependencies in an agent dir and uses a <a href="https://github.com/minghinmatthewlam/pi-gui/blob/3b42e19b835ac67277e6793bcf5ae27e76fbc1dc/packages/pi-sdk-driver/src/session-supervisor.ts#L145-L157">SessionSupervisor</a>.</td><td>Dilag keeps the adapter in Electron main through <code>preload.ts:31-53</code>, <code>host.ts:69-130</code>, and <code>pi.ts</code>.</td><td class="ok">Same adapter boundary, different implementation shape</td></tr>
+              </tbody>
+            </table>
+
+            <h3 style="margin-top:20px">Bridge method map</h3>
+            <table>
+              <thead><tr><th><code>bridge.agent</code> method</th><th>Dilag adapter</th><th>SDK/API basis</th></tr></thead>
+              <tbody>
+                <tr><td><code>getInfo</code>, <code>start</code>, <code>stop</code>, <code>restart</code>, <code>isRunning</code></td><td><code>pi.ts:107-140</code></td><td>Host-owned lifecycle around Pi sessions; stop aborts and unsubscribes active sessions.</td></tr>
+                <tr><td><code>getProviderData</code>, <code>listProviders</code>, <code>setApiKey</code>, <code>loginOAuthProvider</code></td><td><code>pi.ts:142-219</code></td><td><code>AuthStorage</code> and <code>ModelRegistry</code> from SDK docs and examples.</td></tr>
+                <tr><td><code>createSession</code>, <code>getSession</code>, <code>getMessages</code>, <code>renameSession</code>, <code>deleteSession</code></td><td><code>pi.ts:221-246</code>, <code>pi.ts:274-289</code>, <code>pi.ts:358-390</code></td><td><code>SessionManager.create/open/list</code>, Pi session metadata, JSONL message entries.</td></tr>
+                <tr><td><code>prompt</code>, <code>abort</code>, <code>onEvent</code></td><td><code>pi.ts:248-271</code>, <code>pi.ts:488-504</code>, <code>pi.ts:710-759</code></td><td><code>AgentSession.prompt()</code>, <code>abort()</code>, and <code>subscribe()</code> from SDK docs.</td></tr>
+                <tr><td><code>listQuestions</code>, <code>replyQuestion</code>, <code>rejectQuestion</code></td><td><code>pi.ts:292-323</code>, <code>pi.ts:534-693</code></td><td>Dilag custom <code>question</code> tool via Pi <code>defineTool()</code>; product-specific UI bridge.</td></tr>
+                <tr><td><code>getTree</code>, <code>navigateTree</code></td><td><code>pi.ts:325-355</code></td><td><code>SessionManager.getTree()</code> and <code>AgentSession.navigateTree()</code>.</td></tr>
+              </tbody>
+            </table>
+
+            <h3 style="margin-top:20px">Intentional divergences</h3>
+            <table>
+              <thead><tr><th>Divergence</th><th>Reason</th><th>Risk/Future work</th></tr></thead>
+              <tbody>
+                <tr><td>Dilag uses <code>~/.dilag/pi</code> instead of default <code>~/.pi/agent</code>.</td><td>App data isolation. SDK explicitly supports custom <code>agentDir</code>, custom <code>AuthStorage</code>, and custom <code>ModelRegistry</code>.</td><td class="ok">Low risk; <code>apps/desktop/electron/ipc/paths.ts:27-29</code> centralizes the path.</td></tr>
+                <tr><td>Dilag writes design skills into the current workspace's <code>.agents/skills</code>.</td><td>Dilag needs session-local mobile/web design skills discoverable by Pi resource loading without mutating global Pi assets.</td><td class="ok">Intentional. Public SDK docs list <code>.agents/skills</code> project discovery.</td></tr>
+                <tr><td>Dilag does not expose raw Pi events to React.</td><td>Renderer consumes a stable Dilag contract while Electron main adapts Pi event names, tool states, questions, and idle status.</td><td class="ok">Covered by session-store/chat tests; keep adding tests when new Pi event types are surfaced.</td></tr>
+                <tr><td>Dilag uses a lightweight session map, not pi-gui's full <code>SessionSupervisor</code>.</td><td>Dilag currently needs direct session CRUD and renderer bridge events, not pi-gui's workspace catalog layer.</td><td class="todo">Revisit if Dilag adds cross-workspace Pi catalogs, session import, or richer runtime replacement flows.</td></tr>
+                <tr><td>OpenAI subscription auth is displayed as OpenAI while backend may use <code>openai-codex</code>.</td><td>Provider choice is a UX alias; backend provider ID remains explicit for Pi auth.</td><td class="ok">Regression covered by model selector logo tests.</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="agent-prompt" class="card">
+            <h2>Copy/paste prompt for an eager background agent</h2>
+            <div class="prompt">You are verifying Dilag's embedded Pi integration against public open-source Pi usage. Work in /Users/rohi/sandbox/dilag. Do not overwrite unrelated user changes. Use docs/pi-open-source-verification.html as the source checklist.
+
+1. Inspect public references: earendil-works/pi SDK docs/examples and minghinmatthewlam/pi-gui. Record exact URLs/SHAs.
+2. Map packages/desktop-bridge bridge.agent methods to apps/desktop/electron Pi adapter/runtime code and to documented Pi SDK APIs.
+3. Compare lifecycle, sessions, event streaming, provider auth/model selection, abort, tree navigation, skills/resources, and filesystem isolation.
+4. Run focused tests/typechecks where safe. Add or propose regression tests for any unproven behavior.
+5. Update docs/pi-open-source-verification.html with evidence, checked items, and intentional divergences. If code changes are needed, make minimal commits on the current stack branch and preserve the stack with stack status / stack sync --dry-run before any mutation.</div>
+          </section>
+
+          <section id="evidence" class="card">
+            <h2>Evidence log template</h2>
+            <table>
+              <thead><tr><th>Checklist item</th><th>Evidence</th><th>Result</th><th>Follow-up</th></tr></thead>
+              <tbody>
+                <tr><td>Public references</td><td><code>git ls-remote https://github.com/earendil-works/pi.git HEAD</code> -> <code>a8af0b5e99e3309c5cbc3301c276302512789ca5</code>; <code>git ls-remote https://github.com/minghinmatthewlam/pi-gui.git HEAD</code> -> <code>3b42e19b835ac67277e6793bcf5ae27e76fbc1dc</code>.</td><td class="ok">Complete</td><td>Re-run before any future Pi SDK upgrade.</td></tr>
+                <tr><td>Bridge API map</td><td><code>packages/desktop-bridge/src/index.ts:39-75</code>, <code>apps/desktop/electron/preload.ts:31-53</code>, <code>apps/desktop/electron/ipc/host.ts:69-130</code>, <code>apps/desktop/electron/ipc/pi.ts:107-759</code>.</td><td class="ok">Complete</td><td>Add a compile-time channel map test if the bridge grows again.</td></tr>
+                <tr><td>User-reported idle thinking block</td><td><code>apps/desktop/src/components/blocks/chat/chat-view.tsx:252-280</code> returns no activity label unless loading; <code>chat-view.tsx:1404-1408</code> only displays it for the active last assistant turn. <code>apps/desktop/src/context/session-store.test.ts:363-383</code> covers idle completion.</td><td class="ok">Fixed and covered</td><td>Live visual check with a real provider remains useful after packaging.</td></tr>
+                <tr><td>User-reported model/provider icon</td><td><code>apps/desktop/src/components/ai-elements/model-selector.tsx:190-204</code> maps Pi auth-provider aliases to display logo providers; <code>model-selector.test.ts:4-13</code> covers OpenAI Codex and ordinary provider IDs.</td><td class="ok">Fixed and covered</td><td>Add cases when Pi introduces more provider aliases.</td></tr>
+                <tr><td>Tests</td><td><code>bun run --filter @dilag/desktop test -- --run</code> passed 6 files / 83 tests. <code>bun run --filter @dilag/desktop typecheck</code> passed. <code>git diff --check</code> passed.</td><td class="ok">Complete</td><td>Live OAuth/model credential tests intentionally not run in this repo session.</td></tr>
+                <tr><td>Divergences</td><td>Documented in <a href="#results">Verified results</a>: custom app data dir, workspace-local design skills, normalized event contract, lightweight runtime map, OpenAI Codex logo alias.</td><td class="ok">Complete</td><td>Track catalog/runtime replacement only if product scope expands.</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
