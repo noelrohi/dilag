@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query"
+import { useEffect } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { bridge } from "@/lib/bridge"
+import { useSessionStore } from "@/context/session-store"
 
 export type ViolationRule =
   | "keyframes"
@@ -27,6 +29,23 @@ async function loadSessionDesigns(sessionCwd: string): Promise<DesignFile[]> {
   return bridge.designs.loadForSession({ sessionCwd })
 }
 
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/$/, "")
+}
+
+export function isSessionDesignFileChange(file: string, sessionCwd: string): boolean {
+  const normalizedFile = normalizePath(file)
+  const normalizedCwd = normalizePath(sessionCwd)
+  const relativePath = normalizedFile.startsWith(normalizedCwd + "/")
+    ? normalizedFile.slice(normalizedCwd.length + 1)
+    : normalizedFile
+
+  return (
+    relativePath.endsWith(".html") &&
+    (relativePath.startsWith("screens/") || !relativePath.includes("/"))
+  )
+}
+
 /**
  * Query key factory for designs
  * Following TkDodo's query key factory pattern
@@ -41,6 +60,25 @@ export const designKeys = {
  * Uses React Query for data fetching with polling
  */
 export function useSessionDesigns(sessionCwd: string | undefined) {
+  const queryClient = useQueryClient()
+  const latestDesignChange = useSessionStore((state) => {
+    if (!sessionCwd) return null
+
+    for (let index = state.recentFileChanges.length - 1; index >= 0; index -= 1) {
+      const change = state.recentFileChanges[index]
+      if (isSessionDesignFileChange(change.file, sessionCwd)) {
+        return `${change.file}:${change.event}:${change.timestamp}`
+      }
+    }
+
+    return null
+  })
+
+  useEffect(() => {
+    if (!sessionCwd || !latestDesignChange) return
+    queryClient.invalidateQueries({ queryKey: designKeys.session(sessionCwd) })
+  }, [latestDesignChange, queryClient, sessionCwd])
+
   return useQuery({
     queryKey: designKeys.session(sessionCwd),
     queryFn: () => {

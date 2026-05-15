@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { useSessionStore } from "./session-store"
+import { act, renderHook } from "@testing-library/react"
+import { useIsWritingScreen, useSessionStore } from "./session-store"
 import type { Message, MessagePart } from "./session-store"
 
 describe("session-store", () => {
@@ -36,6 +37,49 @@ describe("session-store", () => {
       useSessionStore.getState().setScreenPositions("session-1", positions)
 
       expect(useSessionStore.getState().screenPositions["session-1"]).toEqual(positions)
+    })
+  })
+
+  describe("useIsWritingScreen", () => {
+    it("returns true while write or edit tools are pending or running", () => {
+      const sessionId = "session-1"
+      const messageId = "msg-1"
+
+      act(() => {
+        useSessionStore.getState().setMessages(sessionId, [
+          {
+            id: messageId,
+            sessionID: sessionId,
+            role: "assistant",
+            time: { created: 1000 },
+          },
+        ])
+        useSessionStore.getState().updatePart(messageId, {
+          id: "write-tool",
+          messageID: messageId,
+          sessionID: sessionId,
+          type: "tool",
+          tool: "write",
+          state: { status: "running", input: { filePath: "screens/home.html" } },
+        })
+      })
+
+      const { result, rerender } = renderHook(() => useIsWritingScreen(sessionId))
+      expect(result.current).toBe(true)
+
+      act(() => {
+        useSessionStore.getState().updatePart(messageId, {
+          id: "write-tool",
+          messageID: messageId,
+          sessionID: sessionId,
+          type: "tool",
+          tool: "write",
+          state: { status: "completed", input: { filePath: "screens/home.html" } },
+        })
+      })
+      rerender()
+
+      expect(result.current).toBe(false)
     })
   })
 
