@@ -12,6 +12,13 @@ const noopUnsubscribe = () => {}
 
 const desktopBridgeMock: DesktopBridge = {
   app: { getInfo: vi.fn(), resetAllData: vi.fn() },
+  opencode: {
+    checkInstallation: vi.fn(),
+    checkBunInstallation: vi.fn(),
+    installDependencies: vi.fn(),
+    start: vi.fn(),
+    restart: vi.fn(),
+  },
   agent: {
     getInfo: vi.fn(),
     start: vi.fn(),
