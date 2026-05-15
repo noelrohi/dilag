@@ -102,20 +102,24 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.agent.abort, (_event, args: { sessionID: string }) =>
     abortAgentSession(args),
   )
-  ipcMain.handle(CHANNELS.agent.renameSession, (_event, args: { sessionID: string; name: string }) =>
-    renameAgentSession(args),
+  ipcMain.handle(
+    CHANNELS.agent.renameSession,
+    (_event, args: { sessionID: string; name: string }) => renameAgentSession(args),
   )
   ipcMain.handle(CHANNELS.agent.deleteSession, (_event, args: { sessionID: string }) =>
     deleteAgentSession(args),
   )
   ipcMain.handle(CHANNELS.agent.listQuestions, listAgentQuestions)
-  ipcMain.handle(CHANNELS.agent.replyQuestion, (_event, args: { requestID: string; answers: string[][] }) =>
-    replyAgentQuestion(args),
+  ipcMain.handle(
+    CHANNELS.agent.replyQuestion,
+    (_event, args: { requestID: string; answers: string[][] }) => replyAgentQuestion(args),
   )
   ipcMain.handle(CHANNELS.agent.rejectQuestion, (_event, args: { requestID: string }) =>
     rejectAgentQuestion(args),
   )
-  ipcMain.handle(CHANNELS.agent.getTree, (_event, args: { sessionID: string }) => getAgentTree(args))
+  ipcMain.handle(CHANNELS.agent.getTree, (_event, args: { sessionID: string }) =>
+    getAgentTree(args),
+  )
   ipcMain.handle(
     CHANNELS.agent.navigateTree,
     (

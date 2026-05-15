@@ -372,10 +372,22 @@ async function ensureDilagPiResources(cwd: string): Promise<void> {
   await Promise.all([
     fsp.writeFile(path.join(mobileSkillDir, "SKILL.md"), renderDesignSkill(mobile, common)),
     fsp.writeFile(path.join(webSkillDir, "SKILL.md"), renderDesignSkill(web, common)),
-    copyAssetIfExists(path.join(assetDir, "examples", "mobile", "wellness.html"), path.join(mobileSkillDir, "examples", "wellness.html")),
-    copyAssetIfExists(path.join(assetDir, "examples", "mobile", "finance.html"), path.join(mobileSkillDir, "examples", "finance.html")),
-    copyAssetIfExists(path.join(assetDir, "examples", "web", "editorial.html"), path.join(webSkillDir, "examples", "editorial.html")),
-    copyAssetIfExists(path.join(assetDir, "examples", "web", "saas-dashboard.html"), path.join(webSkillDir, "examples", "saas-dashboard.html")),
+    copyAssetIfExists(
+      path.join(assetDir, "examples", "mobile", "wellness.html"),
+      path.join(mobileSkillDir, "examples", "wellness.html"),
+    ),
+    copyAssetIfExists(
+      path.join(assetDir, "examples", "mobile", "finance.html"),
+      path.join(mobileSkillDir, "examples", "finance.html"),
+    ),
+    copyAssetIfExists(
+      path.join(assetDir, "examples", "web", "editorial.html"),
+      path.join(webSkillDir, "examples", "editorial.html"),
+    ),
+    copyAssetIfExists(
+      path.join(assetDir, "examples", "web", "saas-dashboard.html"),
+      path.join(webSkillDir, "examples", "saas-dashboard.html"),
+    ),
   ])
 }
 
@@ -571,7 +583,9 @@ function normalizeQuestion(
         label: option.value ?? option.label,
         description: option.description ?? "",
       })),
-      ...(question.allowOther === false ? [] : [{ label: "Other", description: "Type another answer." }]),
+      ...(question.allowOther === false
+        ? []
+        : [{ label: "Other", description: "Type another answer." }]),
     ],
   }
 }
@@ -606,7 +620,11 @@ function waitForQuestionAnswer(
 
 function findSessionIdForToolCall(toolCallId: string): string | undefined {
   for (const runtime of sessions.values()) {
-    if (runtime.session.messages.some((message) => messageHasToolCall(message as PiMessage, toolCallId))) {
+    if (
+      runtime.session.messages.some((message) =>
+        messageHasToolCall(message as PiMessage, toolCallId),
+      )
+    ) {
       return runtime.id
     }
     if (runtime.session.isStreaming) return runtime.id
@@ -620,7 +638,11 @@ function messageHasToolCall(message: PiMessage, toolCallId: string): boolean {
 }
 
 function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent) {
-  if (event.type === "message_start" || event.type === "message_update" || event.type === "message_end") {
+  if (
+    event.type === "message_start" ||
+    event.type === "message_update" ||
+    event.type === "message_end"
+  ) {
     emitMessage(runtime.id, event.message as PiMessage, event.type === "message_end")
     return
   }
@@ -633,7 +655,14 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
 
   if (event.type === "tool_execution_update") {
     if (event.args !== undefined) runtime.toolInputs.set(event.toolCallId, event.args)
-    emitToolPart(runtime.id, event.toolCallId, event.toolName, "running", event.args, event.partialResult)
+    emitToolPart(
+      runtime.id,
+      event.toolCallId,
+      event.toolName,
+      "running",
+      event.args,
+      event.partialResult,
+    )
     return
   }
 
@@ -754,7 +783,11 @@ function messageEntryToBridgeMessages(
   ]
 }
 
-function messageParts(sessionID: string, messageID: string, message: PiMessage): AgentMessagePart[] {
+function messageParts(
+  sessionID: string,
+  messageID: string,
+  message: PiMessage,
+): AgentMessagePart[] {
   const content = normalizeContent(message.content)
   return content.flatMap((part, index): AgentMessagePart[] => {
     const id = `${messageID}:part:${index}`
@@ -794,7 +827,9 @@ function messageParts(sessionID: string, messageID: string, message: PiMessage):
   })
 }
 
-function normalizeContent(content: PiContent | undefined): Array<PiTextContent | PiThinkingContent | PiImageContent | PiToolCall> {
+function normalizeContent(
+  content: PiContent | undefined,
+): Array<PiTextContent | PiThinkingContent | PiImageContent | PiToolCall> {
   if (!content) return []
   if (typeof content === "string") {
     return [{ type: "text", text: content }]
@@ -828,7 +863,9 @@ function mapTreeNode(node: PiSessionTreeNode): BridgeAgentTreeNode {
   }
 }
 
-function mapTreeRole(role: PiMessage["role"] | undefined): "user" | "assistant" | "toolResult" | undefined {
+function mapTreeRole(
+  role: PiMessage["role"] | undefined,
+): "user" | "assistant" | "toolResult" | undefined {
   if (role === "user" || role === "assistant" || role === "toolResult") return role
   return undefined
 }
