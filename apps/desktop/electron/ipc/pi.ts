@@ -28,7 +28,7 @@ import { getPiAgentDir, resolveDesignAssetDir } from "./paths.js"
 type EventSender = (channel: string, event: unknown) => void
 
 type PiTextContent = { type: "text"; text: string }
-type PiThinkingContent = { type: "thinking"; text: string }
+type PiThinkingContent = { type: "thinking"; text?: string; thinking?: string }
 type PiImageContent = { type: "image"; data: string; mimeType: string }
 type PiToolCall = { type: "toolCall"; id: string; name: string; arguments: Record<string, unknown> }
 type PiContent = string | Array<PiTextContent | PiThinkingContent | PiImageContent | PiToolCall>
@@ -52,6 +52,7 @@ type RuntimeSession = {
   cwd: string
   session: AgentSession
   unsubscribe: () => void
+  activeMessageId?: string
   toolInputs: Map<string, unknown>
   changedFiles: Map<string, { file: string; additions: number; deletions: number }>
 }
@@ -718,20 +719,20 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
     event.type === "message_update" ||
     event.type === "message_end"
   ) {
-    emitMessage(runtime.id, event.message as PiMessage, event.type === "message_end")
+    emitMessage(runtime, event.message as PiMessage, event.type === "message_end")
     return
   }
 
   if (event.type === "tool_execution_start") {
     runtime.toolInputs.set(event.toolCallId, event.args)
-    emitToolPart(runtime.id, event.toolCallId, event.toolName, "running", event.args)
+    emitToolPart(runtime, event.toolCallId, event.toolName, "running", event.args)
     return
   }
 
   if (event.type === "tool_execution_update") {
     if (event.args !== undefined) runtime.toolInputs.set(event.toolCallId, event.args)
     emitToolPart(
-      runtime.id,
+      runtime,
       event.toolCallId,
       event.toolName,
       "running",
@@ -744,7 +745,7 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
   if (event.type === "tool_execution_end") {
     const input = runtime.toolInputs.get(event.toolCallId)
     emitToolPart(
-      runtime.id,
+      runtime,
       event.toolCallId,
       event.toolName,
       event.isError ? "error" : "completed",
@@ -759,6 +760,7 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
   }
 
   if (event.type === "agent_end") {
+    runtime.activeMessageId = undefined
     emitSessionIdle(runtime.id)
     return
   }
@@ -771,10 +773,15 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
   }
 }
 
-function emitMessage(sessionID: string, message: PiMessage, completed: boolean) {
+function emitMessage(runtime: RuntimeSession, message: PiMessage, completed: boolean) {
   if (message.role !== "user" && message.role !== "assistant") return
 
-  const messageID = messageId(sessionID, message)
+  const sessionID = runtime.id
+  const messageID =
+    message.role === "assistant"
+      ? (runtime.activeMessageId ?? messageId(sessionID, message))
+      : messageId(sessionID, message)
+  if (message.role === "assistant") runtime.activeMessageId = messageID
   const created = message.timestamp ?? Date.now()
   emitAgentEvent({
     type: "message.updated",
@@ -797,14 +804,16 @@ function emitMessage(sessionID: string, message: PiMessage, completed: boolean) 
 }
 
 function emitToolPart(
-  sessionID: string,
+  runtime: RuntimeSession,
   toolCallId: string,
   toolName: string,
   status: "running" | "completed" | "error",
   input?: unknown,
   output?: unknown,
 ) {
-  const messageID = `${sessionID}:assistant:active`
+  const sessionID = runtime.id
+  const messageID = runtime.activeMessageId ?? `${sessionID}:assistant:active`
+  runtime.activeMessageId = messageID
   emitAgentEvent({
     type: "message.updated",
     properties: {
@@ -828,8 +837,9 @@ function emitToolPart(
         state: {
           status,
           input,
-          output: output === undefined ? undefined : stringifyResult(output),
-          error: status === "error" ? stringifyResult(output) : undefined,
+          output: output === undefined ? undefined : toolResultText(output),
+          error: status === "error" ? toolResultText(output) : undefined,
+          metadata: toolResultMetadata(toolName, output),
           time: { start: Date.now(), end: status === "running" ? undefined : Date.now() },
         },
       },
@@ -870,7 +880,7 @@ function messageParts(
       return [{ id, messageID, sessionID, type: "text", text: part.text }]
     }
     if (part.type === "thinking") {
-      return [{ id, messageID, sessionID, type: "reasoning", text: part.text }]
+      return [{ id, messageID, sessionID, type: "reasoning", text: part.text ?? part.thinking }]
     }
     if (part.type === "image") {
       return [
@@ -953,13 +963,43 @@ function messageText(message: PiMessage | undefined): string | undefined {
     .join("\n")
 }
 
-function stringifyResult(value: unknown): string {
+function toolResultText(value: unknown): string {
   if (typeof value === "string") return value
+  if (isToolResultWithContent(value)) {
+    return value.content
+      .map((part) => {
+        if (part.type === "text") return part.text
+        if (part.type === "image") return `[Image: ${part.mimeType}]`
+        return ""
+      })
+      .filter(Boolean)
+      .join("\n")
+  }
   try {
     return JSON.stringify(value, null, 2)
   } catch {
     return String(value)
   }
+}
+
+function toolResultMetadata(toolName: string, value: unknown): Record<string, unknown> | undefined {
+  if (!isToolResultWithContent(value)) return undefined
+  const text = toolResultText(value)
+  return {
+    ...(typeof value.details === "object" && value.details ? value.details : {}),
+    preview: toolName === "read" ? text.split("\n").slice(0, 40).join("\n") : undefined,
+  }
+}
+
+function isToolResultWithContent(value: unknown): value is {
+  content: Array<PiTextContent | PiImageContent>
+  details?: unknown
+} {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as { content?: unknown }).content)
+  )
 }
 
 function humanizeProviderName(id: string): string {

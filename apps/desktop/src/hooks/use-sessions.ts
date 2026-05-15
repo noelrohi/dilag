@@ -19,17 +19,24 @@ import {
   createSessionDir,
   sessionKeys,
 } from "@/hooks/use-session-data"
-import { useGlobalEvents, useSDK, useConnectionStatus, type Event } from "@/context/global-events"
+import { useGlobalEvents, useConnectionStatus, type Event } from "@/context/global-events"
 import { useModelStore } from "@/hooks/use-models"
 import { useAgentStore } from "@/hooks/use-agents"
 import { withErrorHandler } from "@/lib/async-utils"
 import { bridge } from "@/lib/bridge"
-import type { Part, FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client"
+import type {
+  AgentImageContent as BridgeAgentImageContent,
+  AgentMessage as BridgeAgentMessage,
+} from "@dilag/desktop-bridge"
 import type { FileUIPart } from "ai"
 import { formatElementWithAncestry, minifyHtml } from "@/lib/html-utils"
 
-// Convert SDK message format to our internal format
-function convertPart(part: Part, messageID: string, sessionID: string): MessagePart {
+// Convert bridge message parts to our internal format.
+function convertPart(
+  part: BridgeAgentMessage["parts"][number],
+  messageID: string,
+  sessionID: string,
+): MessagePart {
   return {
     id: part.id,
     messageID,
@@ -37,34 +44,15 @@ function convertPart(part: Part, messageID: string, sessionID: string): MessageP
     type: part.type as MessagePart["type"],
     text: "text" in part ? part.text : undefined,
     tool: "tool" in part ? part.tool : undefined,
-    state: "state" in part ? part.state : undefined,
+    state: "state" in part ? (part.state as MessagePart["state"]) : undefined,
     // File part fields
     mime: "mime" in part ? part.mime : undefined,
     url: "url" in part ? part.url : undefined,
     filename: "filename" in part ? part.filename : undefined,
     // Step part fields
-    provider: extractSubtaskProvider(part),
-    model: extractSubtaskModel(part),
+    provider: part.provider,
+    model: part.model,
   }
-}
-
-/** SDK v1.4 moved provider + model into a nested `{ providerID, modelID }` object
- *  on SubtaskPart. These helpers tolerate both the old flat shape and the new
- *  nested one, so we don't care which version the server speaks. */
-function extractSubtaskProvider(part: unknown): string | undefined {
-  const p = part as { provider?: unknown; model?: { providerID?: unknown } }
-  if (typeof p.provider === "string") return p.provider
-  if (p.model && typeof p.model.providerID === "string") return p.model.providerID
-  return undefined
-}
-
-function extractSubtaskModel(part: unknown): string | undefined {
-  const p = part as { model?: unknown }
-  if (typeof p.model === "string") return p.model
-  if (p.model && typeof (p.model as { modelID?: unknown }).modelID === "string") {
-    return (p.model as { modelID: string }).modelID
-  }
-  return undefined
 }
 
 /**
@@ -77,7 +65,6 @@ function extractSubtaskModel(part: unknown): string | undefined {
  * - CRUD operations: React Query mutations
  */
 export function useSessions() {
-  const sdk = useSDK()
   const queryClient = useQueryClient()
   const { connectionStatus } = useConnectionStatus()
 
@@ -139,12 +126,8 @@ export function useSessions() {
     async (sessionId: string, directory?: string) => {
       // Load session info first to get revert state
       try {
-        const sessionInfo = await sdk.session.get({ sessionID: sessionId, directory })
-        if (sessionInfo?.data?.revert) {
-          setSessionRevert(sessionId, sessionInfo.data.revert)
-        } else {
-          setSessionRevert(sessionId, null)
-        }
+        await bridge.agent.getSession({ sessionID: sessionId, directory: directory ?? "" })
+        setSessionRevert(sessionId, null)
       } catch (err) {
         console.debug(`[loadSessionMessages(${sessionId})] Failed to get session info:`, err)
       }
@@ -152,16 +135,16 @@ export function useSessions() {
       // Load messages
       let response
       try {
-        response = await sdk.session.messages({ sessionID: sessionId, directory })
+        response = await bridge.agent.getMessages({ sessionID: sessionId, directory: directory ?? "" })
       } catch (err) {
-        // Session might not exist in OpenCode yet - this is expected
+        // Session might not exist in the agent runtime yet - this is expected
         console.debug(`[loadSessionMessages(${sessionId})] Session may not exist yet:`, err)
         setMessages(sessionId, [])
         return
       }
 
-      if (response?.data) {
-        const msgs = response.data.map((msg) => ({
+      if (response) {
+        const msgs = response.map((msg) => ({
           id: msg.info.id,
           sessionID: msg.info.sessionID,
           role: msg.info.role as "user" | "assistant",
@@ -171,14 +154,14 @@ export function useSessions() {
 
         // Set parts for each message
         const state = useSessionStore.getState()
-        response.data.forEach((msg) => {
+        response.forEach((msg) => {
           msg.parts?.forEach((part) => {
             state.updatePart(msg.info.id, convertPart(part, msg.info.id, msg.info.sessionID))
           })
         })
       }
     },
-    [sdk, setMessages, setSessionRevert],
+    [setMessages, setSessionRevert],
   )
 
   // Handle reconnection bootstrap - refetch state after SSE reconnects
@@ -241,7 +224,7 @@ export function useSessions() {
     loadSessionMessages,
   ])
 
-  // Listen for session.updated events to sync OpenCode data (title, updated_at) to dilag
+  // Listen for session.updated events to sync agent data (title, updated_at) to Dilag.
   useEffect(() => {
     if (!currentSessionId) return
 
@@ -260,13 +243,13 @@ export function useSessions() {
         if (info?.id === currentSessionId && isMountedRef.current) {
           const updates: { name?: string; updated_at?: string } = {}
 
-          // Sync title if OpenCode generated a real title
+          // Sync title if the agent generated a real title.
           if (info?.title && !isDefaultTitle(info.title)) {
-            console.log("[useSessions] Title from OpenCode:", info.title)
+            console.log("[useSessions] Title from agent:", info.title)
             updates.name = info.title
           }
 
-          // Sync updated_at timestamp from OpenCode SDK
+          // Sync updated_at timestamp from the agent runtime.
           if (info?.time?.updated) {
             updates.updated_at = new Date(info.time.updated).toISOString()
           }
@@ -294,11 +277,8 @@ export function useSessions() {
         const cwd = await createSessionDir(dirId)
 
         // No project initialization needed - AI generates HTML screens directly
-        const response = await sdk.session.create({ directory: cwd })
-        if (!response.data) {
-          throw new Error("Failed to create session")
-        }
-        const sessionId = response.data.id
+        const response = await bridge.agent.createSession({ directory: cwd })
+        const sessionId = response.id
 
         // Create session metadata
         const now = new Date().toISOString()
@@ -325,7 +305,7 @@ export function useSessions() {
         return null
       }
     },
-    [sessions.length, setError, setCurrentSessionId, setMessages, sdk, saveSession],
+    [sessions.length, setError, setCurrentSessionId, setMessages, saveSession],
   )
 
   const selectSession = useCallback(
@@ -342,14 +322,11 @@ export function useSessions() {
   const deleteSession = useCallback(
     async (sessionId: string) => {
       try {
-        // Get session's directory
-        const session = sessions.find((s) => s.id === sessionId)
-
-        // Delete from OpenCode (may not exist if never sent a message)
+        // Delete from the agent runtime (may not exist if never sent a message)
         await withErrorHandler(
-          () => sdk.session.delete({ sessionID: sessionId, directory: session?.cwd }),
+          () => bridge.agent.deleteSession({ sessionID: sessionId }),
           `deleteSession(${sessionId})`,
-          undefined, // Continue on error - session may not exist in OpenCode
+          undefined, // Continue on error - session may not exist in the runtime
         )
 
         // Delete local metadata (React Query mutation)
@@ -362,7 +339,7 @@ export function useSessions() {
         console.error("Failed to delete session:", err)
       }
     },
-    [sessions, removeSession, clearSessionData, setError, sdk],
+    [removeSession, clearSessionData, setError],
   )
 
   const stopSession = useCallback(async () => {
@@ -372,10 +349,7 @@ export function useSessions() {
     const { abortRunningTools } = useSessionStore.getState()
 
     try {
-      await sdk.session.abort({
-        sessionID: currentSessionId,
-        directory: currentSession.cwd,
-      })
+      await bridge.agent.abort({ sessionID: currentSessionId })
       setSessionStatus(currentSessionId, "idle")
       // Also abort any stuck running tools (backend may not clean them up)
       abortRunningTools(currentSessionId)
@@ -385,71 +359,34 @@ export function useSessions() {
       setSessionStatus(currentSessionId, "idle")
       abortRunningTools(currentSessionId)
     }
-  }, [currentSessionId, currentSession, sdk, setSessionStatus])
+  }, [currentSessionId, currentSession, setSessionStatus])
 
-  // Fork session from a specific message - creates a new session with history up to that message
-  // Uses parent's directory so OpenCode can find the forked messages
+  // Navigate the Pi session tree to a previous message. Pi keeps this in the same
+  // session file instead of creating a separate revert state.
   const forkSession = useCallback(
     async (messageId: string): Promise<string | null> => {
       if (!currentSessionId || !currentSession) return null
 
       try {
         setError(null)
-
-        // Call SDK to fork the session - uses parent's directory
-        const response = await sdk.session.fork({
+        await bridge.agent.navigateTree({
           sessionID: currentSessionId,
-          messageID: messageId,
-          directory: currentSession.cwd,
+          targetId: messageId,
+          summarize: false,
         })
-
-        if (!response.data) {
-          throw new Error("Failed to fork session")
-        }
-
-        const forkedSession = response.data
-
-        // Use parent's directory - OpenCode associates the forked session with this directory
-        // This means screens will persist, but chat history is properly forked
-        const now = new Date().toISOString()
-        const sessionMeta: SessionMeta = {
-          id: forkedSession.id,
-          name: `Fork of ${currentSession.name}`,
-          created_at: now,
-          updated_at: now,
-          cwd: currentSession.cwd,
-          parentID: currentSessionId,
-          platform: currentSession.platform,
-        }
-
-        // Save to the desktop bridge and update React Query cache.
-        await saveSession(sessionMeta)
-
-        // Switch to the forked session
-        setCurrentSessionId(forkedSession.id)
-        await loadSessionMessages(forkedSession.id, currentSession.cwd)
-
-        return forkedSession.id
+        await loadSessionMessages(currentSessionId, currentSession.cwd)
+        return currentSessionId
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fork session")
-        console.error("Failed to fork session:", err)
+        setError(err instanceof Error ? err.message : "Failed to navigate session tree")
+        console.error("Failed to navigate session tree:", err)
         return null
       }
     },
-    [
-      currentSessionId,
-      currentSession,
-      sdk,
-      saveSession,
-      setCurrentSessionId,
-      loadSessionMessages,
-      setError,
-    ],
+    [currentSessionId, currentSession, loadSessionMessages, setError],
   )
 
-  // Revert session to a specific message - hides this message and all after it
-  // Messages are NOT deleted - just filtered out based on session.revert state
-  // Actual deletion happens when user sends a new message (server handles cleanup)
+  // Navigate the Pi session tree to a specific message. This replaces the old
+  // revert/unrevert API with Pi's tree cursor model.
   const revertToMessage = useCallback(
     async (messageId: string): Promise<boolean> => {
       if (!currentSessionId || !currentSession) return false
@@ -457,17 +394,13 @@ export function useSessions() {
       try {
         setError(null)
 
-        // Call SDK to revert the session - returns updated session with revert state
-        const response = await sdk.session.revert({
+        await bridge.agent.navigateTree({
           sessionID: currentSessionId,
-          messageID: messageId,
-          directory: currentSession.cwd,
+          targetId: messageId,
+          summarize: false,
         })
-
-        // Set revert state from response (also updated via SSE, but set immediately for responsiveness)
-        if (response?.data?.revert) {
-          setSessionRevert(currentSessionId, response.data.revert)
-        }
+        await loadSessionMessages(currentSessionId, currentSession.cwd)
+        setSessionRevert(currentSessionId, null)
 
         return true
       } catch (err) {
@@ -476,25 +409,16 @@ export function useSessions() {
         return false
       }
     },
-    [currentSessionId, currentSession, sdk, setError, setSessionRevert],
+    [currentSessionId, currentSession, loadSessionMessages, setError, setSessionRevert],
   )
 
-  // Unrevert session - restores visibility of reverted messages
-  // Messages are NOT reloaded - they're already in state, just filtered by revert state
+  // Clear any stale client-side revert state left from older session data.
   const unrevertSession = useCallback(async (): Promise<boolean> => {
     if (!currentSessionId || !currentSession) return false
 
     try {
       setError(null)
 
-      // Call SDK to unrevert the session
-      await sdk.session.unrevert({
-        sessionID: currentSessionId,
-        directory: currentSession.cwd,
-      })
-
-      // Clear local revert state - messages will now be unfiltered
-      // (also updated via SSE, but set immediately for responsiveness)
       setSessionRevert(currentSessionId, null)
 
       return true
@@ -503,7 +427,7 @@ export function useSessions() {
       console.error("Failed to unrevert session:", err)
       return false
     }
-  }, [currentSessionId, currentSession, sdk, setError, setSessionRevert])
+  }, [currentSessionId, currentSession, setError, setSessionRevert])
 
   // Fork session with designs only - creates a new session and copies screen designs (no chat history)
   const forkSessionDesignsOnly = useCallback(async (): Promise<string | null> => {
@@ -516,12 +440,9 @@ export function useSessions() {
       const dirId = crypto.randomUUID()
       const cwd = await createSessionDir(dirId)
 
-      // Create session in OpenCode with the new directory
-      const response = await sdk.session.create({ directory: cwd })
-      if (!response.data) {
-        throw new Error("Failed to create session")
-      }
-      const newSessionId = response.data.id
+      // Create session in the agent runtime with the new directory
+      const response = await bridge.agent.createSession({ directory: cwd })
+      const newSessionId = response.id
 
       // Copy designs from current session to new session
       await bridge.designs.copyBetweenSessions({
@@ -557,7 +478,6 @@ export function useSessions() {
   }, [
     currentSessionId,
     currentSession,
-    sdk,
     saveSession,
     setCurrentSessionId,
     setMessages,
@@ -579,16 +499,15 @@ export function useSessions() {
         return
       }
 
-      // Get selected model and variant from store
+      // Get selected model and reasoning level from store
       const { selectedModel, variants } = useModelStore.getState()
+      const selectedThinkingLevel = selectedModel
+        ? variants[`${selectedModel.providerID}/${selectedModel.modelID}`]
+        : undefined
       // Get selected agent from store
       const { selectedAgent } = useAgentStore.getState()
       const agentName = selectedAgent ?? "build"
       const directory = currentSession.cwd
-
-      // Get variant for current model
-      const modelKey = selectedModel ? `${selectedModel.providerID}/${selectedModel.modelID}` : null
-      const variant = modelKey ? variants[modelKey] : undefined
 
       try {
         setError(null)
@@ -599,31 +518,25 @@ export function useSessions() {
         // Clear any previous session error
         setSessionError(currentSessionId, null)
 
-        // Send message using SDK - fire and forget
-        // User message will be added via server events (message.updated)
-        const model = selectedModel ?? {
-          providerID: "anthropic",
-          modelID: "claude-sonnet-4-20250514",
-        }
         console.log("[sendMessage] agent:", agentName)
-        console.log("[sendMessage] model:", `${model.providerID}/${model.modelID}`)
+        console.log(
+          "[sendMessage] model:",
+          selectedModel ? `${selectedModel.providerID}/${selectedModel.modelID}` : "first available",
+        )
         console.log("[sendMessage] directory:", directory)
 
         // On first message, prepend skill instruction
         const platform = currentSession.platform ?? "web"
         const isFirstMessage = messages.length === 0
-        const skillHint = isFirstMessage ? `[Use ${platform}-design skill]\n\n` : ""
+        const skillHint = isFirstMessage ? `/skill:${platform}-design ` : ""
 
-        // Build parts array with text and optional file attachments
-        const parts: (TextPartInput | FilePartInput)[] = [
-          { type: "text", text: skillHint + content },
-        ]
+        let promptText = skillHint + content
 
-        // Add file parts if any
         // HTML screen references: prepend @ScreenName inline, append HTML context at end
-        // Other files (images, etc.) are sent as file parts
         const screenContexts: string[] = []
         const screenNames: string[] = []
+        const fileNotes: string[] = []
+        const images: BridgeAgentImageContent[] = []
 
         if (files && files.length > 0) {
           for (const file of files) {
@@ -683,14 +596,19 @@ export function useSessions() {
                     console.error("[sendMessage] Failed to decode HTML content:", e)
                   }
                 }
-              } else {
-                // Other files (images, etc.) sent as file parts
-                parts.push({
-                  type: "file",
-                  mime: file.mediaType || "application/octet-stream",
-                  url: file.url,
-                  filename: file.filename,
-                })
+              } else if (file.mediaType?.startsWith("image/")) {
+                const dataUrlMatch = file.url.match(/^data:([^;,]+);base64,(.+)$/)
+                if (dataUrlMatch) {
+                  images.push({
+                    type: "image",
+                    mimeType: dataUrlMatch[1] || file.mediaType,
+                    data: dataUrlMatch[2],
+                  })
+                } else if (file.filename) {
+                  fileNotes.push(`Attached image not inlined: ${file.filename}`)
+                }
+              } else if (file.filename) {
+                fileNotes.push(`Attached file not inlined: ${file.filename}`)
               }
             }
           }
@@ -700,30 +618,30 @@ export function useSessions() {
         if (screenNames.length > 0) {
           const inlineRefs = screenNames.map((name) => `@${name}`).join(" ")
           const contextBlock = screenContexts.join("\n\n")
-          parts[0] = {
-            type: "text",
-            text: `${inlineRefs} ${skillHint}${content}\n\n${contextBlock}`,
-          }
+          promptText = `${skillHint}${inlineRefs} ${content}\n\n${contextBlock}`
         }
 
-        console.log("[sendMessage] calling sdk.session.prompt with:", {
+        if (fileNotes.length > 0) {
+          promptText += `\n\n${fileNotes.join("\n")}`
+        }
+
+        console.log("[sendMessage] calling bridge.agent.prompt with:", {
           sessionID: currentSessionId,
           agent: agentName,
-          model,
-          variant,
-          partsCount: parts.length,
+          model: selectedModel,
+          thinkingLevel: selectedThinkingLevel,
         })
-        sdk.session
+        bridge.agent
           .prompt({
             sessionID: currentSessionId,
             directory,
-            agent: agentName,
-            model,
-            parts,
-            variant,
+            text: promptText,
+            images,
+            model: selectedModel,
+            thinkingLevel: selectedThinkingLevel,
           })
-          .then((response) => {
-            console.log("[sendMessage] prompt response:", response)
+          .then(() => {
+            console.log("[sendMessage] prompt accepted")
           })
           .catch((err) => {
             if (!isMountedRef.current) return
@@ -737,7 +655,7 @@ export function useSessions() {
         console.error("Failed to send message:", err)
       }
     },
-    [currentSessionId, currentSession, messages, setError, setSessionStatus, setSessionError, sdk],
+    [currentSessionId, currentSession, messages, setError, setSessionStatus, setSessionError],
   )
 
   const toggleFavorite = useCallback(

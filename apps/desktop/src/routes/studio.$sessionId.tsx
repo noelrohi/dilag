@@ -6,7 +6,6 @@ import { useSessions } from "@/hooks/use-sessions"
 import { useSessionMutations } from "@/hooks/use-session-data"
 import { useSessionDesigns, designKeys } from "@/hooks/use-designs"
 import { usePngGenerator } from "@/hooks/use-png-generator"
-import { useSDK } from "@/context/global-events"
 import { useChatWidth } from "@/hooks/use-chat-width"
 import {
   useScreenPositions,
@@ -88,7 +87,6 @@ function StudioPage() {
   const { selectSession, sendMessage, sessions, isServerReady, isLoading, forkSessionDesignsOnly } =
     useSessions()
   const { updateSession } = useSessionMutations()
-  const sdk = useSDK()
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId)
   const { data: designs = [] } = useSessionDesigns(currentSession?.cwd)
@@ -201,14 +199,10 @@ function StudioPage() {
       updates: { name: newName.trim() },
     })
 
-    await sdk.session.update({
-      sessionID: sessionId,
-      title: newName.trim(),
-      directory: currentSession.cwd,
-    })
+    await bridge.agent.renameSession({ sessionID: sessionId, name: newName.trim() })
 
     setRenameOpen(false)
-  }, [currentSession, newName, sessionId, updateSession, sdk])
+  }, [currentSession, newName, sessionId, updateSession])
 
   // Auto-send initial prompt if stored
   useEffect(() => {

@@ -8,7 +8,6 @@ vi.mock("@/context/global-events", () => ({
     isServerReady: true,
     subscribeToSession: vi.fn(() => () => {}),
   })),
-  useSDK: vi.fn(() => mockSDK),
   useConnectionStatus: vi.fn(() => ({ connectionStatus: "connected" })),
 }))
 
@@ -21,6 +20,7 @@ vi.mock("@/hooks/use-session-data", () => ({
     createSession: vi.fn(),
     updateSession: vi.fn(),
     deleteSession: vi.fn(),
+    toggleFavorite: vi.fn(),
   })),
   createSessionDir: vi.fn(() => Promise.resolve("/mock/session/dir")),
   sessionKeys: {
@@ -42,20 +42,6 @@ vi.mock("@/hooks/use-agents", () => ({
   },
 }))
 
-const mockSDK = {
-  session: {
-    create: vi.fn(() => Promise.resolve({ data: { id: "new-session-id" } })),
-    get: vi.fn(() => Promise.resolve({ data: { id: "session-1", title: "Test Session" } })),
-    messages: vi.fn(() => Promise.resolve({ data: [] })),
-    prompt: vi.fn(() => Promise.resolve({ data: {} })),
-    delete: vi.fn(() => Promise.resolve()),
-    abort: vi.fn(() => Promise.resolve()),
-    fork: vi.fn(() => Promise.resolve({ data: { id: "forked-session-id" } })),
-    revert: vi.fn(() => Promise.resolve({ data: { revert: null } })),
-    unrevert: vi.fn(() => Promise.resolve()),
-  },
-}
-
 const mockSessions = [
   { id: "session-1", name: "Test Session", created_at: "2024-01-01", cwd: "/mock/cwd/1" },
   { id: "session-2", name: "Another Session", created_at: "2024-01-02", cwd: "/mock/cwd/2" },
@@ -65,6 +51,12 @@ import { useSessions } from "./use-sessions"
 import { useSessionStore } from "@/context/session-store"
 import { useModelStore } from "@/hooks/use-models"
 import { useCurrentSession } from "@/hooks/use-session-data"
+
+const mockPrompt = vi.mocked(window.desktopBridge!.agent.prompt)
+const mockAbort = vi.mocked(window.desktopBridge!.agent.abort)
+const mockNavigateTree = vi.mocked(window.desktopBridge!.agent.navigateTree)
+const mockGetSession = vi.mocked(window.desktopBridge!.agent.getSession)
+const mockGetMessages = vi.mocked(window.desktopBridge!.agent.getMessages)
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -78,6 +70,15 @@ function createWrapper() {
 describe("use-sessions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPrompt.mockResolvedValue(undefined)
+    mockAbort.mockResolvedValue(undefined)
+    mockNavigateTree.mockResolvedValue({ cancelled: false })
+    mockGetSession.mockResolvedValue({
+      id: "session-1",
+      cwd: "/mock/cwd/1",
+      title: "Test Session",
+    })
+    mockGetMessages.mockResolvedValue([])
 
     useSessionStore.setState({
       currentSessionId: "session-1",
@@ -96,46 +97,23 @@ describe("use-sessions", () => {
   })
 
   describe("sendMessage", () => {
-    it("should use default anthropic model when no model selected", async () => {
+    it("sends prompts through the Pi bridge with the first-run skill hint", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       await act(async () => {
         await result.current.sendMessage("Hello")
       })
 
-      expect(mockSDK.session.prompt).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: {
-            providerID: "anthropic",
-            modelID: "claude-sonnet-4-20250514",
-          },
-        }),
-      )
+      expect(mockPrompt).toHaveBeenCalledWith({
+        sessionID: "session-1",
+        directory: "/mock/cwd/1",
+        text: "/skill:web-design Hello",
+        images: [],
+        model: null,
+      })
     })
 
-    it("should use opencode provider when selected", async () => {
-      ;(useModelStore.getState as Mock).mockReturnValue({
-        selectedModel: { providerID: "opencode", modelID: "big-pickle" },
-        variants: {},
-      })
-
-      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
-
-      await act(async () => {
-        await result.current.sendMessage("Hello")
-      })
-
-      expect(mockSDK.session.prompt).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: {
-            providerID: "opencode",
-            modelID: "big-pickle",
-          },
-        }),
-      )
-    })
-
-    it("should use selected model when non-opencode provider", async () => {
+    it("uses the selected model when one exists", async () => {
       ;(useModelStore.getState as Mock).mockReturnValue({
         selectedModel: { providerID: "google", modelID: "gemini-2.5-flash" },
         variants: {},
@@ -147,7 +125,7 @@ describe("use-sessions", () => {
         await result.current.sendMessage("Hello")
       })
 
-      expect(mockSDK.session.prompt).toHaveBeenCalledWith(
+      expect(mockPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
           model: {
             providerID: "google",
@@ -157,21 +135,7 @@ describe("use-sessions", () => {
       )
     })
 
-    it("should always use build agent", async () => {
-      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
-
-      await act(async () => {
-        await result.current.sendMessage("Hello")
-      })
-
-      expect(mockSDK.session.prompt).toHaveBeenCalledWith(
-        expect.objectContaining({
-          agent: "build",
-        }),
-      )
-    })
-
-    it("should not send message when currentSession is null", async () => {
+    it("does not send when currentSession is null", async () => {
       useSessionStore.setState({ currentSessionId: "session-1" })
       ;(useCurrentSession as unknown as Mock).mockReturnValueOnce(null)
 
@@ -181,53 +145,32 @@ describe("use-sessions", () => {
         await result.current.sendMessage("Hello")
       })
 
-      expect(mockSDK.session.prompt).not.toHaveBeenCalled()
+      expect(mockPrompt).not.toHaveBeenCalled()
     })
 
-    it("should not send message when currentSessionId is null", async () => {
-      useSessionStore.setState({ currentSessionId: "non-existent-session" })
-
+    it("passes image attachments through the Pi bridge", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       await act(async () => {
-        await result.current.sendMessage("Hello")
+        await result.current.sendMessage("Hello with image", [
+          {
+            type: "file",
+            url: "data:image/png;base64,abc",
+            mediaType: "image/png",
+            filename: "test.png",
+          },
+        ])
       })
 
-      expect(mockSDK.session.prompt).not.toHaveBeenCalled()
-    })
-
-    it("should include file parts when files are provided", async () => {
-      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
-
-      const files = [
-        {
-          type: "file" as const,
-          url: "data:image/png;base64,abc",
-          mediaType: "image/png",
-          filename: "test.png",
-        },
-      ]
-
-      await act(async () => {
-        await result.current.sendMessage("Hello with image", files)
-      })
-
-      expect(mockSDK.session.prompt).toHaveBeenCalledWith(
+      expect(mockPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
-          parts: [
-            { type: "text", text: "[Use web-design skill]\n\nHello with image" },
-            {
-              type: "file",
-              mime: "image/png",
-              url: "data:image/png;base64,abc",
-              filename: "test.png",
-            },
-          ],
+          text: "/skill:web-design Hello with image",
+          images: [{ type: "image", mimeType: "image/png", data: "abc" }],
         }),
       )
     })
 
-    it("should set session status to running when sending", async () => {
+    it("sets session status to running when sending", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       await act(async () => {
@@ -237,8 +180,8 @@ describe("use-sessions", () => {
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("running")
     })
 
-    it("should handle SDK errors gracefully", async () => {
-      mockSDK.session.prompt.mockRejectedValueOnce(new Error("API Error"))
+    it("handles prompt errors gracefully", async () => {
+      mockPrompt.mockRejectedValueOnce(new Error("API Error"))
 
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
@@ -254,19 +197,19 @@ describe("use-sessions", () => {
   })
 
   describe("session management", () => {
-    it("should return sessions from query", () => {
+    it("returns sessions from query", () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       expect(result.current.sessions).toEqual(mockSessions)
     })
 
-    it("should return current session based on currentSessionId", () => {
+    it("returns current session based on currentSessionId", () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       expect(result.current.currentSession).toEqual(mockSessions[0])
     })
 
-    it("should return isServerReady state", () => {
+    it("returns isServerReady state", () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       expect(result.current.isServerReady).toBe(true)
@@ -274,18 +217,36 @@ describe("use-sessions", () => {
   })
 
   describe("stopSession", () => {
-    it("should call abort and set status to idle", async () => {
+    it("aborts the Pi session and sets status to idle", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       await act(async () => {
         await result.current.stopSession()
       })
 
-      expect(mockSDK.session.abort).toHaveBeenCalledWith({
-        sessionID: "session-1",
-        directory: "/mock/cwd/1",
-      })
+      expect(mockAbort).toHaveBeenCalledWith({ sessionID: "session-1" })
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("idle")
+    })
+  })
+
+  describe("tree navigation", () => {
+    it("uses Pi tree navigation for timeline revert", async () => {
+      useSessionStore
+        .getState()
+        .setSessionRevert("session-1", { messageID: "stale-message" })
+
+      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await result.current.revertToMessage("msg-1")
+      })
+
+      expect(mockNavigateTree).toHaveBeenCalledWith({
+        sessionID: "session-1",
+        targetId: "msg-1",
+        summarize: false,
+      })
+      expect(useSessionStore.getState().sessionRevert["session-1"]).toBeNull()
     })
   })
 })
