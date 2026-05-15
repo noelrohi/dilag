@@ -711,7 +711,17 @@ export const useSessionStore = create<SessionState>()(
         }
 
         if (isEventSessionIdle(event)) {
-          setSessionStatus(event.properties.sessionID, "idle")
+          const { sessionID } = event.properties
+          const completed = Date.now()
+          set((state) => {
+            state.sessionStatus[sessionID] = "idle"
+            for (const message of state.messages[sessionID] ?? []) {
+              if (message.isStreaming) {
+                message.isStreaming = false
+                message.time.completed ??= completed
+              }
+            }
+          })
           return
         }
 

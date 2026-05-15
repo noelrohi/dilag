@@ -360,6 +360,29 @@ describe("session-store", () => {
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("running")
     })
 
+    it("should stop streaming assistant messages when session becomes idle", () => {
+      const sessionId = "session-1"
+      useSessionStore.getState().setMessages(sessionId, [
+        {
+          id: "assistant-1",
+          sessionID: sessionId,
+          role: "assistant",
+          time: { created: 1000 },
+          isStreaming: true,
+        },
+      ])
+
+      useSessionStore.getState().handleEvent({
+        type: "session.idle",
+        properties: { sessionID: sessionId },
+      } as any)
+
+      const message = useSessionStore.getState().messages[sessionId][0]
+      expect(useSessionStore.getState().sessionStatus[sessionId]).toBe("idle")
+      expect(message.isStreaming).toBe(false)
+      expect(message.time.completed).toEqual(expect.any(Number))
+    })
+
     it("should handle message.part.updated event", () => {
       const event = {
         type: "message.part.updated" as const,
