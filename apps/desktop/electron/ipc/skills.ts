@@ -3,7 +3,6 @@ import fsp from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import type { SkillInfo, SkillInstallResult, SkillPreviewResult } from "@dilag/desktop-bridge"
-import { getOpencodeConfigDir } from "./paths.js"
 import { runCommand } from "./processes.js"
 
 function stripAnsi(input: string): string {
@@ -43,36 +42,21 @@ function validateSkillSource(source: string) {
   }
 }
 
-async function syncCanonicalSkills() {
-  const canonicalDir = path.join(os.homedir(), ".agents", "skills")
-  const targetDir = path.join(getOpencodeConfigDir(), "skill")
-  if (!fs.existsSync(canonicalDir)) return
-  await fsp.mkdir(targetDir, { recursive: true })
-  for (const entry of await fsp.readdir(canonicalDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    const source = path.join(canonicalDir, entry.name)
-    const dest = path.join(targetDir, entry.name)
-    if (!fs.existsSync(dest)) await fsp.symlink(source, dest, "dir")
-  }
+function getGlobalAgentSkillsDir(): string {
+  return path.join(os.homedir(), ".agents", "skills")
 }
 
 export async function listInstalledSkills(): Promise<SkillInfo[]> {
-  const configDir = getOpencodeConfigDir()
+  const skillDir = getGlobalAgentSkillsDir()
   const skills: SkillInfo[] = []
-  const seen = new Set<string>()
-  for (const dirName of ["skill", "skills"]) {
-    const skillDir = path.join(configDir, dirName)
-    const entries = await fsp.readdir(skillDir, { withFileTypes: true }).catch(() => [])
-    for (const entry of entries) {
-      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-      if (seen.has(entry.name)) continue
-      seen.add(entry.name)
-      skills.push({
-        name: entry.name,
-        path: path.join(skillDir, entry.name),
-        is_symlink: entry.isSymbolicLink(),
-      })
-    }
+  const entries = await fsp.readdir(skillDir, { withFileTypes: true }).catch(() => [])
+  for (const entry of entries) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+    skills.push({
+      name: entry.name,
+      path: path.join(skillDir, entry.name),
+      is_symlink: entry.isSymbolicLink(),
+    })
   }
   return skills.sort((a, b) => a.name.localeCompare(b.name))
 }
@@ -104,25 +88,18 @@ export async function installSkills(
     ...skillNames.flatMap((name) => ["-s", name]),
     "-g",
     "-y",
-    "-a",
-    "opencode",
   ]
   const output = await runCommand("npx", installArgs)
   if (output.code !== 0)
     return { success: false, installed: [], error: output.stderr || "Installation failed" }
-  await syncCanonicalSkills()
-  const configDir = getOpencodeConfigDir()
-  const installed = skillNames.filter((name) =>
-    ["skill", "skills"].some((dir) => fs.existsSync(path.join(configDir, dir, name))),
-  )
+  const skillDir = getGlobalAgentSkillsDir()
+  const installed = skillNames.filter((name) => fs.existsSync(path.join(skillDir, name)))
   return { success: true, installed, error: null }
 }
 
 export async function removeSkill(skillName: string): Promise<void> {
-  for (const dirName of ["skill", "skills"]) {
-    await fsp.rm(path.join(getOpencodeConfigDir(), dirName, skillName), {
-      recursive: true,
-      force: true,
-    })
-  }
+  await fsp.rm(path.join(getGlobalAgentSkillsDir(), skillName), {
+    recursive: true,
+    force: true,
+  })
 }

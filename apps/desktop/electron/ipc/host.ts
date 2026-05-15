@@ -6,16 +6,28 @@ import { CHANNELS } from "../shared/channels.js"
 import type { UpdateDownloadEvent } from "@dilag/desktop-bridge"
 import { copyHtmlFiles, loadDesignsForSession, validateHtml } from "./designs.js"
 import {
-  checkBunInstallation,
-  checkOpencodeInstallation,
-  getBootstrapPort,
-  initializeOpencodeHost,
-  installDependencies,
-  isOpencodeRunning,
-  restartOpencode,
-  startOpencode,
-  stopOpencode,
-} from "./opencode.js"
+  abortAgentSession,
+  createAgentSessionForDirectory,
+  deleteAgentSession,
+  getAgentMessages,
+  getAgentProviderData,
+  getAgentRuntimeInfo,
+  getAgentSession,
+  getAgentTree,
+  isAgentRuntimeRunning,
+  listAgentProviders,
+  listAgentQuestions,
+  navigateAgentTree,
+  promptAgentSession,
+  rejectAgentQuestion,
+  renameAgentSession,
+  replyAgentQuestion,
+  restartAgentRuntime,
+  setAgentApiKey,
+  setAgentEventSender,
+  startAgentRuntime,
+  stopAgentRuntime,
+} from "./pi.js"
 import { getDilagDir } from "./paths.js"
 import { listProjectFiles, readProjectFile } from "./project.js"
 import { calculateDirSize } from "./storage.js"
@@ -29,14 +41,17 @@ import {
 } from "./sessions.js"
 import { installSkills, listInstalledSkills, previewSkills, removeSkill } from "./skills.js"
 
-export { getBootstrapPort }
-
 export function initializeHost() {
-  return initializeOpencodeHost()
+  return startAgentRuntime()
+}
+
+export function getBootstrapPort() {
+  return 0
 }
 
 export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   autoUpdater.autoDownload = false
+  setAgentEventSender((channel, event) => getWindow()?.webContents.send(channel, event))
 
   ipcMain.handle(CHANNELS.app.getInfo, async () => ({
     version: app.getVersion(),
@@ -44,20 +59,77 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
     data_size_bytes: await calculateDirSize(getDilagDir()),
   }))
   ipcMain.handle(CHANNELS.app.resetAllData, async () => {
-    await stopOpencode()
+    await stopAgentRuntime()
     await fsp.rm(getDilagDir(), { recursive: true, force: true })
     app.relaunch()
     app.exit(0)
   })
 
-  ipcMain.handle(CHANNELS.opencode.getPort, getBootstrapPort)
-  ipcMain.handle(CHANNELS.opencode.start, startOpencode)
-  ipcMain.handle(CHANNELS.opencode.stop, stopOpencode)
-  ipcMain.handle(CHANNELS.opencode.restart, restartOpencode)
-  ipcMain.handle(CHANNELS.opencode.isRunning, isOpencodeRunning)
-  ipcMain.handle(CHANNELS.opencode.checkInstallation, checkOpencodeInstallation)
-  ipcMain.handle(CHANNELS.opencode.checkBunInstallation, checkBunInstallation)
-  ipcMain.handle(CHANNELS.opencode.installDependencies, installDependencies)
+  ipcMain.handle(CHANNELS.agent.getInfo, getAgentRuntimeInfo)
+  ipcMain.handle(CHANNELS.agent.start, startAgentRuntime)
+  ipcMain.handle(CHANNELS.agent.stop, stopAgentRuntime)
+  ipcMain.handle(CHANNELS.agent.restart, restartAgentRuntime)
+  ipcMain.handle(CHANNELS.agent.isRunning, isAgentRuntimeRunning)
+  ipcMain.handle(CHANNELS.agent.getProviderData, getAgentProviderData)
+  ipcMain.handle(CHANNELS.agent.listProviders, listAgentProviders)
+  ipcMain.handle(CHANNELS.agent.setApiKey, (_event, args: { providerID: string; apiKey: string }) =>
+    setAgentApiKey(args),
+  )
+  ipcMain.handle(CHANNELS.agent.createSession, (_event, args: { directory: string }) =>
+    createAgentSessionForDirectory(args),
+  )
+  ipcMain.handle(
+    CHANNELS.agent.getSession,
+    (_event, args: { sessionID: string; directory: string }) => getAgentSession(args),
+  )
+  ipcMain.handle(
+    CHANNELS.agent.getMessages,
+    (_event, args: { sessionID: string; directory: string }) => getAgentMessages(args),
+  )
+  ipcMain.handle(
+    CHANNELS.agent.prompt,
+    (
+      _event,
+      args: {
+        sessionID: string
+        directory: string
+        text: string
+        images?: Array<{ type: "image"; data: string; mimeType: string }>
+        model?: { providerID: string; modelID: string } | null
+      },
+    ) => promptAgentSession(args),
+  )
+  ipcMain.handle(CHANNELS.agent.abort, (_event, args: { sessionID: string }) =>
+    abortAgentSession(args),
+  )
+  ipcMain.handle(CHANNELS.agent.renameSession, (_event, args: { sessionID: string; name: string }) =>
+    renameAgentSession(args),
+  )
+  ipcMain.handle(CHANNELS.agent.deleteSession, (_event, args: { sessionID: string }) =>
+    deleteAgentSession(args),
+  )
+  ipcMain.handle(CHANNELS.agent.listQuestions, listAgentQuestions)
+  ipcMain.handle(CHANNELS.agent.replyQuestion, (_event, args: { requestID: string; answers: string[][] }) =>
+    replyAgentQuestion(args),
+  )
+  ipcMain.handle(CHANNELS.agent.rejectQuestion, (_event, args: { requestID: string }) =>
+    rejectAgentQuestion(args),
+  )
+  ipcMain.handle(CHANNELS.agent.getTree, (_event, args: { sessionID: string }) => getAgentTree(args))
+  ipcMain.handle(
+    CHANNELS.agent.navigateTree,
+    (
+      _event,
+      args: {
+        sessionID: string
+        targetId: string
+        summarize?: boolean
+        customInstructions?: string
+        replaceInstructions?: boolean
+        label?: string
+      },
+    ) => navigateAgentTree(args),
+  )
 
   ipcMain.handle(CHANNELS.sessions.createDir, (_event, args: { sessionId: string }) =>
     createSessionDir(args.sessionId),

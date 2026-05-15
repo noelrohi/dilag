@@ -12,15 +12,28 @@ const noopUnsubscribe = () => {}
 
 const desktopBridgeMock: DesktopBridge = {
   app: { getInfo: vi.fn(), resetAllData: vi.fn() },
-  opencode: {
-    getPort: vi.fn(),
+  agent: {
+    getInfo: vi.fn(),
     start: vi.fn(),
     stop: vi.fn(),
     restart: vi.fn(),
     isRunning: vi.fn(),
-    checkInstallation: vi.fn(),
-    checkBunInstallation: vi.fn(),
-    installDependencies: vi.fn(),
+    getProviderData: vi.fn(),
+    listProviders: vi.fn(),
+    setApiKey: vi.fn(),
+    createSession: vi.fn(),
+    getSession: vi.fn(),
+    getMessages: vi.fn(),
+    prompt: vi.fn(),
+    abort: vi.fn(),
+    renameSession: vi.fn(),
+    deleteSession: vi.fn(),
+    listQuestions: vi.fn(),
+    replyQuestion: vi.fn(),
+    rejectQuestion: vi.fn(),
+    getTree: vi.fn(),
+    navigateTree: vi.fn(),
+    onEvent: vi.fn(() => noopUnsubscribe),
   },
   skills: { list: vi.fn(), preview: vi.fn(), install: vi.fn(), remove: vi.fn() },
   sessions: {

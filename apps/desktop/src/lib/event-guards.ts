@@ -1,17 +1,105 @@
 /**
- * Type guards for OpenCode SDK events
- * Provides type-safe event handling without unsafe type assertions
+ * Type guards for agent runtime events.
+ * The Electron Pi adapter emits this stable event envelope for the renderer.
  */
 
-import type {
-  Event,
-  EventMessagePartUpdated,
-  EventMessageUpdated,
-  EventSessionStatus,
-  EventSessionDiff,
-  EventSessionIdle,
-  EventSessionError,
-} from "@opencode-ai/sdk/v2/client"
+export type ToolStateStatus = "pending" | "running" | "completed" | "error"
+
+export interface ToolState {
+  status: ToolStateStatus
+  input?: Record<string, unknown>
+  output?: string
+  error?: string
+  metadata?: Record<string, unknown>
+  time?: {
+    start?: number
+    end?: number
+  }
+}
+
+export interface SnapshotFileDiff {
+  file: string
+  additions?: number
+  deletions?: number
+}
+
+export interface Part {
+  id: string
+  sessionID?: string
+  messageID?: string
+  type: string
+  text?: string
+  tool?: string
+  state?: ToolState
+  mime?: string
+  url?: string
+  filename?: string
+  provider?: string
+  model?: string | { providerID?: string; modelID?: string }
+}
+
+export interface Event {
+  type: string
+  properties?: unknown
+}
+
+export interface EventMessagePartUpdated extends Event {
+  type: "message.part.updated"
+  properties: {
+    part: Part
+  }
+}
+
+export interface EventMessageUpdated extends Event {
+  type: "message.updated"
+  properties: {
+    info: {
+      id: string
+      sessionID: string
+      role: "user" | "assistant"
+      time: {
+        created: number
+        completed?: number
+      }
+    }
+  }
+}
+
+export interface EventSessionStatus extends Event {
+  type: "session.status"
+  properties: {
+    sessionID: string
+    status: {
+      type: string
+    }
+  }
+}
+
+export interface EventSessionDiff extends Event {
+  type: "session.diff"
+  properties: {
+    sessionID: string
+    diff: SnapshotFileDiff[]
+  }
+}
+
+export interface EventSessionIdle extends Event {
+  type: "session.idle"
+  properties: {
+    sessionID: string
+  }
+}
+
+export interface EventSessionError extends Event {
+  type: "session.error"
+  properties: {
+    sessionID?: string
+    error?: {
+      name: string
+      data?: Record<string, unknown>
+    }
+  }
+}
 
 // Custom event types not in SDK (or with additional properties we need)
 export interface EventMessageRemovedCustom {
