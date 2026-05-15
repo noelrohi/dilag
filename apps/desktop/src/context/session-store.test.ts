@@ -345,5 +345,37 @@ describe("session-store", () => {
       expect(parts).toHaveLength(1)
       expect(parts[0].text).toBe("Hello")
     })
+
+    it("should handle session.diff events synthesized from agent file writes", () => {
+      const event = {
+        type: "session.diff" as const,
+        properties: {
+          sessionID: "session-1",
+          diff: [{ file: "screens/home.html", additions: 12, deletions: 3 }],
+        },
+      }
+
+      useSessionStore.getState().handleEvent(event as any)
+
+      expect(useSessionStore.getState().sessionDiffs["session-1"]).toEqual([
+        { file: "screens/home.html", additions: 12, deletions: 3 },
+      ])
+    })
+
+    it("should handle file watcher events synthesized from agent file writes", () => {
+      const event = {
+        type: "file.watcher.updated" as const,
+        properties: {
+          file: "screens/home.html",
+          event: "change" as const,
+        },
+      }
+
+      useSessionStore.getState().handleEvent(event as any)
+
+      expect(useSessionStore.getState().recentFileChanges).toMatchObject([
+        { file: "screens/home.html", event: "change" },
+      ])
+    })
   })
 })

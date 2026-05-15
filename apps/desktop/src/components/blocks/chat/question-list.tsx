@@ -7,8 +7,7 @@ import {
 } from "@/context/session-store"
 import { QuestionPrompt } from "@/components/ai-elements/question-prompt"
 import { cn } from "@/lib/utils"
-import { useSessionsList } from "@/hooks/use-session-data"
-import { useSDK } from "@/context/global-events"
+import { bridge } from "@/lib/bridge"
 
 // Timeout for question reply requests (30 seconds)
 const QUESTION_REPLY_TIMEOUT = 30000
@@ -19,25 +18,13 @@ interface QuestionListProps {
 }
 
 export function QuestionList({ sessionId, className }: QuestionListProps) {
-  const sdk = useSDK()
   const currentSessionId = useCurrentSessionId()
   const effectiveSessionId = sessionId ?? currentSessionId
   const pendingQuestions = usePendingQuestions(effectiveSessionId)
   const removePendingQuestion = useSessionStore((s) => s.removePendingQuestion)
-  const { data: sessions = [] } = useSessionsList()
-
-  // Get the session's directory (cwd) for API calls
-  const getSessionDirectory = useCallback(
-    (sessionID: string): string | undefined => {
-      const session = sessions.find((s) => s.id === sessionID)
-      return session?.cwd
-    },
-    [sessions],
-  )
 
   const handleReply = useCallback(
     async (request: QuestionRequest, answers: string[][]) => {
-      const directory = getSessionDirectory(request.sessionID)
       try {
         // Create a timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -45,24 +32,17 @@ export function QuestionList({ sessionId, className }: QuestionListProps) {
         })
 
         // Race between the actual reply and timeout
-        const response = await Promise.race([
-          sdk.question.reply({
+        await Promise.race([
+          bridge.agent.replyQuestion({
             requestID: request.id,
-            directory,
             answers,
           }),
           timeoutPromise,
         ])
 
-        if (response.data !== undefined && effectiveSessionId) {
+        if (effectiveSessionId) {
           removePendingQuestion(effectiveSessionId, request.id)
           console.log("[QuestionList] Question reply successful, removed from store")
-        } else {
-          console.error("[QuestionList] Failed to reply:", response.error)
-          // Still remove on error to prevent stuck state
-          if (effectiveSessionId) {
-            removePendingQuestion(effectiveSessionId, request.id)
-          }
         }
       } catch (err) {
         console.error("[QuestionList] Failed to reply:", err)
@@ -73,12 +53,11 @@ export function QuestionList({ sessionId, className }: QuestionListProps) {
         }
       }
     },
-    [effectiveSessionId, removePendingQuestion, getSessionDirectory, sdk],
+    [effectiveSessionId, removePendingQuestion],
   )
 
   const handleReject = useCallback(
     async (request: QuestionRequest) => {
-      const directory = getSessionDirectory(request.sessionID)
       try {
         // Create a timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -86,23 +65,16 @@ export function QuestionList({ sessionId, className }: QuestionListProps) {
         })
 
         // Race between the actual reject and timeout
-        const response = await Promise.race([
-          sdk.question.reject({
+        await Promise.race([
+          bridge.agent.rejectQuestion({
             requestID: request.id,
-            directory,
           }),
           timeoutPromise,
         ])
 
-        if (response.data !== undefined && effectiveSessionId) {
+        if (effectiveSessionId) {
           removePendingQuestion(effectiveSessionId, request.id)
           console.log("[QuestionList] Question reject successful, removed from store")
-        } else {
-          console.error("[QuestionList] Failed to reject:", response.error)
-          // Still remove on error to prevent stuck state
-          if (effectiveSessionId) {
-            removePendingQuestion(effectiveSessionId, request.id)
-          }
         }
       } catch (err) {
         console.error("[QuestionList] Failed to reject:", err)
@@ -113,7 +85,7 @@ export function QuestionList({ sessionId, className }: QuestionListProps) {
         }
       }
     },
-    [effectiveSessionId, removePendingQuestion, getSessionDirectory, sdk],
+    [effectiveSessionId, removePendingQuestion],
   )
 
   if (!effectiveSessionId || pendingQuestions.length === 0) {

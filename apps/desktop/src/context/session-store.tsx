@@ -2,7 +2,6 @@ import { useMemo } from "react"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
-import type { Event, SnapshotFileDiff as FileDiff, ToolState } from "@opencode-ai/sdk/v2/client"
 import {
   isEventMessagePartUpdated,
   isEventMessageUpdated,
@@ -26,6 +25,9 @@ import {
   type EventQuestionAsked,
   type EventQuestionReplied,
   type EventQuestionRejected,
+  type Event,
+  type SnapshotFileDiff as FileDiff,
+  type ToolState,
 } from "@/lib/event-guards"
 
 // Re-export types for consumers
@@ -49,7 +51,7 @@ export interface SessionMeta {
   id: string
   name: string
   created_at: string
-  updated_at?: string // Last activity timestamp (synced from OpenCode SDK)
+  updated_at?: string // Last activity timestamp from the agent runtime
   cwd: string
   parentID?: string // Reference to parent session if forked
   platform?: Platform // "web" (default) or "mobile"
@@ -961,7 +963,7 @@ export function useRunningQuestionTools(sessionId: string | null): RunningQuesti
             partId: part.id,
             callId:
               part.state && "input" in part.state
-                ? (((part.state as Record<string, unknown>).callID as string) ?? part.id)
+                ? (((part.state as unknown as Record<string, unknown>).callID as string) ?? part.id)
                 : part.id,
             startTime: state.time?.start ?? Date.now(),
           })
@@ -1000,7 +1002,7 @@ export function useRunningPermissionTools(sessionId: string | null): RunningPerm
             partId: part.id,
             callId:
               part.state && "input" in part.state
-                ? (((part.state as Record<string, unknown>).callID as string) ?? part.id)
+                ? (((part.state as unknown as Record<string, unknown>).callID as string) ?? part.id)
                 : part.id,
             tool: part.tool,
             startTime: state.time?.start ?? Date.now(),
@@ -1014,7 +1016,7 @@ export function useRunningPermissionTools(sessionId: string | null): RunningPerm
 }
 
 // Hook that returns messages filtered by revert state
-// If session is reverted, only shows messages BEFORE the revert point (matching OpenCode's pattern)
+// If session is reverted, only shows messages before the revert point.
 // The revert messageID is the FIRST message to be hidden
 export function useFilteredSessionMessages(sessionId: string | null) {
   const messages = useSessionStore((state) =>

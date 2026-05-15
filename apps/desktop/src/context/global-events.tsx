@@ -1,51 +1,35 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
-  useCallback,
   type ReactNode,
 } from "react"
-import { createOpencodeClient, type Event, type OpencodeClient } from "@opencode-ai/sdk/v2/client"
-import { extractSessionId } from "@/lib/event-guards"
+import { extractSessionId, type Event } from "@/lib/event-guards"
 import { useSessionStore } from "@/context/session-store"
 import { bridge } from "@/lib/bridge"
 
-export type { Event } from "@opencode-ai/sdk/v2/client"
 export type {
+  Event,
   EventMessagePartUpdated,
   EventMessageUpdated,
   EventSessionStatus,
-  EventSessionUpdated,
+  EventSessionUpdatedCustom as EventSessionUpdated,
   EventSessionDiff,
   EventSessionIdle,
   EventSessionError,
-  SessionStatus,
   Part,
   ToolState,
   SnapshotFileDiff as FileDiff,
-} from "@opencode-ai/sdk/v2/client"
-
-function getOpenCodePort(): number {
-  return bridge.bootstrap.port || 4096
-}
-
-// SSE Reconnection Configuration
-const SSE_CONFIG = {
-  defaultRetryDelay: 3000, // 3 seconds initial delay
-  maxRetryDelay: 30000, // 30 seconds max delay
-  maxRetryAttempts: undefined, // Unlimited retries by default
-  backoffFactor: 2, // Double delay each attempt
-}
+} from "@/lib/event-guards"
 
 type EventHandler = (event: Event) => void
 
-// Connection status type
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "reconnecting"
 
 interface GlobalEventsContextValue {
-  sdk: OpencodeClient
   subscribe: (handler: EventHandler) => () => void
   subscribeToSession: (sessionId: string, handler: EventHandler) => () => void
   connectionStatus: ConnectionStatus
@@ -62,39 +46,17 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
   const [isServerReady, setIsServerReady] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
-  const [reconnectAttempt, setReconnectAttempt] = useState(0)
+  const [reconnectAttempt] = useState(0)
   const handlersRef = useRef<Set<EventHandler>>(new Set())
   const sessionHandlersRef = useRef<Map<string, Set<EventHandler>>>(new Map())
-  const abortControllerRef = useRef<AbortController | null>(null)
   const mountedRef = useRef(true)
   const bootstrapCallbacksRef = useRef<Set<() => void>>(new Set())
 
-  const sdkRef = useRef<OpencodeClient | null>(null)
-  if (!sdkRef.current) {
-    const port = getOpenCodePort()
-    const customFetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      if (init && typeof input === "string" && input.includes("/event")) {
-        // @ts-expect-error - timeout is a non-standard property
-        if (init) init.timeout = false
-      }
-      return fetch(input, init)
-    }
-
-    sdkRef.current = createOpencodeClient({
-      baseUrl: `http://127.0.0.1:${port}`,
-      fetch: customFetch,
-    })
-    console.log("[GlobalEvents] SDK created with port:", port)
-  }
-  const sdk = sdkRef.current
-
-  // Subscribe to all events
   const subscribe = useCallback((handler: EventHandler): (() => void) => {
     handlersRef.current.add(handler)
     return () => handlersRef.current.delete(handler)
   }, [])
 
-  // Subscribe to events for a specific session
   const subscribeToSession = useCallback(
     (sessionId: string, handler: EventHandler): (() => void) => {
       if (!sessionHandlersRef.current.has(sessionId)) {
@@ -113,191 +75,69 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  // Calculate retry delay with exponential backoff
-  const calculateRetryDelay = (attempt: number, serverRetryDelay?: number): number => {
-    // If server provided a retry delay, use it
-    if (serverRetryDelay !== undefined) {
-      return serverRetryDelay
-    }
-    // Otherwise use exponential backoff
-    const delay = SSE_CONFIG.defaultRetryDelay * Math.pow(SSE_CONFIG.backoffFactor, attempt - 1)
-    return Math.min(delay, SSE_CONFIG.maxRetryDelay)
-  }
-
-  // Bootstrap function to reload all state after reconnection
   const bootstrap = useCallback(async () => {
-    console.log("[GlobalEvents] Running bootstrap - syncing pending permissions and questions")
-
-    // Sync pending permissions from server.
-    // SDK v1.4 returns either `{ data }` or `{ data, response }` depending on the call path —
-    // guard both shapes.
-    try {
-      const result = (await sdk.permission.list()) as {
-        data?: unknown
-        response?: { ok: boolean }
-      }
-      const ok = result.response ? result.response.ok : true
-      if (ok && Array.isArray(result.data)) {
-        const permissions =
-          result.data as unknown as import("@/lib/event-guards").PermissionRequest[]
-        useSessionStore.getState().syncPendingPermissions(permissions)
-        console.log("[GlobalEvents] Synced", permissions.length, "pending permissions")
-      }
-    } catch (err) {
-      console.error("[GlobalEvents] Failed to sync permissions:", err)
-    }
+    console.log("[GlobalEvents] Running bootstrap - syncing pending questions")
 
     try {
-      const result = (await sdk.question.list()) as {
-        data?: unknown
-        response?: { ok: boolean }
-      }
-      const ok = result.response ? result.response.ok : true
-      if (ok && Array.isArray(result.data)) {
-        const questions = result.data as unknown as import("@/lib/event-guards").QuestionRequest[]
-        useSessionStore.getState().syncPendingQuestions(questions)
-        console.log("[GlobalEvents] Synced", questions.length, "pending questions")
-      }
+      const questions = await bridge.agent.listQuestions()
+      useSessionStore
+        .getState()
+        .syncPendingQuestions(questions as import("@/lib/event-guards").QuestionRequest[])
+      console.log("[GlobalEvents] Synced", questions.length, "pending questions")
     } catch (err) {
       console.error("[GlobalEvents] Failed to sync questions:", err)
     }
 
-    // Notify all registered bootstrap callbacks
     bootstrapCallbacksRef.current.forEach((callback) => callback())
-  }, [sdk])
+  }, [])
 
-  // Handle disposal events that require re-bootstrap
-  const handleDisposalEvent = useCallback(
-    (event: Event) => {
-      if (event.type === "global.disposed") {
-        console.log("[GlobalEvents] Global disposed - running full bootstrap")
-        bootstrap()
-      } else if (event.type === "server.instance.disposed") {
-        console.log("[GlobalEvents] Server instance disposed - running bootstrap")
-        bootstrap()
-      }
-    },
-    [bootstrap],
-  )
+  useEffect(() => {
+    mountedRef.current = true
+    let unsubscribe: (() => void) | undefined
 
-  // Connect to SSE with reconnection logic
-  const connectToSSE = useCallback(async () => {
-    let attempt = 0
-    let serverRetryDelay: number | undefined
-
-    while (mountedRef.current) {
-      // Check max retry attempts
-      if (SSE_CONFIG.maxRetryAttempts !== undefined && attempt >= SSE_CONFIG.maxRetryAttempts) {
-        console.log("[GlobalEvents] Max retry attempts reached, giving up")
-        setConnectionStatus("disconnected")
-        break
-      }
-
-      attempt++
-      setReconnectAttempt(attempt)
-
-      if (attempt === 1) {
-        setConnectionStatus("connecting")
-      } else {
-        setConnectionStatus("reconnecting")
-        console.log(`[GlobalEvents] Reconnection attempt ${attempt}...`)
-      }
+    async function init() {
+      console.log("[GlobalEvents] Starting agent runtime...")
+      setConnectionStatus("connecting")
 
       try {
-        console.log("[GlobalEvents] Connecting to event stream...")
-        const events = await sdk.global.event()
+        await bridge.agent.start()
+        console.log("[GlobalEvents] Agent runtime started")
 
-        if (!mountedRef.current) break
-
-        // Reset attempt counter on successful connection
-        attempt = 0
-        setReconnectAttempt(0)
+        if (!mountedRef.current) return
         setConnectionStatus("connected")
-        console.log("[GlobalEvents] Connected to event stream")
+        setIsServerReady(true)
+        setServerError(null)
 
-        // Run bootstrap to sync pending permissions/questions
-        // Always run on reconnection, optionally on first connection too
         await bootstrap()
 
-        // Process events
-        for await (const event of events.stream) {
-          if (!mountedRef.current) break
+        unsubscribe = bridge.agent.onEvent((payload) => {
+          const event = payload as Event
+          if (!mountedRef.current) return
 
-          const payload = event.payload
-
-          handleDisposalEvent(payload)
-          useSessionStore.getState().handleEvent(payload)
+          useSessionStore.getState().handleEvent(event)
 
           handlersRef.current.forEach((handler) => {
             try {
-              handler(payload)
+              handler(event)
             } catch (err) {
               console.error("[GlobalEvents] Handler error:", err)
             }
           })
 
-          // Notify session-specific handlers
-          const sessionId = extractSessionId(payload)
+          const sessionId = extractSessionId(event)
           if (sessionId) {
             const sessionHandlers = sessionHandlersRef.current.get(sessionId)
             sessionHandlers?.forEach((handler) => {
               try {
-                handler(payload)
+                handler(event)
               } catch (err) {
                 console.error("[GlobalEvents] Session handler error:", err)
               }
             })
           }
-        }
-
-        // Stream ended normally (server closed connection)
-        console.log("[GlobalEvents] Stream ended, will reconnect...")
+        })
       } catch (err) {
-        console.error("[GlobalEvents] Connection error:", err)
-
-        if (!mountedRef.current) break
-        setConnectionStatus("reconnecting")
-      }
-
-      // Calculate and wait for retry delay
-      const delay = calculateRetryDelay(attempt, serverRetryDelay)
-      console.log(`[GlobalEvents] Waiting ${delay}ms before retry...`)
-
-      await new Promise((resolve) => {
-        const timeout = setTimeout(resolve, delay)
-        // Allow abort to cancel the delay
-        if (abortControllerRef.current) {
-          abortControllerRef.current.signal.addEventListener(
-            "abort",
-            () => {
-              clearTimeout(timeout)
-              resolve(undefined)
-            },
-            { once: true },
-          )
-        }
-      })
-    }
-  }, [sdk, bootstrap, handleDisposalEvent])
-
-  // Start server and connect to event stream
-  useEffect(() => {
-    mountedRef.current = true
-    abortControllerRef.current = new AbortController()
-
-    async function init() {
-      console.log("[GlobalEvents] Starting OpenCode server...")
-      try {
-        const port = await bridge.opencode!.start()
-        console.log("[GlobalEvents] Server started on port", port)
-
-        if (!mountedRef.current) return
-        setIsServerReady(true)
-
-        // Start SSE connection with reconnection logic
-        await connectToSSE()
-      } catch (err) {
-        console.error("[GlobalEvents] Server start error:", err)
+        console.error("[GlobalEvents] Agent runtime start error:", err)
         if (mountedRef.current) {
           setIsServerReady(false)
           setServerError(err instanceof Error ? err.message : String(err))
@@ -310,15 +150,14 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mountedRef.current = false
-      abortControllerRef.current?.abort()
+      unsubscribe?.()
       console.log("[GlobalEvents] Cleanup - disconnected")
     }
-  }, [connectToSSE])
+  }, [bootstrap])
 
   return (
     <GlobalEventsContext.Provider
       value={{
-        sdk,
         subscribe,
         subscribeToSession,
         connectionStatus,
@@ -340,11 +179,6 @@ export function useGlobalEvents() {
     throw new Error("useGlobalEvents must be used within a GlobalEventsProvider")
   }
   return context
-}
-
-export function useSDK() {
-  const { sdk } = useGlobalEvents()
-  return sdk
 }
 
 export function useConnectionStatus() {

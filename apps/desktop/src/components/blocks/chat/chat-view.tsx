@@ -26,15 +26,12 @@ import {
 import { usePendingMessage } from "@/hooks/use-chat-interface"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import { useSessions } from "@/hooks/use-sessions"
-import { useSDK } from "@/context/global-events"
 import {
   useMessageParts,
   useSessionError,
   useSessionRevert,
   useSessionStore,
-  usePendingPermissions,
   usePendingQuestions,
-  useRunningPermissionTools,
   useRunningQuestionTools,
   type Message as SessionMessage,
 } from "@/context/session-store"
@@ -74,12 +71,12 @@ import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selecto
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
 import { TimelineDialog } from "@/components/blocks/dialogs/dialog-timeline"
 import { RevertBanner } from "./revert-banner"
-import { PermissionList } from "./permission-list"
 import { QuestionList } from "./question-list"
-import { StuckToolWarning } from "@/components/blocks/errors/stuck-tool-warning"
 import { AttachmentBridgeConnector } from "./attachment-bridge-connector"
 import type { MessagePart as MessagePartType } from "@/context/session-store"
+import type { FileNode } from "@dilag/desktop-bridge"
 import { toast } from "sonner"
+import { bridge } from "@/lib/bridge"
 
 const FILE_MENTION_SEARCH_DEBOUNCE_MS = 150
 const FILE_MENTION_SEARCH_LIMIT = 20
@@ -111,6 +108,19 @@ type MentionFileContent = {
 
 function getFileDisplayName(path: string): string {
   return path.split(/[\\/]/).pop() || path
+}
+
+function flattenFileNodes(nodes: FileNode[]): string[] {
+  const files: string[] = []
+  const visit = (node: FileNode) => {
+    if (node.isDir) {
+      node.children?.forEach(visit)
+      return
+    }
+    files.push(node.id)
+  }
+  nodes.forEach(visit)
+  return files
 }
 
 // Detect active @file mention at a given caret position.
@@ -216,27 +226,6 @@ const BUSY_FALLBACKS = [
   "Planning",
   "Cooking",
 ] as const
-
-function formatToolActivity(tool: string): string {
-  switch (tool) {
-    case "bash":
-      return "Running command"
-    case "read":
-    case "glob":
-    case "grep":
-      return "Searching project"
-    case "edit":
-    case "write":
-      return "Editing files"
-    case "webfetch":
-    case "websearch":
-      return "Browsing"
-    case "task":
-      return "Working"
-    default:
-      return `Running ${tool}`
-  }
-}
 
 function useBusyFallbackOnce(active: boolean): string {
   const [label, setLabel] = useState<string>(BUSY_FALLBACKS[0])
@@ -499,7 +488,14 @@ function AssistantMessage({
 }) {
   const parts = useMessageParts(message.id)
   const sessionError = useSessionError(message.sessionID)
-  const renderableParts = parts.filter(wouldRenderContent)
+  const nonReasoningParts = parts.filter(
+    (part) => part.type !== "reasoning" && wouldRenderContent(part),
+  )
+  const renderableParts = nonReasoningParts.length > 0 ? parts.filter(wouldRenderContent) : []
+
+  if (!message.isStreaming && renderableParts.length === 0 && !sessionError) {
+    return null
+  }
 
   return (
     <Message
@@ -594,7 +590,7 @@ function LoadingState() {
         </div>
         <div className="text-center space-y-1">
           <p className="text-sm font-medium">Starting server</p>
-          <p className="text-xs text-muted-foreground">Initializing OpenCode...</p>
+          <p className="text-xs text-muted-foreground">Initializing Pi...</p>
         </div>
       </div>
     </div>
@@ -614,7 +610,7 @@ function ErrorState({ error }: { error: string }) {
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-destructive">{error}</h3>
             <p className="text-xs text-muted-foreground">
-              Make sure OpenCode is installed and configured correctly.
+              Make sure Pi has an authenticated model provider configured.
             </p>
           </div>
         </div>
@@ -634,7 +630,6 @@ function ChatInputArea({
   stopSession: () => Promise<void>
   sessionCwd: string | null
 }) {
-  const sdk = useSDK()
   const composerTextareaId = useId()
   const { textInput, attachments, screenRefs } = usePromptInputController()
   const [caretPosition, setCaretPosition] = useState(0)
@@ -694,19 +689,18 @@ function ChatInputArea({
 
     const timer = window.setTimeout(async () => {
       try {
-        const response = await sdk.find.files({
-          directory: sessionCwd,
-          query: activeMention.query,
-          type: "file",
-          limit: FILE_MENTION_SEARCH_LIMIT,
-        })
+        const files = flattenFileNodes(await bridge.project.listFiles({ sessionCwd }))
+        const query = activeMention.query.trim().toLowerCase()
 
         if (requestId !== mentionSearchRequestRef.current) return
 
-        const results = (response.data ?? []).map((path) => ({
-          path,
-          displayName: getFileDisplayName(path),
-        }))
+        const results = files
+          .filter((path) => !query || path.toLowerCase().includes(query))
+          .slice(0, FILE_MENTION_SEARCH_LIMIT)
+          .map((path) => ({
+            path,
+            displayName: getFileDisplayName(path),
+          }))
         setMentionSearchResults(results)
         setHighlightedMentionIndex(0)
       } catch {
@@ -720,7 +714,7 @@ function ChatInputArea({
     }, FILE_MENTION_SEARCH_DEBOUNCE_MS)
 
     return () => window.clearTimeout(timer)
-  }, [activeMention, mentionOpen, sdk, sessionCwd])
+  }, [activeMention, mentionOpen, sessionCwd])
 
   const syncCaretPosition = useCallback((target: HTMLTextAreaElement | null) => {
     if (!target) return
@@ -827,14 +821,14 @@ function ChatInputArea({
 
     for (const file of mentionedFiles) {
       try {
-        const response = await sdk.file.read({
-          directory: sessionCwd ?? undefined,
-          path: file.path,
-        })
-        const content = response.data as MentionFileContent | undefined
-        if (!content || typeof content.content !== "string") {
+        if (!sessionCwd) {
           failedCount++
           continue
+        }
+        const fileContent = await bridge.project.readFile({ sessionCwd, filePath: file.path })
+        const content: MentionFileContent = {
+          content: fileContent,
+          mimeType: "text/plain",
         }
 
         const bytes = estimateMentionFileSizeBytes(content.content, content.encoding)
@@ -856,7 +850,7 @@ function ChatInputArea({
     }
 
     return { parts, tooLargeCount, failedCount }
-  }, [mentionedFiles, sdk, sessionCwd])
+  }, [mentionedFiles, sessionCwd])
 
   const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
     if (isLoading) return
@@ -1194,9 +1188,7 @@ export function ChatView() {
   }, [messages])
 
   // Activity cues (derived from available session events/state)
-  const pendingPermissions = usePendingPermissions(currentSessionId)
   const pendingQuestions = usePendingQuestions(currentSessionId)
-  const runningPermissionTools = useRunningPermissionTools(currentSessionId)
   const runningQuestionTools = useRunningQuestionTools(currentSessionId)
   const busyFallbackOnce = useBusyFallbackOnce(isLoading)
 
@@ -1205,15 +1197,6 @@ export function ChatView() {
 
     if (pendingQuestions.length > 0) {
       return "Waiting for your answer"
-    }
-
-    if (pendingPermissions.length > 0) {
-      return "Waiting for permission"
-    }
-
-    if (runningPermissionTools.length > 0) {
-      const oldest = [...runningPermissionTools].sort((a, b) => a.startTime - b.startTime)[0]
-      return formatToolActivity(oldest.tool)
     }
 
     if (runningQuestionTools.length > 0) {
@@ -1228,8 +1211,6 @@ export function ChatView() {
   }, [
     isLoading,
     pendingQuestions.length,
-    pendingPermissions.length,
-    runningPermissionTools,
     runningQuestionTools.length,
     sessionStatus,
     busyFallbackOnce,
@@ -1333,12 +1314,6 @@ export function ChatView() {
         <div className="shrink-0">
           {/* Question prompts - shown when AI is asking questions */}
           <QuestionList className="px-4 pb-2" />
-
-          {/* Warning for stuck question tools */}
-          <StuckToolWarning className="mx-4 mb-2" />
-
-          {/* Permission prompts - shown when permissions are pending */}
-          <PermissionList className="px-4 pb-2" />
 
           <ChatInputArea
             isLoading={isLoading}

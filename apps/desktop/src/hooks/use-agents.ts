@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useSDK } from "@/context/global-events"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 
@@ -69,17 +68,16 @@ function transformAgentData(
  * Hook to fetch agent data
  */
 export function useAgentData() {
-  const sdk = useSDK()
-
   return useQuery({
     queryKey: agentKeys.list(),
-    queryFn: async () => {
-      const response = await sdk.app.agents()
-      if (!response.data) {
-        throw new Error("No agent data received")
-      }
-      return transformAgentData(response.data)
-    },
+    queryFn: async () =>
+      transformAgentData([
+        {
+          name: "build",
+          description: "Dilag design builder",
+          mode: "primary",
+        },
+      ]),
     staleTime: 1000 * 60 * 5, // 5 minutes - agents don't change often
   })
 }
