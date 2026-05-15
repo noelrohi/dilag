@@ -1,80 +1,80 @@
-import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react"
+import { bridge } from "@/lib/bridge"
+import { cn } from "@/lib/utils"
 
-type SetupStage = "checking" | "missing" | "installing" | "installed" | "error";
+type SetupStage = "checking" | "missing" | "installing" | "installed" | "error"
 
 interface SetupWizardProps {
-  onComplete: () => void;
+  onComplete: () => void
 }
 
 export function SetupWizard({ onComplete }: SetupWizardProps) {
-  const [stage, setStage] = useState<SetupStage>("checking");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [stage, setStage] = useState<SetupStage>("checking")
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const checkDependencies = async () => {
-    setStage("checking");
-    setErrorMessage(null);
+    setStage("checking")
+    setErrorMessage(null)
 
     try {
-      const opencodeResult = await invoke<{
-        installed: boolean;
-        version: string | null;
-        error: string | null;
-      }>("check_opencode_installation");
+      const opencodeResult = (await bridge.opencode.checkInstallation()) as {
+        installed: boolean
+        version: string | null
+        error: string | null
+      }
 
       if (!opencodeResult.installed) {
-        setStage("missing");
-        return;
+        setStage("missing")
+        return
       }
 
-      const bunResult = await invoke<{
-        installed: boolean;
-        version: string | null;
-        error: string | null;
-      }>("check_bun_installation");
+      const bunResult = (await bridge.opencode.checkBunInstallation()) as {
+        installed: boolean
+        version: string | null
+        error: string | null
+      }
 
       if (!bunResult.installed) {
-        setStage("missing");
-        return;
+        setStage("missing")
+        return
       }
 
-      setStage("installed");
-      setTimeout(onComplete, 600);
+      setStage("installed")
+      setTimeout(onComplete, 600)
     } catch (err) {
-      setStage("error");
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      setStage("error")
+      setErrorMessage(err instanceof Error ? err.message : String(err))
     }
-  };
+  }
 
   const handleInstall = async () => {
-    setStage("installing");
-    setErrorMessage(null);
+    setStage("installing")
+    setErrorMessage(null)
 
     try {
-      const result = await invoke<{
-        stage: string;
-        message: string;
-        completed: boolean;
-        error: string | null;
-      }>("install_dependencies");
+      const result = (await bridge.opencode.installDependencies()) as {
+        stage: string
+        message: string
+        completed: boolean
+        error: string | null
+      }
 
       if (result.completed) {
         // Re-check to confirm installation
-        await checkDependencies();
+        await checkDependencies()
       } else {
-        setStage("error");
-        setErrorMessage(result.error || result.message);
+        setStage("error")
+        setErrorMessage(result.error || result.message)
       }
     } catch (err) {
-      setStage("error");
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      setStage("error")
+      setErrorMessage(err instanceof Error ? err.message : String(err))
     }
-  };
+  }
 
   useEffect(() => {
-    checkDependencies();
-  }, []);
+    checkDependencies()
+  }, [])
 
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-background">
@@ -88,7 +88,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               stage === "missing" && "bg-amber-500",
               stage === "installing" && "bg-primary animate-pulse",
               stage === "installed" && "bg-emerald-500",
-              stage === "error" && "bg-rose-500"
+              stage === "error" && "bg-rose-500",
             )}
           />
         </div>
@@ -99,15 +99,11 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             <p className="text-sm text-muted-foreground">Checking setup...</p>
           )}
 
-          {stage === "installed" && (
-            <p className="text-sm text-muted-foreground">Ready</p>
-          )}
+          {stage === "installed" && <p className="text-sm text-muted-foreground">Ready</p>}
 
           {stage === "missing" && (
             <>
-              <p className="text-sm text-foreground">
-                Install required dependencies
-              </p>
+              <p className="text-sm text-foreground">Install required dependencies</p>
               <p className="text-xs text-muted-foreground">
                 OpenCode and Bun are needed to continue
               </p>
@@ -117,9 +113,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           {stage === "installing" && (
             <>
               <p className="text-sm text-foreground">Installing...</p>
-              <p className="text-xs text-muted-foreground">
-                This may take a moment
-              </p>
+              <p className="text-xs text-muted-foreground">This may take a moment</p>
             </>
           )}
 
@@ -141,7 +135,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
               className={cn(
                 "h-9 px-5 rounded-full text-sm font-medium transition-all",
                 "bg-foreground text-background",
-                "hover:opacity-90 active:scale-[0.98]"
+                "hover:opacity-90 active:scale-[0.98]",
               )}
             >
               {stage === "error" ? "Try again" : "Install"}
@@ -157,5 +151,5 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         )}
       </div>
     </div>
-  );
+  )
 }

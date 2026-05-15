@@ -1,5 +1,5 @@
-import { SiteHeader } from "@/components/site-header";
-import FAQsFour from "@/components/faqs-4";
+import { SiteHeader } from "@/components/site-header"
+import FAQsFour from "@/components/faqs-4"
 
 export default function FAQPage() {
   return (
@@ -17,5 +17,5 @@ export default function FAQPage() {
         <FAQsFour />
       </main>
     </div>
-  );
+  )
 }

@@ -1,25 +1,25 @@
 /**
  * Element Inspector Script
- * 
+ *
  * This module generates JavaScript code to inject into iframe srcDoc
  * that enables element hover highlighting and click selection.
- * 
+ *
  * Communication happens via postMessage to the parent window.
  */
 
 export interface ElementInspectorMessage {
-  type: "element-hover" | "element-click" | "element-leave";
-  selector: string;
-  html: string;
-  tagName: string;
+  type: "element-hover" | "element-click" | "element-leave"
+  selector: string
+  html: string
+  tagName: string
   rect: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
+    x: number
+    y: number
+    width: number
+    height: number
+  }
   /** Ancestor path from parent to root (e.g., ["div.container", "section", "main"]) */
-  ancestorPath?: string[];
+  ancestorPath?: string[]
 }
 
 /**
@@ -68,7 +68,7 @@ function generateSelectorCode(): string {
 
       return selector;
     }
-  `;
+  `
 }
 
 /**
@@ -193,7 +193,7 @@ export function generateInspectorScript(): string {
         document.addEventListener('click', handleAnchorClick, { capture: true });
       })();
     </script>
-  `;
+  `
 }
 
 /**
@@ -217,7 +217,7 @@ export function generateInspectorStyles(): string {
         cursor: default !important;
       }
     </style>
-  `;
+  `
 }
 
 /**
@@ -226,16 +226,10 @@ export function generateInspectorStyles(): string {
  */
 export function injectInspector(html: string): string {
   // Inject styles into head
-  const stylesInjected = html.replace(
-    "</head>",
-    `${generateInspectorStyles()}</head>`
-  );
-  
+  const stylesInjected = html.replace("</head>", `${generateInspectorStyles()}</head>`)
+
   // Inject script at end of body
-  const scriptInjected = stylesInjected.replace(
-    "</body>",
-    `${generateInspectorScript()}</body>`
-  );
-  
-  return scriptInjected;
+  const scriptInjected = stylesInjected.replace("</body>", `${generateInspectorScript()}</body>`)
+
+  return scriptInjected
 }

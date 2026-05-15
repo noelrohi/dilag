@@ -1,17 +1,23 @@
-import { useMemo } from "react";
-import { ClockCircle, BranchingPathsUp, UndoLeft } from "@solar-icons/react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@dilag/ui/dialog";
-import { Button } from "@dilag/ui/button";
-import { ScrollArea } from "@dilag/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip";
-import { useMessageParts, type Message as SessionMessage } from "@/context/session-store";
+import { useMemo } from "react"
+import { ClockCircle, BranchingPathsUp, UndoLeft } from "@solar-icons/react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@dilag/ui/dialog"
+import { Button } from "@dilag/ui/button"
+import { ScrollArea } from "@dilag/ui/scroll-area"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
+import { useMessageParts, type Message as SessionMessage } from "@/context/session-store"
 
 interface TimelineDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  messages: SessionMessage[];
-  onFork: (messageId: string) => void;
-  onRevert: (messageId: string) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  messages: SessionMessage[]
+  onFork: (messageId: string) => void
+  onRevert: (messageId: string) => void
 }
 
 function TimelineItem({
@@ -19,27 +25,24 @@ function TimelineItem({
   onFork,
   onRevert,
 }: {
-  message: SessionMessage;
-  onFork: (messageId: string) => void;
-  onRevert: (messageId: string) => void;
+  message: SessionMessage
+  onFork: (messageId: string) => void
+  onRevert: (messageId: string) => void
 }) {
-  const parts = useMessageParts(message.id);
+  const parts = useMessageParts(message.id)
   const textContent = parts
     .filter((p) => p.type === "text" && p.text)
     .map((p) => p.text!)
-    .join("");
+    .join("")
 
-  const truncatedText =
-    textContent.length > 50 ? textContent.slice(0, 50) + "..." : textContent;
+  const truncatedText = textContent.length > 50 ? textContent.slice(0, 50) + "..." : textContent
 
-  const timeFormatted = new Date(message.time.created).toLocaleString();
+  const timeFormatted = new Date(message.time.created).toLocaleString()
 
   return (
     <div className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">
-          {truncatedText || "Empty message"}
-        </p>
+        <p className="text-sm font-medium truncate">{truncatedText || "Empty message"}</p>
         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
           <ClockCircle size={12} />
           {timeFormatted}
@@ -74,7 +77,7 @@ function TimelineItem({
         </Tooltip>
       </div>
     </div>
-  );
+  )
 }
 
 export function TimelineDialog({
@@ -87,18 +90,18 @@ export function TimelineDialog({
   // Filter to only user messages and reverse to show most recent first
   const userMessages = useMemo(
     () => messages.filter((m) => m.role === "user").reverse(),
-    [messages]
-  );
+    [messages],
+  )
 
   const handleFork = (messageId: string) => {
-    onFork(messageId);
-    onOpenChange(false);
-  };
+    onFork(messageId)
+    onOpenChange(false)
+  }
 
   const handleRevert = (messageId: string) => {
-    onRevert(messageId);
-    onOpenChange(false);
-  };
+    onRevert(messageId)
+    onOpenChange(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,16 +109,13 @@ export function TimelineDialog({
         <DialogHeader>
           <DialogTitle>Session Timeline</DialogTitle>
           <DialogDescription>
-            Navigate through your conversation history. Fork or revert from any
-            point.
+            Navigate through your conversation history. Fork or revert from any point.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] -mx-6 px-6">
           <div className="space-y-1 overflow-hidden">
             {userMessages.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No messages yet
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-8">No messages yet</p>
             ) : (
               userMessages.map((message) => (
                 <TimelineItem
@@ -130,5 +130,5 @@ export function TimelineDialog({
         </ScrollArea>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -1,4 +1,4 @@
-import type { SupportedLanguages } from "@pierre/diffs";
+import type { SupportedLanguages } from "@pierre/diffs"
 
 /**
  * Map of file extensions to Shiki language identifiers
@@ -63,7 +63,7 @@ const EXTENSION_MAP: Record<string, SupportedLanguages> = {
   vim: "vim",
   dockerfile: "dockerfile",
   makefile: "makefile",
-};
+}
 
 /**
  * Special filenames that map to specific languages
@@ -84,7 +84,7 @@ const FILENAME_MAP: Record<string, SupportedLanguages> = {
   "tsconfig.json": "jsonc",
   "package.json": "json",
   "bun.lockb": "text",
-};
+}
 
 /**
  * Infer the programming language from a filename
@@ -93,22 +93,22 @@ const FILENAME_MAP: Record<string, SupportedLanguages> = {
  */
 export function inferLanguage(filename: string): SupportedLanguages {
   // Get the basename (last part of the path)
-  const basename = filename.split("/").pop()?.toLowerCase() ?? "";
+  const basename = filename.split("/").pop()?.toLowerCase() ?? ""
 
   // Check for exact filename matches first
   if (basename in FILENAME_MAP) {
-    return FILENAME_MAP[basename];
+    return FILENAME_MAP[basename]
   }
 
   // Extract extension
-  const ext = basename.split(".").pop()?.toLowerCase();
+  const ext = basename.split(".").pop()?.toLowerCase()
 
   if (ext && ext in EXTENSION_MAP) {
-    return EXTENSION_MAP[ext];
+    return EXTENSION_MAP[ext]
   }
 
   // Default to text for unknown files
-  return "text";
+  return "text"
 }
 
 /**
@@ -117,7 +117,7 @@ export function inferLanguage(filename: string): SupportedLanguages {
  * @returns Just the filename without the path
  */
 export function getFileName(filePath: string): string {
-  return filePath.split("/").pop() ?? filePath;
+  return filePath.split("/").pop() ?? filePath
 }
 
 /**
@@ -127,14 +127,14 @@ export function getFileName(filePath: string): string {
  * @returns The relative path
  */
 export function getRelativePath(filePath: string, basePath?: string): string {
-  if (!basePath) return filePath;
-  
-  const normalizedFile = filePath.replace(/\\/g, "/");
-  const normalizedBase = basePath.replace(/\\/g, "/").replace(/\/$/, "");
-  
+  if (!basePath) return filePath
+
+  const normalizedFile = filePath.replace(/\\/g, "/")
+  const normalizedBase = basePath.replace(/\\/g, "/").replace(/\/$/, "")
+
   if (normalizedFile.startsWith(normalizedBase + "/")) {
-    return normalizedFile.slice(normalizedBase.length + 1);
+    return normalizedFile.slice(normalizedBase.length + 1)
   }
-  
-  return filePath;
+
+  return filePath
 }

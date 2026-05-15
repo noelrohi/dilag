@@ -1,155 +1,145 @@
-"use client";
+"use client"
 
-import { useState, useCallback } from "react";
-import { cn } from "@/lib/utils";
-import { CheckCircle, ArrowLeft, ArrowRight } from "@solar-icons/react";
-import type { QuestionRequest } from "@/context/session-store";
+import { useState, useCallback } from "react"
+import { cn } from "@/lib/utils"
+import { CheckCircle, ArrowLeft, ArrowRight } from "@solar-icons/react"
+import type { QuestionRequest } from "@/context/session-store"
 
 export interface QuestionPromptProps {
-  request: QuestionRequest;
-  onReply: (answers: string[][]) => Promise<void>;
-  onReject: () => Promise<void>;
-  className?: string;
+  request: QuestionRequest
+  onReply: (answers: string[][]) => Promise<void>
+  onReject: () => Promise<void>
+  className?: string
 }
 
-export function QuestionPrompt({
-  request,
-  onReply,
-  onReject,
-  className,
-}: QuestionPromptProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
-  const [answers, setAnswers] = useState<string[][]>(
-    request.questions.map(() => [])
-  );
-  const [customInputs, setCustomInputs] = useState<string[]>(
-    request.questions.map(() => "")
-  );
-  const [showOther, setShowOther] = useState<boolean[]>(
-    request.questions.map(() => false)
-  );
+export function QuestionPrompt({ request, onReply, onReject, className }: QuestionPromptProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState(0)
+  const [answers, setAnswers] = useState<string[][]>(request.questions.map(() => []))
+  const [customInputs, setCustomInputs] = useState<string[]>(request.questions.map(() => ""))
+  const [showOther, setShowOther] = useState<boolean[]>(request.questions.map(() => false))
 
-  const currentQuestion = request.questions[activeTab];
-  const isMultiple = currentQuestion?.multiple ?? false;
-  const hasMultipleQuestions = request.questions.length > 1;
-  const isLastQuestion = activeTab === request.questions.length - 1;
+  const currentQuestion = request.questions[activeTab]
+  const isMultiple = currentQuestion?.multiple ?? false
+  const hasMultipleQuestions = request.questions.length > 1
+  const isLastQuestion = activeTab === request.questions.length - 1
 
   const handleSelect = useCallback(
     (answer: string) => {
       setAnswers((prev) => {
-        const newAnswers = [...prev];
+        const newAnswers = [...prev]
         if (isMultiple) {
-          const current = newAnswers[activeTab];
+          const current = newAnswers[activeTab]
           if (current.includes(answer)) {
-            newAnswers[activeTab] = current.filter((a) => a !== answer);
+            newAnswers[activeTab] = current.filter((a) => a !== answer)
           } else {
-            newAnswers[activeTab] = [...current, answer];
+            newAnswers[activeTab] = [...current, answer]
           }
         } else {
-          newAnswers[activeTab] = [answer];
+          newAnswers[activeTab] = [answer]
         }
-        return newAnswers;
-      });
+        return newAnswers
+      })
       setCustomInputs((prev) => {
-        const newInputs = [...prev];
-        newInputs[activeTab] = "";
-        return newInputs;
-      });
+        const newInputs = [...prev]
+        newInputs[activeTab] = ""
+        return newInputs
+      })
       setShowOther((prev) => {
-        const newShow = [...prev];
-        newShow[activeTab] = false;
-        return newShow;
-      });
+        const newShow = [...prev]
+        newShow[activeTab] = false
+        return newShow
+      })
     },
-    [activeTab, isMultiple]
-  );
+    [activeTab, isMultiple],
+  )
 
   const handleOtherClick = useCallback(() => {
     setShowOther((prev) => {
-      const newShow = [...prev];
-      newShow[activeTab] = true;
-      return newShow;
-    });
+      const newShow = [...prev]
+      newShow[activeTab] = true
+      return newShow
+    })
     setAnswers((prev) => {
-      const newAnswers = [...prev];
-      newAnswers[activeTab] = [];
-      return newAnswers;
-    });
-  }, [activeTab]);
+      const newAnswers = [...prev]
+      newAnswers[activeTab] = []
+      return newAnswers
+    })
+  }, [activeTab])
 
   const handleCustomInputChange = useCallback(
     (value: string) => {
       setCustomInputs((prev) => {
-        const newInputs = [...prev];
-        newInputs[activeTab] = value;
-        return newInputs;
-      });
+        const newInputs = [...prev]
+        newInputs[activeTab] = value
+        return newInputs
+      })
       if (value.trim()) {
         setAnswers((prev) => {
-          const newAnswers = [...prev];
-          newAnswers[activeTab] = [value.trim()];
-          return newAnswers;
-        });
+          const newAnswers = [...prev]
+          newAnswers[activeTab] = [value.trim()]
+          return newAnswers
+        })
       }
     },
-    [activeTab]
-  );
+    [activeTab],
+  )
 
   const handleSubmit = useCallback(
     async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsLoading(true);
+      e.preventDefault()
+      e.stopPropagation()
+      setIsLoading(true)
       try {
         const finalAnswers = answers.map((ans, idx) => {
-          const customInput = customInputs[idx];
+          const customInput = customInputs[idx]
           if (customInput && customInput.trim()) {
-            return [customInput.trim()];
+            return [customInput.trim()]
           }
-          return ans;
-        });
-        await onReply(finalAnswers);
+          return ans
+        })
+        await onReply(finalAnswers)
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
     },
-    [answers, customInputs, onReply]
-  );
+    [answers, customInputs, onReply],
+  )
 
   const handleReject = useCallback(
     async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsLoading(true);
+      e.preventDefault()
+      e.stopPropagation()
+      setIsLoading(true)
       try {
-        await onReject();
+        await onReject()
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
     },
-    [onReject]
-  );
+    [onReject],
+  )
 
   const hasCurrentAnswer =
-    answers[activeTab]?.length > 0 ||
-    (customInputs[activeTab] && customInputs[activeTab].trim());
+    answers[activeTab]?.length > 0 || (customInputs[activeTab] && customInputs[activeTab].trim())
 
   const allAnswered = answers.every(
-    (ans, idx) => ans.length > 0 || (customInputs[idx] && customInputs[idx].trim())
-  );
+    (ans, idx) => ans.length > 0 || (customInputs[idx] && customInputs[idx].trim()),
+  )
 
   return (
     <div
       className={cn(
         "rounded-lg border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden",
-        className
+        className,
       )}
     >
       {/* Header - minimal */}
       <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          {hasMultipleQuestions ? `Question ${activeTab + 1}/${request.questions.length}` : "Question"}
+          {hasMultipleQuestions
+            ? `Question ${activeTab + 1}/${request.questions.length}`
+            : "Question"}
         </span>
         {hasMultipleQuestions && (
           <div className="flex items-center gap-1">
@@ -164,7 +154,7 @@ export function QuestionPrompt({
                     ? "bg-foreground"
                     : answers[idx]?.length > 0 || customInputs[idx]?.trim()
                       ? "bg-foreground/40"
-                      : "bg-foreground/20"
+                      : "bg-foreground/20",
                 )}
               />
             ))}
@@ -179,7 +169,7 @@ export function QuestionPrompt({
         {/* Options as compact pills */}
         <div className="flex flex-wrap gap-2">
           {currentQuestion?.options.map((option, idx) => {
-            const isSelected = answers[activeTab]?.includes(option.label);
+            const isSelected = answers[activeTab]?.includes(option.label)
             return (
               <button
                 key={idx}
@@ -190,7 +180,7 @@ export function QuestionPrompt({
                   "border focus:outline-none focus:ring-2 focus:ring-primary/20",
                   isSelected
                     ? "bg-foreground text-background border-foreground"
-                    : "bg-transparent text-foreground/80 border-border/60 hover:border-foreground/40 hover:bg-foreground/5"
+                    : "bg-transparent text-foreground/80 border-border/60 hover:border-foreground/40 hover:bg-foreground/5",
                 )}
               >
                 <span className="flex items-center gap-1.5">
@@ -198,7 +188,7 @@ export function QuestionPrompt({
                   {option.label}
                 </span>
               </button>
-            );
+            )
           })}
 
           {/* Other option */}
@@ -210,7 +200,7 @@ export function QuestionPrompt({
               "border focus:outline-none focus:ring-2 focus:ring-primary/20",
               showOther[activeTab]
                 ? "bg-foreground text-background border-foreground"
-                : "bg-transparent text-foreground/50 border-dashed border-border/60 hover:border-foreground/40 hover:text-foreground/70"
+                : "bg-transparent text-foreground/50 border-dashed border-border/60 hover:border-foreground/40 hover:text-foreground/70",
             )}
           >
             Other...
@@ -230,7 +220,7 @@ export function QuestionPrompt({
                 "w-full px-3 py-2 text-sm rounded-lg",
                 "bg-background/50 border border-border/60",
                 "placeholder:text-muted-foreground/50",
-                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground/30"
+                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-foreground/30",
               )}
             />
           </div>
@@ -270,7 +260,7 @@ export function QuestionPrompt({
                 "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
                 hasCurrentAnswer
                   ? "bg-foreground text-background hover:bg-foreground/90"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-muted text-muted-foreground cursor-not-allowed",
               )}
             >
               Next
@@ -285,7 +275,7 @@ export function QuestionPrompt({
                 "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
                 allAnswered && !isLoading
                   ? "bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-muted text-muted-foreground cursor-not-allowed",
               )}
             >
               {isLoading ? "..." : "Submit"}
@@ -294,5 +284,5 @@ export function QuestionPrompt({
         </div>
       </div>
     </div>
-  );
+  )
 }

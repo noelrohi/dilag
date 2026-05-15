@@ -1,27 +1,23 @@
-import { useEffect } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { useUpdaterContext } from "@/context/updater-context";
+import { useEffect } from "react"
+import { useUpdaterContext } from "@/context/updater-context"
+import { bridge } from "@/lib/bridge"
 
 interface CheckUpdatesMenuListenerProps {
-  silent?: boolean;
+  silent?: boolean
 }
 
-export function CheckUpdatesMenuListener({
-  silent = false,
-}: CheckUpdatesMenuListenerProps) {
-  const { checkForUpdates } = useUpdaterContext();
+export function CheckUpdatesMenuListener({ silent = false }: CheckUpdatesMenuListenerProps) {
+  const { checkForUpdates } = useUpdaterContext()
 
   useEffect(() => {
-    const unlisten = listen<string>("menu-event", (event) => {
-      if (event.payload === "check-updates") {
-        checkForUpdates(silent);
+    const unsubscribe = bridge.menu.onEvent((eventId) => {
+      if (eventId === "check-updates") {
+        checkForUpdates(silent)
       }
-    });
+    })
 
-    return () => {
-      unlisten.then((fn) => fn());
-    };
-  }, [checkForUpdates, silent]);
+    return unsubscribe
+  }, [checkForUpdates, silent])
 
-  return null;
+  return null
 }

@@ -25,8 +25,8 @@
   --primary-foreground: oklch(1 0 0);
 
   /* Secondary surfaces */
-  --secondary: oklch(0.20 0.01 270);
-  --secondary-foreground: oklch(0.90 0.005 270);
+  --secondary: oklch(0.2 0.01 270);
+  --secondary-foreground: oklch(0.9 0.005 270);
 
   /* Muted */
   --muted: oklch(0.18 0.01 270);
@@ -37,7 +37,7 @@
   --accent-foreground: oklch(0.94 0.005 270);
 
   /* Destructive */
-  --destructive: oklch(0.58 0.20 25);
+  --destructive: oklch(0.58 0.2 25);
   --destructive-foreground: oklch(1 0 0);
 
   /* Borders */
@@ -47,14 +47,14 @@
 
   /* Chart colors */
   --chart-1: oklch(0.65 0.18 250);
-  --chart-2: oklch(0.60 0.15 145);
+  --chart-2: oklch(0.6 0.15 145);
   --chart-3: oklch(0.68 0.16 35);
   --chart-4: oklch(0.58 0.15 300);
   --chart-5: oklch(0.62 0.12 80);
 
   /* Sidebar */
-  --sidebar: oklch(0.10 0.012 270);
-  --sidebar-foreground: oklch(0.90 0.005 270);
+  --sidebar: oklch(0.1 0.012 270);
+  --sidebar-foreground: oklch(0.9 0.005 270);
   --sidebar-primary: oklch(0.65 0.18 250);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(1 0 0 / 6%);
@@ -184,8 +184,12 @@
 
 /* Animations */
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
@@ -211,20 +215,39 @@
 }
 
 @keyframes float {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(8px, -8px) rotate(0.5deg); }
-  50% { transform: translate(-4px, 4px) rotate(-0.5deg); }
-  75% { transform: translate(-8px, -4px) rotate(0.25deg); }
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(8px, -8px) rotate(0.5deg);
+  }
+  50% {
+    transform: translate(-4px, 4px) rotate(-0.5deg);
+  }
+  75% {
+    transform: translate(-8px, -4px) rotate(0.25deg);
+  }
 }
 
 @keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* Animation utilities */
@@ -264,16 +287,32 @@
 }
 
 /* Stagger delays */
-.delay-100 { animation-delay: 100ms; }
-.delay-150 { animation-delay: 150ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-250 { animation-delay: 250ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
-.delay-500 { animation-delay: 500ms; }
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-150 {
+  animation-delay: 150ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-250 {
+  animation-delay: 250ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
+.delay-500 {
+  animation-delay: 500ms;
+}
 
 /* Typography */
-code, pre, .font-mono {
+code,
+pre,
+.font-mono {
   font-family: var(--font-mono);
 }
 
@@ -281,17 +320,27 @@ code, pre, .font-mono {
   font-family: var(--font-serif);
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-serif);
 }
 
-h1.font-sans, h2.font-sans, h3.font-sans, h4.font-sans, h5.font-sans, h6.font-sans {
+h1.font-sans,
+h2.font-sans,
+h3.font-sans,
+h4.font-sans,
+h5.font-sans,
+h6.font-sans {
   font-family: var(--font-sans);
 }
 
 /* Gradient text */
 .text-gradient {
-  background: linear-gradient(135deg, oklch(0.65 0.18 250), oklch(0.70 0.15 300));
+  background: linear-gradient(135deg, oklch(0.65 0.18 250), oklch(0.7 0.15 300));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -313,7 +362,7 @@ h1.font-sans, h2.font-sans, h3.font-sans, h4.font-sans, h5.font-sans, h6.font-sa
 
 /* Grid background pattern */
 .grid-pattern {
-  background-image: 
+  background-image:
     linear-gradient(to right, oklch(1 0 0 / 3%) 1px, transparent 1px),
     linear-gradient(to bottom, oklch(1 0 0 / 3%) 1px, transparent 1px);
   background-size: 48px 48px;

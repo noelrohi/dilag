@@ -31,6 +31,7 @@ bun run tauri icon assets/app-icon.png
 ```
 
 This generates icons in `src-tauri/icons/` for:
+
 - macOS (`.icns`)
 - Windows (`.ico`)
 - Linux/general (various `.png` sizes)

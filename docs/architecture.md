@@ -125,11 +125,11 @@ Technical documentation covering app initialization, data flow, and storage.
 
 **What gets created on first launch:**
 
-| Path | Purpose |
-|------|---------|
-| `~/.dilag/` | App data root |
-| `~/.dilag/sessions/` | Session working directories |
-| `~/.dilag/sessions.json` | Session metadata (empty) |
+| Path                              | Purpose                             |
+| --------------------------------- | ----------------------------------- |
+| `~/.dilag/`                       | App data root                       |
+| `~/.dilag/sessions/`              | Session working directories         |
+| `~/.dilag/sessions.json`          | Session metadata (empty)            |
 | `~/.dilag/opencode/opencode.json` | OpenCode config with designer agent |
 
 ---
@@ -187,13 +187,13 @@ Technical documentation covering app initialization, data flow, and storage.
 
 **Key differences from new user:**
 
-| Aspect | New User | Existing User |
-|--------|----------|---------------|
-| `~/.dilag/` | Created | Exists |
-| `sessions.json` | Empty `[]` | Has session data |
-| Recent Projects | Hidden | Shows up to 4 cards |
-| Zustand hydration | Defaults | Restores state |
-| Thumbnails | None | Loads from disk |
+| Aspect            | New User   | Existing User       |
+| ----------------- | ---------- | ------------------- |
+| `~/.dilag/`       | Created    | Exists              |
+| `sessions.json`   | Empty `[]` | Has session data    |
+| Recent Projects   | Hidden     | Shows up to 4 cards |
+| Zustand hydration | Defaults   | Restores state      |
+| Thumbnails        | None       | Loads from disk     |
 
 ---
 
@@ -215,6 +215,7 @@ Technical documentation covering app initialization, data flow, and storage.
 The app generates HTML files with embedded Tailwind CSS v4, rendered directly on the canvas.
 
 **sessions.json schema:**
+
 ```json
 {
   "sessions": [
@@ -234,15 +235,16 @@ The app generates HTML files with embedded Tailwind CSS v4, rendered directly on
 
 ### LocalStorage
 
-| Key | Store | Contents |
-|-----|-------|----------|
-| `dilag-session-store` | Zustand | `{currentSessionId, screenPositions}` |
-| `dilag-model-store` | Zustand | `{selectedModel: {providerID, modelID}}` |
-| `dilag-initial-prompt` | Temporary | Prompt passed from home to studio (cleared after use) |
-| `dilag-initial-files` | Temporary | File attachments (JSON array) passed from home to studio |
-| `dilag-theme` | ThemeProvider | `"dark" \| "light" \| "system"` |
+| Key                    | Store         | Contents                                                 |
+| ---------------------- | ------------- | -------------------------------------------------------- |
+| `dilag-session-store`  | Zustand       | `{currentSessionId, screenPositions}`                    |
+| `dilag-model-store`    | Zustand       | `{selectedModel: {providerID, modelID}}`                 |
+| `dilag-initial-prompt` | Temporary     | Prompt passed from home to studio (cleared after use)    |
+| `dilag-initial-files`  | Temporary     | File attachments (JSON array) passed from home to studio |
+| `dilag-theme`          | ThemeProvider | `"dark" \| "light" \| "system"`                          |
 
 **Session store schema:**
+
 ```json
 {
   "currentSessionId": "uuid-string",
@@ -256,6 +258,7 @@ The app generates HTML files with embedded Tailwind CSS v4, rendered directly on
 ```
 
 **Model store schema:**
+
 ```json
 {
   "selectedModel": {
@@ -273,10 +276,10 @@ Default is `opencode/big-pickle` (free tier model).
 
 OpenCode stores its own data separately:
 
-| Path | Purpose |
-|------|---------|
-| `~/.local/share/opencode/` | Auth tokens, credentials |
-| `~/.dilag/opencode/` | Config only (via XDG_CONFIG_HOME override) |
+| Path                       | Purpose                                    |
+| -------------------------- | ------------------------------------------ |
+| `~/.local/share/opencode/` | Auth tokens, credentials                   |
+| `~/.dilag/opencode/`       | Config only (via XDG_CONFIG_HOME override) |
 
 This separation allows Dilag to use isolated config while sharing auth across OpenCode installations.
 
@@ -320,36 +323,36 @@ GlobalEventsProvider mounts
 
 ### Connection States
 
-| State | Description |
-|-------|-------------|
+| State          | Description                   |
+| -------------- | ----------------------------- |
 | `disconnected` | No connection, not attempting |
-| `connecting` | First connection attempt |
-| `connected` | Active SSE stream |
-| `reconnecting` | Lost connection, retrying |
+| `connecting`   | First connection attempt      |
+| `connected`    | Active SSE stream             |
+| `reconnecting` | Lost connection, retrying     |
 
 ### Event Types
 
-| Event | Trigger | Handler Action |
-|-------|---------|----------------|
-| `message.updated` | New/updated message | Add/update in Zustand `messages` |
-| `message.part.updated` | Streaming content | Update in Zustand `parts` |
-| `session.status` | Status change | Update `sessionStatus` |
-| `session.diff` | File changes | Update `sessionDiffs` |
-| `session.idle` | Processing complete | Set status to "idle" |
-| `session.error` | Error occurred | Set status to "error" |
+| Event                  | Trigger             | Handler Action                   |
+| ---------------------- | ------------------- | -------------------------------- |
+| `message.updated`      | New/updated message | Add/update in Zustand `messages` |
+| `message.part.updated` | Streaming content   | Update in Zustand `parts`        |
+| `session.status`       | Status change       | Update `sessionStatus`           |
+| `session.diff`         | File changes        | Update `sessionDiffs`            |
+| `session.idle`         | Processing complete | Set status to "idle"             |
+| `session.error`        | Error occurred      | Set status to "error"            |
 
 ### Subscription Pattern
 
 ```typescript
 // Global subscription (all events)
 const unsubscribe = subscribe((event) => {
-  handleEvent(event);
-});
+  handleEvent(event)
+})
 
 // Session-specific subscription
 const unsubscribe = subscribeToSession(sessionId, (event) => {
   // Only receives events for this session
-});
+})
 ```
 
 ---
@@ -517,6 +520,7 @@ This ensures the native macOS titlebar (transparent style) matches the app's the
 ## State Management
 
 Dilag uses a hybrid approach (TkDodo/KCD pattern):
+
 - **React Query**: Server state (sessions list, provider data)
 - **Zustand**: Client state (UI preferences) and real-time state (SSE data)
 
@@ -527,20 +531,20 @@ Dilag uses a hybrid approach (TkDodo/KCD pattern):
 ```typescript
 interface SessionState {
   // Persisted (localStorage: dilag-session-store)
-  currentSessionId: string | null;
-  screenPositions: Record<string, ScreenPosition[]>;
+  currentSessionId: string | null
+  screenPositions: Record<string, ScreenPosition[]>
 
   // Real-time (from SSE, not persisted)
-  messages: Record<string, Message[]>;      // sessionId → messages
-  parts: Record<string, MessagePart[]>;     // messageId → parts
-  sessionStatus: Record<string, SessionStatus>;
-  sessionDiffs: Record<string, FileDiff[]>;
-  sessionErrors: Record<string, { name: string; message: string } | null>;
+  messages: Record<string, Message[]> // sessionId → messages
+  parts: Record<string, MessagePart[]> // messageId → parts
+  sessionStatus: Record<string, SessionStatus>
+  sessionDiffs: Record<string, FileDiff[]>
+  sessionErrors: Record<string, { name: string; message: string } | null>
 
   // Connection state
-  isServerReady: boolean;
-  error: string | null;
-  debugEvents: Event[];  // Last 500 SSE events for debugging
+  isServerReady: boolean
+  error: string | null
+  debugEvents: Event[] // Last 500 SSE events for debugging
 }
 ```
 
@@ -551,7 +555,7 @@ Real-time data is cleared on page reload and refetched via SSE.
 
 ```typescript
 interface ModelState {
-  selectedModel: { providerID: string; modelID: string } | null;
+  selectedModel: { providerID: string; modelID: string } | null
 }
 ```
 
@@ -562,27 +566,28 @@ Default: `{ providerID: "opencode", modelID: "big-pickle" }`
 
 ```typescript
 interface DesignModeState {
-  webViewport: "desktop" | "tablet" | "mobile";
+  webViewport: "desktop" | "tablet" | "mobile"
 }
 ```
 
 **Persistence:** Stored in `localStorage` as `dilag-design-mode`.
+
 - **Viewport Sizes:** Desktop (1280×800), Tablet (768×1024), Mobile (390×844)
 
 ### React Query Keys
 
 ```typescript
 // Sessions
-sessionKeys.all      // ["sessions"]
-sessionKeys.list()   // ["sessions", "list"]
+sessionKeys.all // ["sessions"]
+sessionKeys.list() // ["sessions", "list"]
 sessionKeys.detail(id) // ["sessions", "detail", id]
 
 // Designs
-designKeys.all       // ["designs"]
+designKeys.all // ["designs"]
 designKeys.session(cwd) // ["designs", "session", cwd]
 
 // Models/Providers
-modelKeys.all        // ["models"]
+modelKeys.all // ["models"]
 modelKeys.providers() // ["models", "providers"]
 ```
 

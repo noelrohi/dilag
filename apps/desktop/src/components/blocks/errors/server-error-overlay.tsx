@@ -1,99 +1,90 @@
-import { useState, useEffect, useRef } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { DangerTriangle, CloseCircle, Copy, ChatRoundDots, AltArrowDown, CheckCircle } from "@solar-icons/react";
-import { Button } from "@dilag/ui/button";
-import { cn } from "@/lib/utils";
+import { useState, useEffect, useRef } from "react"
+import {
+  DangerTriangle,
+  CloseCircle,
+  Copy,
+  ChatRoundDots,
+  AltArrowDown,
+  CheckCircle,
+} from "@solar-icons/react"
+import { Button } from "@dilag/ui/button"
+import { cn } from "@/lib/utils"
+import { bridge } from "@/lib/bridge"
 
 interface ServerErrorOverlayProps {
-  className?: string;
-  onSendToChat?: (error: string) => void;
+  className?: string
+  onSendToChat?: (error: string) => void
 }
 
-export function ServerErrorOverlay({
-  className,
-  onSendToChat,
-}: ServerErrorOverlayProps) {
-  const [errors, setErrors] = useState<string[]>([]);
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [isDismissed, setIsDismissed] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+export function ServerErrorOverlay({ className, onSendToChat }: ServerErrorOverlayProps) {
+  const [errors, setErrors] = useState<string[]>([])
+  const [isExpanded, setIsExpanded] = useState(true)
+  const [isDismissed, setIsDismissed] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Listen for Vite error events
   useEffect(() => {
-    let mounted = true;
+    const unsubscribeError = bridge.dev.onViteError((line) => {
+      setErrors((prev) => [...prev.slice(-9), line]) // Keep last 10 errors
+      setIsDismissed(false) // Show overlay when new error arrives
+    })
 
-    const setupListeners = async () => {
-      const unlistenError = await listen<string>("vite:error", (event) => {
-        if (!mounted) return;
-        setErrors((prev) => [...prev.slice(-9), event.payload]); // Keep last 10 errors
-        setIsDismissed(false); // Show overlay when new error arrives
-      });
-
-      // Clear errors on successful server start
-      const unlistenStdout = await listen<string>("vite:stdout", (event) => {
-        if (!mounted) return;
-        // Vite outputs "ready in" or "Local:" when server starts successfully
-        if (event.payload.includes("ready in") || event.payload.includes("Local:")) {
-          setErrors([]);
-          setIsDismissed(false);
-        }
-      });
-
-      return () => {
-        unlistenError();
-        unlistenStdout();
-      };
-    };
-
-    const cleanupPromise = setupListeners();
+    // Clear errors on successful server start
+    const unsubscribeStdout = bridge.dev.onViteStdout((line) => {
+      // Vite outputs "ready in" or "Local:" when server starts successfully
+      if (line.includes("ready in") || line.includes("Local:")) {
+        setErrors([])
+        setIsDismissed(false)
+      }
+    })
 
     return () => {
-      mounted = false;
-      cleanupPromise.then((cleanup) => cleanup?.());
-    };
-  }, []);
+      unsubscribeError()
+      unsubscribeStdout()
+    }
+  }, [])
 
   // Auto-scroll to bottom when new errors arrive
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [errors]);
+  }, [errors])
 
   // Reset copied state after 2 seconds
   useEffect(() => {
     if (copied) {
-      const timer = setTimeout(() => setCopied(false), 2000);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => setCopied(false), 2000)
+      return () => clearTimeout(timer)
     }
-  }, [copied]);
+  }, [copied])
 
   // Don't show if no errors or dismissed
-  if (errors.length === 0 || isDismissed) return null;
+  if (errors.length === 0 || isDismissed) return null
 
-  const allErrors = errors.join("\n\n");
+  const allErrors = errors.join("\n\n")
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(allErrors);
-    setCopied(true);
-  };
+    await navigator.clipboard.writeText(allErrors)
+    setCopied(true)
+  }
 
   const handleSendToChat = () => {
-    onSendToChat?.(allErrors);
-    setIsDismissed(true);
-  };
+    onSendToChat?.(allErrors)
+    setIsDismissed(true)
+  }
 
   const handleDismiss = () => {
-    setIsDismissed(true);
-  };
+    setIsDismissed(true)
+  }
 
   return (
     <div
       className={cn(
         "absolute inset-0 z-10 bg-background/80 backdrop-blur-sm",
         "flex items-center justify-center p-4",
-        className
+        className,
       )}
     >
       <div className="w-full max-w-lg bg-card border border-destructive/30 rounded-lg shadow-xl overflow-hidden">
@@ -115,18 +106,10 @@ export function ServerErrorOverlay({
             >
               <AltArrowDown
                 size={16}
-                className={cn(
-                  "transition-transform",
-                  !isExpanded && "-rotate-90"
-                )}
+                className={cn("transition-transform", !isExpanded && "-rotate-90")}
               />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="size-7 p-0"
-              onClick={handleDismiss}
-            >
+            <Button variant="ghost" size="sm" className="size-7 p-0" onClick={handleDismiss}>
               <CloseCircle size={16} />
             </Button>
           </div>
@@ -144,12 +127,7 @@ export function ServerErrorOverlay({
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-destructive/20">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopy}
-                className="gap-1.5"
-              >
+              <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
                 {copied ? (
                   <>
                     <CheckCircle size={14} />
@@ -178,5 +156,5 @@ export function ServerErrorOverlay({
         )}
       </div>
     </div>
-  );
+  )
 }

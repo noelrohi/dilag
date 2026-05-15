@@ -12,54 +12,51 @@ import {
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputController,
-} from "@/components/ai-elements/prompt-input";
-import { PageHeader } from "@/components/blocks/layout/page-header";
-import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button";
-import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button";
-import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector";
-import { useSessions } from "@/hooks/use-sessions";
-import { type Platform } from "@/context/session-store";
-import { cn } from "@/lib/utils";
-import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+} from "@/components/ai-elements/prompt-input"
+import { PageHeader } from "@/components/blocks/layout/page-header"
+import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
+import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
+import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
+import { useSessions } from "@/hooks/use-sessions"
+import { type Platform } from "@/context/session-store"
+import { cn } from "@/lib/utils"
+import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { parseAsStringLiteral, useQueryState } from "nuqs"
 
 const SUGGESTIONS = [
   "A habit tracking app",
   "A recipe finder with search",
   "A workout timer",
   "A notes app with markdown",
-];
+]
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
-});
+})
 
 function LandingPage() {
-  const navigate = useNavigate();
-  const { createSession, isServerReady } = useSessions();
+  const navigate = useNavigate()
+  const { createSession, isServerReady } = useSessions()
   const [platform, setPlatform] = useQueryState(
     "platform",
-    parseAsStringLiteral(["web", "mobile"] as const).withDefault("web")
-  );
+    parseAsStringLiteral(["web", "mobile"] as const).withDefault("web"),
+  )
 
-  const handleSubmit = async (
-    text: string,
-    files?: import("ai").FileUIPart[],
-  ) => {
-    if (!text.trim() && (!files || files.length === 0)) return;
-    localStorage.setItem("dilag-initial-prompt", text);
-    localStorage.setItem("dilag-initial-platform", platform);
+  const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
+    if (!text.trim() && (!files || files.length === 0)) return
+    localStorage.setItem("dilag-initial-prompt", text)
+    localStorage.setItem("dilag-initial-platform", platform)
     if (files && files.length > 0) {
-      localStorage.setItem("dilag-initial-files", JSON.stringify(files));
+      localStorage.setItem("dilag-initial-files", JSON.stringify(files))
     } else {
-      localStorage.removeItem("dilag-initial-files");
+      localStorage.removeItem("dilag-initial-files")
     }
-    const sessionId = await createSession(undefined, platform);
+    const sessionId = await createSession(undefined, platform)
     if (sessionId) {
-      navigate({ to: "/studio/$sessionId", params: { sessionId } });
+      navigate({ to: "/studio/$sessionId", params: { sessionId } })
     }
-  };
+  }
 
   return (
     <div className="h-full flex flex-col bg-background relative overflow-hidden">
@@ -105,10 +102,7 @@ function LandingPage() {
               <PlatformToggle value={platform} onChange={setPlatform} />
 
               <PromptInputProvider>
-                <ComposerInput
-                  onSubmit={handleSubmit}
-                  disabled={!isServerReady}
-                />
+                <ComposerInput onSubmit={handleSubmit} disabled={!isServerReady} />
               </PromptInputProvider>
 
               <div className="flex justify-center gap-2 mt-8">
@@ -128,18 +122,18 @@ function LandingPage() {
         </div>
       </main>
     </div>
-  );
+  )
 }
 
 function ComposerInput({
   onSubmit,
   disabled,
 }: {
-  onSubmit: (text: string, files?: import("ai").FileUIPart[]) => void;
-  disabled: boolean;
+  onSubmit: (text: string, files?: import("ai").FileUIPart[]) => void
+  disabled: boolean
 }) {
-  const { textInput } = usePromptInputController();
-  const hasInput = textInput.value.trim().length > 0;
+  const { textInput } = usePromptInputController()
+  const hasInput = textInput.value.trim().length > 0
 
   return (
     <PromptInput
@@ -186,15 +180,15 @@ function ComposerInput({
         </div>
       </PromptInputFooter>
     </PromptInput>
-  );
+  )
 }
 
 function PlatformToggle({
   value,
   onChange,
 }: {
-  value: Platform;
-  onChange: (platform: Platform) => void;
+  value: Platform
+  onChange: (platform: Platform) => void
 }) {
   return (
     <div className="flex justify-center mb-6">
@@ -225,6 +219,5 @@ function PlatformToggle({
         </button>
       </div>
     </div>
-  );
+  )
 }
-

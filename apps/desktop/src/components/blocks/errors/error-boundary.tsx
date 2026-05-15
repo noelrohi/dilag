@@ -1,17 +1,17 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Button } from "@dilag/ui/button";
-import { Refresh, DangerTriangle } from "@solar-icons/react";
+import { Component, type ErrorInfo, type ReactNode } from "react"
+import { Button } from "@dilag/ui/button"
+import { Refresh, DangerTriangle } from "@solar-icons/react"
 
 interface ErrorBoundaryProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  onReset?: () => void;
+  children: ReactNode
+  fallback?: ReactNode
+  onError?: (error: Error, errorInfo: ErrorInfo) => void
+  onReset?: () => void
 }
 
 interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
+  hasError: boolean
+  error: Error | null
 }
 
 /**
@@ -27,45 +27,40 @@ interface ErrorBoundaryState {
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
+    super(props)
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
-    this.props.onError?.(error, errorInfo);
+    console.error("ErrorBoundary caught an error:", error, errorInfo)
+    this.props.onError?.(error, errorInfo)
   }
 
   handleReset = (): void => {
-    this.setState({ hasError: false, error: null });
-    this.props.onReset?.();
-  };
+    this.setState({ hasError: false, error: null })
+    this.props.onReset?.()
+  }
 
   render(): ReactNode {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+        return this.props.fallback
       }
 
-      return (
-        <DefaultErrorFallback
-          error={this.state.error}
-          onReset={this.handleReset}
-        />
-      );
+      return <DefaultErrorFallback error={this.state.error} onReset={this.handleReset} />
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
 interface DefaultErrorFallbackProps {
-  error: Error | null;
-  onReset: () => void;
+  error: Error | null
+  onReset: () => void
 }
 
 function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
@@ -93,23 +88,14 @@ function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
 
           {/* Message */}
           <div className="space-y-2">
-            <h3 className="text-lg font-medium text-foreground">
-              Something went wrong
-            </h3>
+            <h3 className="text-lg font-medium text-foreground">Something went wrong</h3>
             {error && (
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {error.message}
-              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{error.message}</p>
             )}
           </div>
 
           {/* Action */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onReset}
-            className="gap-2"
-          >
+          <Button variant="secondary" size="sm" onClick={onReset} className="gap-2">
             <Refresh size={14} />
             Try again
           </Button>
@@ -123,7 +109,7 @@ function DefaultErrorFallback({ error, onReset }: DefaultErrorFallbackProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /**
@@ -135,7 +121,7 @@ export function InlineErrorFallback({ message }: { message?: string }) {
       <DangerTriangle size={12} />
       {message ?? "Error"}
     </span>
-  );
+  )
 }
 
 /**
@@ -143,13 +129,13 @@ export function InlineErrorFallback({ message }: { message?: string }) {
  */
 export function withErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  fallback?: ReactNode
+  fallback?: ReactNode,
 ) {
   return function WithErrorBoundary(props: P) {
     return (
       <ErrorBoundary fallback={fallback}>
         <WrappedComponent {...props} />
       </ErrorBoundary>
-    );
-  };
+    )
+  }
 }

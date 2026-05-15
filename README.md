@@ -26,11 +26,11 @@ dilag/
 └── package.json          # Bun workspaces
 ```
 
-| Package | Description |
-|---------|-------------|
-| [`apps/desktop`](apps/desktop/README.md) | Main desktop application |
-| [`apps/web`](apps/web/README.md) | Public marketing website |
-| [`packages/ui`](packages/ui/README.md) | Shared UI primitives/components |
+| Package                                  | Description                     |
+| ---------------------------------------- | ------------------------------- |
+| [`apps/desktop`](apps/desktop/README.md) | Main desktop application        |
+| [`apps/web`](apps/web/README.md)         | Public marketing website        |
+| [`packages/ui`](packages/ui/README.md)   | Shared UI primitives/components |
 
 ## Quick Start
 

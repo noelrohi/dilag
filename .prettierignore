@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+dist-electron
+release
+.next
+.turbo
+.opencode
+apps/desktop/src-tauri/target
+apps/desktop/resources/opencode
+apps/desktop/fitness-prototype
+apps/desktop/src/routeTree.gen.ts
+apps/web/next-env.d.ts
+bun.lock
+*.tsbuildinfo

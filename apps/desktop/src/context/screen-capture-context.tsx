@@ -1,114 +1,123 @@
-import { createContext, useContext, useCallback, useState, type ReactNode } from "react";
-import type { DesignFile } from "@/hooks/use-designs";
-import { useAttachmentBridge } from "@/context/attachment-bridge";
-import { toast } from "sonner";
-import type { ElementInfo } from "@/context/element-selection-store";
+import { createContext, useContext, useCallback, useState, type ReactNode } from "react"
+import type { DesignFile } from "@/hooks/use-designs"
+import { useAttachmentBridge } from "@/context/attachment-bridge"
+import { toast } from "sonner"
+import type { ElementInfo } from "@/context/element-selection-store"
 
 interface ScreenCaptureContextValue {
   /**
    * Add a screen reference to the chat composer.
    * Returns true if added successfully, false if screen was already referenced.
    */
-  captureAndAttach: (design: DesignFile) => Promise<boolean>;
-  
+  captureAndAttach: (design: DesignFile) => Promise<boolean>
+
   /**
    * Add a screen reference with a specific selected element to the chat composer.
    * The element context will be included for AI-assisted editing.
    */
-  captureElementAndAttach: (design: DesignFile, element: ElementInfo) => Promise<boolean>;
-  
+  captureElementAndAttach: (design: DesignFile, element: ElementInfo) => Promise<boolean>
+
   /**
    * Check if a specific screen is currently being captured.
    */
-  isCapturing: (screenId: string) => boolean;
-  
+  isCapturing: (screenId: string) => boolean
+
   /**
    * Check if a screen is already referenced (by filename).
    */
-  isAttached: (screenId: string) => boolean;
-  
+  isAttached: (screenId: string) => boolean
+
   /**
    * Platform type for determining capture dimensions.
    */
-  platform: "mobile" | "web";
+  platform: "mobile" | "web"
 }
 
-const ScreenCaptureContext = createContext<ScreenCaptureContextValue | null>(null);
+const ScreenCaptureContext = createContext<ScreenCaptureContextValue | null>(null)
 
 interface ScreenCaptureProviderProps {
-  children: ReactNode;
-  platform: "mobile" | "web";
+  children: ReactNode
+  platform: "mobile" | "web"
 }
 
 export function ScreenCaptureProvider({ children, platform }: ScreenCaptureProviderProps) {
-  const { addScreenRef } = useAttachmentBridge();
-  
-  // Track referenced screen IDs locally (filenames without extension)
-  const [referencedScreens, setReferencedScreens] = useState<Set<string>>(new Set());
+  const { addScreenRef } = useAttachmentBridge()
 
-  const isAttached = useCallback((screenId: string) => {
-    const id = screenId.replace(".html", "");
-    return referencedScreens.has(id);
-  }, [referencedScreens]);
+  // Track referenced screen IDs locally (filenames without extension)
+  const [referencedScreens, setReferencedScreens] = useState<Set<string>>(new Set())
+
+  const isAttached = useCallback(
+    (screenId: string) => {
+      const id = screenId.replace(".html", "")
+      return referencedScreens.has(id)
+    },
+    [referencedScreens],
+  )
 
   // No longer doing async capture, so always returns false
   const isCapturing = useCallback((_screenId: string) => {
-    return false;
-  }, []);
+    return false
+  }, [])
 
-  const captureAndAttach = useCallback(async (design: DesignFile): Promise<boolean> => {
-    const screenId = design.filename.replace(".html", "");
-    
-    // Check if already referenced
-    if (referencedScreens.has(screenId)) {
-      toast.info(`"${design.title}" is already in chat`);
-      return false;
-    }
+  const captureAndAttach = useCallback(
+    async (design: DesignFile): Promise<boolean> => {
+      const screenId = design.filename.replace(".html", "")
 
-    try {
-      // Add as a screen reference instead of file attachment
-      addScreenRef({
-        filename: design.filename,
-        title: design.title,
-        html: design.html,
-      });
-      setReferencedScreens(prev => new Set([...prev, screenId]));
-      toast.success(`"${design.title}" added to chat`);
-      return true;
-    } catch (err) {
-      console.error("Failed to add screen to chat:", err);
-      toast.error(`Failed to add "${design.title}"`);
-      return false;
-    }
-  }, [addScreenRef, referencedScreens]);
+      // Check if already referenced
+      if (referencedScreens.has(screenId)) {
+        toast.info(`"${design.title}" is already in chat`)
+        return false
+      }
 
-  const captureElementAndAttach = useCallback(async (design: DesignFile, element: ElementInfo): Promise<boolean> => {
-    const screenId = design.filename.replace(".html", "");
+      try {
+        // Add as a screen reference instead of file attachment
+        addScreenRef({
+          filename: design.filename,
+          title: design.title,
+          html: design.html,
+        })
+        setReferencedScreens((prev) => new Set([...prev, screenId]))
+        toast.success(`"${design.title}" added to chat`)
+        return true
+      } catch (err) {
+        console.error("Failed to add screen to chat:", err)
+        toast.error(`Failed to add "${design.title}"`)
+        return false
+      }
+    },
+    [addScreenRef, referencedScreens],
+  )
 
-    try {
-      // Add as a screen reference with element info
-      // For element selection, we allow re-adding with different element
-      addScreenRef({
-        filename: design.filename,
-        title: design.title,
-        html: design.html,
-        selectedElement: {
-          selector: element.selector,
-          html: element.html,
-          tagName: element.tagName,
-          ancestorPath: element.ancestorPath,
-        },
-      });
-      // Single state update - add screenId (Set naturally handles duplicates)
-      setReferencedScreens(prev => new Set([...prev, screenId]));
-      toast.success(`Selected ${element.tagName} in "${design.title}"`);
-      return true;
-    } catch (err) {
-      console.error("Failed to add element to chat:", err);
-      toast.error(`Failed to add element from "${design.title}"`);
-      return false;
-    }
-  }, [addScreenRef]);
+  const captureElementAndAttach = useCallback(
+    async (design: DesignFile, element: ElementInfo): Promise<boolean> => {
+      const screenId = design.filename.replace(".html", "")
+
+      try {
+        // Add as a screen reference with element info
+        // For element selection, we allow re-adding with different element
+        addScreenRef({
+          filename: design.filename,
+          title: design.title,
+          html: design.html,
+          selectedElement: {
+            selector: element.selector,
+            html: element.html,
+            tagName: element.tagName,
+            ancestorPath: element.ancestorPath,
+          },
+        })
+        // Single state update - add screenId (Set naturally handles duplicates)
+        setReferencedScreens((prev) => new Set([...prev, screenId]))
+        toast.success(`Selected ${element.tagName} in "${design.title}"`)
+        return true
+      } catch (err) {
+        console.error("Failed to add element to chat:", err)
+        toast.error(`Failed to add element from "${design.title}"`)
+        return false
+      }
+    },
+    [addScreenRef],
+  )
 
   const value: ScreenCaptureContextValue = {
     captureAndAttach,
@@ -116,21 +125,17 @@ export function ScreenCaptureProvider({ children, platform }: ScreenCaptureProvi
     isCapturing,
     isAttached,
     platform,
-  };
+  }
 
-  return (
-    <ScreenCaptureContext.Provider value={value}>
-      {children}
-    </ScreenCaptureContext.Provider>
-  );
+  return <ScreenCaptureContext.Provider value={value}>{children}</ScreenCaptureContext.Provider>
 }
 
 export function useScreenCaptureContext() {
-  const context = useContext(ScreenCaptureContext);
+  const context = useContext(ScreenCaptureContext)
   if (!context) {
-    throw new Error("useScreenCaptureContext must be used within a ScreenCaptureProvider");
+    throw new Error("useScreenCaptureContext must be used within a ScreenCaptureProvider")
   }
-  return context;
+  return context
 }
 
 /**
@@ -138,5 +143,5 @@ export function useScreenCaptureContext() {
  * Useful for components that may be used outside the capture context.
  */
 export function useOptionalScreenCaptureContext() {
-  return useContext(ScreenCaptureContext);
+  return useContext(ScreenCaptureContext)
 }

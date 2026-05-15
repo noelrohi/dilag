@@ -5,8 +5,10 @@
 ## Overview
 
 Dilag is an AI-powered design studio for mobile and web apps. This monorepo contains:
-- **Desktop App** (`apps/desktop`): Tauri 2 desktop app (Rust backend + React 19 frontend)
+
+- **Desktop App** (`apps/desktop`): Electron desktop app (Electron main/preload + React 19 renderer)
 - **Website** (`apps/web`): Next.js 16 public marketing site
+- **Desktop Bridge** (`packages/desktop-bridge`): Shared renderer/preload IPC contract
 - **UI Package** (`packages/ui`): Shared UI primitives/components
 
 ## Structure
@@ -16,11 +18,13 @@ dilag/
 ├── apps/
 │   ├── desktop/              # Tauri desktop app
 │   │   ├── src/              # React frontend
-│   │   ├── src-tauri/        # Rust backend
+│   │   ├── electron/         # Electron main/preload host
+│   │   ├── src-tauri/        # Legacy Tauri backend kept during migration
 │   │   └── docs/             # Architecture docs
 │   └── web/                  # Next.js marketing site
 │       └── src/app/          # App router pages
 ├── packages/
+│   ├── desktop-bridge/       # Desktop IPC contract shared by Electron and React
 │   └── ui/                   # Shared UI components
 ├── package.json              # Bun workspaces root
 └── turbo.json                # Turborepo config
@@ -35,45 +39,52 @@ bun run dev
 bun run dev:desktop
 bun run dev:web
 bun run build
+bun run typecheck
 bun run test
 bun run lint
+bun run fmt:check
+bun run fmt
 
 # Desktop
 cd apps/desktop
-bun run tauri dev
+bun run dev
+bun run typecheck
 bun test
-cd src-tauri && cargo test
 
 # Web
 cd apps/web
 bun run dev
+bun run typecheck
 bun run build
 ```
 
 ## App-Specific Documentation
 
-| App | AGENTS.md | Notes |
-|-----|-----------|-------|
-| Desktop (Rust) | `apps/desktop/src-tauri/src/AGENTS.md` | Rust backend patterns |
+| App | AGENTS.md            | Notes                      |
+| --- | -------------------- | -------------------------- |
 | Web | `apps/web/AGENTS.md` | Next.js marketing patterns |
 
 ## Key Integrations
 
 ### OpenCode SDK (AI)
-- Desktop app spawns OpenCode server for AI generation
+
+- Desktop app spawns OpenCode server for AI generation through the native host
 - SSE streaming for real-time design updates
 
 ## Workspaces
 
-| Package | Name | Description |
-|---------|------|-------------|
-| `apps/desktop` | `@dilag/desktop` | Tauri desktop app |
-| `apps/web` | `@dilag/web` | Next.js marketing website |
-| `packages/ui` | `@dilag/ui` | Shared UI components |
+| Package                   | Name                    | Description                   |
+| ------------------------- | ----------------------- | ----------------------------- |
+| `apps/desktop`            | `@dilag/desktop`        | Electron desktop app          |
+| `apps/web`                | `@dilag/web`            | Next.js marketing website     |
+| `packages/desktop-bridge` | `@dilag/desktop-bridge` | Renderer/preload IPC contract |
+| `packages/ui`             | `@dilag/ui`             | Shared UI components          |
 
 ## Conventions
 
 - **Package manager**: Bun with workspaces
 - **Build orchestration**: Turborepo
-- **Desktop**: Tauri + React + Rust modules
+- **Quality gate**: `bun run fmt:check`, `bun run lint`, `bun run typecheck`, `bun run test`, `bun run build`
+- **Desktop**: Electron host + React renderer. Keep native-shell calls behind `@dilag/desktop-bridge`.
 - **Web**: Public marketing pages only
+- **Contracts**: Put renderer/preload IPC types in `packages/desktop-bridge`. Add `packages/contracts` only when desktop, web, and a backend share duplicated schemas.

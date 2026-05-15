@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState } from "react"
 import {
   AddCircle,
   TrashBinMinimalistic,
@@ -13,67 +13,82 @@ import {
   Settings,
   WiFiRouter,
   WiFiRouterMinimalistic,
-} from "@solar-icons/react";
-import { Link } from "@tanstack/react-router";
-import { useSessions } from "@/hooks/use-sessions";
-import { useConnectionStatus, type ConnectionStatus } from "@/context/global-events";
-import { Button } from "@dilag/ui/button";
-import { Input } from "@dilag/ui/input";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuAction, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, useSidebar } from "@dilag/ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip";
-import { cn } from "@/lib/utils";
+} from "@solar-icons/react"
+import { Link } from "@tanstack/react-router"
+import { useSessions } from "@/hooks/use-sessions"
+import { useConnectionStatus, type ConnectionStatus } from "@/context/global-events"
+import { Button } from "@dilag/ui/button"
+import { Input } from "@dilag/ui/input"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuAction,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  useSidebar,
+} from "@dilag/ui/sidebar"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 type SessionMeta = {
-  id: string;
-  name: string;
-  created_at: string;
-  cwd: string;
-  parentID?: string; // Reference to parent session if forked
-};
+  id: string
+  name: string
+  created_at: string
+  cwd: string
+  parentID?: string // Reference to parent session if forked
+}
 
 function groupSessionsByTime(sessions: SessionMeta[]) {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-  const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+  const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
 
   const groups: {
-    today: SessionMeta[];
-    yesterday: SessionMeta[];
-    lastWeek: SessionMeta[];
-    older: SessionMeta[];
+    today: SessionMeta[]
+    yesterday: SessionMeta[]
+    lastWeek: SessionMeta[]
+    older: SessionMeta[]
   } = {
     today: [],
     yesterday: [],
     lastWeek: [],
     older: [],
-  };
+  }
 
   // Sort sessions by date descending
   const sorted = [...sessions].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
 
   sorted.forEach((session) => {
-    const date = new Date(session.created_at);
+    const date = new Date(session.created_at)
     if (date >= today) {
-      groups.today.push(session);
+      groups.today.push(session)
     } else if (date >= yesterday) {
-      groups.yesterday.push(session);
+      groups.yesterday.push(session)
     } else if (date >= lastWeek) {
-      groups.lastWeek.push(session);
+      groups.lastWeek.push(session)
     } else {
-      groups.older.push(session);
+      groups.older.push(session)
     }
-  });
+  })
 
-  return groups;
+  return groups
 }
 
 function ConnectionStatusIndicator() {
-  const { connectionStatus, reconnectAttempt } = useConnectionStatus();
+  const { connectionStatus, reconnectAttempt } = useConnectionStatus()
 
-  const statusConfig: Record<ConnectionStatus, { color: string; icon: React.ReactNode; label: string }> = {
+  const statusConfig: Record<
+    ConnectionStatus,
+    { color: string; icon: React.ReactNode; label: string }
+  > = {
     connected: {
       color: "bg-green-500",
       icon: <WiFiRouter size={12} />,
@@ -87,16 +102,17 @@ function ConnectionStatusIndicator() {
     reconnecting: {
       color: "bg-yellow-500",
       icon: <Restart size={12} className="animate-spin" />,
-      label: reconnectAttempt > 1 ? `Reconnecting (attempt ${reconnectAttempt})` : "Reconnecting...",
+      label:
+        reconnectAttempt > 1 ? `Reconnecting (attempt ${reconnectAttempt})` : "Reconnecting...",
     },
     disconnected: {
       color: "bg-red-500",
       icon: <WiFiRouterMinimalistic size={12} />,
       label: "Disconnected",
     },
-  };
+  }
 
-  const config = statusConfig[connectionStatus];
+  const config = statusConfig[connectionStatus]
 
   return (
     <Tooltip>
@@ -115,7 +131,7 @@ function ConnectionStatusIndicator() {
         </div>
       </TooltipContent>
     </Tooltip>
-  );
+  )
 }
 
 function SessionGroup({
@@ -126,14 +142,14 @@ function SessionGroup({
   onSelect,
   onDelete,
 }: {
-  label: string;
-  icon: React.ElementType;
-  sessions: SessionMeta[];
-  currentSessionId: string | null;
-  onSelect: (id: string) => void;
-  onDelete: (e: React.MouseEvent, id: string) => void;
+  label: string
+  icon: React.ElementType
+  sessions: SessionMeta[]
+  currentSessionId: string | null
+  onSelect: (id: string) => void
+  onDelete: (e: React.MouseEvent, id: string) => void
 }) {
-  if (sessions.length === 0) return null;
+  if (sessions.length === 0) return null
 
   return (
     <SidebarGroup>
@@ -151,16 +167,14 @@ function SessionGroup({
                 className={cn(
                   "group pr-8 transition-all duration-200 rounded-none",
                   currentSessionId === session.id &&
-                    "bg-sidebar-accent/80 border-l-2 border-primary"
+                    "bg-sidebar-accent/80 border-l-2 border-primary",
                 )}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {session.parentID && (
                     <BranchingPathsUp size={12} className="text-muted-foreground shrink-0" />
                   )}
-                  <span className="truncate text-sm font-medium">
-                    {session.name}
-                  </span>
+                  <span className="truncate text-sm font-medium">{session.name}</span>
                 </div>
               </SidebarMenuButton>
               <SidebarMenuAction
@@ -168,7 +182,10 @@ function SessionGroup({
                 showOnHover
                 className="opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <TrashBinMinimalistic size={14} className="text-muted-foreground hover:text-destructive transition-colors" />
+                <TrashBinMinimalistic
+                  size={14}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                />
                 <span className="sr-only">Delete session</span>
               </SidebarMenuAction>
             </SidebarMenuItem>
@@ -176,45 +193,33 @@ function SessionGroup({
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  );
+  )
 }
 
 export function SessionSidebar() {
-  const {
-    sessions,
-    currentSessionId,
-    isLoading,
-    createSession,
-    selectSession,
-    deleteSession,
-  } = useSessions();
+  const { sessions, currentSessionId, isLoading, createSession, selectSession, deleteSession } =
+    useSessions()
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("")
 
   const filteredSessions = useMemo(() => {
-    if (!searchQuery.trim()) return sessions;
-    const query = searchQuery.toLowerCase();
-    return sessions.filter((s) => s.name.toLowerCase().includes(query));
-  }, [sessions, searchQuery]);
+    if (!searchQuery.trim()) return sessions
+    const query = searchQuery.toLowerCase()
+    return sessions.filter((s) => s.name.toLowerCase().includes(query))
+  }, [sessions, searchQuery])
 
-  const groupedSessions = useMemo(
-    () => groupSessionsByTime(filteredSessions),
-    [filteredSessions]
-  );
+  const groupedSessions = useMemo(() => groupSessionsByTime(filteredSessions), [filteredSessions])
 
   const handleCreateSession = async () => {
-    await createSession();
-  };
+    await createSession()
+  }
 
-  const handleDeleteSession = async (
-    e: React.MouseEvent,
-    sessionId: string
-  ) => {
-    e.stopPropagation();
-    await deleteSession(sessionId);
-  };
+  const handleDeleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation()
+    await deleteSession(sessionId)
+  }
 
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar } = useSidebar()
 
   return (
     <Sidebar className="border-r border-sidebar-border/50">
@@ -246,7 +251,10 @@ export function SessionSidebar() {
         {/* Search */}
         {sessions.length > 3 && (
           <div className="relative">
-            <Magnifer size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+            <Magnifer
+              size={14}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50"
+            />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -254,7 +262,7 @@ export function SessionSidebar() {
               className={cn(
                 "pl-8 h-8 bg-sidebar-accent/50 border-0 rounded-md",
                 "placeholder:text-muted-foreground/40 text-sm",
-                "focus-visible:ring-1 focus-visible:ring-primary/30"
+                "focus-visible:ring-1 focus-visible:ring-primary/30",
               )}
             />
           </div>
@@ -267,24 +275,16 @@ export function SessionSidebar() {
             <div className="size-12 rounded-xl bg-sidebar-accent/50 flex items-center justify-center mb-4">
               <MagicStick size={20} className="text-muted-foreground/50" />
             </div>
-            <p className="text-sm font-medium text-muted-foreground">
-              No sessions yet
-            </p>
-            <p className="text-xs text-muted-foreground/60 mt-1">
-              Create one to get started
-            </p>
+            <p className="text-sm font-medium text-muted-foreground">No sessions yet</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Create one to get started</p>
           </div>
         ) : filteredSessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <div className="size-12 rounded-xl bg-sidebar-accent/50 flex items-center justify-center mb-4">
               <Magnifer size={20} className="text-muted-foreground/50" />
             </div>
-            <p className="text-sm font-medium text-muted-foreground">
-              No results found
-            </p>
-            <p className="text-xs text-muted-foreground/60 mt-1">
-              Try a different search
-            </p>
+            <p className="text-sm font-medium text-muted-foreground">No results found</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Try a different search</p>
           </div>
         ) : (
           <>
@@ -341,15 +341,17 @@ export function SessionSidebar() {
             <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground/40 uppercase tracking-wider">
               <span>{sessions.length} sessions</span>
               <span>
-                {sessions.filter((s) => {
-                  const date = new Date(s.created_at);
-                  const today = new Date();
-                  return (
-                    date.getDate() === today.getDate() &&
-                    date.getMonth() === today.getMonth() &&
-                    date.getFullYear() === today.getFullYear()
-                  );
-                }).length}{" "}
+                {
+                  sessions.filter((s) => {
+                    const date = new Date(s.created_at)
+                    const today = new Date()
+                    return (
+                      date.getDate() === today.getDate() &&
+                      date.getMonth() === today.getMonth() &&
+                      date.getFullYear() === today.getFullYear()
+                    )
+                  }).length
+                }{" "}
                 today
               </span>
             </div>
@@ -360,5 +362,5 @@ export function SessionSidebar() {
         </div>
       </div>
     </Sidebar>
-  );
+  )
 }

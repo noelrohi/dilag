@@ -1,11 +1,13 @@
-import path from "path";
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
-import { consoleForwardPlugin } from "vite-console-forward-plugin";
+import path from "path"
+import { defineConfig } from "vite"
+import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
+import { consoleForwardPlugin } from "vite-console-forward-plugin"
 
-const host = process.env.TAURI_DEV_HOST;
+const host = process.env.TAURI_DEV_HOST
+const configuredPort = Number(process.env.VITE_PORT || 1420)
+const port = Number.isFinite(configuredPort) ? configuredPort : 1420
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
@@ -21,25 +23,22 @@ export default defineConfig(async () => ({
     },
   },
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
+  // Keep terminal output visible for native-shell startup errors.
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 1420,
+    port,
     strictPort: true,
     host: host || false,
     hmr: host
       ? {
           protocol: "ws",
           host,
-          port: 1421,
+          port: port + 1,
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri` and `.beads`
+      // Native shell files are built separately; Vite should ignore them.
       ignored: ["**/src-tauri/**", "**/.beads/**"],
     },
   },
-}));
+}))

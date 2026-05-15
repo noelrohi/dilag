@@ -1,37 +1,37 @@
-import { useState, useEffect } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible";
-import { AltArrowRight } from "@solar-icons/react";
-import { getToolConfig, isStructuredSubtitle, type ToolRenderProps } from "@/lib/tool-registry";
-import type { ToolState } from "@/context/session-store";
-import { cn } from "@/lib/utils";
-import { Shimmer } from "@/components/ai-elements/shimmer";
+import { useState, useEffect } from "react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
+import { AltArrowRight } from "@solar-icons/react"
+import { getToolConfig, isStructuredSubtitle, type ToolRenderProps } from "@/lib/tool-registry"
+import type { ToolState } from "@/context/session-store"
+import { cn } from "@/lib/utils"
+import { Shimmer } from "@/components/ai-elements/shimmer"
 
 interface ToolPartProps {
-  tool: string;
-  state: ToolState;
+  tool: string
+  state: ToolState
 }
 
 // Tools that should be expanded by default
-const DEFAULT_OPEN_TOOLS = ["todowrite", "question"];
+const DEFAULT_OPEN_TOOLS = ["todowrite", "question"]
 
 export function ToolPart({ tool, state }: ToolPartProps) {
-  const [elapsed, setElapsed] = useState(0);
-  const config = getToolConfig(tool);
-  const Icon = config.icon;
-  const defaultOpen = DEFAULT_OPEN_TOOLS.includes(tool);
+  const [elapsed, setElapsed] = useState(0)
+  const config = getToolConfig(tool)
+  const Icon = config.icon
+  const defaultOpen = DEFAULT_OPEN_TOOLS.includes(tool)
 
   // Timer for running tools
   useEffect(() => {
     if (state.status !== "running") {
-      setElapsed(0);
-      return;
+      setElapsed(0)
+      return
     }
-    const start = Date.now();
+    const start = Date.now()
     const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - start) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [state.status]);
+      setElapsed(Math.floor((Date.now() - start) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [state.status])
 
   // Build render props from state
   const props: ToolRenderProps = {
@@ -41,12 +41,12 @@ export function ToolPart({ tool, state }: ToolPartProps) {
     error: state.status === "error" ? state.error : undefined,
     status: state.status,
     metadata: "metadata" in state ? state.metadata : undefined,
-  };
+  }
 
-  const title = config.title(props);
-  const subtitle = config.subtitle?.(props);
-  const content = config.content?.(props);
-  const hasContent = !!content || state.status === "error";
+  const title = config.title(props)
+  const subtitle = config.subtitle?.(props)
+  const content = config.content?.(props)
+  const hasContent = !!content || state.status === "error"
 
   return (
     <Collapsible defaultOpen={defaultOpen}>
@@ -56,7 +56,7 @@ export function ToolPart({ tool, state }: ToolPartProps) {
           "h-8 px-3 py-1.5 rounded-md",
           "bg-muted/30 border border-border/50",
           "text-sm select-none cursor-default",
-          "hover:bg-muted/50 transition-colors"
+          "hover:bg-muted/50 transition-colors",
         )}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -67,9 +67,7 @@ export function ToolPart({ tool, state }: ToolPartProps) {
                 {title}
               </Shimmer>
             ) : (
-              <span className="font-medium text-foreground whitespace-nowrap">
-                {title}
-              </span>
+              <span className="font-medium text-foreground whitespace-nowrap">{title}</span>
             )}
             {subtitle && (
               <span className="text-muted-foreground flex items-center gap-1.5 min-w-0">
@@ -85,9 +83,7 @@ export function ToolPart({ tool, state }: ToolPartProps) {
             )}
           </div>
           {state.status === "running" && elapsed > 0 && (
-            <span className="text-xs tabular-nums text-muted-foreground shrink-0">
-              {elapsed}s
-            </span>
+            <span className="text-xs tabular-nums text-muted-foreground shrink-0">{elapsed}s</span>
           )}
         </div>
         {hasContent && (
@@ -95,7 +91,7 @@ export function ToolPart({ tool, state }: ToolPartProps) {
             size={16}
             className={cn(
               "shrink-0 text-muted-foreground transition-transform duration-150",
-              "group-data-[state=open]:rotate-90"
+              "group-data-[state=open]:rotate-90",
             )}
           />
         )}
@@ -110,5 +106,5 @@ export function ToolPart({ tool, state }: ToolPartProps) {
         </CollapsibleContent>
       )}
     </Collapsible>
-  );
+  )
 }

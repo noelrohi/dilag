@@ -6,6 +6,7 @@ Next.js 16 marketing website for Dilag.
 
 ```bash
 bun run dev           # Next.js dev with Turbopack
+bun run typecheck     # TypeScript no-emit check
 bun run build         # Production build
 bun run lint          # ESLint
 ```

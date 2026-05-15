@@ -1,11 +1,11 @@
-import Link from "next/link";
-import { Button } from "@dilag/ui/button";
-import Features from "@/components/features-1";
-import IntegrationsSection from "@/components/integrations-8";
-import HeroSection from "@/components/hero-section";
-import FooterSection from "@/components/footer";
-import { DOWNLOAD_URL } from "@/lib/constants";
-import { Download, ArrowRight } from "lucide-react";
+import Link from "next/link"
+import { Button } from "@dilag/ui/button"
+import Features from "@/components/features-1"
+import IntegrationsSection from "@/components/integrations-8"
+import HeroSection from "@/components/hero-section"
+import FooterSection from "@/components/footer"
+import { DOWNLOAD_URL } from "@/lib/constants"
+import { Download, ArrowRight } from "lucide-react"
 
 export default function Home() {
   return (
@@ -35,7 +35,12 @@ export default function Home() {
                     Download Free
                   </a>
                 </Button>
-                <Button variant="outline" size="lg" className="h-12 px-8 text-base gap-3 rounded-full" asChild>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-12 px-8 text-base gap-3 rounded-full"
+                  asChild
+                >
                   <Link href="/pricing">
                     See Free Plan
                     <ArrowRight className="w-4 h-4" />
@@ -49,5 +54,5 @@ export default function Home() {
 
       <FooterSection />
     </div>
-  );
+  )
 }

@@ -14,12 +14,9 @@
  * // Later, to cancel:
  * cleanup();
  */
-export function createManagedTimeout(
-  callback: () => void,
-  delay: number
-): () => void {
-  const timeoutId = setTimeout(callback, delay);
-  return () => clearTimeout(timeoutId);
+export function createManagedTimeout(callback: () => void, delay: number): () => void {
+  const timeoutId = setTimeout(callback, delay)
+  return () => clearTimeout(timeoutId)
 }
 
 /**
@@ -40,18 +37,18 @@ export function createManagedTimeout(
 export async function withErrorHandler<T>(
   operation: () => Promise<T>,
   context: string,
-  fallback?: T
+  fallback?: T,
 ): Promise<T> {
   try {
-    return await operation();
+    return await operation()
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`[${context}] Error:`, message);
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[${context}] Error:`, message)
 
     if (fallback !== undefined) {
-      return fallback;
+      return fallback
     }
-    throw error;
+    throw error
   }
 }
 
@@ -69,8 +66,8 @@ export async function withErrorHandler<T>(
  * tracker.cancelAll();
  */
 export class PromiseTracker {
-  private controllers: Set<AbortController> = new Set();
-  private isCancelled = false;
+  private controllers: Set<AbortController> = new Set()
+  private isCancelled = false
 
   /**
    * Tracks a promise and returns a new promise that rejects if cancelled.
@@ -78,32 +75,32 @@ export class PromiseTracker {
    */
   track<T>(promise: Promise<T>): Promise<T> {
     if (this.isCancelled) {
-      return Promise.reject(new Error("PromiseTracker cancelled"));
+      return Promise.reject(new Error("PromiseTracker cancelled"))
     }
 
-    const controller = new AbortController();
-    this.controllers.add(controller);
+    const controller = new AbortController()
+    this.controllers.add(controller)
 
     return new Promise<T>((resolve, reject) => {
       controller.signal.addEventListener("abort", () => {
-        reject(new Error("Promise cancelled"));
-      });
+        reject(new Error("Promise cancelled"))
+      })
 
       promise
         .then((value) => {
           if (!controller.signal.aborted) {
-            resolve(value);
+            resolve(value)
           }
         })
         .catch((error) => {
           if (!controller.signal.aborted) {
-            reject(error);
+            reject(error)
           }
         })
         .finally(() => {
-          this.controllers.delete(controller);
-        });
-    });
+          this.controllers.delete(controller)
+        })
+    })
   }
 
   /**
@@ -111,18 +108,18 @@ export class PromiseTracker {
    * Safe to call multiple times.
    */
   cancelAll(): void {
-    this.isCancelled = true;
+    this.isCancelled = true
     for (const controller of this.controllers) {
-      controller.abort();
+      controller.abort()
     }
-    this.controllers.clear();
+    this.controllers.clear()
   }
 
   /**
    * Resets the tracker, allowing new promises to be tracked.
    */
   reset(): void {
-    this.isCancelled = false;
+    this.isCancelled = false
   }
 }
 
@@ -141,15 +138,15 @@ export class PromiseTracker {
  * }, []);
  */
 export function createCleanupRegistry() {
-  const cleanups: (() => void)[] = [];
+  const cleanups: (() => void)[] = []
 
   return {
     add(cleanup: () => void): void {
-      cleanups.push(cleanup);
+      cleanups.push(cleanup)
     },
     runAll(): void {
-      cleanups.forEach((cleanup) => cleanup());
-      cleanups.length = 0;
+      cleanups.forEach((cleanup) => cleanup())
+      cleanups.length = 0
     },
-  };
+  }
 }

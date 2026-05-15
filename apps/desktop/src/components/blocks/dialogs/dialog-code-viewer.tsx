@@ -1,32 +1,28 @@
-import { File } from "@pierre/diffs/react";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogClose } from "@dilag/ui/dialog";
-import { Button } from "@dilag/ui/button";
-import { Copy, CheckCircle, Download, CloseCircle } from "@solar-icons/react";
-import { useState, useCallback, type ReactNode } from "react";
-import { copyToClipboard, downloadHtml } from "@/lib/design-export";
+import { File } from "@pierre/diffs/react"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogClose } from "@dilag/ui/dialog"
+import { Button } from "@dilag/ui/button"
+import { Copy, CheckCircle, Download, CloseCircle } from "@solar-icons/react"
+import { useState, useCallback, type ReactNode } from "react"
+import { copyToClipboard, downloadHtml } from "@/lib/design-export"
 
 interface CodeViewerDialogProps {
-  code: string;
-  title: string;
-  children: ReactNode;
+  code: string
+  title: string
+  children: ReactNode
 }
 
-export function CodeViewerDialog({
-  code,
-  title,
-  children,
-}: CodeViewerDialogProps) {
-  const [copied, setCopied] = useState(false);
+export function CodeViewerDialog({ code, title, children }: CodeViewerDialogProps) {
+  const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(() => {
-    copyToClipboard(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [code]);
+    copyToClipboard(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [code])
 
   const handleDownload = useCallback(() => {
-    downloadHtml({ html: code, title });
-  }, [code, title]);
+    downloadHtml({ html: code, title })
+  }, [code, title])
 
   return (
     <Dialog>
@@ -36,9 +32,7 @@ export function CodeViewerDialog({
         showCloseButton={false}
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/30">
-          <DialogTitle className="text-sm font-medium truncate">
-            {title}
-          </DialogTitle>
+          <DialogTitle className="text-sm font-medium truncate">{title}</DialogTitle>
           <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
@@ -46,11 +40,7 @@ export function CodeViewerDialog({
               className="size-7 text-muted-foreground hover:text-foreground"
               onClick={handleCopy}
             >
-              {copied ? (
-                <CheckCircle size={14} className="text-green-500" />
-              ) : (
-                <Copy size={14} />
-              )}
+              {copied ? <CheckCircle size={14} className="text-green-500" /> : <Copy size={14} />}
             </Button>
             <Button
               variant="ghost"
@@ -85,5 +75,5 @@ export function CodeViewerDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

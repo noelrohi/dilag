@@ -1,30 +1,30 @@
-import { useReactFlow, useViewport } from "@xyflow/react";
-import { useCallback } from "react";
-import { Maximize, Restart, MinusCircle, AddCircle } from "@solar-icons/react";
+import { useReactFlow, useViewport } from "@xyflow/react"
+import { useCallback } from "react"
+import { Maximize, Restart, MinusCircle, AddCircle } from "@solar-icons/react"
 
 export function CanvasControls() {
-  const { setViewport, fitView, getViewport } = useReactFlow();
-  const { zoom } = useViewport();
+  const { setViewport, fitView, getViewport } = useReactFlow()
+  const { zoom } = useViewport()
 
   const handleResetView = useCallback(() => {
-    setViewport({ x: 0, y: 0, zoom: 0.75 }, { duration: 300 });
-  }, [setViewport]);
+    setViewport({ x: 0, y: 0, zoom: 0.75 }, { duration: 300 })
+  }, [setViewport])
 
   const handleFitView = useCallback(() => {
-    fitView({ padding: 0.2, duration: 300 });
-  }, [fitView]);
+    fitView({ padding: 0.2, duration: 300 })
+  }, [fitView])
 
   const handleZoomIn = useCallback(() => {
-    const viewport = getViewport();
-    const newZoom = Math.min(viewport.zoom + 0.1, 2);
-    setViewport({ ...viewport, zoom: newZoom }, { duration: 150 });
-  }, [getViewport, setViewport]);
+    const viewport = getViewport()
+    const newZoom = Math.min(viewport.zoom + 0.1, 2)
+    setViewport({ ...viewport, zoom: newZoom }, { duration: 150 })
+  }, [getViewport, setViewport])
 
   const handleZoomOut = useCallback(() => {
-    const viewport = getViewport();
-    const newZoom = Math.max(viewport.zoom - 0.1, 0.25);
-    setViewport({ ...viewport, zoom: newZoom }, { duration: 150 });
-  }, [getViewport, setViewport]);
+    const viewport = getViewport()
+    const newZoom = Math.max(viewport.zoom - 0.1, 0.25)
+    setViewport({ ...viewport, zoom: newZoom }, { duration: 150 })
+  }, [getViewport, setViewport])
 
   return (
     <>
@@ -64,5 +64,5 @@ export function CanvasControls() {
         </button>
       </div>
     </>
-  );
+  )
 }

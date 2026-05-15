@@ -1,76 +1,82 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { useSessions } from "@/hooks/use-sessions";
-import { PageHeader } from "@/components/blocks/layout/page-header";
-import { cn } from "@/lib/utils";
-import { Magnifer, MenuDots, TrashBinMinimalistic, Global, Star } from "@solar-icons/react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@dilag/ui/dropdown-menu";
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { useState, useMemo } from "react"
+import { useSessions } from "@/hooks/use-sessions"
+import { PageHeader } from "@/components/blocks/layout/page-header"
+import { cn } from "@/lib/utils"
+import { Magnifer, MenuDots, TrashBinMinimalistic, Global, Star } from "@solar-icons/react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dilag/ui/dropdown-menu"
 
 export const Route = createFileRoute("/projects")({
   component: ProjectsPage,
-});
+})
 
 function ProjectsPage() {
-  const navigate = useNavigate();
-  const { sessions, deleteSession, toggleFavorite } = useSessions();
-  const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate()
+  const { sessions, deleteSession, toggleFavorite } = useSessions()
+  const [searchQuery, setSearchQuery] = useState("")
 
   const handleOpenProject = (sessionId: string) => {
-    navigate({ to: "/studio/$sessionId", params: { sessionId } });
-  };
+    navigate({ to: "/studio/$sessionId", params: { sessionId } })
+  }
 
   const handleDeleteProject = async (sessionId: string) => {
-    await deleteSession(sessionId);
-  };
+    await deleteSession(sessionId)
+  }
 
   const filteredSessions = useMemo(() => {
-    let filtered = sessions;
+    let filtered = sessions
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = sessions.filter(session =>
-        session.name?.toLowerCase().includes(query) ||
-        session.id.toLowerCase().includes(query)
-      );
+      const query = searchQuery.toLowerCase()
+      filtered = sessions.filter(
+        (session) =>
+          session.name?.toLowerCase().includes(query) || session.id.toLowerCase().includes(query),
+      )
     }
 
-    return [...filtered].sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [sessions, searchQuery]);
+    return [...filtered].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+  }, [sessions, searchQuery])
 
   const groupedSessions = useMemo(() => {
-    const groups: { label: string; sessions: typeof sessions }[] = [];
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const groups: { label: string; sessions: typeof sessions }[] = []
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-    const todaySessions: typeof sessions = [];
-    const yesterdaySessions: typeof sessions = [];
-    const lastWeekSessions: typeof sessions = [];
-    const olderSessions: typeof sessions = [];
+    const todaySessions: typeof sessions = []
+    const yesterdaySessions: typeof sessions = []
+    const lastWeekSessions: typeof sessions = []
+    const olderSessions: typeof sessions = []
 
     for (const session of filteredSessions) {
-      const date = new Date(session.created_at);
+      const date = new Date(session.created_at)
       if (date >= today) {
-        todaySessions.push(session);
+        todaySessions.push(session)
       } else if (date >= yesterday) {
-        yesterdaySessions.push(session);
+        yesterdaySessions.push(session)
       } else if (date >= lastWeek) {
-        lastWeekSessions.push(session);
+        lastWeekSessions.push(session)
       } else {
-        olderSessions.push(session);
+        olderSessions.push(session)
       }
     }
 
-    if (todaySessions.length > 0) groups.push({ label: "Today", sessions: todaySessions });
-    if (yesterdaySessions.length > 0) groups.push({ label: "Yesterday", sessions: yesterdaySessions });
-    if (lastWeekSessions.length > 0) groups.push({ label: "This Week", sessions: lastWeekSessions });
-    if (olderSessions.length > 0) groups.push({ label: "Older", sessions: olderSessions });
+    if (todaySessions.length > 0) groups.push({ label: "Today", sessions: todaySessions })
+    if (yesterdaySessions.length > 0)
+      groups.push({ label: "Yesterday", sessions: yesterdaySessions })
+    if (lastWeekSessions.length > 0) groups.push({ label: "This Week", sessions: lastWeekSessions })
+    if (olderSessions.length > 0) groups.push({ label: "Older", sessions: olderSessions })
 
-    return groups;
-  }, [filteredSessions]);
+    return groups
+  }, [filteredSessions])
 
   return (
     <div className="h-dvh flex flex-col bg-background">
@@ -86,7 +92,10 @@ function ProjectsPage() {
             </div>
 
             <div className="relative w-64">
-              <Magnifer size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50" />
+              <Magnifer
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
+              />
               <input
                 type="text"
                 placeholder="Search projects..."
@@ -97,7 +106,7 @@ function ProjectsPage() {
                   "bg-muted/50 border-none",
                   "placeholder:text-muted-foreground/50",
                   "focus:outline-none focus:ring-2 focus:ring-ring/20",
-                  "transition-all"
+                  "transition-all",
                 )}
               />
             </div>
@@ -137,15 +146,15 @@ function ProjectsPage() {
         </div>
       </main>
     </div>
-  );
+  )
 }
 
 interface SessionMeta {
-  id: string;
-  name: string;
-  created_at: string;
-  cwd: string;
-  favorite?: boolean;
+  id: string
+  name: string
+  created_at: string
+  cwd: string
+  favorite?: boolean
 }
 
 function ProjectCard({
@@ -154,12 +163,12 @@ function ProjectCard({
   onDelete,
   onToggleFavorite,
 }: {
-  session: SessionMeta;
-  onOpen: () => void;
-  onDelete: () => void;
-  onToggleFavorite: () => void;
+  session: SessionMeta
+  onOpen: () => void
+  onDelete: () => void
+  onToggleFavorite: () => void
 }) {
-  const isFavorite = session.favorite ?? false;
+  const isFavorite = session.favorite ?? false
 
   return (
     <div
@@ -168,22 +177,22 @@ function ProjectCard({
         "bg-card border border-border/50",
         "hover:border-border/80 hover:shadow-xl hover:shadow-black/5",
         "dark:hover:shadow-black/20",
-        "transition-all duration-300 cursor-pointer"
+        "transition-all duration-300 cursor-pointer",
       )}
       onClick={onOpen}
     >
       {/* Favorite indicator */}
       <button
         onClick={(e) => {
-          e.stopPropagation();
-          onToggleFavorite();
+          e.stopPropagation()
+          onToggleFavorite()
         }}
         className={cn(
           "absolute top-3 right-3 z-10 p-1.5 rounded-lg",
           "transition-all duration-200",
           isFavorite
             ? "text-amber-500 hover:text-amber-400"
-            : "text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover:opacity-100"
+            : "text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover:opacity-100",
         )}
       >
         <Star size={20} weight={isFavorite ? "Bold" : "Linear"} />
@@ -214,7 +223,7 @@ function ProjectCard({
                   "p-1.5 rounded-lg -mr-1.5 -mt-0.5",
                   "text-muted-foreground/40 hover:text-foreground hover:bg-muted",
                   "opacity-0 group-hover:opacity-100",
-                  "transition-all duration-200"
+                  "transition-all duration-200",
                 )}
               >
                 <MenuDots size={16} />
@@ -223,17 +232,21 @@ function ProjectCard({
             <DropdownMenuContent align="end" className="w-36">
               <DropdownMenuItem
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite();
+                  e.stopPropagation()
+                  onToggleFavorite()
                 }}
               >
-                <Star size={16} weight={isFavorite ? "Bold" : "Linear"} className={cn("mr-2", isFavorite && "text-amber-500")} />
+                <Star
+                  size={16}
+                  weight={isFavorite ? "Bold" : "Linear"}
+                  className={cn("mr-2", isFavorite && "text-amber-500")}
+                />
                 {isFavorite ? "Unfavorite" : "Favorite"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete();
+                  e.stopPropagation()
+                  onDelete()
                 }}
                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
               >
@@ -245,21 +258,21 @@ function ProjectCard({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays === 1) return "Yesterday"
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }

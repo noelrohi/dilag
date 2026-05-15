@@ -15,10 +15,7 @@
     "fs:allow-watch",
     {
       "identifier": "fs:scope",
-      "allow": [
-        "$HOME/.dilag/**",
-        "$DOWNLOAD/**"
-      ]
+      "allow": ["$HOME/.dilag/**", "$DOWNLOAD/**"]
     },
     "fs:read-all",
     "fs:allow-write-file"

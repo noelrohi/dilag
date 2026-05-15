@@ -1,18 +1,13 @@
-import { cn } from "@/lib/utils";
-import type { SVGProps } from "react";
+import { cn } from "@/lib/utils"
+import type { SVGProps } from "react"
 
 interface DilagIconProps extends SVGProps<SVGSVGElement> {
-  animated?: boolean;
+  animated?: boolean
 }
 
 export function DilagIcon({ className, animated, ...props }: DilagIconProps) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      className={cn("size-4", className)}
-      {...props}
-    >
+    <svg viewBox="0 0 24 24" fill="none" className={cn("size-4", className)} {...props}>
       {/* Ghost rectangle - the outline element */}
       <rect
         x="4"
@@ -32,5 +27,5 @@ export function DilagIcon({ className, animated, ...props }: DilagIconProps) {
         className={cn(animated && "animate-morph-breathe origin-center")}
       />
     </svg>
-  );
+  )
 }

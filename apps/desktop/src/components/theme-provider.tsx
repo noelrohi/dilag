@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useState } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { bridge } from "@/lib/bridge"
 
 type Theme = "dark" | "light" | "system"
 
 // Sync titlebar theme with native macOS window
 const syncTitlebarTheme = async (isDark: boolean) => {
   try {
-    await invoke("set_titlebar_theme", { isDark })
+    await bridge.theme.setTitlebarTheme({ isDark })
   } catch (e) {
     console.warn("Failed to sync titlebar theme:", e)
   }
@@ -37,7 +37,7 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
   )
 
   useEffect(() => {
@@ -47,9 +47,7 @@ export function ThemeProvider({
 
     let resolvedTheme: "light" | "dark"
     if (theme === "system") {
-      resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
+      resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
     } else {
       resolvedTheme = theme
     }
@@ -63,7 +61,7 @@ export function ThemeProvider({
     if (theme !== "system") return
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-    
+
     const handleChange = (e: MediaQueryListEvent) => {
       const root = window.document.documentElement
       const isDark = e.matches
@@ -94,8 +92,7 @@ export function ThemeProvider({
 export function useTheme() {
   const context = useContext(ThemeProviderContext)
 
-  if (context === undefined)
-    throw new Error("useTheme must be used within a ThemeProvider")
+  if (context === undefined) throw new Error("useTheme must be used within a ThemeProvider")
 
   return context
 }
