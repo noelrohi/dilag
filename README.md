@@ -85,8 +85,10 @@ bun run lint
 
 ## Documentation
 
+- [Documentation index](docs/README.md)
 - [Desktop Architecture](docs/architecture.md)
 - [Platform Guide](docs/platform.md)
+- [Development Guide](docs/development.md)
 - [Changelog](CHANGELOG.md)
 
 ## Contributing

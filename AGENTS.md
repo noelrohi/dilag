@@ -1,91 +1,31 @@
 # AGENTS.md
 
-**Generated:** 2026-02-23 | **Branch:** main
+Dilag is an AI-powered design studio for mobile and web apps. The repo is a Bun/Turborepo monorepo.
 
-## Overview
+## Product
 
-Dilag is an AI-powered design studio for mobile and web apps. This monorepo contains:
+- Desktop app: local-first Electron app where users prompt an embedded Pi agent to generate HTML screens.
+- Web app: public marketing site only.
+- Generated desktop session data lives under `~/.dilag`; Pi runtime data is isolated under `~/.dilag/pi`.
 
-- **Desktop App** (`apps/desktop`): Electron desktop app (Electron main/preload + React 19 renderer)
-- **Website** (`apps/web`): Next.js 16 public marketing site
-- **Desktop Bridge** (`packages/desktop-bridge`): Shared renderer/preload IPC contract
-- **UI Package** (`packages/ui`): Shared UI primitives/components
+## Repository map
 
-## Structure
+- `apps/desktop` — Electron main/preload host plus React renderer.
+- `apps/web` — Next.js marketing site.
+- `packages/desktop-bridge` — shared renderer/preload IPC contract and desktop data shapes.
+- `packages/ui` — shared presentational UI primitives.
+- `docs/` — evergreen project docs.
 
-```
-dilag/
-├── apps/
-│   ├── desktop/              # Electron desktop app
-│   │   ├── src/              # React frontend
-│   │   ├── electron/         # Electron main/preload host
-│   │   ├── src-tauri/        # Legacy Tauri backend kept during migration
-│   │   └── docs/             # Architecture docs
-│   └── web/                  # Next.js marketing site
-│       └── src/app/          # App router pages
-├── packages/
-│   ├── desktop-bridge/       # Desktop IPC contract shared by Electron and React
-│   └── ui/                   # Shared UI components
-├── package.json              # Bun workspaces root
-└── turbo.json                # Turborepo config
-```
+## Architecture context
 
-## Commands
+- Renderer code talks to native/runtime capabilities through `@dilag/desktop-bridge`.
+- Electron main embeds the Pi coding-agent SDK and normalizes runtime events for the renderer.
+- Session-local design skills are written to `.agents/skills` inside each session workspace.
+- User-installed skills live under `~/.agents/skills`.
 
-```bash
-# Root
-bun install
-bun run dev
-bun run dev:desktop
-bun run dev:web
-bun run build
-bun run typecheck
-bun run test
-bun run lint
-bun run fmt:check
-bun run fmt
+## Docs
 
-# Desktop
-cd apps/desktop
-bun run dev
-bun run typecheck
-bun test
-
-# Web
-cd apps/web
-bun run dev
-bun run typecheck
-bun run build
-```
-
-## App-Specific Documentation
-
-| App | AGENTS.md            | Notes                      |
-| --- | -------------------- | -------------------------- |
-| Web | `apps/web/AGENTS.md` | Next.js marketing patterns |
-
-## Key Integrations
-
-### Pi SDK (AI)
-
-- Desktop app embeds the Pi coding-agent SDK in Electron main
-- Renderer talks to the runtime through `@dilag/desktop-bridge` as `bridge.agent`
-- Pi data is isolated under `~/.dilag/pi`; session-local skills are written to `.agents/skills`
-
-## Workspaces
-
-| Package                   | Name                    | Description                   |
-| ------------------------- | ----------------------- | ----------------------------- |
-| `apps/desktop`            | `@dilag/desktop`        | Electron desktop app          |
-| `apps/web`                | `@dilag/web`            | Next.js marketing website     |
-| `packages/desktop-bridge` | `@dilag/desktop-bridge` | Renderer/preload IPC contract |
-| `packages/ui`             | `@dilag/ui`             | Shared UI components          |
-
-## Conventions
-
-- **Package manager**: Bun with workspaces
-- **Build orchestration**: Turborepo
-- **Quality gate**: `bun run fmt:check`, `bun run lint`, `bun run typecheck`, `bun run test`, `bun run build`
-- **Desktop**: Electron host + React renderer. Keep native-shell calls behind `@dilag/desktop-bridge`.
-- **Web**: Public marketing pages only
-- **Contracts**: Put renderer/preload IPC types in `packages/desktop-bridge`. Add `packages/contracts` only when desktop, web, and a backend share duplicated schemas.
+- `docs/README.md` — documentation index.
+- `docs/architecture.md` — desktop runtime architecture and data boundaries.
+- `docs/platform.md` — product behavior, screens, flows, and feature checklist.
+- `docs/development.md` — toolchain, package roles, and quality gates.

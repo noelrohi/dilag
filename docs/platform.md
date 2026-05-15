@@ -114,7 +114,7 @@ Timeline navigation uses the runtime's session tree. Timeline actions call `brid
 
 ## Feature Test Checklist
 
-Use this checklist when validating the Pi migration stack:
+Use this checklist when validating the desktop app:
 
 - App boots and `bridge.agent.start()` completes.
 - Provider dialog can save an API key.
@@ -131,6 +131,7 @@ Use this checklist when validating the Pi migration stack:
 
 ## Maintained Docs
 
+- `docs/README.md` is the documentation index.
 - `docs/architecture.md` is the technical runtime reference.
 - `docs/platform.md` is the product/platform behavior reference.
-- `docs/pi-migration-matrix.html` is a migration tracking artifact, not canonical product documentation.
+- `docs/development.md` is the local development and quality-gate reference.

@@ -18,24 +18,24 @@ Together they form a stylized "D" for Dilag while telling the story of transform
 
 ```
 assets/
-├── app-icon.png      # 1240x1240 PNG with padding (source for tauri icon)
+├── app-icon.png      # 1240x1240 PNG with padding
 └── icon-source.svg   # Vector source for editing
+
+resources/icons/
+├── icon.icns         # macOS icon used by electron-builder
+├── icon.ico          # Windows icon used by electron-builder
+└── icon.png          # Linux icon used by electron-builder
 ```
 
 ## Regenerating Icons
 
-To regenerate all platform icons from the source:
+To regenerate platform icons, export the source artwork and update the files in `resources/icons/` used by `electron-builder`.
 
-```bash
-bun run tauri icon assets/app-icon.png
-```
+At minimum, keep these files current:
 
-This generates icons in `src-tauri/icons/` for:
-
-- macOS (`.icns`)
-- Windows (`.ico`)
-- Linux/general (various `.png` sizes)
-- Windows Store tiles (`Square*.png`)
+- `resources/icons/icon.icns` for macOS
+- `resources/icons/icon.ico` for Windows
+- `resources/icons/icon.png` for Linux
 
 ## Editing the Icon
 
@@ -43,9 +43,8 @@ This generates icons in `src-tauri/icons/` for:
 2. Export to PNG at 1024x1024
 3. Add ~10% padding (extend canvas to ~1240x1240 with transparent background)
 4. Save as `assets/app-icon.png`
-5. Run `bun run tauri icon assets/app-icon.png`
-6. Clear build cache: `rm -rf src-tauri/target`
-7. Restart Dock to clear icon cache: `killall Dock`
+5. Regenerate `resources/icons/icon.icns`, `resources/icons/icon.ico`, and `resources/icons/icon.png`
+6. Restart Dock to clear icon cache when testing macOS icons: `killall Dock`
 
 ## macOS Icon Guidelines
 

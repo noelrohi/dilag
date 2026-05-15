@@ -1,6 +1,6 @@
 # Development
 
-Dilag follows the tooling path recommended in `docs/tooling-parity-t3code.html`: borrow T3 Code's quality gates, toolchain pinning, and explicit package contracts, but do not adopt its Effect stack, custom Oxlint plugin, devcontainer, or public-repo PR automation as part of this cleanup.
+This is the evergreen development reference for the monorepo: toolchain, quality gates, package boundaries, and code ownership.
 
 ## Toolchain
 

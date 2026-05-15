@@ -205,7 +205,7 @@ tsc --noEmit
 
 ### Adding New Features
 
-1. Check `docs/architecture.md` for current data flow
+1. Check `../../docs/architecture.md` for current data flow
 2. Update Zustand store if adding new state
 3. Create components in appropriate `src/components/*` folder
 4. Use `@/*` imports and TypeScript types
@@ -213,8 +213,8 @@ tsc --noEmit
 
 ## Documentation
 
-- **[Platform Docs](./docs/platform.md)** – UI screens, components, user flows, tool registry
-- **[Architecture Docs](./docs/architecture.md)** – App startup, storage, agent events, session lifecycle
+- **[Platform Docs](../../docs/platform.md)** – UI screens, components, user flows, tool registry
+- **[Architecture Docs](../../docs/architecture.md)** – App startup, storage, agent events, session lifecycle
 - **[AGENTS.md](./AGENTS.md)** – Development setup and conventions
 
 ## Contributing

@@ -1,6 +1,6 @@
 # Dilag Architecture
 
-This document describes the current desktop architecture after the OpenCode-to-Pi runtime migration. Dilag keeps a stable product bridge in the renderer while embedding the Pi coding-agent SDK in Electron main.
+This document describes the current desktop architecture. Dilag keeps a stable product bridge in the renderer while embedding the Pi coding-agent SDK in Electron main.
 
 ## Goals
 
@@ -116,10 +116,6 @@ Generated screens are plain HTML files in the session directory:
 ```
 
 The canvas preview is runtime-independent. If valid screen files exist, the renderer can display them regardless of which agent runtime produced them.
-
-## Migration Notes
-
-`docs/pi-migration-matrix.html` is a migration tracking artifact for the OpenCode-to-Pi cutover. It should not be treated as the canonical architecture reference after the migration lands; this document and `docs/platform.md` are the maintained references.
 
 ## Quality Gates
 
