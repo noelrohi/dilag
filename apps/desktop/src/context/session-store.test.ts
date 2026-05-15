@@ -157,6 +157,41 @@ describe("session-store", () => {
       expect(parts[0].text).toBe("Updated text")
     })
 
+    it("should not downgrade completed tool parts from a later stale pending update", () => {
+      const messageId = "msg-1"
+      const completedPart: MessagePart = {
+        id: "tool-1",
+        messageID: messageId,
+        sessionID: "session-1",
+        type: "tool",
+        tool: "read",
+        state: {
+          status: "completed",
+          input: { path: "src/app.tsx" },
+          output: "file contents",
+          metadata: { preview: "file contents" },
+        },
+      }
+
+      useSessionStore.getState().updatePart(messageId, completedPart)
+      useSessionStore.getState().updatePart(messageId, {
+        id: "tool-1",
+        messageID: messageId,
+        sessionID: "session-1",
+        type: "tool",
+        tool: "read",
+        state: {
+          status: "pending",
+          input: { path: "src/app.tsx" },
+        },
+      })
+
+      const parts = useSessionStore.getState().parts[messageId]
+      expect(parts).toHaveLength(1)
+      expect(parts[0].state?.status).toBe("completed")
+      expect(parts[0].state?.output).toBe("file contents")
+    })
+
     it("should maintain part order by id", () => {
       const messageId = "msg-1"
 

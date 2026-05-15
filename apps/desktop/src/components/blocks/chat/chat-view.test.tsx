@@ -7,7 +7,9 @@ import {
   removeFileMentionToken,
   estimateMentionFileSizeBytes,
   buildMentionDataUrl,
+  getRenderableAssistantParts,
 } from "./chat-view"
+import type { MessagePart } from "@/context/session-store"
 
 describe("parseMessageText", () => {
   describe("screen context removal", () => {
@@ -199,5 +201,40 @@ describe("mention file content helpers", () => {
   it("uses existing base64 payload when encoding is base64", () => {
     const url = buildMentionDataUrl("aGVsbG8=", "text/plain", "base64")
     expect(url).toBe("data:text/plain;base64,aGVsbG8=")
+  })
+})
+
+describe("getRenderableAssistantParts", () => {
+  it("hides completed assistant messages that only contain reasoning", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "reasoning-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "reasoning",
+        text: "I should inspect the project.",
+      },
+    ]
+
+    expect(getRenderableAssistantParts(parts)).toEqual([])
+  })
+
+  it("keeps a completed tool row renderable after Pi message_end repeats the tool call", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "tool-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "read",
+        state: {
+          status: "completed",
+          input: { path: "src/app.tsx" },
+          output: "contents",
+        },
+      },
+    ]
+
+    expect(getRenderableAssistantParts(parts)).toHaveLength(1)
   })
 })

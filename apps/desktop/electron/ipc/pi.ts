@@ -43,9 +43,12 @@ type PiMessage = {
   isError?: boolean
   errorMessage?: string
   stopReason?: string
+  details?: unknown
 }
 
 type RequestedAgentModel = { providerID: string; modelID: string }
+type AgentToolState = NonNullable<AgentMessagePart["state"]>
+type PiMessagePhase = "start" | "update" | "end"
 
 type RuntimeSession = {
   id: string
@@ -54,6 +57,8 @@ type RuntimeSession = {
   unsubscribe: () => void
   activeMessageId?: string
   toolInputs: Map<string, unknown>
+  toolMessageIds: Map<string, string>
+  toolStates: Map<string, AgentToolState>
   changedFiles: Map<string, { file: string; additions: number; deletions: number }>
 }
 
@@ -229,10 +234,11 @@ export async function getAgentMessages(args: {
   directory: string
 }): Promise<AgentMessage[]> {
   const runtime = await ensureRuntimeSession(args.sessionID, args.directory)
-  return runtime.session.sessionManager
-    .getEntries()
+  const entries = runtime.session.sessionManager.getEntries() as PiSessionEntry[]
+  const toolStates = toolStatesFromEntries(entries)
+  return entries
     .filter((entry) => entry.type === "message")
-    .flatMap((entry) => messageEntryToBridgeMessages(entry, runtime.id))
+    .flatMap((entry) => messageEntryToBridgeMessages(entry, runtime.id, toolStates))
 }
 
 export async function promptAgentSession(args: {
@@ -494,6 +500,8 @@ function bindRuntimeSession(session: AgentSession, cwd: string): RuntimeSession 
     session,
     unsubscribe: () => undefined,
     toolInputs: new Map(),
+    toolMessageIds: new Map(),
+    toolStates: new Map(),
     changedFiles: new Map(),
   }
   runtime.unsubscribe = session.subscribe((event) => handlePiSessionEvent(runtime, event))
@@ -719,7 +727,9 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
     event.type === "message_update" ||
     event.type === "message_end"
   ) {
-    emitMessage(runtime, event.message as PiMessage, event.type === "message_end")
+    const phase =
+      event.type === "message_start" ? "start" : event.type === "message_end" ? "end" : "update"
+    emitMessage(runtime, event.message as PiMessage, phase)
     return
   }
 
@@ -773,16 +783,22 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
   }
 }
 
-function emitMessage(runtime: RuntimeSession, message: PiMessage, completed: boolean) {
+function emitMessage(runtime: RuntimeSession, message: PiMessage, phase: PiMessagePhase) {
   if (message.role !== "user" && message.role !== "assistant") return
 
   const sessionID = runtime.id
   const messageID =
     message.role === "assistant"
-      ? (runtime.activeMessageId ?? messageId(sessionID, message))
+      ? phase === "start" || !runtime.activeMessageId
+        ? messageId(sessionID, message)
+        : runtime.activeMessageId
       : messageId(sessionID, message)
-  if (message.role === "assistant") runtime.activeMessageId = messageID
+  if (message.role === "assistant") {
+    runtime.activeMessageId = messageID
+    trackToolMessageIds(runtime, messageID, message)
+  }
   const created = message.timestamp ?? Date.now()
+  const completed = phase === "end"
   emitAgentEvent({
     type: "message.updated",
     properties: {
@@ -795,12 +811,16 @@ function emitMessage(runtime: RuntimeSession, message: PiMessage, completed: boo
     },
   })
 
-  messageParts(sessionID, messageID, message).forEach((part) => {
+  messageParts(sessionID, messageID, message, runtime.toolStates).forEach((part) => {
     emitAgentEvent({
       type: "message.part.updated",
       properties: { part },
     })
   })
+
+  if (message.role === "assistant" && completed) {
+    runtime.activeMessageId = undefined
+  }
 }
 
 function emitToolPart(
@@ -812,8 +832,13 @@ function emitToolPart(
   output?: unknown,
 ) {
   const sessionID = runtime.id
-  const messageID = runtime.activeMessageId ?? `${sessionID}:assistant:active`
-  runtime.activeMessageId = messageID
+  const messageID =
+    runtime.toolMessageIds.get(toolCallId) ??
+    runtime.activeMessageId ??
+    `${sessionID}:assistant:active`
+  runtime.toolMessageIds.set(toolCallId, messageID)
+  const state = toolState(toolName, status, input, output)
+  runtime.toolStates.set(toolCallId, state)
   emitAgentEvent({
     type: "message.updated",
     properties: {
@@ -834,14 +859,7 @@ function emitToolPart(
         sessionID,
         type: "tool",
         tool: toolName,
-        state: {
-          status,
-          input,
-          output: output === undefined ? undefined : toolResultText(output),
-          error: status === "error" ? toolResultText(output) : undefined,
-          metadata: toolResultMetadata(toolName, output),
-          time: { start: Date.now(), end: status === "running" ? undefined : Date.now() },
-        },
+        state,
       },
     },
   })
@@ -850,6 +868,7 @@ function emitToolPart(
 function messageEntryToBridgeMessages(
   entry: { id: string; timestamp: string; message?: unknown },
   sessionID: string,
+  toolStates?: Map<string, AgentToolState>,
 ): AgentMessage[] {
   const message = entry.message as PiMessage | undefined
   if (!message || (message.role !== "user" && message.role !== "assistant")) return []
@@ -863,7 +882,7 @@ function messageEntryToBridgeMessages(
         role: message.role,
         time: { created, completed: created },
       },
-      parts: messageParts(sessionID, messageID, message),
+      parts: messageParts(sessionID, messageID, message, toolStates),
     },
   ]
 }
@@ -872,6 +891,7 @@ function messageParts(
   sessionID: string,
   messageID: string,
   message: PiMessage,
+  toolStates?: Map<string, AgentToolState>,
 ): AgentMessagePart[] {
   const content = normalizeContent(message.content)
   return content.flatMap((part, index): AgentMessagePart[] => {
@@ -902,7 +922,7 @@ function messageParts(
         sessionID,
         type: "tool",
         tool: part.name,
-        state: {
+        state: toolStates?.get(part.id) ?? {
           status: "pending",
           input: part.arguments,
           time: { start: message.timestamp ?? Date.now() },
@@ -910,6 +930,70 @@ function messageParts(
       },
     ]
   })
+}
+
+function trackToolMessageIds(runtime: RuntimeSession, messageID: string, message: PiMessage) {
+  for (const part of normalizeContent(message.content)) {
+    if (part.type === "toolCall") {
+      runtime.toolMessageIds.set(part.id, messageID)
+    }
+  }
+}
+
+function toolState(
+  toolName: string,
+  status: "running" | "completed" | "error",
+  input?: unknown,
+  output?: unknown,
+): AgentToolState {
+  return {
+    status,
+    input,
+    output: output === undefined ? undefined : toolResultText(output),
+    error: status === "error" ? toolResultText(output) : undefined,
+    metadata: toolResultMetadata(toolName, output),
+    time: { start: Date.now(), end: status === "running" ? undefined : Date.now() },
+  }
+}
+
+type PiSessionEntry = {
+  id: string
+  type: string
+  timestamp: string
+  message?: PiMessage
+}
+
+function toolStatesFromEntries(entries: PiSessionEntry[]): Map<string, AgentToolState> {
+  const toolInputs = new Map<string, unknown>()
+  const toolNames = new Map<string, string>()
+  const toolStates = new Map<string, AgentToolState>()
+
+  for (const entry of entries) {
+    const message = entry.message
+    if (!message || message.role !== "assistant") continue
+    for (const part of normalizeContent(message.content)) {
+      if (part.type !== "toolCall") continue
+      toolInputs.set(part.id, part.arguments)
+      toolNames.set(part.id, part.name)
+    }
+  }
+
+  for (const entry of entries) {
+    const message = entry.message
+    if (!message || message.role !== "toolResult" || !message.toolCallId) continue
+    const toolName = message.toolName ?? toolNames.get(message.toolCallId) ?? "tool"
+    toolStates.set(
+      message.toolCallId,
+      toolState(
+        toolName,
+        message.isError ? "error" : "completed",
+        toolInputs.get(message.toolCallId),
+        message,
+      ),
+    )
+  }
+
+  return toolStates
 }
 
 function normalizeContent(

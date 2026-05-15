@@ -216,6 +216,13 @@ function wouldRenderContent(part: MessagePartType): boolean {
   }
 }
 
+export function getRenderableAssistantParts(parts: MessagePartType[]): MessagePartType[] {
+  const nonReasoningParts = parts.filter(
+    (part) => part.type !== "reasoning" && wouldRenderContent(part),
+  )
+  return nonReasoningParts.length > 0 ? parts.filter(wouldRenderContent) : []
+}
+
 const BUSY_FALLBACKS = [
   "Thinking",
   "Designing",
@@ -488,10 +495,7 @@ function AssistantMessage({
 }) {
   const parts = useMessageParts(message.id)
   const sessionError = useSessionError(message.sessionID)
-  const nonReasoningParts = parts.filter(
-    (part) => part.type !== "reasoning" && wouldRenderContent(part),
-  )
-  const renderableParts = nonReasoningParts.length > 0 ? parts.filter(wouldRenderContent) : []
+  const renderableParts = getRenderableAssistantParts(parts)
 
   if (!message.isStreaming && renderableParts.length === 0 && !sessionError) {
     return null
