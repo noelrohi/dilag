@@ -147,7 +147,10 @@ export async function getAgentProviderData(): Promise<AgentProviderData> {
   }
 }
 
-function getThinkingLevelVariants(model: { reasoning?: boolean; thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>> }) {
+function getThinkingLevelVariants(model: {
+  reasoning?: boolean
+  thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>>
+}) {
   if (!model.reasoning) return undefined
   const levels: AgentThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"]
   const available = levels.filter((level) => {

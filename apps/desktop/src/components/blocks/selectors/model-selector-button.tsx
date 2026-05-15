@@ -24,13 +24,7 @@ type ProviderDialogState =
   | { type: "connect-provider"; providerId: string }
 
 // Popular providers in priority order
-const PROVIDER_PRIORITY = [
-  "anthropic",
-  "openai",
-  "google",
-  "github-copilot",
-  "openrouter",
-]
+const PROVIDER_PRIORITY = ["anthropic", "openai", "google", "github-copilot", "openrouter"]
 
 interface ModelSelectorButtonProps {
   variant?: "default" | "settings"
