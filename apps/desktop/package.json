@@ -18,12 +18,12 @@
     "smoke:electron": "bun run build && bun scripts/smoke-electron.mjs",
     "preview": "vite preview",
     "test": "vitest",
+    "test:prompt-flow": "vitest run src/hooks/use-sessions.test.ts -t \"project chat and sends the first prompt\"",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "release": "bumpp",
     "sync-version": "bun scripts/sync-version.ts",
-    "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts",
-    "test:prompt-flow": "vitest run src/hooks/use-sessions.test.ts -t \"project chat and sends the first prompt\""
+    "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts"
   },
   "build": {
     "appId": "com.rohi.dilag",
@@ -102,6 +102,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "dayjs": "^1.11.19",
+    "diff": "^8.0.2",
     "embla-carousel-react": "^8.6.0",
     "howler": "^2.2.4",
     "html2canvas-pro": "^1.6.4",

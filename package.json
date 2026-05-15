@@ -17,10 +17,10 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "lint": "turbo lint",
+    "test:prompt-flow": "bun run --cwd apps/desktop test:prompt-flow",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
-    "clean": "turbo clean && rm -rf node_modules",
-    "test:prompt-flow": "bun run --cwd apps/desktop test:prompt-flow"
+    "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

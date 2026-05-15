@@ -1,23 +1,21 @@
 import type { ReactNode, FC } from "react"
 import type { ToolState } from "@/context/session-store"
+import { CheckSquare, Record, Pallete2 } from "@solar-icons/react"
 import {
-  Monitor,
-  Magnifer,
-  Global,
+  Terminal,
+  Search,
+  Globe,
   Glasses,
-  Code,
-  AddSquare,
-  FolderPathConnect,
-  Bolt,
+  PencilLine,
+  FilePlus2,
+  FolderTree,
+  Bot,
   Settings,
   ClipboardList,
-  CheckSquare,
-  Record,
-  Pallete2,
-  MagicStick,
-  QuestionCircle,
-} from "@solar-icons/react"
-import { Streamdown } from "streamdown"
+  Sparkles,
+  CircleHelp,
+} from "lucide-react"
+import { diffLines } from "diff"
 import { cn } from "@/lib/utils"
 
 // Tool props passed to render functions
@@ -43,6 +41,7 @@ type IconComponent = FC<{ size?: number; className?: string }>
 export interface ToolConfig {
   icon: IconComponent
   title: (props: ToolRenderProps) => string
+  expandedTitle?: (props: ToolRenderProps) => string
   chipLabel?: (props: ToolRenderProps) => string | undefined
   subtitle?: (props: ToolRenderProps) => ReactNode | StructuredSubtitle
   content?: (props: ToolRenderProps) => ReactNode
@@ -74,75 +73,47 @@ const getInput = (props: ToolRenderProps) => ({
     props.input.new ??
     props.input.after) as string | undefined,
   content: props.input.content as string | undefined,
+  offset: props.input.offset as number | undefined,
+  limit: props.input.limit as number | undefined,
 })
 
 // Get filename from path
 const filename = (path?: string) => path?.split("/").pop() || ""
 
-// Language map for file extensions
-const LANG_MAP: Record<string, string> = {
-  ts: "typescript",
-  tsx: "tsx",
-  js: "javascript",
-  jsx: "jsx",
-  py: "python",
-  rb: "ruby",
-  rs: "rust",
-  go: "go",
-  java: "java",
-  kt: "kotlin",
-  swift: "swift",
-  c: "c",
-  cpp: "cpp",
-  h: "c",
-  hpp: "cpp",
-  cs: "csharp",
-  php: "php",
-  html: "html",
-  css: "css",
-  scss: "scss",
-  less: "less",
-  json: "json",
-  yaml: "yaml",
-  yml: "yaml",
-  md: "markdown",
-  sql: "sql",
-  sh: "bash",
-  bash: "bash",
-  zsh: "bash",
-  fish: "fish",
-  ps1: "powershell",
-  dockerfile: "dockerfile",
-  toml: "toml",
-  xml: "xml",
-  vue: "vue",
-  svelte: "svelte",
+function PlainToolOutput({ text }: { text: string }) {
+  return (
+    <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words text-[#e2e2e2]">
+      {text}
+    </pre>
+  )
 }
 
-// Get language from file extension for syntax highlighting
-const getLanguage = (path?: string, content?: string): string => {
-  // Try to detect from file extension first
-  if (path) {
-    const ext = path.split(".").pop()?.toLowerCase()
-    if (ext && LANG_MAP[ext]) return LANG_MAP[ext]
-  }
-
-  // Fallback: detect from content
-  if (content) {
-    const trimmed = content.trimStart()
-    if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) return "html"
-    if (trimmed.startsWith("<?xml")) return "xml"
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return "json"
-    if (trimmed.startsWith("<!-") && trimmed.includes("<template")) return "vue"
-    if (trimmed.startsWith("---")) return "yaml"
-    if (trimmed.startsWith("#!") && trimmed.includes("python")) return "python"
-    if (trimmed.startsWith("#!") && (trimmed.includes("bash") || trimmed.includes("sh")))
-      return "bash"
-    if (trimmed.startsWith("package ") && trimmed.includes("func ")) return "go"
-    if (trimmed.startsWith("use ") || trimmed.includes("fn ")) return "rust"
-  }
-
-  return "text"
+function InlineDiff({ diff }: { diff: string }) {
+  const lines = diff.split(/\r\n|\r|\n/)
+  return (
+    <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words">
+      {lines.map((line, index) => {
+        const isFileMeta = line.startsWith("+++") || line.startsWith("---")
+        const isHunk = line.startsWith("@@")
+        const isAdd = line.startsWith("+") && !line.startsWith("+++")
+        const isRemove = line.startsWith("-") && !line.startsWith("---")
+        return (
+          <span
+            key={index}
+            className={cn(
+              "block min-h-[1.35em]",
+              isAdd && "text-emerald-300 bg-emerald-500/10",
+              isRemove && "text-red-300 bg-red-500/10",
+              (isHunk || isFileMeta) && "text-sky-300/80",
+              !isAdd && !isRemove && !isHunk && !isFileMeta && "text-[#d6d6d6]",
+            )}
+          >
+            {line || " "}
+          </span>
+        )
+      })}
+    </pre>
+  )
 }
 
 // Todo type
@@ -157,41 +128,29 @@ export const TOOLS: Record<string, ToolConfig> = {
   read: {
     icon: Glasses,
     title: () => "Read",
+    expandedTitle: () => "Read file",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const file = filename(getInput(p).filePath)
-      // Use metadata.preview if available (first 20 lines from backend)
-      const preview = p.metadata?.preview as string | undefined
-      const lines = preview?.split("\n").length ?? p.output?.split("\n").length ?? 0
       if (!file) return undefined
-      return {
-        text: file,
-        suffix:
-          lines > 0 ? <span className="text-muted-foreground/70">({lines} lines)</span> : undefined,
-      }
+      return { text: file }
     },
     content: (p) => {
-      const { filePath } = getInput(p)
       // Prefer metadata.preview for display (more concise)
       const content = (p.metadata?.preview as string) ?? p.output
       if (!content) return null
 
-      const lang = getLanguage(filePath, content)
       const truncated =
         content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content
-      const markdown = "```" + lang + "\n" + truncated + "\n```"
 
-      return (
-        <div className="text-xs">
-          <Streamdown>{markdown}</Streamdown>
-        </div>
-      )
+      return <PlainToolOutput text={truncated} />
     },
   },
 
   edit: {
-    icon: Code,
-    title: () => "Edit",
+    icon: PencilLine,
+    title: () => "Edited",
+    expandedTitle: () => "Edited file",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const { filePath } = getInput(p)
@@ -214,18 +173,13 @@ export const TOOLS: Record<string, ToolConfig> = {
       const diff = p.metadata?.diff as string | undefined
       if (!diff) return null
 
-      const markdown = "```diff\n" + diff + "\n```"
-      return (
-        <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
-          <Streamdown>{markdown}</Streamdown>
-        </div>
-      )
+      return <InlineDiff diff={diff} />
     },
   },
 
   bash: {
-    icon: Monitor,
-    title: () => "Shell",
+    icon: Terminal,
+    title: () => "Ran shell",
     chipLabel: (p) => {
       const desc = p.metadata?.description as string | undefined
       const { description, command } = getInput(p)
@@ -260,7 +214,7 @@ export const TOOLS: Record<string, ToolConfig> = {
           {command && (
             <div className="flex items-start gap-2 font-mono text-xs">
               <span className="text-muted-foreground/50 select-none shrink-0">$</span>
-              <code className="text-foreground/90 break-all whitespace-pre-wrap">{command}</code>
+              <code className="text-[#e2e2e2] break-all whitespace-pre-wrap">{command}</code>
             </div>
           )}
           {output && (
@@ -268,7 +222,7 @@ export const TOOLS: Record<string, ToolConfig> = {
               className={cn(
                 "text-xs font-mono leading-relaxed max-h-40 overflow-auto",
                 "whitespace-pre-wrap break-words",
-                hasError ? "text-red-400/80" : "text-muted-foreground",
+                hasError ? "text-red-300" : "text-[#d6d6d6]",
               )}
             >
               {output.length > 2000 ? output.slice(0, 2000) + "\n..." : output}
@@ -280,8 +234,9 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   write: {
-    icon: AddSquare,
-    title: () => "Write",
+    icon: FilePlus2,
+    title: () => "Wrote",
+    expandedTitle: () => "Wrote file",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const { filePath, content } = getInput(p)
@@ -294,25 +249,46 @@ export const TOOLS: Record<string, ToolConfig> = {
       }
     },
     content: (p) => {
-      const { filePath, content } = getInput(p)
+      const { content } = getInput(p)
       if (!content) return null
 
-      const lang = getLanguage(filePath, content)
       const truncated =
         content.length > 3000 ? content.slice(0, 3000) + "\n// ... truncated" : content
-      const markdown = "```" + lang + "\n" + truncated + "\n```"
+      const parts = diffLines("", truncated)
 
       return (
-        <div className="text-xs [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0">
-          <Streamdown>{markdown}</Streamdown>
-        </div>
+        <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words">
+          {parts.flatMap((part, partIndex) =>
+            part.value.split(/(\r\n|\r|\n)/).reduce<ReactNode[]>((nodes, segment, index, segments) => {
+              if (segment === "\n" || segment === "\r" || segment === "\r\n") return nodes
+              if (segment === "" && index === segments.length - 1) return nodes
+              const lineBreak = index < segments.length - 1 ? "\n" : ""
+              nodes.push(
+                <span
+                  key={`${partIndex}-${index}`}
+                  className={cn(
+                    "block min-h-[1.35em]",
+                    part.added && "text-emerald-300 bg-emerald-500/10",
+                    part.removed && "text-red-300 bg-red-500/10",
+                    !part.added && !part.removed && "text-[#e2e2e2]",
+                  )}
+                >
+                  {part.added ? "+ " : part.removed ? "- " : "  "}
+                  {segment}
+                  {lineBreak}
+                </span>,
+              )
+              return nodes
+            }, []),
+          )}
+        </pre>
       )
     },
   },
 
   todowrite: {
     icon: ClipboardList,
-    title: () => "To-dos",
+    title: () => "Updated to-dos",
     subtitle: (p) => {
       const todos = p.input.todos as Todo[] | undefined
       if (!todos?.length) return undefined
@@ -348,8 +324,8 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   glob: {
-    icon: FolderPathConnect,
-    title: () => "Glob",
+    icon: FolderTree,
+    title: () => "Found files",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
       const pattern = getInput(p).pattern
@@ -368,17 +344,12 @@ export const TOOLS: Record<string, ToolConfig> = {
       return pattern
     },
     content: (p) =>
-      p.output && (
-        <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-          {p.output.slice(0, 1000)}
-          {p.output.length > 1000 && "..."}
-        </pre>
-      ),
+      p.output && <PlainToolOutput text={p.output.length > 1000 ? `${p.output.slice(0, 1000)}...` : p.output} />,
   },
 
   list: {
-    icon: FolderPathConnect,
-    title: () => "List",
+    icon: FolderTree,
+    title: () => "Listed",
     chipLabel: (p) => filename(getInput(p).filePath) || "directory",
     subtitle: (p) => {
       const { filePath } = getInput(p)
@@ -398,17 +369,12 @@ export const TOOLS: Record<string, ToolConfig> = {
       return path
     },
     content: (p) =>
-      p.output && (
-        <pre className="text-xs text-muted-foreground max-h-40 overflow-auto font-mono">
-          {p.output.slice(0, 1500)}
-          {p.output.length > 1500 && "..."}
-        </pre>
-      ),
+      p.output && <PlainToolOutput text={p.output.length > 1500 ? `${p.output.slice(0, 1500)}...` : p.output} />,
   },
 
   grep: {
-    icon: Magnifer,
-    title: () => "Grep",
+    icon: Search,
+    title: () => "Searched",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
       const pattern = getInput(p).pattern
@@ -427,17 +393,12 @@ export const TOOLS: Record<string, ToolConfig> = {
       return pattern
     },
     content: (p) =>
-      p.output && (
-        <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-          {p.output.slice(0, 1000)}
-          {p.output.length > 1000 && "..."}
-        </pre>
-      ),
+      p.output && <PlainToolOutput text={p.output.length > 1000 ? `${p.output.slice(0, 1000)}...` : p.output} />,
   },
 
   webfetch: {
-    icon: Global,
-    title: () => "Fetch",
+    icon: Globe,
+    title: () => "Fetched",
     chipLabel: (p) => {
       const url = getInput(p).url
       try {
@@ -466,22 +427,19 @@ export const TOOLS: Record<string, ToolConfig> = {
         <div className="space-y-2">
           {url && (
             <div className="text-xs">
-              <span className="text-muted-foreground/60">URL: </span>
-              <span className="text-blue-400/80 break-all">{url}</span>
+              <span className="text-[#a8a8a8]">URL: </span>
+              <span className="text-sky-300 break-all">{url}</span>
             </div>
           )}
           {prompt && (
             <div className="text-xs">
-              <span className="text-muted-foreground/60">Prompt: </span>
-              <span className="text-foreground/80">{prompt}</span>
+              <span className="text-[#a8a8a8]">Prompt: </span>
+              <span className="text-[#e2e2e2]">{prompt}</span>
             </div>
           )}
           {p.output && (
-            <div className="mt-2 pt-2 border-t border-border/30">
-              <pre className="text-xs text-muted-foreground max-h-48 overflow-auto whitespace-pre-wrap">
-                {p.output.slice(0, 2000)}
-                {p.output.length > 2000 && "\n..."}
-              </pre>
+            <div className="mt-2 pt-2 border-t border-neutral-700/70">
+              <PlainToolOutput text={p.output.length > 2000 ? `${p.output.slice(0, 2000)}\n...` : p.output} />
             </div>
           )}
         </div>
@@ -490,8 +448,8 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   task: {
-    icon: Bolt,
-    title: () => "Task",
+    icon: Bot,
+    title: () => "Ran task",
     chipLabel: (p) => getInput(p).description?.slice(0, 25),
     subtitle: (p) => {
       const { description } = getInput(p)
@@ -524,13 +482,13 @@ export const TOOLS: Record<string, ToolConfig> = {
       return (
         <div className="space-y-2">
           {prompt && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-[#d6d6d6]">
               {prompt.slice(0, 200)}
               {prompt.length > 200 && "..."}
             </p>
           )}
           {summary && summary.length > 0 && (
-            <div className="space-y-1 pt-1 border-t border-border/30">
+            <div className="space-y-1 pt-1 border-t border-neutral-700/70">
               {summary.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 text-xs">
                   <span
@@ -554,10 +512,7 @@ export const TOOLS: Record<string, ToolConfig> = {
             </div>
           )}
           {p.output && !summary && (
-            <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-              {p.output.slice(0, 500)}
-              {p.output.length > 500 && "..."}
-            </pre>
+            <PlainToolOutput text={p.output.length > 500 ? `${p.output.slice(0, 500)}...` : p.output} />
           )}
         </div>
       )
@@ -566,7 +521,7 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   theme: {
     icon: Pallete2,
-    title: () => "Theme",
+    title: () => "Created theme",
     chipLabel: (p) => {
       const name = p.input.name as string | undefined
       return name?.slice(0, 20)
@@ -626,7 +581,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   skill: {
-    icon: MagicStick,
+    icon: Sparkles,
     title: (p) => {
       // Try different possible input keys for skill name
       const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined
@@ -642,7 +597,7 @@ export const TOOLS: Record<string, ToolConfig> = {
       const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined
       if (!name && Object.keys(p.input).length > 0) {
         return (
-          <pre className="text-xs text-muted-foreground">{JSON.stringify(p.input, null, 2)}</pre>
+          <PlainToolOutput text={JSON.stringify(p.input, null, 2)} />
         )
       }
       return null
@@ -651,7 +606,7 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   // Question tool - displays questions and user's answers
   question: {
-    icon: QuestionCircle,
+    icon: CircleHelp,
     title: (p) => {
       const questions = p.input.questions as Array<{ header?: string }> | undefined
       const firstHeader = questions?.[0]?.header
@@ -756,15 +711,10 @@ export const DEFAULT_TOOL: ToolConfig = {
     return (
       <>
         {hasInput && (
-          <pre className="text-xs text-muted-foreground">
-            {JSON.stringify(p.input, null, 2).slice(0, 500)}
-          </pre>
+          <PlainToolOutput text={JSON.stringify(p.input, null, 2).slice(0, 500)} />
         )}
         {p.output && (
-          <pre className="text-xs text-muted-foreground max-h-40 overflow-auto">
-            {p.output.slice(0, 500)}
-            {p.output.length > 500 && "..."}
-          </pre>
+          <PlainToolOutput text={p.output.length > 500 ? `${p.output.slice(0, 500)}...` : p.output} />
         )}
       </>
     )

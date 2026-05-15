@@ -13,6 +13,13 @@ export const sessionKeys = {
   detail: (id: string) => [...sessionKeys.details(), id] as const,
 }
 
+function displayNameFromAgentSession(name: string | undefined, firstMessage: string | undefined) {
+  const source = name || firstMessage || "New chat"
+  const skillMatch = source.match(/<\/skill>\s*([\s\S]*)$/)
+  const cleaned = (skillMatch?.[1] || source).trim()
+  return cleaned || "New chat"
+}
+
 // Desktop bridge calls for local session management.
 async function loadSessionsMetadata(): Promise<SessionMeta[]> {
   const projects = await bridge.projects.list()
@@ -20,7 +27,7 @@ async function loadSessionsMetadata(): Promise<SessionMeta[]> {
     projects.map(async (project) => {
       const sessions = await bridge.agent.listSessions({ directory: project.path }).catch(() => [])
       return sessions.map((session): SessionMeta => {
-        const name = session.name || session.first_message || "New chat"
+        const name = displayNameFromAgentSession(session.name, session.first_message)
         return {
           id: session.id,
           name,

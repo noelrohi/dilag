@@ -22,6 +22,7 @@ import {
   UndoLeft,
   ClockCircle,
   Copy,
+  AltArrowRight,
 } from "@solar-icons/react"
 import { usePendingMessage } from "@/hooks/use-chat-interface"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
@@ -31,9 +32,6 @@ import {
   useSessionError,
   useSessionRevert,
   useSessionStore,
-  usePendingQuestions,
-  useRunningQuestionTools,
-  useRunningPermissionTools,
   type SessionStatus,
   type Message as SessionMessage,
 } from "@/context/session-store"
@@ -54,7 +52,6 @@ import {
   MessageAction,
   MessageResponse,
 } from "@/components/ai-elements/message"
-import { useElapsedTime } from "@/hooks/use-elapsed-time"
 import {
   PromptInput,
   PromptInputTextarea,
@@ -293,42 +290,12 @@ export function isAssistantMessageStreaming(
   )
 }
 
-const BUSY_FALLBACKS = [
-  "Thinking",
-  "Designing",
-  "Sketching",
-  "Refining",
-  "Polishing",
-  "Exploring",
-  "Planning",
-  "Cooking",
-] as const
-
-function useBusyFallbackOnce(active: boolean): string {
-  const [label, setLabel] = useState<string>(BUSY_FALLBACKS[0])
-  const prevActiveRef = useRef(false)
-  const lastLabelRef = useRef<string>(label)
-
-  useEffect(() => {
-    lastLabelRef.current = label
-  }, [label])
-
-  useEffect(() => {
-    const wasActive = prevActiveRef.current
-    prevActiveRef.current = active
-
-    // Pick once when we *enter* active state.
-    if (active && !wasActive) {
-      let next = lastLabelRef.current
-      // Avoid repeating the same label when possible
-      for (let attempts = 0; attempts < 5 && next === lastLabelRef.current; attempts++) {
-        next = BUSY_FALLBACKS[Math.floor(Math.random() * BUSY_FALLBACKS.length)]
-      }
-      setLabel(next)
-    }
-  }, [active])
-
-  return label
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  if (minutes > 0) return `${minutes}m ${seconds}s`
+  return `${seconds}s`
 }
 
 function ThinkingIndicator() {
@@ -363,48 +330,6 @@ function InlineErrorCard({ error }: { error: { name: string; message: string } }
       <div className="flex flex-col gap-0.5 min-w-0">
         <span className="text-sm font-medium text-destructive">{formattedName || "Error"}</span>
         <span className="text-sm text-destructive/80 break-words">{error.message}</span>
-      </div>
-    </div>
-  )
-}
-
-// Component to show total session duration (from first message to current message completion)
-function MessageDuration({
-  message,
-  sessionStartTime,
-  activityLabel,
-}: {
-  message: SessionMessage
-  sessionStartTime: number
-  activityLabel?: string
-}) {
-  const startTime = sessionStartTime
-  // Only freeze the timer when the message is actually marked completed.
-  // Using Date.now() here causes the display to "stick" and then jump when rerendered.
-  const endTime = message.time.completed
-  const elapsed = useElapsedTime(startTime, endTime)
-  const showActivity = endTime === undefined && !!activityLabel
-  const isActive = endTime === undefined
-
-  return (
-    <div className="flex items-center gap-2.5 pt-3 pb-1">
-      <DilagIcon
-        animated={isActive}
-        className={cn(
-          "size-3.5 transition-colors duration-300",
-          isActive ? "text-primary" : "text-muted-foreground",
-        )}
-      />
-      <div className="flex items-baseline gap-1.5">
-        {showActivity && <span className="text-[13px] text-muted-foreground">{activityLabel}</span>}
-        <span
-          className={cn(
-            "font-mono text-[13px] tabular-nums tracking-tight transition-colors duration-300",
-            isActive ? "text-foreground" : "text-muted-foreground",
-          )}
-        >
-          {elapsed}
-        </span>
       </div>
     </div>
   )
@@ -466,17 +391,28 @@ function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
       <Collapsible>
         <CollapsibleTrigger
           className={cn(
-            "group flex h-8 w-fit max-w-full items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-1.5",
-            "text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
+            "group flex h-8 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5",
+            "text-sm select-none cursor-default text-muted-foreground transition-colors",
+            "hover:bg-muted/30 hover:text-foreground data-[state=open]:bg-muted/20 data-[state=open]:text-foreground",
           )}
         >
-          <MagicStick size={16} className="shrink-0 text-primary/70" />
-          <span className="font-medium text-foreground">Skill</span>
-          <span className="truncate">{skill.name}</span>
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden text-left">
+            <span className="truncate font-medium text-foreground">Used {skill.name}</span>
+          </div>
+          <AltArrowRight
+            size={16}
+            className={cn(
+              "shrink-0 text-muted-foreground opacity-0 transition-all duration-150",
+              "group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:rotate-90",
+            )}
+          />
         </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2 max-h-80 overflow-y-auto rounded-md border border-border/40 bg-muted/20 p-3 text-sm">
-          <div className="prose prose-sm prose-invert max-w-none">
-            <MessageResponse>{`**${skill.name}**\n\n${skill.content}`}</MessageResponse>
+        <CollapsibleContent className="mt-1 overflow-hidden rounded-lg bg-[#2a2a2a] text-[#e2e2e2] shadow-sm">
+          <div className="max-h-72 overflow-y-auto p-3">
+            <div className="mb-3 text-xs font-medium text-[#a8a8a8]">Skill</div>
+            <div className="prose prose-sm prose-invert max-w-none text-sm [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-[#e2e2e2] [&_code]:!text-[#e2e2e2] [&_*]:!border-neutral-700/70">
+              <MessageResponse>{`**${skill.name}**\n\n${skill.content}`}</MessageResponse>
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -589,14 +525,72 @@ function UserMessage({
     </>
   )
 }
+function splitAssistantWorkParts(parts: MessagePartType[]) {
+  let finalTextStart = parts.length
+  while (finalTextStart > 0 && parts[finalTextStart - 1]?.type === "text") {
+    finalTextStart--
+  }
+  return {
+    workParts: parts.slice(0, finalTextStart),
+    finalParts: parts.slice(finalTextStart),
+  }
+}
+
+function AssistantWorkGroup({
+  parts,
+  isStreaming,
+  startedAt,
+  completedAt,
+}: {
+  parts: MessagePartType[]
+  isStreaming: boolean
+  startedAt: number
+  completedAt?: number
+}) {
+  if (parts.length === 0) return null
+
+  const completed = completedAt ?? Date.now()
+  const elapsed = formatDuration(completed - startedAt)
+  const commandCount = parts.filter((part) => part.type === "tool").length
+
+  return (
+    <Collapsible>
+      <CollapsibleTrigger
+        className={cn(
+          "group flex h-8 w-full items-center justify-start gap-2.5 rounded-md px-0 py-1.5",
+          "text-sm text-muted-foreground transition-colors hover:text-foreground",
+        )}
+      >
+        <span>
+          Worked for {elapsed}
+          {commandCount > 0 && `, ${commandCount} command${commandCount === 1 ? "" : "s"}`}
+        </span>
+        <AltArrowRight
+          size={14}
+          className="shrink-0 text-muted-foreground transition-transform duration-150 group-data-[state=open]:rotate-90"
+        />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-2 border-b border-border/40 pb-3">
+        {parts.map((part, partIndex) => (
+          <div
+            key={part.id}
+            className="animate-stream-in"
+            style={{ animationDelay: `${partIndex * 35}ms` }}
+          >
+            <MessagePart part={part} isStreaming={isStreaming} />
+          </div>
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
 // Component that renders an assistant message with parts from the store
 function AssistantMessage({
   message,
   index,
   isLast,
-  showTimer,
-  sessionStartTime,
-  activityLabel,
+  turnAssistantMessages,
   onFork,
   onCopyText,
   onOpenTimeline,
@@ -604,20 +598,29 @@ function AssistantMessage({
   message: SessionMessage
   index: number
   isLast: boolean
-  showTimer: boolean
-  sessionStartTime: number
-  activityLabel?: string
+  turnAssistantMessages: SessionMessage[]
   onFork: (messageId: string) => void
   onCopyText: (messageId: string) => void
   onOpenTimeline: () => void
 }) {
   const parts = useMessageParts(message.id)
+  const partsByMessageId = useSessionStore((state) => state.parts)
+  const turnParts = useMemo(
+    () => turnAssistantMessages.flatMap((turnMessage) => partsByMessageId[turnMessage.id] ?? []),
+    [partsByMessageId, turnAssistantMessages],
+  )
   const sessionError = useSessionError(message.sessionID)
   const sessionStatus = useSessionStore(
     (state) => state.sessionStatus[message.sessionID] ?? "unknown",
   )
   const isStreaming = isAssistantMessageStreaming(message, sessionStatus)
   const renderableParts = getRenderableAssistantParts(parts, isStreaming)
+  const turnRenderableParts = getRenderableAssistantParts(turnParts, isStreaming)
+  const { finalParts } = splitAssistantWorkParts(renderableParts)
+  const finalPartIds = new Set(finalParts.map((part) => part.id))
+  const workParts = turnRenderableParts.filter((part) => !finalPartIds.has(part.id))
+  const workStartedAt = turnAssistantMessages[0]?.time.created ?? message.time.created
+  const workCompletedAt = message.time.completed
 
   if (!isStreaming && renderableParts.length === 0 && !sessionError) {
     return null
@@ -630,7 +633,14 @@ function AssistantMessage({
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
       <MessageContent className="space-y-2 w-full">
-        {renderableParts.map((part, partIndex) => (
+        <AssistantWorkGroup
+          parts={workParts}
+          isStreaming={isStreaming}
+          startedAt={workStartedAt}
+          completedAt={workCompletedAt}
+        />
+
+        {finalParts.map((part, partIndex) => (
           <div
             key={part.id}
             className="animate-stream-in"
@@ -658,14 +668,6 @@ function AssistantMessage({
             <ClockCircle size={14} />
           </MessageAction>
         </MessageActions>
-      )}
-      {/* Duration timer - only show on last assistant message before next user message */}
-      {showTimer && (
-        <MessageDuration
-          message={message}
-          sessionStartTime={sessionStartTime}
-          activityLabel={activityLabel}
-        />
       )}
     </Message>
   )
@@ -1243,7 +1245,6 @@ export function ChatView() {
     forkSession,
     revertToMessage,
     unrevertSession,
-    sessionStatus,
   } = useSessions()
 
   const navigate = useNavigate()
@@ -1315,49 +1316,6 @@ export function ChatView() {
     return firstAssistant.isStreaming && firstAssistant.time.completed === undefined
   }, [messages])
 
-  // Activity cues (derived from available session events/state)
-  const pendingQuestions = usePendingQuestions(currentSessionId)
-  const runningQuestionTools = useRunningQuestionTools(currentSessionId)
-  const runningPermissionTools = useRunningPermissionTools(currentSessionId)
-  const busyFallbackOnce = useBusyFallbackOnce(isLoading)
-
-  const activityLabel = useMemo(
-    () =>
-      getChatActivityLabel({
-        isLoading,
-        pendingQuestionCount: pendingQuestions.length,
-        runningQuestionToolCount: runningQuestionTools.length,
-        runningTools: runningPermissionTools,
-        sessionStatus,
-        fallback: busyFallbackOnce,
-      }),
-    [
-      isLoading,
-      pendingQuestions.length,
-      runningQuestionTools.length,
-      runningPermissionTools,
-      sessionStatus,
-      busyFallbackOnce,
-    ],
-  )
-
-  // Memoize turn start times (each user message starts a new turn)
-  // Returns the most recent user message timestamp before a given index
-  const getTurnStartTime = useMemo(() => {
-    // Build a map of turn start times for each message index
-    const turnStarts: number[] = []
-    let currentTurnStart = messages[0]?.time.created ?? 0
-
-    for (let i = 0; i < messages.length; i++) {
-      if (messages[i].role === "user") {
-        currentTurnStart = messages[i].time.created
-      }
-      turnStarts[i] = currentTurnStart
-    }
-
-    return (index: number) => turnStarts[index] ?? 0
-  }, [messages])
-
   if (!isServerReady) {
     return <LoadingState />
   }
@@ -1395,10 +1353,17 @@ export function ChatView() {
                   message.role === "assistant" &&
                   !messages.slice(index + 1).some((m) => m.role === "assistant")
 
-                // Show timer on assistant messages that are followed by a user message or are at the end
                 const nextMessage = messages[index + 1]
-                const showTimer =
-                  message.role === "assistant" && (!nextMessage || nextMessage.role === "user")
+                const isLastAssistantInTurn = !nextMessage || nextMessage.role === "user"
+                if (message.role === "assistant" && !isLastAssistantInTurn) return null
+
+                let turnStart = index
+                while (turnStart > 0 && messages[turnStart - 1].role === "assistant") turnStart--
+                const turnAssistantMessages = messages
+                  .slice(turnStart, index + 1)
+                  .filter((item): item is SessionMessage & { role: "assistant" } =>
+                    item.role === "assistant",
+                  )
 
                 return message.role === "user" ? (
                   <UserMessage
@@ -1417,13 +1382,7 @@ export function ChatView() {
                     message={message}
                     index={index}
                     isLast={isLastAssistant}
-                    showTimer={showTimer}
-                    sessionStartTime={getTurnStartTime(index)}
-                    activityLabel={
-                      isLastAssistant && isLoading && message.time.completed === undefined
-                        ? activityLabel
-                        : undefined
-                    }
+                    turnAssistantMessages={turnAssistantMessages}
                     onFork={handleFork}
                     onCopyText={handleCopyText}
                     onOpenTimeline={handleOpenTimeline}
