@@ -15,6 +15,7 @@ import type {
   AgentQuestionRequest,
   AgentRuntimeInfo,
   AgentSessionInfo,
+  AgentSessionSummary,
   AgentThinkingLevel,
   AgentTreeNode as BridgeAgentTreeNode,
 } from "@dilag/desktop-bridge"
@@ -23,7 +24,7 @@ import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { Type } from "typebox"
 import { CHANNELS } from "../shared/channels.js"
-import { getPiAgentDir, resolveDesignAssetDir } from "./paths.js"
+import { getDilagSkillsDir, getPiAgentDir, resolveDesignAssetDir } from "./paths.js"
 
 type EventSender = (channel: string, event: unknown) => void
 
@@ -228,6 +229,22 @@ export async function createAgentSessionForDirectory(args: {
   return toAgentSessionInfo(runtime)
 }
 
+export async function listAgentSessions(args: {
+  directory: string
+}): Promise<AgentSessionSummary[]> {
+  const pi = await loadPi()
+  const infos = await pi.SessionManager.list(args.directory, getPiSessionDir(args.directory))
+  return infos.map((info) => ({
+    id: info.id,
+    cwd: info.cwd || args.directory,
+    name: info.name,
+    created_at: info.created.toISOString(),
+    updated_at: info.modified.toISOString(),
+    message_count: info.messageCount,
+    first_message: info.firstMessage,
+  }))
+}
+
 export async function getAgentSession(args: {
   sessionID: string
   directory: string
@@ -274,21 +291,38 @@ export async function abortAgentSession(args: { sessionID: string }): Promise<vo
   emitSessionIdle(runtime.id)
 }
 
-export async function renameAgentSession(args: { sessionID: string; name: string }): Promise<void> {
-  const runtime = getRuntimeSession(args.sessionID)
+export async function renameAgentSession(args: {
+  sessionID: string
+  name: string
+  directory?: string
+}): Promise<void> {
+  const runtime = args.directory
+    ? await ensureRuntimeSession(args.sessionID, args.directory)
+    : getRuntimeSession(args.sessionID)
   runtime.session.setSessionName(args.name)
 }
 
-export async function deleteAgentSession(args: { sessionID: string }): Promise<void> {
+export async function deleteAgentSession(args: {
+  sessionID: string
+  directory?: string
+}): Promise<void> {
   const runtime = sessions.get(args.sessionID)
-  if (!runtime) return
-  runtime.unsubscribe()
-  await runtime.session.abort().catch(() => undefined)
-  const sessionFile = runtime.session.sessionFile
-  if (sessionFile) {
-    await fsp.rm(sessionFile, { force: true })
+  if (runtime) {
+    runtime.unsubscribe()
+    await runtime.session.abort().catch(() => undefined)
+    const sessionFile = runtime.session.sessionFile
+    if (sessionFile) {
+      await fsp.rm(sessionFile, { force: true })
+    }
+    sessions.delete(args.sessionID)
+    clearQuestionsForSession(args.sessionID)
+    return
   }
-  sessions.delete(args.sessionID)
+
+  if (args.directory) {
+    const sessionFile = await findSessionFile(args.directory, args.sessionID)
+    if (sessionFile) await fsp.rm(sessionFile, { force: true })
+  }
   clearQuestionsForSession(args.sessionID)
 }
 
@@ -417,13 +451,21 @@ async function createPiSession(
   requestedModel?: RequestedAgentModel | null,
   thinkingLevel?: AgentThinkingLevel,
 ) {
-  await ensureDilagPiResources(cwd)
+  await syncDilagSkills()
   const pi = await loadPi()
   const registry = await createModelRegistry()
   const model = requestedModel
     ? registry.find(requestedModel.providerID, requestedModel.modelID)
     : registry.getAvailable()[0]
   const questionTool = await createQuestionTool()
+  const settingsManager = pi.SettingsManager.create(cwd, getPiAgentDir())
+  const resourceLoader = new pi.DefaultResourceLoader({
+    cwd,
+    agentDir: getPiAgentDir(),
+    settingsManager,
+    additionalSkillPaths: [getDilagSkillsDir()],
+  })
+  await resourceLoader.reload()
   const result = await pi.createAgentSession({
     cwd,
     agentDir: getPiAgentDir(),
@@ -431,6 +473,8 @@ async function createPiSession(
     thinkingLevel,
     modelRegistry: registry,
     sessionManager,
+    settingsManager,
+    resourceLoader,
     customTools: [questionTool],
     noTools: "builtin",
     tools: ["read", "bash", "edit", "write", "question"],
@@ -441,11 +485,11 @@ async function createPiSession(
   return result
 }
 
-async function ensureDilagPiResources(cwd: string): Promise<void> {
+async function syncDilagSkills(): Promise<void> {
   const assetDir = resolveDesignAssetDir()
-  const skillsDir = path.join(cwd, ".agents", "skills")
-  const mobileSkillDir = path.join(skillsDir, "mobile-design")
-  const webSkillDir = path.join(skillsDir, "web-design")
+  const skillsDir = getDilagSkillsDir()
+  const mobileSkillDir = path.join(skillsDir, "dilag-mobile-design")
+  const webSkillDir = path.join(skillsDir, "dilag-web-design")
 
   const [common, mobile, web] = await Promise.all([
     fsp.readFile(path.join(assetDir, "designer-common.md"), "utf8"),
@@ -454,28 +498,18 @@ async function ensureDilagPiResources(cwd: string): Promise<void> {
   ])
 
   await Promise.all([
-    fsp.mkdir(path.join(mobileSkillDir, "examples"), { recursive: true }),
-    fsp.mkdir(path.join(webSkillDir, "examples"), { recursive: true }),
+    fsp.mkdir(mobileSkillDir, { recursive: true }),
+    fsp.mkdir(webSkillDir, { recursive: true }),
   ])
 
   await Promise.all([
-    fsp.writeFile(path.join(mobileSkillDir, "SKILL.md"), renderDesignSkill(mobile, common)),
-    fsp.writeFile(path.join(webSkillDir, "SKILL.md"), renderDesignSkill(web, common)),
-    copyAssetIfExists(
-      path.join(assetDir, "examples", "mobile", "wellness.html"),
-      path.join(mobileSkillDir, "examples", "wellness.html"),
+    fsp.writeFile(
+      path.join(mobileSkillDir, "SKILL.md"),
+      renderDesignSkill(mobile, common).replace("name: mobile-design", "name: dilag-mobile-design"),
     ),
-    copyAssetIfExists(
-      path.join(assetDir, "examples", "mobile", "finance.html"),
-      path.join(mobileSkillDir, "examples", "finance.html"),
-    ),
-    copyAssetIfExists(
-      path.join(assetDir, "examples", "web", "editorial.html"),
-      path.join(webSkillDir, "examples", "editorial.html"),
-    ),
-    copyAssetIfExists(
-      path.join(assetDir, "examples", "web", "saas-dashboard.html"),
-      path.join(webSkillDir, "examples", "saas-dashboard.html"),
+    fsp.writeFile(
+      path.join(webSkillDir, "SKILL.md"),
+      renderDesignSkill(web, common).replace("name: web-design", "name: dilag-web-design"),
     ),
   ])
 }
@@ -490,14 +524,6 @@ function renderDesignSkill(template: string, common: string): string {
     .replace("{{BRAND_TOKENS}}", brand)
     .replace("{{DOMAIN_HINT}}", domain)
     .replace("{{REFERENCE_URLS}}", refs)
-}
-
-async function copyAssetIfExists(source: string, target: string): Promise<void> {
-  try {
-    await fsp.copyFile(source, target)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
-  }
 }
 
 function bindRuntimeSession(session: AgentSession, cwd: string): RuntimeSession {

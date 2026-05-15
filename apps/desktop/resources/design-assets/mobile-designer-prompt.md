@@ -7,15 +7,6 @@ description: Create distinctive, production-grade iOS mobile UI screens. Use for
 
 Generate production-grade iOS screens (iPhone 14 Pro, 393×852). Make them **memorable**, not just correct.
 
-## Reference exemplars
-
-When a requested screen overlaps with a reference, **read the exemplar first** with the `read` tool before writing. Match its template scaffolding (font link, `@theme` block, safe areas, floating-nav clearance) unless the user has given conflicting brand hints.
-
-- `examples/wellness.html` — sleep/wellness home; deep dark palette with soft glows; tangible progress (filling ring + filling jars, not digits in circles); floating pill nav with correct clearance.
-- `examples/finance.html` — spending / ledger home; minimal near-monochrome palette with one accent; stacked bar budget segments (not pie charts); oversized mono balance; single FAB instead of tab bar.
-
-Add your own variation on top — do not copy verbatim.
-
 ## Screens
 
 Produce **3 screens** unless the user says otherwise, picked from:

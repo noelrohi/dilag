@@ -17,6 +17,7 @@ import {
   isAgentRuntimeRunning,
   listAgentProviders,
   listAgentQuestions,
+  listAgentSessions,
   loginAgentOAuthProvider,
   navigateAgentTree,
   promptAgentSession,
@@ -41,6 +42,16 @@ import {
   toggleSessionFavorite,
 } from "./sessions.js"
 import { installSkills, listInstalledSkills, previewSkills, removeSkill } from "./skills.js"
+import {
+  addExistingProject,
+  createProject,
+  dismissLegacySessionsNotice,
+  getLegacySessionsNotice,
+  listProjects,
+  removeProject,
+  touchProject,
+  updateProject,
+} from "./projects.js"
 
 export function initializeHost() {
   return startAgentRuntime()
@@ -82,6 +93,9 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.agent.createSession, (_event, args: { directory: string }) =>
     createAgentSessionForDirectory(args),
   )
+  ipcMain.handle(CHANNELS.agent.listSessions, (_event, args: { directory: string }) =>
+    listAgentSessions(args),
+  )
   ipcMain.handle(
     CHANNELS.agent.getSession,
     (_event, args: { sessionID: string; directory: string }) => getAgentSession(args),
@@ -109,10 +123,12 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   )
   ipcMain.handle(
     CHANNELS.agent.renameSession,
-    (_event, args: { sessionID: string; name: string }) => renameAgentSession(args),
+    (_event, args: { sessionID: string; name: string; directory?: string }) =>
+      renameAgentSession(args),
   )
-  ipcMain.handle(CHANNELS.agent.deleteSession, (_event, args: { sessionID: string }) =>
-    deleteAgentSession(args),
+  ipcMain.handle(
+    CHANNELS.agent.deleteSession,
+    (_event, args: { sessionID: string; directory?: string }) => deleteAgentSession(args),
   )
   ipcMain.handle(CHANNELS.agent.listQuestions, listAgentQuestions)
   ipcMain.handle(
@@ -159,13 +175,43 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
     toggleSessionFavorite(args.sessionId),
   )
 
+  ipcMain.handle(CHANNELS.projects.list, listProjects)
+  ipcMain.handle(CHANNELS.projects.create, (_event, args: Parameters<typeof createProject>[0]) =>
+    createProject(args),
+  )
+  ipcMain.handle(
+    CHANNELS.projects.addExisting,
+    (_event, args: Parameters<typeof addExistingProject>[0]) => addExistingProject(args),
+  )
+  ipcMain.handle(CHANNELS.projects.update, (_event, args: Parameters<typeof updateProject>[0]) =>
+    updateProject(args),
+  )
+  ipcMain.handle(CHANNELS.projects.remove, (_event, args: Parameters<typeof removeProject>[0]) =>
+    removeProject(args),
+  )
+  ipcMain.handle(CHANNELS.projects.touch, (_event, args: Parameters<typeof touchProject>[0]) =>
+    touchProject(args),
+  )
+  ipcMain.handle(CHANNELS.projects.getLegacyNotice, getLegacySessionsNotice)
+  ipcMain.handle(CHANNELS.projects.dismissLegacyNotice, dismissLegacySessionsNotice)
+
   ipcMain.handle(CHANNELS.designs.loadForSession, (_event, args: { sessionCwd: string }) =>
     loadDesignsForSession(args.sessionCwd),
   )
   ipcMain.handle(
     CHANNELS.designs.copyBetweenSessions,
-    (_event, args: { sourceCwd: string; destCwd: string }) =>
-      copyHtmlFiles(path.join(args.sourceCwd, "screens"), path.join(args.destCwd, "screens")),
+    async (_event, args: { sourceCwd: string; destCwd: string }) => {
+      const copied = await copyHtmlFiles(
+        path.join(args.sourceCwd, ".designs"),
+        path.join(args.destCwd, ".designs"),
+      )
+      if (copied === 0) {
+        await copyHtmlFiles(
+          path.join(args.sourceCwd, "screens"),
+          path.join(args.destCwd, ".designs"),
+        )
+      }
+    },
   )
   ipcMain.handle(CHANNELS.designs.delete, (_event, args: { filePath: string }) =>
     fsp.rm(args.filePath),
@@ -217,6 +263,13 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
       ? await dialog.showSaveDialog(window, options)
       : await dialog.showSaveDialog(options)
     return result.canceled ? null : (result.filePath ?? null)
+  })
+  ipcMain.handle(CHANNELS.dialog.openDirectory, async () => {
+    const window = getWindow()
+    const result = window
+      ? await dialog.showOpenDialog(window, { properties: ["openDirectory", "createDirectory"] })
+      : await dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] })
+    return result.canceled ? null : (result.filePaths[0] ?? null)
   })
   ipcMain.handle(CHANNELS.shell.openExternal, (_event, url: string) => shell.openExternal(url))
 

@@ -54,8 +54,13 @@ import { toast } from "sonner"
 import { bridge } from "@/lib/bridge"
 
 export const Route = createFileRoute("/studio/$sessionId")({
-  component: StudioPage,
+  component: StudioRoutePage,
 })
+
+function StudioRoutePage() {
+  const { sessionId } = useParams({ from: "/studio/$sessionId" })
+  return <StudioPageContent sessionId={sessionId} />
+}
 
 // Layout constants
 const MOBILE_WIDTH = 280
@@ -68,8 +73,13 @@ const START_Y = 40
 const MOBILE_COLUMNS = 4
 const WEB_COLUMNS = 2
 
-function StudioPage() {
-  const { sessionId } = useParams({ from: "/studio/$sessionId" })
+export function StudioPageContent({
+  sessionId,
+  projectId,
+}: {
+  sessionId: string
+  projectId?: string
+}) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [renameOpen, setRenameOpen] = useState(false)
@@ -148,7 +158,8 @@ function StudioPage() {
   const handleDeleteScreen = useCallback(async () => {
     if (!deleteTarget || !currentSession?.cwd) return
 
-    const filePath = `${currentSession.cwd}/screens/${deleteTarget.filename}`
+    const design = designs.find((item) => item.filename === deleteTarget.filename)
+    const filePath = design?.file_path ?? `${currentSession.cwd}/.designs/${deleteTarget.filename}`
     try {
       await bridge.designs.delete({ filePath })
       // Remove from positions
@@ -177,9 +188,19 @@ function StudioPage() {
   const handleForkSession = useCallback(async () => {
     const newSessionId = await forkSessionDesignsOnly()
     if (newSessionId) {
-      navigate({ to: "/studio/$sessionId", params: { sessionId: newSessionId } })
+      if (projectId ?? currentSession?.projectId) {
+        navigate({
+          to: "/project/$projectId/session/$sessionId",
+          params: {
+            projectId: projectId ?? currentSession?.projectId ?? "",
+            sessionId: newSessionId,
+          },
+        })
+      } else {
+        navigate({ to: "/studio/$sessionId", params: { sessionId: newSessionId } })
+      }
     }
-  }, [forkSessionDesignsOnly, navigate])
+  }, [forkSessionDesignsOnly, navigate, projectId, currentSession?.projectId])
 
   const handleRequestDelete = useCallback(
     (filename: string) => {
@@ -194,15 +215,24 @@ function StudioPage() {
   const handleRename = useCallback(async () => {
     if (!currentSession || !newName.trim()) return
 
-    await updateSession({
-      id: sessionId,
-      updates: { name: newName.trim() },
-    })
+    if (currentSession.projectId) {
+      await bridge.agent.renameSession({
+        sessionID: sessionId,
+        name: newName.trim(),
+        directory: currentSession.cwd,
+      })
+      queryClient.invalidateQueries({ queryKey: ["sessions", "list"] })
+    } else {
+      await updateSession({
+        id: sessionId,
+        updates: { name: newName.trim() },
+      })
 
-    await bridge.agent.renameSession({ sessionID: sessionId, name: newName.trim() })
+      await bridge.agent.renameSession({ sessionID: sessionId, name: newName.trim() })
+    }
 
     setRenameOpen(false)
-  }, [currentSession, newName, sessionId, updateSession])
+  }, [currentSession, newName, sessionId, updateSession, queryClient])
 
   // Auto-send initial prompt if stored
   useEffect(() => {
@@ -261,7 +291,7 @@ function StudioPage() {
         <PageHeader>
           <PageHeaderLeft>
             <span className="text-sm font-medium truncate max-w-[200px]">
-              {currentSession?.name ?? "Untitled"}
+              {currentSession?.name ?? "Untitled chat"}
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -288,7 +318,7 @@ function StudioPage() {
                   disabled={!currentSession?.cwd}
                 >
                   <Copy size={16} className="mr-2" />
-                  Copy session path
+                  Copy project path
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -300,7 +330,7 @@ function StudioPage() {
                   disabled={!currentSession?.id}
                 >
                   <Copy size={16} className="mr-2" />
-                  Copy session ID
+                  Copy chat ID
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -399,7 +429,7 @@ function StudioPage() {
         <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
           <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
-              <DialogTitle>Rename Session</DialogTitle>
+              <DialogTitle>Rename chat</DialogTitle>
             </DialogHeader>
             <form
               onSubmit={(e) => {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import type { SessionMeta } from "@/context/session-store"
+import type { Platform, SessionMeta } from "@/context/session-store"
 import { bridge } from "@/lib/bridge"
 
 /**
@@ -15,7 +15,31 @@ export const sessionKeys = {
 
 // Desktop bridge calls for local session management.
 async function loadSessionsMetadata(): Promise<SessionMeta[]> {
-  return bridge.sessions.loadMeta() as Promise<SessionMeta[]>
+  const projects = await bridge.projects.list()
+  const projectSessions = await Promise.all(
+    projects.map(async (project) => {
+      const sessions = await bridge.agent.listSessions({ directory: project.path }).catch(() => [])
+      return sessions.map((session): SessionMeta => {
+        const name = session.name || session.first_message || "New chat"
+        return {
+          id: session.id,
+          name,
+          created_at: session.created_at,
+          updated_at: session.updated_at,
+          cwd: project.path,
+          platform: project.platform as Platform,
+          favorite: project.pinned,
+          projectId: project.id,
+        }
+      })
+    }),
+  )
+  return projectSessions.flat().sort((a, b) => {
+    return (
+      new Date(a.updated_at ?? a.created_at).getTime() -
+      new Date(b.updated_at ?? b.created_at).getTime()
+    )
+  })
 }
 
 async function saveSessionMetadata(session: SessionMeta): Promise<void> {

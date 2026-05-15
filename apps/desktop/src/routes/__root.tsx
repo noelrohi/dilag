@@ -2,6 +2,7 @@ import { createRootRoute, Outlet } from "@tanstack/react-router"
 import { NuqsAdapter } from "nuqs/adapters/tanstack-router"
 import { SidebarProvider, SidebarInset } from "@dilag/ui/sidebar"
 import { AppSidebar } from "@/components/blocks/layout/app-sidebar"
+import { AutoCollapseSidebar } from "@/components/blocks/layout/auto-collapse-sidebar"
 import { AppProviders } from "@/components/app-providers"
 import { useZoom } from "@/hooks/use-zoom"
 
@@ -21,6 +22,7 @@ function RootLayout() {
     <AppProviders>
       <NuqsAdapter>
         <SidebarProvider defaultOpen={true}>
+          <AutoCollapseSidebar />
           <AppSidebar />
           <SidebarInset className="h-svh">
             <Outlet />

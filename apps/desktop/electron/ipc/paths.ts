@@ -24,6 +24,18 @@ export function getSessionsFile(): string {
   return path.join(getDilagDir(), "sessions.json")
 }
 
+export function getStateDbPath(): string {
+  return path.join(getDilagDir(), "state.sqlite")
+}
+
+export function getDilagSkillsDir(): string {
+  return path.join(getDilagDir(), "skills")
+}
+
+export function getDefaultProjectsDir(): string {
+  return path.join(os.homedir(), "dilag")
+}
+
 export function getPiAgentDir(): string {
   return path.join(getDilagDir(), "pi")
 }

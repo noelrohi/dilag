@@ -1,15 +1,16 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import {
   MagicStick,
   Settings,
   PlugCircle,
   Star,
   AddSquare,
+  AddCircle,
   MenuDots,
   TrashBinMinimalistic,
-  SortVertical,
-  CheckCircle,
+  SidebarMinimalistic,
+  AltArrowDown,
 } from "@solar-icons/react"
 import {
   Sidebar,
@@ -29,17 +30,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@dilag/ui/dropdown-menu"
 import { AuthSettings } from "@/components/blocks/auth/auth-settings"
+import { useProjectMutations, useProjectsList, getDefaultProject } from "@/hooks/use-projects"
 import { useSessions } from "@/hooks/use-sessions"
+import { bridge } from "@/lib/bridge"
+import type { ProjectMeta } from "@dilag/desktop-bridge"
+import type { SessionMeta } from "@/context/session-store"
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return ""
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
+  const diffMs = Date.now() - date.getTime()
   if (diffMs < 0) return "now"
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
@@ -56,49 +59,64 @@ function formatRelativeTime(dateStr: string): string {
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { sessions, deleteSession, toggleFavorite } = useSessions()
+  const { sessions, deleteSession } = useSessions()
+  const { data: projects = [] } = useProjectsList()
+  const { createProject, addExistingProject, updateProject, removeProject, touchProject } =
+    useProjectMutations()
 
-  // Filter state
-  const [sortBy, setSortBy] = useState<"created" | "updated">("updated")
-  const [showFilter, setShowFilter] = useState<"all" | "starred">("all")
+  const pinnedProjects = useMemo(() => projects.filter((project) => project.pinned), [projects])
+  const regularProjects = useMemo(() => projects.filter((project) => !project.pinned), [projects])
 
-  // Derive favorites and recent sessions based on filter state
-  const { favorites, recent } = useMemo(() => {
-    // Sort by selected field (updated_at falls back to created_at for older sessions)
-    const getTimestamp = (s: (typeof sessions)[0]) => {
-      if (sortBy === "updated") {
-        return new Date(s.updated_at ?? s.created_at).getTime()
-      }
-      return new Date(s.created_at).getTime()
+  const sessionsByProject = useMemo(() => {
+    const map = new Map<string, SessionMeta[]>()
+    for (const session of sessions) {
+      if (!session.projectId) continue
+      const list = map.get(session.projectId) ?? []
+      list.push(session)
+      map.set(session.projectId, list)
     }
-
-    const sorted = [...sessions].sort((a, b) => getTimestamp(b) - getTimestamp(a))
-
-    // When showing starred only, put all favorites in "recent" section (no separate favorites section)
-    if (showFilter === "starred") {
-      return { favorites: [], recent: sorted.filter((s) => s.favorite).slice(0, 100) }
+    for (const list of map.values()) {
+      list.sort(
+        (a, b) =>
+          new Date(b.updated_at ?? b.created_at).getTime() -
+          new Date(a.updated_at ?? a.created_at).getTime(),
+      )
     }
+    return map
+  }, [sessions])
 
-    // Default: favorites section + non-favorites in recent
-    const favs = sorted.filter((s) => s.favorite)
-    const nonFavs = sorted.filter((s) => !s.favorite).slice(0, 100)
-    return { favorites: favs, recent: nonFavs }
-  }, [sessions, sortBy, showFilter])
-
-  const handleOpenProject = (sessionId: string) => {
-    navigate({ to: "/studio/$sessionId", params: { sessionId } })
+  const openProject = async (project: ProjectMeta) => {
+    await touchProject(project.id)
+    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
   }
 
   const handleNewDesign = () => {
-    navigate({ to: "/" })
+    const project = getDefaultProject(projects)
+    if (project) {
+      navigate({ to: "/project/$projectId", params: { projectId: project.id } })
+    } else {
+      navigate({ to: "/" })
+    }
   }
 
-  const handleToggleFavorite = (sessionId: string) => {
-    toggleFavorite(sessionId)
+  const handleStartFromScratch = async () => {
+    const name = window.prompt("Project name")?.trim()
+    if (!name) return
+    const project = await createProject({ name })
+    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
   }
 
-  const handleDelete = (sessionId: string) => {
-    deleteSession(sessionId)
+  const handleUseExistingFolder = async () => {
+    const folder = await bridge.dialog.openDirectory()
+    if (!folder) return
+    const project = await addExistingProject({ path: folder })
+    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
+  }
+
+  const handleCollapseAll = () => {
+    projects.forEach((project) => {
+      if (project.expanded) updateProject({ id: project.id, updates: { expanded: false } })
+    })
   }
 
   return (
@@ -109,7 +127,6 @@ export function AppSidebar() {
       />
 
       <SidebarContent>
-        {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -135,146 +152,105 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Favorites Section - hidden when collapsed */}
-        {favorites.length > 0 && (
+        {pinnedProjects.length > 0 && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel className="text-xs text-muted-foreground px-2">
-              Favorites
+              Pinned
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {favorites.map((session) => (
-                  <SidebarMenuItem key={session.id} className="group/item">
-                    <SidebarMenuButton onClick={() => handleOpenProject(session.id)}>
-                      <span className="truncate text-sm">{session.name}</span>
-                    </SidebarMenuButton>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction
-                          className="opacity-0 group-hover/item:opacity-100 transition-opacity"
-                          showOnHover
-                        >
-                          <MenuDots size={16} />
-                        </SidebarMenuAction>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start" className="w-40">
-                        <DropdownMenuItem onClick={() => handleToggleFavorite(session.id)}>
-                          <Star size={16} className="mr-2" />
-                          Unfavorite
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(session.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <TrashBinMinimalistic size={16} className="mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
+                {pinnedProjects.map((project) => (
+                  <ProjectItem
+                    key={project.id}
+                    project={project}
+                    sessions={sessionsByProject.get(project.id) ?? []}
+                    onOpenProject={openProject}
+                    onToggleExpanded={() =>
+                      updateProject({ id: project.id, updates: { expanded: !project.expanded } })
+                    }
+                    onTogglePinned={() =>
+                      updateProject({ id: project.id, updates: { pinned: !project.pinned } })
+                    }
+                    onRemove={() => removeProject(project.id)}
+                    onDeleteSession={deleteSession}
+                  />
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        {/* Projects Section - hidden when collapsed */}
-        {recent.length > 0 && (
-          <SidebarGroup className="group-data-[collapsible=icon]:hidden min-h-0 flex-1">
-            <SidebarGroupLabel className="text-xs text-muted-foreground px-2 flex items-center justify-between">
-              <span>Projects</span>
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden min-h-0 flex-1">
+          <SidebarGroupLabel className="text-xs text-muted-foreground px-2 flex items-center justify-between group/projects">
+            <span>Projects</span>
+            <div
+              className={`flex items-center gap-0.5 transition-opacity ${
+                projects.length === 0 ? "opacity-100" : "opacity-0 group-hover/projects:opacity-100"
+              }`}
+            >
+              <button
+                className="p-0.5 rounded hover:bg-sidebar-accent"
+                onClick={handleCollapseAll}
+                title="Collapse all"
+              >
+                <SidebarMinimalistic size={14} />
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-0.5 rounded hover:bg-sidebar-accent transition-colors">
-                    <SortVertical size={14} className="text-muted-foreground" />
+                  <button className="p-0.5 rounded hover:bg-sidebar-accent" title="Project menu">
+                    <MenuDots size={14} />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="left" align="start" className="w-44">
-                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                    Sort by
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => setSortBy("created")}
-                    className="flex items-center justify-between"
-                  >
-                    <span>Created</span>
-                    {sortBy === "created" && <CheckCircle size={14} className="text-primary" />}
+                <DropdownMenuContent side="right" align="start" className="w-48">
+                  <DropdownMenuItem onClick={handleStartFromScratch}>
+                    Start from scratch
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSortBy("updated")}
-                    className="flex items-center justify-between"
-                  >
-                    <span>Updated</span>
-                    {sortBy === "updated" && <CheckCircle size={14} className="text-primary" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-                    Show
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => setShowFilter("all")}
-                    className="flex items-center justify-between"
-                  >
-                    <span>All</span>
-                    {showFilter === "all" && <CheckCircle size={14} className="text-primary" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setShowFilter("starred")}
-                    className="flex items-center justify-between"
-                  >
-                    <span>Starred</span>
-                    {showFilter === "starred" && <CheckCircle size={14} className="text-primary" />}
+                  <DropdownMenuItem onClick={handleUseExistingFolder}>
+                    Use an existing folder
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </SidebarGroupLabel>
-            <SidebarGroupContent className="overflow-y-auto">
-              <SidebarMenu>
-                {recent.map((session) => (
-                  <SidebarMenuItem key={session.id} className="group/item">
-                    <SidebarMenuButton onClick={() => handleOpenProject(session.id)}>
-                      <span className="truncate text-sm">{session.name}</span>
-                    </SidebarMenuButton>
-                    <span className="absolute right-2 top-1.5 text-xs text-muted-foreground group-hover/item:opacity-0 transition-opacity pointer-events-none">
-                      {formatRelativeTime(
-                        sortBy === "updated"
-                          ? (session.updated_at ?? session.created_at)
-                          : session.created_at,
-                      )}
-                    </span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <SidebarMenuAction
-                          className="opacity-0 group-hover/item:opacity-100 transition-opacity"
-                          showOnHover
-                        >
-                          <MenuDots size={16} />
-                        </SidebarMenuAction>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent side="right" align="start" className="w-40">
-                        <DropdownMenuItem onClick={() => handleToggleFavorite(session.id)}>
-                          <Star size={16} className="mr-2" />
-                          Favorite
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(session.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <TrashBinMinimalistic size={16} className="mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-0.5 rounded hover:bg-sidebar-accent" title="Add project">
+                    <AddCircle size={14} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start" className="w-48">
+                  <DropdownMenuItem onClick={handleStartFromScratch}>
+                    Start from scratch
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleUseExistingFolder}>
+                    Use an existing folder
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </SidebarGroupLabel>
+          <SidebarGroupContent className="overflow-y-auto">
+            <SidebarMenu>
+              {regularProjects.map((project) => (
+                <ProjectItem
+                  key={project.id}
+                  project={project}
+                  sessions={sessionsByProject.get(project.id) ?? []}
+                  onOpenProject={openProject}
+                  onToggleExpanded={() =>
+                    updateProject({ id: project.id, updates: { expanded: !project.expanded } })
+                  }
+                  onTogglePinned={() =>
+                    updateProject({ id: project.id, updates: { pinned: !project.pinned } })
+                  }
+                  onRemove={() => removeProject(project.id)}
+                  onDeleteSession={deleteSession}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="relative">
-        {/* Blur gradient overlay for smooth scroll transition */}
         <div className="absolute -top-6 left-0 right-0 h-6 bg-gradient-to-t from-sidebar to-transparent pointer-events-none" />
         <SidebarMenu>
           <SidebarMenuItem>
@@ -302,5 +278,123 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
+  )
+}
+
+function ProjectItem({
+  project,
+  sessions,
+  onOpenProject,
+  onToggleExpanded,
+  onTogglePinned,
+  onRemove,
+  onDeleteSession,
+}: {
+  project: ProjectMeta
+  sessions: SessionMeta[]
+  onOpenProject: (project: ProjectMeta) => void
+  onToggleExpanded: () => void
+  onTogglePinned: () => void
+  onRemove: () => void
+  onDeleteSession: (sessionId: string) => void
+}) {
+  const navigate = useNavigate()
+
+  return (
+    <>
+      <SidebarMenuItem className="group/item">
+        <SidebarMenuButton onClick={() => onOpenProject(project)}>
+          <button
+            className="-ml-1 p-0.5 rounded hover:bg-sidebar-accent"
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleExpanded()
+            }}
+          >
+            <AltArrowDown
+              size={13}
+              className={
+                project.expanded ? "transition-transform" : "-rotate-90 transition-transform"
+              }
+            />
+          </button>
+          <span className="truncate text-sm">{project.name}</span>
+        </SidebarMenuButton>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuAction
+              className="opacity-0 group-hover/item:opacity-100 transition-opacity"
+              showOnHover
+            >
+              <MenuDots size={16} />
+            </SidebarMenuAction>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" className="w-44">
+            <DropdownMenuItem onClick={onTogglePinned}>
+              <Star size={16} className="mr-2" />
+              {project.pinned ? "Unpin" : "Pin"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => bridge.shell.openExternal(`file://${encodeURI(project.path)}`)}
+            >
+              Reveal in Finder
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onRemove}
+              className="text-destructive focus:text-destructive"
+            >
+              <TrashBinMinimalistic size={16} className="mr-2" />
+              Remove from Projects
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+
+      {project.expanded &&
+        (sessions.length === 0 ? (
+          <SidebarMenuItem>
+            <div className="pl-8 pr-2 py-1 text-xs text-muted-foreground/60">No chats</div>
+          </SidebarMenuItem>
+        ) : (
+          sessions.map((session) => (
+            <SidebarMenuItem key={session.id} className="group/chat">
+              <SidebarMenuButton
+                className="pl-8"
+                onClick={() =>
+                  navigate({
+                    to: "/project/$projectId/session/$sessionId",
+                    params: { projectId: project.id, sessionId: session.id },
+                  })
+                }
+              >
+                <span className="truncate text-sm">{session.name}</span>
+              </SidebarMenuButton>
+              <span className="absolute right-2 top-1.5 text-xs text-muted-foreground group-hover/chat:opacity-0 transition-opacity pointer-events-none">
+                {formatRelativeTime(session.updated_at ?? session.created_at)}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction
+                    className="opacity-0 group-hover/chat:opacity-100 transition-opacity"
+                    showOnHover
+                  >
+                    <MenuDots size={16} />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start" className="w-40">
+                  <DropdownMenuItem
+                    onClick={() => onDeleteSession(session.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <TrashBinMinimalistic size={16} className="mr-2" />
+                    Delete chat
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          ))
+        ))}
+    </>
   )
 }
