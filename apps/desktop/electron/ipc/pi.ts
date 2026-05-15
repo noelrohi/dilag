@@ -92,6 +92,13 @@ type PiSessionTreeNode = {
 const sessions = new Map<string, RuntimeSession>()
 const pendingQuestions = new Map<string, PendingQuestion>()
 const OAUTH_PROVIDER_IDS = new Set(["openai-codex", "github-copilot"])
+const STALE_DEFAULT_MODELS = new Set(["google/gemini-1.5-flash"])
+const PREFERRED_DEFAULT_MODELS = [
+  "opencode-go/kimi-k2.6",
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-pro",
+]
+const DEBUG_PI_SMOKE = process.env.DILAG_DEBUG_PI === "1"
 
 let eventSender: EventSender | undefined
 let piModulePromise: Promise<typeof import("@earendil-works/pi-coding-agent")> | undefined
@@ -153,11 +160,13 @@ export async function getAgentProviderData(): Promise<AgentProviderData> {
     variants: getThinkingLevelVariants(model),
   }))
   const connectedProviders = [...new Set(models.map((model) => model.providerID))]
-  const first = models[0]
+  const defaultModel = chooseDefaultModel(models)
   return {
     models,
     connectedProviders,
-    defaultModel: first ? { providerID: first.providerID, modelID: first.id } : null,
+    defaultModel: defaultModel
+      ? { providerID: defaultModel.providerID, modelID: defaultModel.id }
+      : null,
   }
 }
 
@@ -177,6 +186,20 @@ function getThinkingLevelVariants(model: {
     AgentThinkingLevel,
     Record<string, unknown>
   >
+}
+
+function modelKey(model: { providerID?: string; provider?: string; id: string }): string {
+  return `${model.providerID ?? model.provider}/${model.id}`
+}
+
+function chooseDefaultModel<T extends { providerID?: string; provider?: string; id: string }>(
+  models: T[],
+): T | undefined {
+  for (const preferred of PREFERRED_DEFAULT_MODELS) {
+    const model = models.find((candidate) => modelKey(candidate) === preferred)
+    if (model) return model
+  }
+  return models.find((model) => !STALE_DEFAULT_MODELS.has(modelKey(model))) ?? models[0]
 }
 
 export async function listAgentProviders(): Promise<AgentProvider[]> {
@@ -280,8 +303,52 @@ export async function promptAgentSession(args: {
     args.thinkingLevel,
   )
   emitSessionStatus(runtime.id, "running")
-  void runtime.session.prompt(args.text, { images: args.images }).catch((error: unknown) => {
-    emitSessionError(runtime.id, error)
+  debugPiSmoke("prompt.start", {
+    sessionID: runtime.id,
+    cwd: runtime.cwd,
+    model: runtime.session.model
+      ? `${runtime.session.model.provider}/${runtime.session.model.id}`
+      : null,
+  })
+
+  await new Promise<void>((resolve, reject) => {
+    let accepted = false
+    let settled = false
+
+    const resolveOnce = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+
+    const rejectOnce = (error: unknown) => {
+      if (settled) return
+      settled = true
+      reject(error)
+    }
+
+    void runtime.session
+      .prompt(args.text, {
+        images: args.images,
+        preflightResult: (success) => {
+          debugPiSmoke("prompt.preflight", { sessionID: runtime.id, success })
+          if (!success) return
+          accepted = true
+          resolveOnce()
+        },
+      })
+      .then(() => {
+        debugPiSmoke("prompt.resolved", { sessionID: runtime.id, accepted })
+        if (!accepted) resolveOnce()
+      })
+      .catch((error: unknown) => {
+        debugPiSmoke("prompt.rejected", {
+          sessionID: runtime.id,
+          error: error instanceof Error ? error.message : String(error),
+        })
+        emitSessionError(runtime.id, error)
+        rejectOnce(error)
+      })
   })
 }
 
@@ -456,7 +523,7 @@ async function createPiSession(
   const registry = await createModelRegistry()
   const model = requestedModel
     ? registry.find(requestedModel.providerID, requestedModel.modelID)
-    : registry.getAvailable()[0]
+    : chooseDefaultModel(registry.getAvailable())
   const questionTool = await createQuestionTool()
   const settingsManager = pi.SettingsManager.create(cwd, getPiAgentDir())
   const resourceLoader = new pi.DefaultResourceLoader({
@@ -755,6 +822,8 @@ function messageHasToolCall(message: PiMessage, toolCallId: string): boolean {
 }
 
 function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent) {
+  debugPiSessionEvent(runtime, event)
+
   if (
     event.type === "message_start" ||
     event.type === "message_update" ||
@@ -1226,6 +1295,24 @@ function countUnifiedDiffLines(diff: string | undefined): { additions: number; d
     if (line.startsWith("-")) deletions++
   }
   return { additions, deletions }
+}
+
+function debugPiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent) {
+  if (!DEBUG_PI_SMOKE) return
+  const message = "message" in event ? (event.message as PiMessage | undefined) : undefined
+  debugPiSmoke("event", {
+    sessionID: runtime.id,
+    cwd: runtime.cwd,
+    type: event.type,
+    role: message?.role,
+    toolName: "toolName" in event ? event.toolName : message?.toolName,
+    stopReason: message?.stopReason,
+    errorMessage: message?.errorMessage,
+  })
+}
+
+function debugPiSmoke(label: string, data: Record<string, unknown>) {
+  if (DEBUG_PI_SMOKE) console.log(`[DEBUG-pi-smoke] ${label}`, data)
 }
 
 function emitAgentEvent(event: unknown) {

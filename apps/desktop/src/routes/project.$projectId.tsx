@@ -19,7 +19,7 @@ import { useProjectMutations, useProjectsList } from "@/hooks/use-projects"
 import { useSessions } from "@/hooks/use-sessions"
 import { cn } from "@/lib/utils"
 import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react"
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useMatch, useNavigate, useParams } from "@tanstack/react-router"
 import type { FileUIPart } from "ai"
 
 export const Route = createFileRoute("/project/$projectId")({
@@ -28,6 +28,10 @@ export const Route = createFileRoute("/project/$projectId")({
 
 function ProjectComposerPage() {
   const { projectId } = useParams({ from: "/project/$projectId" })
+  const sessionRouteMatch = useMatch({
+    from: "/project/$projectId/session/$sessionId",
+    shouldThrow: false,
+  })
   const navigate = useNavigate()
   const { data: projects = [] } = useProjectsList()
   const { updateProject, touchProject } = useProjectMutations()
@@ -52,6 +56,10 @@ function ProjectComposerPage() {
         params: { projectId: project.id, sessionId },
       })
     }
+  }
+
+  if (sessionRouteMatch) {
+    return <Outlet />
   }
 
   if (!project) {

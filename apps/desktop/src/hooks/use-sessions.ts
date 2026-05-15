@@ -684,28 +684,21 @@ export function useSessions() {
           model: selectedModel,
           thinkingLevel: selectedThinkingLevel,
         })
-        bridge.agent
-          .prompt({
-            sessionID: currentSessionId,
-            directory,
-            text: promptText,
-            images,
-            model: selectedModel,
-            thinkingLevel: selectedThinkingLevel,
-          })
-          .then(() => {
-            console.log("[sendMessage] prompt accepted")
-          })
-          .catch((err) => {
-            if (!isMountedRef.current) return
-            setError(err instanceof Error ? err.message : "Failed to send message")
-            setSessionStatus(currentSessionId, "error")
-            console.error("[sendMessage] Failed to send message:", err)
-          })
+        await bridge.agent.prompt({
+          sessionID: currentSessionId,
+          directory,
+          text: promptText,
+          images,
+          model: selectedModel,
+          thinkingLevel: selectedThinkingLevel,
+        })
+        console.log("[sendMessage] prompt accepted")
       } catch (err) {
+        if (!isMountedRef.current) return
         setError(err instanceof Error ? err.message : "Failed to send message")
         setSessionStatus(currentSessionId, "error")
         console.error("Failed to send message:", err)
+        throw err
       }
     },
     [currentSessionId, currentSession, messages, setError, setSessionStatus, setSessionError],

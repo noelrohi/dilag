@@ -84,8 +84,14 @@ function spawnElectron() {
     electronProc.removeAllListeners("exit")
     electronProc.kill()
   }
+  const electronArgs = [path.join(DIST_ELECTRON, "main.cjs")]
+  const remoteDebuggingPort = process.env.ELECTRON_REMOTE_DEBUGGING_PORT
+  if (remoteDebuggingPort) {
+    electronArgs.push(`--remote-debugging-port=${remoteDebuggingPort}`)
+  }
+
   electronProc = track(
-    spawn(electronPath, [path.join(DIST_ELECTRON, "main.cjs")], {
+    spawn(electronPath, electronArgs, {
       cwd: APP_ROOT,
       env: { ...process.env, VITE_DEV_SERVER_URL: viteUrl },
       stdio: ["ignore", "pipe", "pipe"],

@@ -22,7 +22,8 @@
     "test:coverage": "vitest run --coverage",
     "release": "bumpp",
     "sync-version": "bun scripts/sync-version.ts",
-    "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts"
+    "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts",
+    "test:prompt-flow": "vitest run src/hooks/use-sessions.test.ts -t \"project chat and sends the first prompt\""
   },
   "build": {
     "appId": "com.rohi.dilag",
