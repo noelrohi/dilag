@@ -17,7 +17,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setErrorMessage(null)
 
     try {
-      const opencodeResult = (await bridge.opencode.checkInstallation()) as {
+      const opencodeResult = (await bridge.opencode!.checkInstallation()) as {
         installed: boolean
         version: string | null
         error: string | null
@@ -28,7 +28,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         return
       }
 
-      const bunResult = (await bridge.opencode.checkBunInstallation()) as {
+      const bunResult = (await bridge.opencode!.checkBunInstallation()) as {
         installed: boolean
         version: string | null
         error: string | null
@@ -52,7 +52,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
     setErrorMessage(null)
 
     try {
-      const result = (await bridge.opencode.installDependencies()) as {
+      const result = (await bridge.opencode!.installDependencies()) as {
         stage: string
         message: string
         completed: boolean

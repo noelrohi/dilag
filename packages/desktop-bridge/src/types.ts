@@ -74,6 +74,108 @@ export interface SkillInstallResult {
   error: string | null
 }
 
+export interface AgentRuntimeInfo {
+  running: boolean
+  agentDir: string
+  sessionCount: number
+}
+
+export interface AgentModel {
+  id: string
+  name: string
+  providerID: string
+  providerName: string
+  releaseDate?: string
+  family?: string
+  cost?: { input?: number; output?: number }
+  contextWindow?: number
+  maxTokens?: number
+  variants?: Record<string, Record<string, unknown>>
+}
+
+export interface AgentProviderData {
+  models: AgentModel[]
+  connectedProviders: string[]
+  defaultModel: { providerID: string; modelID: string } | null
+}
+
+export interface AgentProvider {
+  id: string
+  name: string
+  connected: boolean
+  modelCount: number
+}
+
+export interface AgentImageContent {
+  type: "image"
+  data: string
+  mimeType: string
+}
+
+export interface AgentMessagePart {
+  id: string
+  messageID: string
+  sessionID: string
+  type: "text" | "tool" | "reasoning" | "file" | "step-start" | "step-finish"
+  text?: string
+  tool?: string
+  state?: unknown
+  mime?: string
+  url?: string
+  filename?: string
+  provider?: string
+  model?: string
+}
+
+export interface AgentMessage {
+  info: {
+    id: string
+    sessionID: string
+    role: "user" | "assistant"
+    time: { created: number; completed?: number }
+  }
+  parts: AgentMessagePart[]
+}
+
+export interface AgentSessionInfo {
+  id: string
+  cwd: string
+  title?: string
+}
+
+export interface AgentQuestionOption {
+  label: string
+  description: string
+}
+
+export interface AgentQuestionInfo {
+  question: string
+  header: string
+  options: AgentQuestionOption[]
+  multiple?: boolean
+}
+
+export interface AgentQuestionRequest {
+  id: string
+  sessionID: string
+  questions: AgentQuestionInfo[]
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
+export interface AgentTreeNode {
+  id: string
+  parentId: string | null
+  type: string
+  role?: "user" | "assistant" | "toolResult"
+  label?: string
+  text?: string
+  timestamp: string
+  children: AgentTreeNode[]
+}
+
 // Save-dialog options — subset of Electron's SaveDialogOptions that the renderer uses.
 export interface SaveDialogOptions {
   defaultPath?: string

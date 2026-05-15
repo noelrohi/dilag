@@ -7,6 +7,14 @@
 
 import type {
   AppInfo,
+  AgentImageContent,
+  AgentMessage,
+  AgentProvider,
+  AgentProviderData,
+  AgentQuestionRequest,
+  AgentRuntimeInfo,
+  AgentSessionInfo,
+  AgentTreeNode,
   DesignFile,
   FileNode,
   MenuEventId,
@@ -27,15 +35,49 @@ export interface DesktopBridge {
     resetAllData(): Promise<void>
   }
 
-  opencode: {
-    getPort(): Promise<number>
-    start(): Promise<number>
-    stop(): Promise<void>
-    restart(): Promise<number>
-    isRunning(): Promise<boolean>
+  opencode?: {
     checkInstallation(): Promise<unknown>
     checkBunInstallation(): Promise<unknown>
     installDependencies(): Promise<unknown>
+    start(): Promise<unknown>
+    restart(): Promise<unknown>
+  }
+
+  agent: {
+    getInfo(): Promise<AgentRuntimeInfo>
+    start(): Promise<AgentRuntimeInfo>
+    stop(): Promise<void>
+    restart(): Promise<AgentRuntimeInfo>
+    isRunning(): Promise<boolean>
+    getProviderData(): Promise<AgentProviderData>
+    listProviders(): Promise<AgentProvider[]>
+    setApiKey(args: { providerID: string; apiKey: string }): Promise<void>
+    createSession(args: { directory: string }): Promise<AgentSessionInfo>
+    getSession(args: { sessionID: string; directory: string }): Promise<AgentSessionInfo>
+    getMessages(args: { sessionID: string; directory: string }): Promise<AgentMessage[]>
+    prompt(args: {
+      sessionID: string
+      directory: string
+      text: string
+      images?: AgentImageContent[]
+      model?: { providerID: string; modelID: string } | null
+    }): Promise<void>
+    abort(args: { sessionID: string }): Promise<void>
+    renameSession(args: { sessionID: string; name: string }): Promise<void>
+    deleteSession(args: { sessionID: string }): Promise<void>
+    listQuestions(): Promise<AgentQuestionRequest[]>
+    replyQuestion(args: { requestID: string; answers: string[][] }): Promise<void>
+    rejectQuestion(args: { requestID: string }): Promise<void>
+    getTree(args: { sessionID: string }): Promise<AgentTreeNode[]>
+    navigateTree(args: {
+      sessionID: string
+      targetId: string
+      summarize?: boolean
+      customInstructions?: string
+      replaceInstructions?: boolean
+      label?: string
+    }): Promise<{ editorText?: string; cancelled: boolean; aborted?: boolean }>
+    onEvent(listener: (event: unknown) => void): Unsubscribe
   }
 
   skills: {
@@ -119,6 +161,18 @@ export interface DesktopBridge {
 
 export type {
   AppInfo,
+  AgentImageContent,
+  AgentMessage,
+  AgentMessagePart,
+  AgentModel,
+  AgentProvider,
+  AgentProviderData,
+  AgentQuestionInfo,
+  AgentQuestionOption,
+  AgentQuestionRequest,
+  AgentRuntimeInfo,
+  AgentSessionInfo,
+  AgentTreeNode,
   DesignFile,
   FileNode,
   MenuEventId,

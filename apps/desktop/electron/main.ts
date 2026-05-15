@@ -120,11 +120,7 @@ async function createWindow() {
   if (SMOKE_TEST) {
     const result = await (smokeReport ?? waitForSmokeReport())
     console.log(`[electron-smoke] ${JSON.stringify(result)}`)
-    app.exit(
-      result.hasBridge && result.bootstrapPort > 0 && result.bootstrapPort === result.ipcPort
-        ? 0
-        : 1,
-    )
+    app.exit(result.hasBridge ? 0 : 1)
   }
 }
 

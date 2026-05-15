@@ -29,14 +29,34 @@ const bridge: DesktopBridge = {
     resetAllData: () => ipcRenderer.invoke(CHANNELS.app.resetAllData),
   },
   opencode: {
-    getPort: () => ipcRenderer.invoke(CHANNELS.opencode.getPort),
-    start: () => ipcRenderer.invoke(CHANNELS.opencode.start),
-    stop: () => ipcRenderer.invoke(CHANNELS.opencode.stop),
-    restart: () => ipcRenderer.invoke(CHANNELS.opencode.restart),
-    isRunning: () => ipcRenderer.invoke(CHANNELS.opencode.isRunning),
-    checkInstallation: () => ipcRenderer.invoke(CHANNELS.opencode.checkInstallation),
-    checkBunInstallation: () => ipcRenderer.invoke(CHANNELS.opencode.checkBunInstallation),
-    installDependencies: () => ipcRenderer.invoke(CHANNELS.opencode.installDependencies),
+    checkInstallation: async () => ({ installed: true }),
+    checkBunInstallation: async () => ({ installed: true }),
+    installDependencies: async () => ({ success: true }),
+    start: () => ipcRenderer.invoke(CHANNELS.agent.start),
+    restart: () => ipcRenderer.invoke(CHANNELS.agent.restart),
+  },
+  agent: {
+    getInfo: () => ipcRenderer.invoke(CHANNELS.agent.getInfo),
+    start: () => ipcRenderer.invoke(CHANNELS.agent.start),
+    stop: () => ipcRenderer.invoke(CHANNELS.agent.stop),
+    restart: () => ipcRenderer.invoke(CHANNELS.agent.restart),
+    isRunning: () => ipcRenderer.invoke(CHANNELS.agent.isRunning),
+    getProviderData: () => ipcRenderer.invoke(CHANNELS.agent.getProviderData),
+    listProviders: () => ipcRenderer.invoke(CHANNELS.agent.listProviders),
+    setApiKey: (args) => ipcRenderer.invoke(CHANNELS.agent.setApiKey, args),
+    createSession: (args) => ipcRenderer.invoke(CHANNELS.agent.createSession, args),
+    getSession: (args) => ipcRenderer.invoke(CHANNELS.agent.getSession, args),
+    getMessages: (args) => ipcRenderer.invoke(CHANNELS.agent.getMessages, args),
+    prompt: (args) => ipcRenderer.invoke(CHANNELS.agent.prompt, args),
+    abort: (args) => ipcRenderer.invoke(CHANNELS.agent.abort, args),
+    renameSession: (args) => ipcRenderer.invoke(CHANNELS.agent.renameSession, args),
+    deleteSession: (args) => ipcRenderer.invoke(CHANNELS.agent.deleteSession, args),
+    listQuestions: () => ipcRenderer.invoke(CHANNELS.agent.listQuestions),
+    replyQuestion: (args) => ipcRenderer.invoke(CHANNELS.agent.replyQuestion, args),
+    rejectQuestion: (args) => ipcRenderer.invoke(CHANNELS.agent.rejectQuestion, args),
+    getTree: (args) => ipcRenderer.invoke(CHANNELS.agent.getTree, args),
+    navigateTree: (args) => ipcRenderer.invoke(CHANNELS.agent.navigateTree, args),
+    onEvent: (listener) => subscribe(CHANNELS.agent.event, listener),
   },
   skills: {
     list: () => ipcRenderer.invoke(CHANNELS.skills.list),
@@ -116,12 +136,12 @@ contextBridge.exposeInMainWorld("__DILAG__", { port: bootstrapPort })
 
 if (smokeTest) {
   void ipcRenderer
-    .invoke(CHANNELS.opencode.getPort)
-    .then((ipcPort) => {
+    .invoke(CHANNELS.agent.getInfo)
+    .then(() => {
       ipcRenderer.send(CHANNELS.smoke.report, {
         hasBridge: true,
         bootstrapPort,
-        ipcPort,
+        ipcPort: bootstrapPort,
       })
     })
     .catch((error: unknown) => {

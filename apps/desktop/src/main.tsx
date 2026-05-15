@@ -40,7 +40,7 @@ root.render(
 // This avoids loading spinners and keeps prerequisite logic outside the component tree
 async function bootstrap() {
   try {
-    const result = (await bridge.opencode.checkInstallation()) as { installed: boolean }
+    const result = (await bridge.opencode!.checkInstallation()) as { installed: boolean }
 
     if (result.installed) {
       // OpenCode is ready - render the full app

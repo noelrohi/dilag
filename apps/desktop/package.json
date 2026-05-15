@@ -22,8 +22,7 @@
     "test:coverage": "vitest run --coverage",
     "release": "bumpp",
     "sync-version": "bun scripts/sync-version.ts",
-    "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts",
-    "fetch-opencode": "bun scripts/fetch-opencode.ts"
+    "sync-version-from-pkg": "bun scripts/sync-version-from-pkg.ts"
   },
   "build": {
     "appId": "com.rohi.dilag",
@@ -45,15 +44,6 @@
       {
         "from": "resources/design-assets",
         "to": "design-assets"
-      },
-      {
-        "from": "resources/opencode",
-        "to": "opencode",
-        "filter": [
-          "opencode-*",
-          "opencode.exe",
-          "opencode"
-        ]
       }
     ],
     "mac": {
@@ -82,7 +72,8 @@
   "dependencies": {
     "@dilag/desktop-bridge": "workspace:*",
     "@dilag/ui": "workspace:*",
-    "@opencode-ai/sdk": "^1.4.3",
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@opencode-ai/sdk": "1.4.3",
     "@phosphor-icons/react": "^2.1.10",
     "@pierre/diffs": "^1.0.4",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -127,6 +118,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
     "tokenlens": "^1.3.1",
+    "typebox": "^1.1.38",
     "use-stick-to-bottom": "^1.1.1",
     "zustand": "^5.0.9"
   },

@@ -4,8 +4,8 @@ import { SetupWizard } from "./setup-wizard"
 
 describe("SetupWizard", () => {
   const mockOnComplete = vi.fn()
-  const mockCheckOpenCode = vi.mocked(window.desktopBridge!.opencode.checkInstallation)
-  const mockCheckBun = vi.mocked(window.desktopBridge!.opencode.checkBunInstallation)
+  const mockCheckOpenCode = vi.mocked(window.desktopBridge!.opencode!.checkInstallation)
+  const mockCheckBun = vi.mocked(window.desktopBridge!.opencode!.checkBunInstallation)
 
   beforeEach(() => {
     vi.clearAllMocks()

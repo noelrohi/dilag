@@ -24,15 +24,8 @@ export function getSessionsFile(): string {
   return path.join(getDilagDir(), "sessions.json")
 }
 
-export function getOpencodeConfigDir(): string {
-  return path.join(getDilagDir(), "opencode")
-}
-
-export function getBundledBinaryDir(): string {
-  const cwdBinaries = path.resolve(process.cwd(), "resources", "opencode")
-  if (fs.existsSync(cwdBinaries)) return cwdBinaries
-  const electronBinaries = path.resolve(app.getAppPath(), "resources", "opencode")
-  return electronBinaries
+export function getPiAgentDir(): string {
+  return path.join(getDilagDir(), "pi")
 }
 
 export function buildAugmentedPath(): string {
@@ -47,14 +40,4 @@ export function buildAugmentedPath(): string {
     path.join(os.homedir(), "Library/pnpm"),
   ]
   return [...extra.filter((candidate) => fs.existsSync(candidate)), existing].join(path.delimiter)
-}
-
-export function platformBinaryName(): string {
-  if (process.platform === "darwin") {
-    return process.arch === "arm64"
-      ? "opencode-aarch64-apple-darwin"
-      : "opencode-x86_64-apple-darwin"
-  }
-  if (process.platform === "win32") return "opencode.exe"
-  return "opencode"
 }
