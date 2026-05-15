@@ -36,39 +36,20 @@ root.render(
   </React.StrictMode>,
 )
 
-// Check OpenCode installation BEFORE React renders (TkDodo/KCD approved pattern)
-// This avoids loading spinners and keeps prerequisite logic outside the component tree
+// Start the embedded Pi runtime before React renders.
+// This avoids loading spinners and keeps prerequisite logic outside the component tree.
 async function bootstrap() {
   try {
-    const result = (await bridge.opencode!.checkInstallation()) as { installed: boolean }
+    await bridge.agent.start()
 
-    if (result.installed) {
-      // OpenCode is ready - render the full app
-      root.render(
-        <React.StrictMode>
-          <RouterProvider router={router} />
-        </React.StrictMode>,
-      )
-      return
-    }
-
-    // OpenCode not installed - show setup wizard with callback to re-bootstrap
-    // NOTE: We intentionally mount only the providers needed for updates + theme.
-    // We cannot mount AppProviders here because GlobalEventsProvider will try to start OpenCode.
     root.render(
       <React.StrictMode>
-        <ThemeProvider defaultTheme="dark" storageKey="dilag-theme">
-          <UpdaterProvider>
-            <CheckUpdatesMenuListener />
-            <SetupWizard onComplete={() => bootstrap()} />
-            <Toaster />
-          </UpdaterProvider>
-        </ThemeProvider>
+        <RouterProvider router={router} />
       </React.StrictMode>,
     )
+    return
   } catch (error) {
-    // Check failed - show setup wizard (safer to assume not installed)
-    console.error("Failed to check OpenCode installation:", error)
+    console.error("Failed to start Pi runtime:", error)
     root.render(
       <React.StrictMode>
         <ThemeProvider defaultTheme="dark" storageKey="dilag-theme">

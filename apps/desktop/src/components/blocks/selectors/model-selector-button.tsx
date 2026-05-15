@@ -25,7 +25,6 @@ type ProviderDialogState =
 
 // Popular providers in priority order
 const PROVIDER_PRIORITY = [
-  "opencode",
   "anthropic",
   "openai",
   "google",

@@ -80,6 +80,8 @@ export interface AgentRuntimeInfo {
   sessionCount: number
 }
 
+export type AgentThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+
 export interface AgentModel {
   id: string
   name: string
@@ -90,7 +92,7 @@ export interface AgentModel {
   cost?: { input?: number; output?: number }
   contextWindow?: number
   maxTokens?: number
-  variants?: Record<string, Record<string, unknown>>
+  variants?: Record<AgentThinkingLevel, Record<string, unknown>>
 }
 
 export interface AgentProviderData {
@@ -99,11 +101,14 @@ export interface AgentProviderData {
   defaultModel: { providerID: string; modelID: string } | null
 }
 
+export type AgentProviderAuthType = "api-key" | "oauth"
+
 export interface AgentProvider {
   id: string
   name: string
   connected: boolean
   modelCount: number
+  authType: AgentProviderAuthType
 }
 
 export interface AgentImageContent {

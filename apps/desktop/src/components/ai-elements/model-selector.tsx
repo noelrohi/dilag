@@ -154,7 +154,6 @@ export type ModelSelectorLogoProps = Omit<ComponentProps<"img">, "src" | "alt"> 
     | "azure"
     | "baseten"
     | "huggingface"
-    | "opencode"
     | "fastrouter"
     | "google"
     | "google-vertex"

@@ -1,12 +1,9 @@
 import { useCallback, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useSDK } from "@/context/global-events"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { bridge } from "@/lib/bridge"
-
-// Hot models to feature
-const HOT_MODELS = ["gemini-3-pro-preview", "claude-opus-4-5", "gpt-5.2"] as const
+import type { AgentThinkingLevel } from "@dilag/desktop-bridge"
 
 export interface Model {
   id: string
@@ -19,22 +16,21 @@ export interface Model {
   free?: boolean
   latest?: boolean
   cost?: { input?: number; output?: number }
-  variants?: Record<string, Record<string, unknown>>
+  variants?: Record<AgentThinkingLevel, Record<string, unknown>>
 }
 
 interface ModelState {
   selectedModel: { providerID: string; modelID: string } | null
   setSelectedModel: (model: { providerID: string; modelID: string } | null) => void
   // Variant state: key is "providerID/modelID", value is variant name
-  variants: Record<string, string | undefined>
-  setVariant: (modelKey: string, variant: string | undefined) => void
+  variants: Record<string, AgentThinkingLevel | undefined>
+  setVariant: (modelKey: string, variant: AgentThinkingLevel | undefined) => void
 }
 
 export const useModelStore = create<ModelState>()(
   persist(
     (set) => ({
-      // Default to Big Pickle
-      selectedModel: { providerID: "opencode", modelID: "big-pickle" },
+      selectedModel: null,
       setSelectedModel: (model) => set({ selectedModel: model }),
       variants: {},
       setVariant: (modelKey, variant) =>
@@ -58,102 +54,17 @@ export const modelKeys = {
 }
 
 /**
- * Check if a model is hot (featured)
- */
-function isHotModel(modelID: string): boolean {
-  return HOT_MODELS.some((hot) => modelID.includes(hot) || modelID.startsWith(hot))
-}
-
-/**
- * Check if a model is marked as latest based on its name
- */
-function isModelLatest(modelName: string): boolean {
-  return modelName.toLowerCase().includes("(latest)")
-}
-
-/**
- * Check if a model is free based on cost data (matching simon pattern)
- */
-function isModelFree(providerID: string, cost?: { input?: number; output?: number }): boolean {
-  if (providerID !== "opencode") return false
-  if (!cost) return true
-  return (cost.input ?? 0) === 0 && (cost.output ?? 0) === 0
-}
-
-/**
- * Transform raw provider data into Model array with hot/free flags
- */
-function transformProviderData(
-  providers: Array<{
-    id: string
-    name: string
-    models: Record<
-      string,
-      {
-        id?: string
-        name: string
-        release_date?: string
-        family?: string
-        cost?: { input?: number; output?: number }
-        variants?: Record<string, Record<string, unknown>>
-      }
-    >
-  }>,
-): Model[] {
-  const models: Model[] = []
-  const seenModels = new Set<string>()
-
-  for (const provider of providers) {
-    for (const [key, model] of Object.entries(provider.models)) {
-      const modelID = model.id || key
-      const dedupeKey = `${provider.id}:${modelID}`
-      if (seenModels.has(dedupeKey)) continue
-      seenModels.add(dedupeKey)
-
-      models.push({
-        id: modelID,
-        name: model.name.replace(/\s*\(latest\)\s*/i, "").trim(),
-        providerID: provider.id,
-        providerName: provider.name,
-        releaseDate: model.release_date,
-        family: model.family,
-        hot: isHotModel(modelID),
-        free: isModelFree(provider.id, model.cost),
-        latest: isModelLatest(model.name),
-        cost: model.cost,
-        variants: model.variants,
-      })
-    }
-  }
-
-  models.sort((a, b) => {
-    if (a.hot && !b.hot) return -1
-    if (!a.hot && b.hot) return 1
-    return a.name.localeCompare(b.name)
-  })
-
-  return models
-}
-
-/**
  * Hook to fetch provider/model data
  */
 export function useProviderData() {
-  const sdk = useSDK()
-
   return useQuery({
     queryKey: modelKeys.providers(),
     queryFn: async () => {
-      const response = await sdk.provider.list()
-      if (!response.data) {
-        throw new Error("No provider data received")
-      }
-      const connectedProviders = response.data.connected ?? []
-      const connectedSet = new Set(connectedProviders)
-      const connected = response.data.all.filter((p) => connectedSet.has(p.id))
+      const response = await bridge.agent.getProviderData()
       return {
-        models: transformProviderData(connected),
-        connectedProviders,
+        models: response.models,
+        connectedProviders: response.connectedProviders,
+        defaultModel: response.defaultModel,
       }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes - models don't change often
@@ -171,6 +82,7 @@ export function useModels() {
 
   const models = data?.models ?? []
   const connectedProviders = data?.connectedProviders ?? []
+  const effectiveSelectedModel = selectedModel ?? data?.defaultModel ?? null
 
   const selectModel = useCallback(
     (providerID: string, modelID: string) => {
@@ -180,24 +92,26 @@ export function useModels() {
   )
 
   const selectedModelInfo = useMemo(() => {
-    if (!selectedModel) return null
+    if (!effectiveSelectedModel) return null
     return (
       models.find(
-        (m: Model) => m.providerID === selectedModel.providerID && m.id === selectedModel.modelID,
+        (m: Model) =>
+          m.providerID === effectiveSelectedModel.providerID &&
+          m.id === effectiveSelectedModel.modelID,
       ) ?? null
     )
-  }, [selectedModel, models])
+  }, [effectiveSelectedModel, models])
 
   // Get the model key for variant storage
   const modelKey = useMemo(() => {
-    if (!selectedModel) return null
-    return `${selectedModel.providerID}/${selectedModel.modelID}`
-  }, [selectedModel])
+    if (!effectiveSelectedModel) return null
+    return `${effectiveSelectedModel.providerID}/${effectiveSelectedModel.modelID}`
+  }, [effectiveSelectedModel])
 
   // Get available variants for current model
   const variantList = useMemo(() => {
     if (!selectedModelInfo?.variants) return []
-    return Object.keys(selectedModelInfo.variants)
+    return Object.keys(selectedModelInfo.variants) as AgentThinkingLevel[]
   }, [selectedModelInfo])
 
   // Get current variant for selected model
@@ -208,7 +122,7 @@ export function useModels() {
 
   // Set variant for current model
   const setCurrentVariant = useCallback(
-    (variant: string | undefined) => {
+    (variant: AgentThinkingLevel | undefined) => {
       if (!modelKey) return
       setVariant(modelKey, variant)
     },
@@ -236,18 +150,8 @@ export function useModels() {
   const restartServerAndRefresh = useCallback(async () => {
     setIsRestarting(true)
     try {
-      console.log("[useModels] Restarting OpenCode server...")
-      const port = await bridge.opencode!.restart()
-      console.log("[useModels] Server restarted on port:", port)
-      // Poll for server readiness (up to 10s)
-      for (let i = 0; i < 20; i++) {
-        try {
-          const res = await fetch(`http://127.0.0.1:${port}/health`)
-          if (res.ok) break
-        } catch {
-          await new Promise((r) => setTimeout(r, 500))
-        }
-      }
+      console.log("[useModels] Restarting agent runtime...")
+      await bridge.agent.restart()
       // Force refetch by invalidating and refetching
       console.log("[useModels] Refetching models...")
       await queryClient.resetQueries({ queryKey: modelKeys.all })
@@ -263,7 +167,7 @@ export function useModels() {
   return {
     models,
     connectedProviders,
-    selectedModel,
+    selectedModel: effectiveSelectedModel,
     selectedModelInfo,
     isLoading,
     isRestarting,

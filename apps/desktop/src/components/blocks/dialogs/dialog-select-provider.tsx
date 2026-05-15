@@ -1,20 +1,15 @@
 import { useState, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { CheckCircle, Magnifer, AltArrowDown } from "@solar-icons/react"
-import { useSDK } from "@/context/global-events"
 import { Dialog, DialogContent } from "@dilag/ui/dialog"
 import { Input } from "@dilag/ui/input"
 import { cn } from "@/lib/utils"
+import { bridge } from "@/lib/bridge"
 
-// Popular providers to show at top
-const POPULAR_PROVIDERS = [
-  "opencode",
-  "anthropic",
-  "github-copilot",
-  "openai",
-  "google",
-  "openrouter",
-]
+// Providers to show at top, in preferred setup order.
+const POPULAR_PROVIDERS = ["opencode-go", "openai", "google", "openrouter", "mistral"]
+
+const RECOMMENDED_PROVIDER_IDS = new Set(["opencode-go", "openai"])
 
 interface DialogSelectProviderProps {
   open: boolean
@@ -27,36 +22,31 @@ export function DialogSelectProvider({
   onOpenChange,
   onSelectProvider,
 }: DialogSelectProviderProps) {
-  const sdk = useSDK()
   const [search, setSearch] = useState("")
   const [othersExpanded, setOthersExpanded] = useState(false)
 
   // Fetch all providers and connected status
   const { data: providerData } = useQuery({
     queryKey: ["providers", "all"],
-    queryFn: async () => {
-      const response = await sdk.provider.list()
-      return {
-        all: response.data?.all ?? [],
-        connected: response.data?.connected ?? [],
-      }
-    },
+    queryFn: () => bridge.agent.listProviders(),
     enabled: open,
   })
 
-  const allProviders = providerData?.all ?? []
-  const connectedProviders = providerData?.connected ?? []
+  const allProviders = providerData ?? []
 
   // Split providers into popular and others, apply search
   const { popularProviders, otherProviders } = useMemo(() => {
     const query = search.trim().toLowerCase()
 
+    const codexConnected = allProviders.some((p) => p.id === "openai-codex" && p.connected)
+
     const popular = allProviders
       .filter((p) => POPULAR_PROVIDERS.includes(p.id))
+      .map((p) => (p.id === "openai" ? { ...p, connected: p.connected || codexConnected } : p))
       .sort((a, b) => POPULAR_PROVIDERS.indexOf(a.id) - POPULAR_PROVIDERS.indexOf(b.id))
 
     const others = allProviders
-      .filter((p) => !POPULAR_PROVIDERS.includes(p.id))
+      .filter((p) => !POPULAR_PROVIDERS.includes(p.id) && (query || p.id !== "openai-codex"))
       .sort((a, b) => a.name.localeCompare(b.name))
 
     if (query) {
@@ -110,7 +100,6 @@ export function DialogSelectProvider({
             <div className="space-y-0.5">
               {/* Popular providers */}
               {popularProviders.map((provider) => {
-                const isConnected = connectedProviders.includes(provider.id)
                 return (
                   <button
                     key={provider.id}
@@ -132,14 +121,19 @@ export function DialogSelectProvider({
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{provider.name}</span>
-                        {provider.id === "opencode" && !isConnected && (
+                        {!provider.connected && RECOMMENDED_PROVIDER_IDS.has(provider.id) && (
                           <span className="text-[10px] font-medium uppercase tracking-wider text-primary px-1.5 py-0.5 rounded bg-primary/10">
                             Recommended
                           </span>
                         )}
+                        {provider.authType === "oauth" && (
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                            Subscription
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {isConnected && (
+                    {provider.connected && (
                       <div className="size-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
                         <CheckCircle size={12} className="text-emerald-600" />
                       </div>
@@ -171,7 +165,6 @@ export function DialogSelectProvider({
                   {othersExpanded && (
                     <div className="space-y-0.5">
                       {otherProviders.map((provider) => {
-                        const isConnected = connectedProviders.includes(provider.id)
                         return (
                           <button
                             key={provider.id}
@@ -193,7 +186,12 @@ export function DialogSelectProvider({
                             <span className="text-sm font-medium text-left flex-1">
                               {provider.name}
                             </span>
-                            {isConnected && (
+                            {provider.authType === "oauth" && (
+                              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                                Subscription
+                              </span>
+                            )}
+                            {provider.connected && (
                               <div className="size-5 rounded-full bg-emerald-500/10 flex items-center justify-center">
                                 <CheckCircle size={12} className="text-emerald-600" />
                               </div>

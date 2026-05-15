@@ -44,6 +44,7 @@ const bridge: DesktopBridge = {
     getProviderData: () => ipcRenderer.invoke(CHANNELS.agent.getProviderData),
     listProviders: () => ipcRenderer.invoke(CHANNELS.agent.listProviders),
     setApiKey: (args) => ipcRenderer.invoke(CHANNELS.agent.setApiKey, args),
+    loginOAuthProvider: (args) => ipcRenderer.invoke(CHANNELS.agent.loginOAuthProvider, args),
     createSession: (args) => ipcRenderer.invoke(CHANNELS.agent.createSession, args),
     getSession: (args) => ipcRenderer.invoke(CHANNELS.agent.getSession, args),
     getMessages: (args) => ipcRenderer.invoke(CHANNELS.agent.getMessages, args),
