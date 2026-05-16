@@ -17,6 +17,7 @@ export default defineConfig(async () => ({
     tailwindcss(),
     consoleForwardPlugin(),
   ],
+  base: "./",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
