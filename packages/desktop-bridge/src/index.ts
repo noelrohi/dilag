@@ -79,6 +79,7 @@ export interface DesktopBridge {
     replyQuestion(args: { requestID: string; answers: string[][] }): Promise<void>
     rejectQuestion(args: { requestID: string }): Promise<void>
     getTree(args: { sessionID: string }): Promise<AgentTreeNode[]>
+    forkSession(args: { sessionID: string; targetId: string }): Promise<AgentSessionInfo>
     navigateTree(args: {
       sessionID: string
       targetId: string

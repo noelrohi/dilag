@@ -12,6 +12,7 @@ import {
   clearAgentPromptQueue,
   createAgentSessionForDirectory,
   deleteAgentSession,
+  forkAgentSession,
   getAgentMessages,
   getAgentProviderData,
   getAgentRuntimeInfo,
@@ -147,6 +148,10 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   )
   ipcMain.handle(CHANNELS.agent.getTree, (_event, args: { sessionID: string }) =>
     getAgentTree(args),
+  )
+  ipcMain.handle(
+    CHANNELS.agent.forkSession,
+    (_event, args: { sessionID: string; targetId: string }) => forkAgentSession(args),
   )
   ipcMain.handle(
     CHANNELS.agent.navigateTree,

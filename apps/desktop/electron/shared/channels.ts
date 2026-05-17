@@ -30,6 +30,7 @@ export const CHANNELS = {
     replyQuestion: "agent:reply-question",
     rejectQuestion: "agent:reject-question",
     getTree: "agent:get-tree",
+    forkSession: "agent:fork-session",
     navigateTree: "agent:navigate-tree",
     event: "agent:event",
   },

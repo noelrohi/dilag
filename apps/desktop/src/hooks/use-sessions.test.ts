@@ -58,6 +58,7 @@ import { useCurrentSession } from "@/hooks/use-session-data"
 const mockPrompt = vi.mocked(window.desktopBridge!.agent.prompt)
 const mockCreateAgentSession = vi.mocked(window.desktopBridge!.agent.createSession)
 const mockAbort = vi.mocked(window.desktopBridge!.agent.abort)
+const mockForkAgentSession = vi.mocked(window.desktopBridge!.agent.forkSession)
 const mockNavigateTree = vi.mocked(window.desktopBridge!.agent.navigateTree)
 const mockGetSession = vi.mocked(window.desktopBridge!.agent.getSession)
 const mockGetMessages = vi.mocked(window.desktopBridge!.agent.getMessages)
@@ -86,6 +87,11 @@ describe("use-sessions", () => {
       title: "New chat",
     })
     mockAbort.mockResolvedValue(undefined)
+    mockForkAgentSession.mockResolvedValue({
+      id: "session-fork",
+      cwd: "/mock/cwd/1",
+      title: "Fork",
+    })
     mockNavigateTree.mockResolvedValue({ cancelled: false })
     mockGetSession.mockResolvedValue({
       id: "session-1",
@@ -352,8 +358,8 @@ describe("use-sessions", () => {
     })
   })
 
-  describe("tree navigation", () => {
-    it("uses Pi tree navigation for forking from a message", async () => {
+  describe("forkSession", () => {
+    it("creates a new Pi session forked from a message", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
       let forkedSessionId: string | null = null
 
@@ -361,12 +367,18 @@ describe("use-sessions", () => {
         forkedSessionId = await result.current.forkSession("msg-1")
       })
 
-      expect(mockNavigateTree).toHaveBeenCalledWith({
+      expect(mockForkAgentSession).toHaveBeenCalledWith({
         sessionID: "session-1",
         targetId: "msg-1",
-        summarize: false,
       })
-      expect(forkedSessionId).toBe("session-1")
+      expect(window.desktopBridge!.sessions.saveMeta).toHaveBeenCalledWith({
+        session: expect.objectContaining({
+          id: "session-fork",
+          cwd: "/mock/cwd/1",
+          parentID: "session-1",
+        }),
+      })
+      expect(forkedSessionId).toBe("session-fork")
     })
   })
 })

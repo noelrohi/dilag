@@ -16,7 +16,10 @@ export const sessionKeys = {
 function displayNameFromAgentSession(name: string | undefined, firstMessage: string | undefined) {
   const source = name || firstMessage || "New chat"
   const skillMatch = source.match(/<\/skill>\s*([\s\S]*)$/)
-  const cleaned = (skillMatch?.[1] || source).trim()
+  const withoutSkillPrefix = skillMatch?.[1] || source
+  const cleaned = withoutSkillPrefix
+    .replace(/<dilag_context\b[^>]*>[\s\S]*?<\/dilag_context>/g, "")
+    .trim()
   return cleaned || "New chat"
 }
 

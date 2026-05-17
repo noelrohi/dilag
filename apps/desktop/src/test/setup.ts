@@ -42,6 +42,7 @@ const desktopBridgeMock: DesktopBridge = {
     replyQuestion: vi.fn(),
     rejectQuestion: vi.fn(),
     getTree: vi.fn(),
+    forkSession: vi.fn(),
     navigateTree: vi.fn(),
     onEvent: vi.fn(() => noopUnsubscribe),
   },

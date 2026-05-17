@@ -58,6 +58,7 @@ const bridge: DesktopBridge = {
     replyQuestion: (args) => ipcRenderer.invoke(CHANNELS.agent.replyQuestion, args),
     rejectQuestion: (args) => ipcRenderer.invoke(CHANNELS.agent.rejectQuestion, args),
     getTree: (args) => ipcRenderer.invoke(CHANNELS.agent.getTree, args),
+    forkSession: (args) => ipcRenderer.invoke(CHANNELS.agent.forkSession, args),
     navigateTree: (args) => ipcRenderer.invoke(CHANNELS.agent.navigateTree, args),
     onEvent: (listener) => subscribe(CHANNELS.agent.event, listener),
   },
