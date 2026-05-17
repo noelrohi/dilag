@@ -13,9 +13,12 @@ describe("session-store", () => {
       parts: {},
       sessionStatus: {},
       sessionDiffs: {},
+      promptQueues: {},
       isServerReady: false,
       error: null,
       debugEvents: [],
+      recentFileChanges: [],
+      designRefreshTick: 0,
     })
   })
 
@@ -294,6 +297,10 @@ describe("session-store", () => {
         ])
       useSessionStore.getState().setSessionStatus(sessionId, "running")
       useSessionStore.getState().setSessionDiffs(sessionId, [])
+      useSessionStore.getState().setPromptQueue(sessionId, {
+        steering: ["Check errors"],
+        followUp: ["Summarize next"],
+      })
 
       // Clear
       useSessionStore.getState().clearSessionData(sessionId)
@@ -302,6 +309,7 @@ describe("session-store", () => {
       expect(useSessionStore.getState().messages[sessionId]).toBeUndefined()
       expect(useSessionStore.getState().sessionStatus[sessionId]).toBeUndefined()
       expect(useSessionStore.getState().sessionDiffs[sessionId]).toBeUndefined()
+      expect(useSessionStore.getState().promptQueues[sessionId]).toBeUndefined()
     })
   })
 
@@ -404,6 +412,28 @@ describe("session-store", () => {
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("running")
     })
 
+    it("should replace queued follow-up state from prompt queue events", () => {
+      const sessionId = "session-1"
+      useSessionStore.getState().setPromptQueue(sessionId, {
+        steering: ["old steering"],
+        followUp: ["old follow-up"],
+      })
+
+      useSessionStore.getState().handleEvent({
+        type: "prompt.queue.updated",
+        properties: {
+          sessionID: sessionId,
+          steering: ["Focus on errors"],
+          followUp: ["After that, make it dark"],
+        },
+      } as any)
+
+      expect(useSessionStore.getState().promptQueues[sessionId]).toEqual({
+        steering: ["Focus on errors"],
+        followUp: ["After that, make it dark"],
+      })
+    })
+
     it("should stop streaming assistant messages when session becomes idle", () => {
       const sessionId = "session-1"
       useSessionStore.getState().setMessages(sessionId, [
@@ -478,6 +508,29 @@ describe("session-store", () => {
       expect(useSessionStore.getState().recentFileChanges).toMatchObject([
         { file: ".designs/home.html", event: "change" },
       ])
+    })
+
+    it("bumps design refresh when write tools complete", () => {
+      useSessionStore.getState().updatePart("msg-1", {
+        id: "tool-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "write",
+        state: { status: "running", input: { filePath: ".designs/home.html" } },
+      })
+      expect(useSessionStore.getState().designRefreshTick).toBe(0)
+
+      useSessionStore.getState().updatePart("msg-1", {
+        id: "tool-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "write",
+        state: { status: "completed", input: { filePath: ".designs/home.html" } },
+      })
+
+      expect(useSessionStore.getState().designRefreshTick).toBe(1)
     })
   })
 })

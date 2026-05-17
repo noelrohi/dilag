@@ -15,7 +15,6 @@ import {
   ClipboardText,
   CloseCircle,
   DangerTriangle,
-  Stop,
   ArrowUp,
   MagicStick,
   BranchingPathsUp,
@@ -32,6 +31,7 @@ import {
   useSessionError,
   useSessionRevert,
   useSessionStore,
+  useQueuedFollowUps,
   type SessionStatus,
   type Message as SessionMessage,
 } from "@/context/session-store"
@@ -42,7 +42,6 @@ import { MessagePart } from "./message-part"
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation"
 import {
@@ -78,6 +77,7 @@ import type { MessagePart as MessagePartType } from "@/context/session-store"
 import type { FileNode } from "@dilag/desktop-bridge"
 import { toast } from "sonner"
 import { bridge } from "@/lib/bridge"
+import { queuedFollowUpPreview, type PromptDeliveryOutcome } from "@/lib/prompt-delivery"
 
 const FILE_MENTION_SEARCH_DEBOUNCE_MS = 150
 const FILE_MENTION_SEARCH_LIMIT = 20
@@ -752,11 +752,16 @@ function ChatInputArea({
   sendMessage,
   stopSession,
   sessionCwd,
+  queuedFollowUps,
 }: {
   isLoading: boolean
-  sendMessage: (message: string, files?: import("ai").FileUIPart[]) => Promise<void>
+  sendMessage: (
+    message: string,
+    files?: import("ai").FileUIPart[],
+  ) => Promise<PromptDeliveryOutcome | undefined>
   stopSession: () => Promise<void>
   sessionCwd: string | null
+  queuedFollowUps: string[]
 }) {
   const composerTextareaId = useId()
   const { textInput, attachments, screenRefs } = usePromptInputController()
@@ -772,6 +777,7 @@ function ChatInputArea({
   const hasComposerReferences =
     attachments.files.length > 0 || screenRefs.references.length > 0 || mentionedFiles.length > 0
   const hasSubmittableInput = hasInput || hasComposerReferences
+  const hasRuntimeQueuedFollowUps = queuedFollowUps.length > 0
   const { pendingMessage, clearPendingMessage } = usePendingMessage()
 
   // Handle pending messages from server error overlay or other sources
@@ -981,8 +987,6 @@ function ChatInputArea({
   }, [mentionedFiles, sessionCwd])
 
   const handleSubmit = async (text: string, files?: import("ai").FileUIPart[]) => {
-    if (isLoading) return
-
     const trimmedText = text.trim()
     const inputFiles = files ?? []
     const hasMentionedFiles = mentionedFiles.length > 0
@@ -1017,19 +1021,19 @@ function ChatInputArea({
     }
 
     try {
-      await sendMessage(trimmedText, mergedFiles.length > 0 ? mergedFiles : undefined)
+      const delivery = await sendMessage(
+        trimmedText,
+        mergedFiles.length > 0 ? mergedFiles : undefined,
+      )
+      if (delivery?.status === "queued") {
+        toast.success("Queued follow-up message")
+      }
       setMentionedFiles([])
       setMentionOpen(false)
       setMentionSearchResults([])
       setHighlightedMentionIndex(0)
     } catch {
       toast.error("Failed to send message")
-    }
-  }
-
-  const handleButtonClick = () => {
-    if (isLoading) {
-      stopSession()
     }
   }
 
@@ -1057,6 +1061,38 @@ function ChatInputArea({
       <div className="space-y-2">
         {/* Gradient fade */}
         <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+
+        {(isLoading || hasRuntimeQueuedFollowUps) && (
+          <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <ClockCircle size={14} className="shrink-0 text-primary" />
+                <span className="truncate">
+                  {isLoading
+                    ? "Agent is working. Send now to queue a follow-up."
+                    : "Follow-up queued."}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => stopSession()}
+                className="shrink-0 font-medium text-foreground/80 transition-colors hover:text-foreground"
+              >
+                Stop
+              </button>
+            </div>
+            {hasRuntimeQueuedFollowUps && (
+              <div className="mt-2 space-y-1.5 border-t border-border/50 pt-2">
+                {queuedFollowUps.map((prompt, index) => (
+                  <div key={`${index}-${prompt}`} className="flex gap-2 text-foreground/75">
+                    <span className="shrink-0 text-muted-foreground">Queued</span>
+                    <span className="min-w-0 truncate">{queuedFollowUpPreview(prompt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <PromptInput
           onSubmit={async ({ text, files }) => handleSubmit(text, files)}
@@ -1101,7 +1137,6 @@ function ChatInputArea({
               id={composerTextareaId}
               data-chat-composer-textarea
               placeholder="Describe what to design..."
-              disabled={isLoading}
               className="min-h-[56px] max-h-[200px]"
               onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                 syncCaretPosition(event.currentTarget)
@@ -1152,19 +1187,16 @@ function ChatInputArea({
             <div className="flex items-center gap-1">
               <PromptInputAddAttachmentButton />
               <PromptInputSubmit
-                disabled={!hasSubmittableInput && !isLoading}
-                onClick={isLoading ? handleButtonClick : undefined}
-                type={isLoading ? "button" : "submit"}
+                disabled={!hasSubmittableInput}
+                aria-label={isLoading ? "Queue follow-up" : "Send message"}
                 className={cn(
                   "size-9 rounded-xl transition-all duration-200",
-                  isLoading
-                    ? "bg-destructive/90 text-destructive-foreground hover:bg-destructive shadow-lg shadow-destructive/25"
-                    : hasSubmittableInput
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                      : "bg-muted text-muted-foreground",
+                  hasSubmittableInput
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
-                {isLoading ? <Stop size={14} className="fill-current" /> : <ArrowUp size={16} />}
+                {isLoading ? <ClockCircle size={16} /> : <ArrowUp size={16} />}
               </PromptInputSubmit>
             </div>
           </PromptInputFooter>
@@ -1254,6 +1286,7 @@ export function ChatView() {
 
   // Get revert state for current session
   const sessionRevert = useSessionRevert(currentSessionId)
+  const queuedFollowUps = useQueuedFollowUps(currentSessionId)
 
   // Handler for forking from a message
   const handleFork = useCallback(
@@ -1338,15 +1371,9 @@ export function ChatView() {
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-4">
-            {messages.length === 0 && !hasPendingPrompt ? (
-              <ConversationEmptyState>
-                <p className="text-[13px] text-muted-foreground/50">
-                  Describe your app to start designing
-                </p>
-              </ConversationEmptyState>
-            ) : messages.length === 0 && hasPendingPrompt ? (
+            {messages.length === 0 && hasPendingPrompt ? (
               <PendingPrompt />
-            ) : (
+            ) : messages.length === 0 ? null : (
               messages.map((message, index) => {
                 // Check if this is the last assistant message
                 const isLastAssistant =
@@ -1405,6 +1432,7 @@ export function ChatView() {
             sendMessage={sendMessage}
             stopSession={stopSession}
             sessionCwd={currentSession?.cwd ?? null}
+            queuedFollowUps={queuedFollowUps}
           />
         </div>
 
