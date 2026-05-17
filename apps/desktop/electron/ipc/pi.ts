@@ -450,6 +450,27 @@ export function getAgentTree(args: { sessionID: string }): BridgeAgentTreeNode[]
     .map((node) => mapTreeNode(node as PiSessionTreeNode))
 }
 
+export async function forkAgentSession(args: {
+  sessionID: string
+  targetId: string
+}): Promise<AgentSessionInfo> {
+  const sourceRuntime = getRuntimeSession(args.sessionID)
+  const targetId = resolveTreeTargetId(sourceRuntime, args.targetId)
+  const sessionFile = sourceRuntime.session.sessionManager.createBranchedSession(targetId)
+  if (!sessionFile) throw new Error("Unable to fork unsaved session.")
+
+  const pi = await loadPi()
+  const sessionManager = pi.SessionManager.open(
+    sessionFile,
+    getPiSessionDir(sourceRuntime.cwd),
+    sourceRuntime.cwd,
+  )
+  const { session } = await createPiSession(sourceRuntime.cwd, sessionManager)
+  const runtime = bindRuntimeSession(session, sourceRuntime.cwd)
+  sessions.set(runtime.id, runtime)
+  return toAgentSessionInfo(runtime)
+}
+
 export async function navigateAgentTree(args: {
   sessionID: string
   targetId: string

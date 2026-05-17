@@ -451,28 +451,53 @@ export function useSessions() {
     }
   }, [currentSessionId, currentSession, setSessionStatus])
 
-  // Navigate the Pi session tree to a previous message. Pi keeps this in the same
-  // session file instead of creating a separate revert state.
+  // Fork a Pi session at a previous message into a separate session file.
   const forkSession = useCallback(
     async (messageId: string): Promise<string | null> => {
       if (!currentSessionId || !currentSession) return null
 
       try {
         setError(null)
-        await bridge.agent.navigateTree({
+        const response = await bridge.agent.forkSession({
           sessionID: currentSessionId,
           targetId: messageId,
-          summarize: false,
         })
-        await loadSessionMessages(currentSessionId, currentSession.cwd)
-        return currentSessionId
+        const newSessionId = response.id
+        const now = new Date().toISOString()
+        const sessionMeta: SessionMeta = {
+          id: newSessionId,
+          name: `Fork of ${currentSession.name}`,
+          created_at: now,
+          updated_at: now,
+          cwd: currentSession.cwd,
+          parentID: currentSessionId,
+          platform: currentSession.platform,
+          projectId: currentSession.projectId,
+          favorite: currentSession.favorite,
+        }
+        await bridge.sessions.saveMeta({ session: sessionMeta })
+
+        queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
+          old ? [...old, sessionMeta] : [sessionMeta],
+        )
+        queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+        setCurrentSessionId(newSessionId)
+        await loadSessionMessages(newSessionId, currentSession.cwd)
+        return newSessionId
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to navigate session tree")
-        console.error("Failed to navigate session tree:", err)
+        setError(err instanceof Error ? err.message : "Failed to fork session")
+        console.error("Failed to fork session:", err)
         return null
       }
     },
-    [currentSessionId, currentSession, loadSessionMessages, setError],
+    [
+      currentSessionId,
+      currentSession,
+      queryClient,
+      setCurrentSessionId,
+      loadSessionMessages,
+      setError,
+    ],
   )
 
   // Fork session with designs only - creates a new session and copies screen designs (no chat history)
