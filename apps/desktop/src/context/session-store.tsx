@@ -11,7 +11,6 @@ import {
   isEventSessionDiff,
   isEventSessionIdle,
   isEventSessionError,
-  isEventSessionUpdated,
   isEventServerHeartbeat,
   isEventFileWatcherUpdated,
   isEventProjectUpdated,
@@ -61,14 +60,6 @@ export interface SessionMeta {
   platform?: Platform // "web" (default) or "mobile"
   favorite?: boolean
   projectId?: string
-}
-
-// Revert state for a session
-export interface SessionRevertState {
-  messageID: string
-  partID?: string
-  snapshot?: string
-  diff?: string
 }
 
 // Server health state
@@ -155,7 +146,6 @@ interface SessionState {
   sessionStatus: Record<string, SessionStatus> // Keyed by sessionId
   sessionDiffs: Record<string, FileDiff[]> // Keyed by sessionId
   sessionErrors: Record<string, { name: string; message: string } | null> // Keyed by sessionId
-  sessionRevert: Record<string, SessionRevertState | null> // Keyed by sessionId - tracks revert state
   promptQueues: Record<string, PromptQueueState> // Keyed by sessionId
 
   // New event state
@@ -186,7 +176,6 @@ interface SessionState {
   setSessionStatus: (sessionId: string, status: SessionStatus) => void
   setSessionDiffs: (sessionId: string, diffs: FileDiff[]) => void
   setSessionError: (sessionId: string, error: { name: string; message: string } | null) => void
-  setSessionRevert: (sessionId: string, revert: SessionRevertState | null) => void
   setPromptQueue: (sessionId: string, queue: PromptQueueState) => void
   removeMessage: (sessionId: string, messageId: string) => void
   removeMessagesAfter: (sessionId: string, messageId: string) => void
@@ -296,7 +285,6 @@ export const useSessionStore = create<SessionState>()(
       sessionStatus: {},
       sessionDiffs: {},
       sessionErrors: {},
-      sessionRevert: {},
       promptQueues: {},
       serverHealth: { lastHeartbeat: 0, isHealthy: false },
       pendingPermissions: {},
@@ -391,11 +379,6 @@ export const useSessionStore = create<SessionState>()(
           state.sessionErrors[sessionId] = error
         }),
 
-      setSessionRevert: (sessionId, revert) =>
-        set((state) => {
-          state.sessionRevert[sessionId] = revert
-        }),
-
       setPromptQueue: (sessionId, queue) =>
         set((state) => {
           state.promptQueues[sessionId] = {
@@ -439,7 +422,6 @@ export const useSessionStore = create<SessionState>()(
           delete state.sessionStatus[sessionId]
           delete state.sessionDiffs[sessionId]
           delete state.sessionErrors[sessionId]
-          delete state.sessionRevert[sessionId]
           delete state.promptQueues[sessionId]
           delete state.pendingPermissions[sessionId]
           delete state.pendingQuestions[sessionId]
@@ -628,7 +610,6 @@ export const useSessionStore = create<SessionState>()(
           state.sessionStatus = {}
           state.sessionDiffs = {}
           state.sessionErrors = {}
-          state.sessionRevert = {}
           state.promptQueues = {}
           state.pendingPermissions = {}
           state.pendingQuestions = {}
@@ -651,7 +632,6 @@ export const useSessionStore = create<SessionState>()(
           setSessionStatus,
           setSessionDiffs,
           setSessionError,
-          setSessionRevert,
           setPromptQueue,
           removeMessage,
           setServerHealth,
@@ -735,13 +715,6 @@ export const useSessionStore = create<SessionState>()(
         if (isEventMessageRemoved(event)) {
           const { sessionID, messageID } = event.properties
           removeMessage(sessionID, messageID)
-          return
-        }
-
-        if (isEventSessionUpdated(event)) {
-          const { info } = event.properties
-          // Update revert state from session info
-          setSessionRevert(info.id, info.revert ?? null)
           return
         }
 
@@ -904,8 +877,6 @@ export const useError = () => useSessionStore((state) => state.error)
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents)
 export const useResetRealtimeState = () => useSessionStore((state) => state.resetRealtimeState)
 export const useAllSessionStatuses = () => useSessionStore((state) => state.sessionStatus)
-export const useSessionRevert = (sessionId: string | null) =>
-  useSessionStore((state) => (sessionId ? (state.sessionRevert[sessionId] ?? null) : null))
 export const usePromptQueue = (sessionId: string | null) =>
   useSessionStore((state) =>
     sessionId ? (state.promptQueues[sessionId] ?? EMPTY_PROMPT_QUEUE) : EMPTY_PROMPT_QUEUE,
@@ -1096,23 +1067,4 @@ export function useRunningPermissionTools(sessionId: string | null): RunningPerm
 
     return runningTools
   }, [sessionId, messages, parts])
-}
-
-// Hook that returns messages filtered by revert state
-// If session is reverted, only shows messages before the revert point.
-// The revert messageID is the FIRST message to be hidden
-export function useFilteredSessionMessages(sessionId: string | null) {
-  const messages = useSessionStore((state) =>
-    sessionId ? (state.messages[sessionId] ?? EMPTY_MESSAGES) : EMPTY_MESSAGES,
-  )
-  const revertMessageID = useSessionStore((state) =>
-    sessionId ? (state.sessionRevert[sessionId]?.messageID ?? null) : null,
-  )
-
-  // Memoize the filtered result to avoid creating new arrays on every render
-  return useMemo(() => {
-    if (!revertMessageID) return messages
-    // Filter to show only messages BEFORE the revert point (id < revertID)
-    return messages.filter((m) => m.id < revertMessageID)
-  }, [messages, revertMessageID])
 }

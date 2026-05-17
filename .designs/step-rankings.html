@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-title="Step Rankings" data-screen-type="mobile">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=393, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script><script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+  <style type="text/tailwindcss">@theme{--font-sans:"Outfit",system-ui,sans-serif;--color-background:#0d1220;--color-foreground:#f7f3e8;--color-card:#171d2d;--color-primary:#f6b44b;--color-accent:#62d6a7;--color-muted-foreground:#98a1b6;--color-border:rgba(255,255,255,.10);}</style>
+</head>
+<body style="width:393px;height:852px;margin:0;overflow:hidden;" class="bg-background text-foreground font-sans">
+  <div class="h-full pt-[47px] pb-[16px] relative overflow-hidden">
+    <header class="px-6 flex items-center justify-between">
+      <button class="w-11 h-11 rounded-2xl bg-card border border-border grid place-items-center"><span class="iconify" data-icon="tabler:chevron-left" data-width="23"></span></button>
+      <p class="font-extrabold text-primary">Rankings</p>
+    </header>
+
+    <main class="px-6 mt-7 pb-[96px]">
+      <section>
+        <p class="text-sm text-muted-foreground font-medium">League progress</p>
+        <h1 class="mt-1 text-[34px] leading-9 font-extrabold tracking-tight">Warrior II</h1>
+      </section>
+
+      <section class="mt-6 rounded-[32px] bg-card border border-border p-6">
+        <div class="flex items-center gap-4">
+          <div class="w-18 h-18 rounded-[24px] bg-primary/15 grid place-items-center"><span class="iconify text-primary" data-icon="tabler:shield-star" data-width="38"></span></div>
+          <div><p class="text-sm text-muted-foreground">Current rank</p><h2 class="text-2xl font-extrabold">Warrior II</h2><p class="text-sm text-accent font-bold">Top 38% of friends</p></div>
+        </div>
+        <div class="mt-6 h-3 rounded-full bg-background overflow-hidden"><div class="h-full w-[62%] rounded-full bg-primary"></div></div>
+        <p class="mt-3 text-sm text-muted-foreground">Earn 2 sparks to reach Warrior III</p>
+      </section>
+
+      <section class="mt-7">
+        <h3 class="text-xl font-extrabold">League path</h3>
+        <div class="mt-4 space-y-3">
+          <div class="rounded-[22px] bg-card border border-border p-4 flex items-center gap-3"><span class="w-10 h-10 rounded-2xl bg-accent/15 grid place-items-center"><span class="iconify text-accent" data-icon="tabler:leaf" data-width="22"></span></span><div class="flex-1"><p class="font-bold">Scout</p><p class="text-sm text-muted-foreground">Completed</p></div><span class="iconify text-accent" data-icon="tabler:circle-check-filled" data-width="24"></span></div>
+          <div class="rounded-[22px] bg-primary/10 border border-primary/35 p-4 flex items-center gap-3"><span class="w-10 h-10 rounded-2xl bg-primary/20 grid place-items-center"><span class="iconify text-primary" data-icon="tabler:shield-filled" data-width="22"></span></span><div class="flex-1"><p class="font-bold">Warrior</p><p class="text-sm text-muted-foreground">Current league</p></div><span class="text-primary font-extrabold">62%</span></div>
+          <div class="rounded-[22px] bg-card border border-border p-4 flex items-center gap-3"><span class="w-10 h-10 rounded-2xl bg-white/8 grid place-items-center"><span class="iconify text-muted-foreground" data-icon="tabler:sword" data-width="22"></span></span><div class="flex-1"><p class="font-bold text-muted-foreground">Elite</p><p class="text-sm text-muted-foreground">Locked</p></div></div>
+          <div class="rounded-[22px] bg-card border border-border p-4 flex items-center gap-3"><span class="w-10 h-10 rounded-2xl bg-white/8 grid place-items-center"><span class="iconify text-muted-foreground" data-icon="tabler:crown" data-width="22"></span></span><div class="flex-1"><p class="font-bold text-muted-foreground">Mythic</p><p class="text-sm text-muted-foreground">Locked</p></div></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="absolute left-6 right-6 bottom-[14px] h-[68px] rounded-[26px] bg-card/95 backdrop-blur border border-border flex items-center justify-around shadow-2xl shadow-black/30"><span class="iconify text-muted-foreground" data-icon="tabler:home-2" data-width="24"></span><span class="iconify text-primary" data-icon="tabler:trophy" data-width="24"></span><span class="iconify text-muted-foreground" data-icon="tabler:users-group" data-width="24"></span><span class="iconify text-muted-foreground" data-icon="tabler:user" data-width="24"></span></nav>
+  </div>
+</body>
+</html>

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
   findMissingScreenPositions,
-  getGhostScreenPosition,
   getScreenLayout,
   reconcileScreenPositions,
   type ScreenPosition,
@@ -51,19 +50,6 @@ describe("screen layout", () => {
     ).toEqual([{ id: "home.html", x: 12, y: 34 }])
   })
 
-  it("places the ghost after the current screens", () => {
-    const screenPositions = reconcileScreenPositions({
-      designs: designs(["home.html", "settings.html", "profile.html"]),
-      persistedPositions: [],
-      platform: "web",
-    })
-
-    expect(getGhostScreenPosition({ screenPositions, platform: "web" })).toEqual({
-      x: 800,
-      y: 500,
-    })
-  })
-
   it("uses different mobile and web dimensions and columns", () => {
     expect(getScreenLayout("mobile")).toMatchObject({
       screen: { width: 280, height: 584 },
@@ -75,5 +61,23 @@ describe("screen layout", () => {
       columns: 2,
       gap: 60,
     })
+  })
+
+  it("uses a non-overlapping mixed layout when designs have different screen types", () => {
+    expect(
+      findMissingScreenPositions({
+        designs: [
+          { filename: "phone.html", screen_type: "mobile" },
+          { filename: "dashboard.html", screen_type: "web" },
+          { filename: "settings.html", screen_type: "mobile" },
+        ],
+        persistedPositions: [],
+        platform: "mobile",
+      }),
+    ).toEqual([
+      { id: "phone.html", x: 100, y: 40 },
+      { id: "dashboard.html", x: 800, y: 40 },
+      { id: "settings.html", x: 100, y: 684 },
+    ])
   })
 })

@@ -12,7 +12,7 @@ import type { DesignFile } from "@/hooks/use-designs"
 import { cn } from "@/lib/utils"
 import { IPhoneFrame } from "./iphone-frame"
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
-import { getMobileViewportSize } from "@/lib/design-viewport"
+import { getMobileViewportSize, resolveDesignPlatform } from "@/lib/design-viewport"
 
 const MOBILE_FRAME_SCREEN_WIDTH = 260 // matches iphone-frame screen width
 
@@ -68,7 +68,8 @@ export function PreviewCarousel({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [open, goNext, goPrev])
 
-  const isMobile = platform === "mobile"
+  const currentPlatform = currentDesign ? resolveDesignPlatform(currentDesign, platform) : platform
+  const isMobile = currentPlatform === "mobile"
   const mobileViewport = useMemo(() => {
     if (!isMobile || !currentDesign) return null
     return getMobileViewportSize(currentDesign.html)

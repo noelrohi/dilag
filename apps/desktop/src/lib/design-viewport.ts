@@ -37,3 +37,20 @@ export function getMobileViewportSize(html: string) {
     height: resolvedHeight,
   }
 }
+
+export function resolveDesignPlatform(
+  design: { screen_type?: string | null },
+  fallback: "mobile" | "web" = "web",
+): "mobile" | "web" {
+  return design.screen_type === "mobile" || design.screen_type === "web"
+    ? design.screen_type
+    : fallback
+}
+
+export function getDesignExportDimensions(
+  design: { html: string; screen_type?: string | null },
+  fallback: "mobile" | "web" = "web",
+) {
+  const platform = resolveDesignPlatform(design, fallback)
+  return platform === "mobile" ? getMobileViewportSize(design.html) : { width: 1280, height: 800 }
+}

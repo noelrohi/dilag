@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-title="Step Arena Home" data-screen-type="mobile">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=393, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+  <style type="text/tailwindcss">@theme{--font-sans:"Outfit",system-ui,sans-serif;--color-background:#0d1220;--color-foreground:#f7f3e8;--color-card:#171d2d;--color-primary:#f6b44b;--color-accent:#62d6a7;--color-muted-foreground:#98a1b6;--color-border:rgba(255,255,255,.10);}</style>
+</head>
+<body style="width:393px;height:852px;margin:0;overflow:hidden;" class="bg-background text-foreground font-sans">
+  <div class="h-full pt-[47px] pb-[16px] relative overflow-hidden">
+    <header class="px-6 flex items-center justify-between">
+      <div><p class="text-sm text-muted-foreground font-medium">Step Arena</p><h1 class="text-[30px] leading-8 font-extrabold tracking-tight">Today</h1></div>
+      <button class="w-11 h-11 rounded-2xl bg-card border border-border grid place-items-center"><span class="iconify text-primary" data-icon="tabler:run" data-width="24"></span></button>
+    </header>
+
+    <main class="px-6 mt-7 pb-[96px]">
+      <section class="rounded-[32px] bg-card border border-border p-6">
+        <div class="flex items-start justify-between">
+          <div><p class="text-sm text-muted-foreground font-semibold">Your steps</p><h2 class="mt-1 text-[48px] leading-none font-extrabold tracking-[-0.04em]">8,742</h2></div>
+          <div class="px-3 py-1.5 rounded-full bg-primary/15 text-primary text-sm font-extrabold">Warrior II</div>
+        </div>
+        <div class="mt-7 h-3 rounded-full bg-background overflow-hidden"><div class="h-full w-[73%] rounded-full bg-primary"></div></div>
+        <div class="mt-3 flex justify-between text-sm"><span class="text-muted-foreground">2,258 to Elite</span><span class="text-accent font-bold">#2 today</span></div>
+      </section>
+
+      <section class="mt-6 rounded-[28px] bg-[#121827] border border-border p-5">
+        <div class="flex items-center justify-between"><h3 class="text-xl font-extrabold">Leaderboard</h3><button class="text-sm text-primary font-bold">View all</button></div>
+        <div class="mt-4 space-y-2">
+          <div class="h-15 rounded-2xl bg-card flex items-center gap-3 px-3"><span class="w-8 text-center text-primary font-extrabold">1</span><div class="w-10 h-10 rounded-xl bg-primary/20 grid place-items-center font-bold text-primary">M</div><div class="flex-1"><p class="font-bold">Maya</p><p class="text-xs text-muted-foreground">9,948 steps</p></div><p class="font-bold text-primary">Elite</p></div>
+          <div class="h-15 rounded-2xl bg-primary/10 border border-primary/30 flex items-center gap-3 px-3"><span class="w-8 text-center text-primary font-extrabold">2</span><div class="w-10 h-10 rounded-xl bg-primary text-[#2a1804] grid place-items-center font-bold">You</div><div class="flex-1"><p class="font-bold">You</p><p class="text-xs text-muted-foreground">8,742 steps</p></div><p class="font-bold text-primary">Warrior</p></div>
+          <div class="h-15 rounded-2xl bg-card flex items-center gap-3 px-3"><span class="w-8 text-center text-muted-foreground font-extrabold">3</span><div class="w-10 h-10 rounded-xl bg-white/10 grid place-items-center font-bold">J</div><div class="flex-1"><p class="font-bold">Jon</p><p class="text-xs text-muted-foreground">7,991 steps</p></div><p class="font-bold text-muted-foreground">Warrior</p></div>
+        </div>
+      </section>
+
+      <section class="mt-6 grid grid-cols-2 gap-3">
+        <div class="rounded-[24px] bg-card border border-border p-4"><span class="iconify text-accent" data-icon="tabler:bolt-filled" data-width="25"></span><p class="mt-3 text-2xl font-extrabold">3</p><p class="text-sm text-muted-foreground">Promotion sparks</p></div>
+        <div class="rounded-[24px] bg-card border border-border p-4"><span class="iconify text-primary" data-icon="tabler:users-group" data-width="25"></span><p class="mt-3 text-2xl font-extrabold">14</p><p class="text-sm text-muted-foreground">Friends active</p></div>
+      </section>
+    </main>
+
+    <nav class="absolute left-6 right-6 bottom-[14px] h-[68px] rounded-[26px] bg-card/95 backdrop-blur border border-border flex items-center justify-around shadow-2xl shadow-black/30"><span class="iconify text-primary" data-icon="tabler:home-2" data-width="24"></span><span class="iconify text-muted-foreground" data-icon="tabler:trophy" data-width="24"></span><span class="iconify text-muted-foreground" data-icon="tabler:users-group" data-width="24"></span><span class="iconify text-muted-foreground" data-icon="tabler:user" data-width="24"></span></nav>
+  </div>
+</body>
+</html>
