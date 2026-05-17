@@ -34,10 +34,13 @@ function RootLayout() {
               "--traffic-light-gap": "10px",
               "--titlebar-control-gap": "12px",
               "--titlebar-control-size": "24px",
-              "--titlebar-control-left": "calc(var(--traffic-light-left) + (var(--traffic-light-size) * 3) + (var(--traffic-light-gap) * 2) + var(--titlebar-control-gap))",
+              "--titlebar-control-left":
+                "calc(var(--traffic-light-left) + (var(--traffic-light-size) * 3) + (var(--traffic-light-gap) * 2) + var(--titlebar-control-gap))",
               "--titlebar-control-offset-y": "1px",
-              "--titlebar-control-center-y": "calc(var(--traffic-light-top) + (var(--traffic-light-size) / 2) + var(--titlebar-control-offset-y))",
-              "--titlebar-content-left": "calc(var(--titlebar-control-left) + var(--titlebar-control-size) + 4px)",
+              "--titlebar-control-center-y":
+                "calc(var(--traffic-light-top) + (var(--traffic-light-size) / 2) + var(--titlebar-control-offset-y))",
+              "--titlebar-content-left":
+                "calc(var(--titlebar-control-left) + var(--titlebar-control-size) + 4px)",
             } as CSSProperties
           }
         >
