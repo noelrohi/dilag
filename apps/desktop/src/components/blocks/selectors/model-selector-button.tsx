@@ -2,7 +2,6 @@ import { useState, useMemo } from "react"
 import { AltArrowDown, AddCircle, Refresh } from "@solar-icons/react"
 import { Button } from "@dilag/ui/button"
 import { cn } from "@/lib/utils"
-import { selectorStyles } from "./agent-selector-button"
 import {
   ModelSelector,
   ModelSelectorTrigger,
@@ -169,7 +168,12 @@ export function ModelSelectorButton({ variant = "default" }: ModelSelectorButton
               <AltArrowDown size={14} className="text-muted-foreground/50" />
             </button>
           ) : (
-            <Button variant="outline" size="sm" className={cn(selectorStyles)} disabled={isLoading}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-2 px-2.5 text-xs bg-transparent hover:bg-muted/50 transition-all duration-150"
+              disabled={isLoading}
+            >
               {selectedModelInfo ? (
                 <>
                   <ModelSelectorLogo

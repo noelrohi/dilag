@@ -3,6 +3,7 @@ import { bridge } from "@/lib/bridge"
 import { generatePngToPath } from "@/lib/design-export"
 import type { DesignFile } from "./use-designs"
 import { getCanonicalGeneratedScreenPath } from "@dilag/desktop-bridge"
+import { getDesignExportDimensions } from "@/lib/design-viewport"
 
 /**
  * Auto-generates PNG assets for designs when HTML is newer than PNG
@@ -17,9 +18,6 @@ export function usePngGenerator(
 
   useEffect(() => {
     if (!designs?.length || !sessionCwd) return
-
-    const dimensions =
-      platform === "mobile" ? { width: 393, height: 852 } : { width: 1280, height: 800 }
 
     const generate = async (design: DesignFile) => {
       const basePath = design.file_path?.replace(/\.html$/, ".png")
@@ -38,7 +36,7 @@ export function usePngGenerator(
           return // PNG is up to date
         }
 
-        await generatePngToPath(design.html, pngPath, dimensions)
+        await generatePngToPath(design.html, pngPath, getDesignExportDimensions(design, platform))
       } catch (e) {
         console.error(`Failed to generate PNG for ${design.filename}:`, e)
       } finally {

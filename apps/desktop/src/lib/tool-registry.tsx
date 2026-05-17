@@ -1,4 +1,4 @@
-import type { ReactNode, FC } from "react"
+import { useEffect, useRef, type ReactNode, type FC } from "react"
 import type { ToolState } from "@/context/session-store"
 import { CheckSquare, Record, Pallete2 } from "@solar-icons/react"
 import {
@@ -12,7 +12,7 @@ import {
   Bot,
   Settings,
   ClipboardList,
-  Sparkles,
+  BookOpen,
   CircleHelp,
 } from "lucide-react"
 import { diffLines } from "diff"
@@ -80,9 +80,117 @@ const getInput = (props: ToolRenderProps) => ({
 // Get filename from path
 const filename = (path?: string) => path?.split("/").pop() || ""
 
+function countLines(text: string | undefined): number {
+  if (!text) return 0
+  let lines = 1
+  for (let index = 0; index < text.length; index++) {
+    const char = text.charCodeAt(index)
+    if (char === 10) lines++
+    if (char === 13) {
+      lines++
+      if (text.charCodeAt(index + 1) === 10) index++
+    }
+  }
+  return lines
+}
+
+function countUnifiedDiffLines(diff: string | undefined): { additions: number; deletions: number } {
+  if (!diff) return { additions: 0, deletions: 0 }
+
+  let additions = 0
+  let deletions = 0
+  for (const line of diff.split(/\r\n|\r|\n/)) {
+    if (line.startsWith("+++") || line.startsWith("---")) continue
+    if (line.startsWith("+")) additions++
+    if (line.startsWith("-")) deletions++
+  }
+  return { additions, deletions }
+}
+
+function fileDiffCounts(p: ToolRenderProps): { additions: number; deletions: number } {
+  const filediff = p.metadata?.filediff as { additions?: number; deletions?: number } | undefined
+  if (filediff) {
+    return {
+      additions: filediff.additions ?? 0,
+      deletions: filediff.deletions ?? 0,
+    }
+  }
+
+  const metadataDiff = p.metadata?.diff as string | undefined
+  if (metadataDiff) return countUnifiedDiffLines(metadataDiff)
+
+  const { oldString, newString, content } = getInput(p)
+  if (p.tool === "write") return { additions: countLines(content), deletions: 0 }
+  if (p.tool === "edit") {
+    return {
+      additions: countLines(newString),
+      deletions: countLines(oldString),
+    }
+  }
+
+  return { additions: 0, deletions: 0 }
+}
+
+function SlotNumber({ value, direction }: { value: number; direction: "up" | "down" }) {
+  const previousRef = useRef(value)
+  const previous = previousRef.current
+  const width = `${Math.max(String(previous).length, String(value).length)}ch`
+
+  useEffect(() => {
+    previousRef.current = value
+  }, [value])
+
+  return (
+    <span className="relative inline-block h-4 overflow-hidden align-[-3px]" style={{ width }}>
+      <span
+        key={`${direction}-${previous}-${value}`}
+        className={cn(
+          "absolute inset-x-0 top-0 flex flex-col text-right leading-4 will-change-transform",
+          direction === "up" ? "animate-slot-count-up" : "animate-slot-count-down",
+        )}
+      >
+        {direction === "up" ? (
+          <>
+            <span>{previous}</span>
+            <span>{value}</span>
+          </>
+        ) : (
+          <>
+            <span>{value}</span>
+            <span>{previous}</span>
+          </>
+        )}
+      </span>
+    </span>
+  )
+}
+
+function DiffDeltaBadge({ additions, deletions }: { additions: number; deletions: number }) {
+  if (additions === 0 && deletions === 0) return null
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 tabular-nums">
+      {additions > 0 && (
+        <span aria-label={`+${additions}`} className="inline-flex items-center text-success">
+          <span aria-hidden="true" className="inline-flex items-center">
+            +<SlotNumber value={additions} direction="up" />
+          </span>
+        </span>
+      )}
+      {deletions > 0 && (
+        <span aria-label={`-${deletions}`} className="inline-flex items-center text-destructive">
+          <span aria-hidden="true" className="inline-flex items-center">
+            -<SlotNumber value={deletions} direction="down" />
+          </span>
+        </span>
+      )}
+    </span>
+  )
+}
+
 function PlainToolOutput({ text }: { text: string }) {
   return (
-    <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words text-[#e2e2e2]">
+    <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words text-card-foreground">
       {text}
     </pre>
   )
@@ -102,10 +210,10 @@ function InlineDiff({ diff }: { diff: string }) {
             key={index}
             className={cn(
               "block min-h-[1.35em]",
-              isAdd && "text-emerald-300 bg-emerald-500/10",
-              isRemove && "text-red-300 bg-red-500/10",
-              (isHunk || isFileMeta) && "text-sky-300/80",
-              !isAdd && !isRemove && !isHunk && !isFileMeta && "text-[#d6d6d6]",
+              isAdd && "text-success bg-success/10",
+              isRemove && "text-destructive bg-destructive/10",
+              (isHunk || isFileMeta) && "text-info",
+              !isAdd && !isRemove && !isHunk && !isFileMeta && "text-card-foreground",
             )}
           >
             {line || " "}
@@ -149,24 +257,17 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   edit: {
     icon: PencilLine,
-    title: () => "Edited",
+    title: (p) => (p.status === "completed" ? "Edited" : "Editing"),
     expandedTitle: () => "Edited file",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const { filePath } = getInput(p)
       const file = filename(filePath)
-      const filediff = p.metadata?.filediff as
-        | { additions?: number; deletions?: number }
-        | undefined
-      if (!file && !filediff) return undefined
+      const counts = fileDiffCounts(p)
+      if (!file && counts.additions === 0 && counts.deletions === 0) return undefined
       return {
         text: file,
-        suffix: filediff && (
-          <>
-            <span className="text-green-500">+{filediff.additions ?? 0}</span>{" "}
-            <span className="text-red-500">-{filediff.deletions ?? 0}</span>
-          </>
-        ),
+        suffix: <DiffDeltaBadge additions={counts.additions} deletions={counts.deletions} />,
       }
     },
     content: (p) => {
@@ -194,7 +295,7 @@ export const TOOLS: Record<string, ToolConfig> = {
       const exit = p.metadata?.exit as number | null | undefined
       const exitIndicator =
         exit !== undefined && exit !== null && exit !== 0 ? (
-          <span className="text-red-500">(exit {exit})</span>
+          <span className="text-destructive">(exit {exit})</span>
         ) : null
       return {
         text: desc || description || command?.slice(0, 50),
@@ -214,7 +315,7 @@ export const TOOLS: Record<string, ToolConfig> = {
           {command && (
             <div className="flex items-start gap-2 font-mono text-xs">
               <span className="text-muted-foreground/50 select-none shrink-0">$</span>
-              <code className="text-[#e2e2e2] break-all whitespace-pre-wrap">{command}</code>
+              <code className="text-card-foreground break-all whitespace-pre-wrap">{command}</code>
             </div>
           )}
           {output && (
@@ -222,7 +323,7 @@ export const TOOLS: Record<string, ToolConfig> = {
               className={cn(
                 "text-xs font-mono leading-relaxed max-h-40 overflow-auto",
                 "whitespace-pre-wrap break-words",
-                hasError ? "text-red-300" : "text-[#d6d6d6]",
+                hasError ? "text-destructive" : "text-card-foreground",
               )}
             >
               {output.length > 2000 ? output.slice(0, 2000) + "\n..." : output}
@@ -235,17 +336,17 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   write: {
     icon: FilePlus2,
-    title: () => "Wrote",
+    title: (p) => (p.status === "completed" ? "Wrote" : "Writing"),
     expandedTitle: () => "Wrote file",
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
-      const { filePath, content } = getInput(p)
+      const { filePath } = getInput(p)
       const file = filename(filePath)
-      const lines = content?.split("\n").length ?? 0
-      if (!file && lines === 0) return undefined
+      const counts = fileDiffCounts(p)
+      if (!file && counts.additions === 0) return undefined
       return {
         text: file || "file",
-        suffix: <span className="text-green-500">+{lines}</span>,
+        suffix: <DiffDeltaBadge additions={counts.additions} deletions={counts.deletions} />,
       }
     },
     content: (p) => {
@@ -270,9 +371,9 @@ export const TOOLS: Record<string, ToolConfig> = {
                     key={`${partIndex}-${index}`}
                     className={cn(
                       "block min-h-[1.35em]",
-                      part.added && "text-emerald-300 bg-emerald-500/10",
-                      part.removed && "text-red-300 bg-red-500/10",
-                      !part.added && !part.removed && "text-[#e2e2e2]",
+                      part.added && "text-success bg-success/10",
+                      part.removed && "text-destructive bg-destructive/10",
+                      !part.added && !part.removed && "text-card-foreground",
                     )}
                   >
                     {part.added ? "+ " : part.removed ? "- " : "  "}
@@ -305,7 +406,7 @@ export const TOOLS: Record<string, ToolConfig> = {
           {todos.map((todo, i) => (
             <div key={i} className="flex items-start gap-2">
               {todo.status === "completed" ? (
-                <CheckSquare size={16} className="shrink-0 text-emerald-500 mt-0.5" />
+                <CheckSquare size={16} className="shrink-0 text-success mt-0.5" />
               ) : (
                 <Record size={16} className="shrink-0 text-muted-foreground mt-0.5" />
               )}
@@ -441,18 +542,18 @@ export const TOOLS: Record<string, ToolConfig> = {
         <div className="space-y-2">
           {url && (
             <div className="text-xs">
-              <span className="text-[#a8a8a8]">URL: </span>
-              <span className="text-sky-300 break-all">{url}</span>
+              <span className="text-muted-foreground">URL: </span>
+              <span className="text-info break-all">{url}</span>
             </div>
           )}
           {prompt && (
             <div className="text-xs">
-              <span className="text-[#a8a8a8]">Prompt: </span>
-              <span className="text-[#e2e2e2]">{prompt}</span>
+              <span className="text-muted-foreground">Prompt: </span>
+              <span className="text-card-foreground">{prompt}</span>
             </div>
           )}
           {p.output && (
-            <div className="mt-2 pt-2 border-t border-neutral-700/70">
+            <div className="mt-2 pt-2 border-t border-border/70">
               <PlainToolOutput
                 text={p.output.length > 2000 ? `${p.output.slice(0, 2000)}\n...` : p.output}
               />
@@ -498,24 +599,24 @@ export const TOOLS: Record<string, ToolConfig> = {
       return (
         <div className="space-y-2">
           {prompt && (
-            <p className="text-xs text-[#d6d6d6]">
+            <p className="text-xs text-card-foreground">
               {prompt.slice(0, 200)}
               {prompt.length > 200 && "..."}
             </p>
           )}
           {summary && summary.length > 0 && (
-            <div className="space-y-1 pt-1 border-t border-neutral-700/70">
+            <div className="space-y-1 pt-1 border-t border-border/70">
               {summary.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 text-xs">
                   <span
                     className={cn(
                       "size-1.5 rounded-full",
                       s.state.status === "completed"
-                        ? "bg-green-500"
+                        ? "bg-success"
                         : s.state.status === "error"
-                          ? "bg-red-500"
+                          ? "bg-destructive"
                           : s.state.status === "running"
-                            ? "bg-yellow-500"
+                            ? "bg-warning"
                             : "bg-muted-foreground",
                     )}
                   />
@@ -599,7 +700,7 @@ export const TOOLS: Record<string, ToolConfig> = {
   },
 
   skill: {
-    icon: Sparkles,
+    icon: BookOpen,
     title: (p) => {
       // Try different possible input keys for skill name
       const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined

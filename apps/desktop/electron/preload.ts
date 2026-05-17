@@ -51,6 +51,7 @@ const bridge: DesktopBridge = {
     getMessages: (args) => ipcRenderer.invoke(CHANNELS.agent.getMessages, args),
     prompt: (args) => ipcRenderer.invoke(CHANNELS.agent.prompt, args),
     abort: (args) => ipcRenderer.invoke(CHANNELS.agent.abort, args),
+    clearQueue: (args) => ipcRenderer.invoke(CHANNELS.agent.clearQueue, args),
     renameSession: (args) => ipcRenderer.invoke(CHANNELS.agent.renameSession, args),
     deleteSession: (args) => ipcRenderer.invoke(CHANNELS.agent.deleteSession, args),
     listQuestions: () => ipcRenderer.invoke(CHANNELS.agent.listQuestions),

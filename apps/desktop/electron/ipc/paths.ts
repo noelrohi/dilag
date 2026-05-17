@@ -40,6 +40,11 @@ export function getPiAgentDir(): string {
   return path.join(getDilagDir(), "pi")
 }
 
+export function getPiSessionDir(cwd: string): string {
+  const safePath = `--${cwd.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`
+  return path.join(getPiAgentDir(), "sessions", safePath)
+}
+
 export function buildAugmentedPath(): string {
   const existing = process.env.PATH ?? ""
   const extra = [

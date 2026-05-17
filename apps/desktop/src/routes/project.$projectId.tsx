@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils"
 import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react"
 import { createFileRoute, Outlet, useMatch, useParams } from "@tanstack/react-router"
 import type { FileUIPart } from "ai"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 export const Route = createFileRoute("/project/$projectId")({
   component: ProjectComposerPage,
@@ -35,7 +35,7 @@ function ProjectComposerPage() {
     shouldThrow: false,
   })
   const { data: projects = [], isLoading: isLoadingProjects } = useProjectsList()
-  const { updateProject, touchProject } = useProjectMutations()
+  const { touchProject } = useProjectMutations()
   const { createSessionInProject, isServerReady } = useSessions()
   const { rememberProject, submitProjectComposer } = useNewDesignFlow({
     projects,
@@ -43,16 +43,18 @@ function ProjectComposerPage() {
     createSessionInProject,
   })
   const project = projects.find((item) => item.id === projectId)
+  const [targetPlatform, setTargetPlatform] = useState<"web" | "mobile">("web")
 
   useEffect(() => {
     if (project) {
       rememberProject(project.id)
+      setTargetPlatform(project.platform)
     }
   }, [project, rememberProject])
 
   const handleSubmit = async (text: string, files?: FileUIPart[]) => {
     if (!project) return
-    await submitProjectComposer(project, text, files)
+    await submitProjectComposer(project, targetPlatform, text, files)
   }
 
   if (sessionRouteMatch) {
@@ -77,15 +79,12 @@ function ProjectComposerPage() {
         <div className="flex-1 flex items-center justify-center px-6 py-16">
           <div className="w-full max-w-2xl">
             <div className="text-center mb-10">
-              <h1 className="text-[34px] md:text-[40px] font-medium leading-[1.1] tracking-[-0.03em] text-balance">
+              <h1 className="text-[26px] md:text-[28px] font-normal leading-snug tracking-[-0.01em] text-balance">
                 What should we design in {project.name}?
               </h1>
             </div>
 
-            <PlatformToggle
-              value={project.platform}
-              onChange={(platform) => updateProject({ id: project.id, updates: { platform } })}
-            />
+            <PlatformToggle value={targetPlatform} onChange={setTargetPlatform} />
 
             <PromptInputProvider>
               <ComposerInput onSubmit={handleSubmit} disabled={!isServerReady} />
@@ -110,7 +109,7 @@ function ComposerInput({
   return (
     <PromptInput
       onSubmit={async ({ text, files }) => onSubmit(text, files)}
-      className="border border-border bg-card transition-colors duration-200 focus-within:border-primary/50"
+      className="rounded-2xl bg-sidebar text-sidebar-foreground transition-colors duration-200 [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border focus-within:[&_[data-slot=input-group]]:border-primary/50"
     >
       <PromptInputAttachments>
         {(attachment) => <PromptInputAttachment data={attachment} />}
@@ -119,7 +118,7 @@ function ComposerInput({
         <PromptInputTextarea
           placeholder="Describe your app..."
           disabled={disabled}
-          className="min-h-[100px] max-h-[200px]"
+          className="min-h-[56px] max-h-[200px]"
         />
       </PromptInputBody>
       <PromptInputFooter className="border-t-0">
@@ -134,13 +133,10 @@ function ComposerInput({
           <PromptInputSubmit
             disabled={!hasInput || disabled}
             className={cn(
-              "size-9 rounded-xl transition-all duration-200",
-              hasInput && !disabled
-                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                : "bg-muted text-muted-foreground",
+              "size-9 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
             )}
           >
-            <ArrowUp size={16} />
+            <ArrowUp size={16} weight="Linear" className="text-primary-foreground" />
           </PromptInputSubmit>
         </div>
       </PromptInputFooter>
@@ -157,29 +153,29 @@ function PlatformToggle({
 }) {
   return (
     <div className="flex justify-center mb-6">
-      <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/30">
+      <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-muted/50 border border-border/30">
         <button
           onClick={() => onChange("web")}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-xs font-medium transition-all duration-200",
             value === "web"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <Monitor size={16} />
+          <Monitor size={14} />
           Web
         </button>
         <button
           onClick={() => onChange("mobile")}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-xs font-medium transition-all duration-200",
             value === "mobile"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <Smartphone size={16} />
+          <Smartphone size={14} />
           Mobile
         </button>
       </div>

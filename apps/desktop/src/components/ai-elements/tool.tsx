@@ -45,11 +45,11 @@ const getStatusBadge = (status: ToolUIPart["state"]) => {
     "input-streaming": <RecordCircle size={16} />,
     "input-available": <ClockCircle size={16} className="animate-pulse" />,
     // @ts-expect-error state only available in AI SDK v6
-    "approval-requested": <ClockCircle size={16} className="text-yellow-600" />,
-    "approval-responded": <CheckCircle size={16} className="text-blue-600" />,
-    "output-available": <CheckCircle size={16} className="text-green-600" />,
-    "output-error": <CloseCircle size={16} className="text-red-600" />,
-    "output-denied": <CloseCircle size={16} className="text-orange-600" />,
+    "approval-requested": <ClockCircle size={16} className="text-warning" />,
+    "approval-responded": <CheckCircle size={16} className="text-info" />,
+    "output-available": <CheckCircle size={16} className="text-success" />,
+    "output-error": <CloseCircle size={16} className="text-destructive" />,
+    "output-denied": <CloseCircle size={16} className="text-warning" />,
   }
 
   return (

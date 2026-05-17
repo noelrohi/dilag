@@ -23,10 +23,13 @@ function displayNameFromAgentSession(name: string | undefined, firstMessage: str
 // Desktop bridge calls for local session management.
 async function loadSessionsMetadata(): Promise<SessionMeta[]> {
   const projects = await bridge.projects.list()
+  const savedSessions = await bridge.sessions.loadMeta().catch(() => [])
+  const savedSessionById = new Map(savedSessions.map((session) => [session.id, session]))
   const projectSessions = await Promise.all(
     projects.map(async (project) => {
       const sessions = await bridge.agent.listSessions({ directory: project.path }).catch(() => [])
       return sessions.map((session): SessionMeta => {
+        const savedSession = savedSessionById.get(session.id)
         const name = displayNameFromAgentSession(session.name, session.first_message)
         return {
           id: session.id,
@@ -34,7 +37,8 @@ async function loadSessionsMetadata(): Promise<SessionMeta[]> {
           created_at: session.created_at,
           updated_at: session.updated_at,
           cwd: project.path,
-          platform: project.platform as Platform,
+          parentID: savedSession?.parentID,
+          platform: savedSession?.platform ?? (project.platform as Platform),
           favorite: project.pinned,
           projectId: project.id,
         }

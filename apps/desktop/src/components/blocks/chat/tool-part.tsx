@@ -5,11 +5,12 @@ import type { ToolState } from "@/context/session-store"
 import { cn } from "@/lib/utils"
 import { Shimmer } from "@/components/ai-elements/shimmer"
 import { useElapsedTime } from "@/hooks/use-elapsed-time"
-import type { ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 
 interface ToolPartProps {
   tool: string
   state: ToolState
+  isMessageComplete?: boolean
 }
 
 // Tools are collapsed by default; the turn-level work group owns first-level disclosure.
@@ -21,39 +22,59 @@ function renderSubtitleText(subtitle: ReactNode | { text: ReactNode }) {
   return "Working"
 }
 
-export function ToolPart({ tool, state }: ToolPartProps) {
+function displayedToolStatus(state: ToolState, isMessageComplete: boolean): ToolState["status"] {
+  if (isMessageComplete && (state.status === "pending" || state.status === "running")) {
+    return "completed"
+  }
+  return state.status
+}
+
+function isFileMutationTool(tool: string) {
+  return tool === "write" || tool === "edit"
+}
+
+export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartProps) {
   const config = getToolConfig(tool)
   const Icon = config.icon
   const defaultOpen = DEFAULT_OPEN_TOOLS.includes(tool)
+  const [open, setOpen] = useState(defaultOpen)
   const elapsed = useElapsedTime(state.time?.start ?? Date.now(), state.time?.end)
+  const status = displayedToolStatus(state, isMessageComplete)
 
   // Build render props from state
-  const props: ToolRenderProps = {
-    tool,
-    input: state.input ?? {},
-    output: state.status === "completed" ? state.output : undefined,
-    error: state.status === "error" ? state.error : undefined,
-    status: state.status,
-    metadata: "metadata" in state ? state.metadata : undefined,
-  }
+  const props: ToolRenderProps = useMemo(
+    () => ({
+      tool,
+      input: state.input ?? {},
+      output: status === "completed" ? state.output : undefined,
+      error: status === "error" ? state.error : undefined,
+      status,
+      metadata: "metadata" in state ? state.metadata : undefined,
+    }),
+    [state.error, state.input, state.metadata, state.output, status, tool],
+  )
 
-  const title = config.title(props)
-  const expandedTitle = config.expandedTitle?.(props) ?? title
-  const subtitle = config.subtitle?.(props)
-  const content = config.content?.(props)
-  const hasContent = !!content || state.status === "error"
+  const title = useMemo(() => config.title(props), [config, props])
+  const expandedTitle = useMemo(
+    () => config.expandedTitle?.(props) ?? title,
+    [config, props, title],
+  )
+  const subtitle = useMemo(() => config.subtitle?.(props), [config, props])
+  const hasContent = !!config.content || status === "error"
+  const content = useMemo(
+    () => (open && config.content ? config.content(props) : null),
+    [config, open, props],
+  )
+  const shouldShimmer = status === "pending" && !isFileMutationTool(tool)
+  const shouldShimmerTitle =
+    (status === "pending" || status === "running") && isFileMutationTool(tool)
 
-  const statusLabel =
-    state.status === "completed" ? "Success" : state.status === "error" ? "Failed" : "Running"
+  const statusLabel = status === "completed" ? "Success" : status === "error" ? "Failed" : "Running"
   const StatusIcon =
-    state.status === "completed"
-      ? CheckCircle
-      : state.status === "error"
-        ? DangerTriangle
-        : ClockCircle
+    status === "completed" ? CheckCircle : status === "error" ? DangerTriangle : ClockCircle
 
   return (
-    <Collapsible defaultOpen={defaultOpen}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger
         className={cn(
           "group flex w-full items-center justify-between gap-2",
@@ -68,17 +89,29 @@ export function ToolPart({ tool, state }: ToolPartProps) {
             <Icon className="size-[15px] stroke-[1.75]" />
           </span>
           <div className="flex min-w-0 items-center gap-2 overflow-hidden text-left">
-            {state.status === "pending" ? (
-              <Shimmer className="font-medium whitespace-nowrap" duration={1.5}>
+            {shouldShimmer ? (
+              <Shimmer className="font-medium whitespace-nowrap" duration={0.85}>
                 {subtitle ? renderSubtitleText(subtitle) : title}
               </Shimmer>
             ) : (
               <>
                 <span className="hidden truncate font-medium text-foreground group-data-[state=open]:inline">
-                  {expandedTitle}
+                  {shouldShimmerTitle ? (
+                    <Shimmer className="font-medium whitespace-nowrap" duration={0.85}>
+                      {expandedTitle}
+                    </Shimmer>
+                  ) : (
+                    expandedTitle
+                  )}
                 </span>
                 <span className="flex min-w-0 items-center gap-1.5 group-data-[state=open]:hidden">
-                  <span className="font-medium text-foreground whitespace-nowrap">{title}</span>
+                  {shouldShimmerTitle ? (
+                    <Shimmer className="font-medium whitespace-nowrap" duration={0.85}>
+                      {title}
+                    </Shimmer>
+                  ) : (
+                    <span className="font-medium text-foreground whitespace-nowrap">{title}</span>
+                  )}
                   {subtitle ? (
                     <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
                       {isStructuredSubtitle(subtitle) ? (
@@ -95,7 +128,7 @@ export function ToolPart({ tool, state }: ToolPartProps) {
               </>
             )}
           </div>
-          {state.status === "running" && (
+          {status === "running" && (
             <span className="text-xs tabular-nums text-muted-foreground shrink-0">{elapsed}</span>
           )}
         </div>
@@ -111,25 +144,25 @@ export function ToolPart({ tool, state }: ToolPartProps) {
       </CollapsibleTrigger>
 
       {hasContent && (
-        <CollapsibleContent className="mt-1 overflow-hidden rounded-lg bg-[#2a2a2a] text-[#e2e2e2] shadow-sm">
+        <CollapsibleContent className="mt-1 overflow-hidden rounded-lg border border-border/60 bg-card text-card-foreground shadow-sm">
           <div className="max-h-72 overflow-y-auto p-3">
-            <div className="[&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-[#e2e2e2] [&_code]:!text-[#e2e2e2] [&_*]:!border-neutral-700/70">
+            <div className="[&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-card-foreground [&_code]:!text-card-foreground [&_*]:!border-border/70">
               <div className="mb-3 flex items-baseline gap-2 text-xs">
-                <span className="font-medium text-[#a8a8a8]">{title}</span>
+                <span className="font-medium text-muted-foreground">{title}</span>
                 {subtitle && (
-                  <span className="min-w-0 truncate text-[#e2e2e2]">
+                  <span className="min-w-0 truncate text-card-foreground">
                     {renderSubtitleText(subtitle)}
                   </span>
                 )}
               </div>
               {content}
             </div>
-            {state.status === "error" && state.error && (
-              <p className="mt-3 text-xs text-red-400">{state.error}</p>
+            {status === "error" && state.error && (
+              <p className="mt-3 text-xs text-destructive">{state.error}</p>
             )}
           </div>
-          <div className="flex items-center justify-end gap-1.5 px-3 pb-3 text-xs text-[#9b9b9b]">
-            <StatusIcon size={13} className={state.status === "error" ? "text-red-400" : ""} />
+          <div className="flex items-center justify-end gap-1.5 px-3 pb-3 text-xs text-muted-foreground">
+            <StatusIcon size={13} className={status === "error" ? "text-destructive" : ""} />
             <span>{statusLabel}</span>
           </div>
         </CollapsibleContent>

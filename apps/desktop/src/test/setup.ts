@@ -35,6 +35,7 @@ const desktopBridgeMock: DesktopBridge = {
     getMessages: vi.fn(),
     prompt: vi.fn(),
     abort: vi.fn(),
+    clearQueue: vi.fn(),
     renameSession: vi.fn(),
     deleteSession: vi.fn(),
     listQuestions: vi.fn(),

@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import type { ProjectMeta } from "@dilag/desktop-bridge"
+import type { Platform, ProjectMeta } from "@dilag/desktop-bridge"
 import type { FileUIPart } from "ai"
 import { getDefaultProject } from "@/hooks/use-projects"
 
@@ -27,7 +27,7 @@ export interface NewDesignFlowDependencies {
   navigation: NewDesignNavigation
   storage: NewDesignStorage
   touchProject: (projectId: string) => Promise<unknown>
-  createSessionInProject: (project: ProjectMeta) => Promise<string | null>
+  createSessionInProject: (project: ProjectMeta, platform?: Platform) => Promise<string | null>
 }
 
 export interface NewDesignFlow {
@@ -36,6 +36,7 @@ export interface NewDesignFlow {
   rememberProject(projectId: string): void
   submitProjectComposer(
     project: ProjectMeta,
+    platform: Platform,
     prompt: string,
     files?: FileUIPart[],
   ): Promise<string | null>
@@ -69,13 +70,14 @@ export function createNewDesignFlow({
 
   const submitProjectComposer = async (
     project: ProjectMeta,
+    platform: Platform,
     prompt: string,
     files?: FileUIPart[],
   ): Promise<string | null> => {
     if (!prompt.trim() && (!files || files.length === 0)) return null
 
     storage.setItem(NEW_DESIGN_STORAGE_KEYS.initialPrompt, prompt)
-    storage.setItem(NEW_DESIGN_STORAGE_KEYS.initialPlatform, project.platform)
+    storage.setItem(NEW_DESIGN_STORAGE_KEYS.initialPlatform, platform)
     if (files && files.length > 0) {
       storage.setItem(NEW_DESIGN_STORAGE_KEYS.initialFiles, JSON.stringify(files))
     } else {
@@ -85,7 +87,7 @@ export function createNewDesignFlow({
     rememberProject(project.id)
     await touchProject(project.id)
 
-    const sessionId = await createSessionInProject(project)
+    const sessionId = await createSessionInProject(project, platform)
     if (!sessionId) return null
 
     navigation.openProjectStudio(project.id, sessionId)

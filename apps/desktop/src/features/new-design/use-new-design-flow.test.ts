@@ -130,14 +130,14 @@ describe("new design flow", () => {
     })
 
     await expect(
-      flow.submitProjectComposer(checkoutProject, "Build checkout", files),
+      flow.submitProjectComposer(checkoutProject, "mobile", "Build checkout", files),
     ).resolves.toBe("session-1")
 
     expect(storage.values.get(NEW_DESIGN_STORAGE_KEYS.initialPrompt)).toBe("Build checkout")
     expect(storage.values.get(NEW_DESIGN_STORAGE_KEYS.initialPlatform)).toBe("mobile")
     expect(storage.values.get(NEW_DESIGN_STORAGE_KEYS.initialFiles)).toBe(JSON.stringify(files))
     expect(touchProject).toHaveBeenCalledWith("checkout")
-    expect(createSessionInProject).toHaveBeenCalledWith(checkoutProject)
+    expect(createSessionInProject).toHaveBeenCalledWith(checkoutProject, "mobile")
     expect(navigation.openProjectStudio).toHaveBeenCalledWith("checkout", "session-1")
   })
 
@@ -154,7 +154,7 @@ describe("new design flow", () => {
       createSessionInProject,
     })
 
-    await expect(flow.submitProjectComposer(checkoutProject, "   ")).resolves.toBeNull()
+    await expect(flow.submitProjectComposer(checkoutProject, "web", "   ")).resolves.toBeNull()
 
     expect(touchProject).not.toHaveBeenCalled()
     expect(createSessionInProject).not.toHaveBeenCalled()

@@ -13,15 +13,11 @@ import {
 import "@xyflow/react/dist/style.css"
 
 import { ScreenNode, type ScreenNodeData } from "./screen-node"
-import { GhostScreenNode } from "./ghost-screen-node"
 import { CanvasControls } from "./canvas-controls"
 import type { DesignFile } from "@/hooks/use-designs"
 import type { ElementInfo } from "@/context/element-selection-store"
-import {
-  getGhostScreenPosition,
-  reconcileScreenPositions,
-  type ScreenPosition,
-} from "@/lib/screen-layout"
+import { reconcileScreenPositions, type ScreenPosition } from "@/lib/screen-layout"
+import { resolveDesignPlatform } from "@/lib/design-viewport"
 import { cn } from "@/lib/utils"
 
 export type { ScreenPosition } from "@/lib/screen-layout"
@@ -29,7 +25,6 @@ export type { ScreenPosition } from "@/lib/screen-layout"
 // Register custom node types
 const nodeTypes = {
   screen: ScreenNode,
-  "ghost-screen": GhostScreenNode,
 }
 
 interface DesignCanvasProps {
@@ -54,7 +49,6 @@ function DesignCanvasInner({
   positions,
   sessionCwd,
   selectedIds,
-  isLoading,
   onPositionsChange,
   onSelectionChange,
   onDeleteScreen,
@@ -79,6 +73,7 @@ function DesignCanvasInner({
       .map((screenPosition) => {
         const design = designById.get(screenPosition.id)
         if (!design) return null
+        const designPlatform = resolveDesignPlatform(design, platform)
 
         return {
           id: screenPosition.id,
@@ -87,7 +82,7 @@ function DesignCanvasInner({
           selected: selectedIds?.has(screenPosition.id) ?? false,
           data: {
             design,
-            platform,
+            platform: designPlatform,
             sessionCwd,
             onDelete: onDeleteScreen ? () => onDeleteScreen(screenPosition.id) : undefined,
             onAddToComposer: onCaptureScreen ? () => onCaptureScreen(design) : undefined,
@@ -99,18 +94,6 @@ function DesignCanvasInner({
       })
       .filter((node): node is Node => node !== null)
 
-    // Add a ghost placeholder node when the AI is actively generating.
-    if (isLoading) {
-      screenNodes.push({
-        id: "__ghost__",
-        type: "ghost-screen",
-        position: getGhostScreenPosition({ screenPositions: renderablePositions, platform }),
-        selectable: false,
-        draggable: false,
-        data: { platform },
-      })
-    }
-
     return screenNodes
   }, [
     positions,
@@ -118,7 +101,6 @@ function DesignCanvasInner({
     platform,
     sessionCwd,
     selectedIds,
-    isLoading,
     onDeleteScreen,
     onCaptureScreen,
     onEditElementWithAI,
@@ -138,8 +120,8 @@ function DesignCanvasInner({
     const nodeKey = initialNodes
       .map((n) => {
         const positionKey = `${n.position.x}:${n.position.y}`
-        if (n.type === "ghost-screen") return `${n.id}:ghost:${positionKey}`
-        return `${n.id}:${positionKey}:${(n.data as ScreenNodeData).design.modified_at}`
+        const data = n.data as ScreenNodeData
+        return `${n.id}:${positionKey}:${data.design.modified_at}:${data.design.screen_type}`
       })
       .sort()
       .join(",")
@@ -176,13 +158,11 @@ function DesignCanvasInner({
       if (positionChanges.length > 0) {
         const currentNodes = getNodes()
         // Exclude ghost placeholder from persisted positions
-        const newPositions: ScreenPosition[] = currentNodes
-          .filter((node) => node.id !== "__ghost__")
-          .map((node) => ({
-            id: node.id,
-            x: node.position.x,
-            y: node.position.y,
-          }))
+        const newPositions: ScreenPosition[] = currentNodes.map((node) => ({
+          id: node.id,
+          x: node.position.x,
+          y: node.position.y,
+        }))
         onPositionsChange(newPositions)
       }
     },
@@ -210,12 +190,18 @@ function DesignCanvasInner({
   )
 
   const dotPatternStyle = {
-    backgroundImage: "radial-gradient(rgba(240, 240, 245, 0.15) 1px, transparent 1px)",
+    backgroundImage: "radial-gradient(var(--canvas-dot-color) 1px, transparent 1px)",
     backgroundSize: "24px 24px",
   }
 
   return (
-    <div className={cn("w-full h-full relative", className)} style={dotPatternStyle}>
+    <div
+      className={cn(
+        "w-full h-full relative bg-muted/20 [--canvas-dot-color:oklch(0.22_0.015_55_/_0.16)] dark:[--canvas-dot-color:rgba(240,240,245,0.15)]",
+        className,
+      )}
+      style={dotPatternStyle}
+    >
       <ReactFlow
         nodes={nodes}
         nodeTypes={nodeTypes}

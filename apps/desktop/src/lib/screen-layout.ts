@@ -8,6 +8,7 @@ export interface ScreenPosition {
 
 export interface ScreenLayoutDesign {
   filename: string
+  screen_type?: string | null
 }
 
 export interface ScreenLayout {
@@ -58,19 +59,36 @@ export function getScreenLayout(platform: ScreenPlatform): ScreenLayout {
   }
 }
 
-function getDefaultScreenPosition(
-  id: string,
+function normalizeScreenPlatform(value: string | null | undefined, fallback: ScreenPlatform) {
+  return value === "mobile" || value === "web" ? value : fallback
+}
+
+function getDefaultScreenPositions(
+  designs: readonly ScreenLayoutDesign[],
   index: number,
-  platform: ScreenPlatform,
+  fallbackPlatform: ScreenPlatform,
 ): ScreenPosition {
-  const layout = SCREEN_LAYOUTS[platform]
-  const col = index % layout.columns
-  const row = Math.floor(index / layout.columns)
+  const platforms = designs.map((design) =>
+    normalizeScreenPlatform(design.screen_type, fallbackPlatform),
+  )
+  const hasWeb = platforms.includes("web")
+  const columns = hasWeb ? SCREEN_LAYOUTS.web.columns : SCREEN_LAYOUTS.mobile.columns
+  const baseLayout = SCREEN_LAYOUTS[hasWeb ? "web" : "mobile"]
+  const cellWidth = Math.max(...platforms.map((item) => SCREEN_LAYOUTS[item].screen.width))
+
+  const col = index % columns
+  const row = Math.floor(index / columns)
+  let y = baseLayout.start.y
+  for (let rowIndex = 0; rowIndex < row; rowIndex += 1) {
+    const rowPlatforms = platforms.slice(rowIndex * columns, rowIndex * columns + columns)
+    const rowHeight = Math.max(...rowPlatforms.map((item) => SCREEN_LAYOUTS[item].screen.height))
+    y += rowHeight + baseLayout.gap
+  }
 
   return {
-    id,
-    x: layout.start.x + col * (layout.screen.width + layout.gap),
-    y: layout.start.y + row * (layout.screen.height + layout.gap),
+    id: designs[index].filename,
+    x: baseLayout.start.x + col * (cellWidth + baseLayout.gap),
+    y,
   }
 }
 
@@ -94,7 +112,7 @@ export function reconcileScreenPositions({
       }
     }
 
-    return getDefaultScreenPosition(design.filename, index, platform)
+    return getDefaultScreenPositions(designs, index, platform)
   })
 }
 
@@ -102,30 +120,4 @@ export function findMissingScreenPositions(args: ScreenPositionsArgs): ScreenPos
   const persistedIds = new Set(args.persistedPositions.map((position) => position.id))
 
   return reconcileScreenPositions(args).filter((position) => !persistedIds.has(position.id))
-}
-
-export function getGhostScreenPosition({
-  screenPositions,
-  platform,
-}: {
-  screenPositions: readonly ScreenPosition[]
-  platform: ScreenPlatform
-}): { x: number; y: number } {
-  const layout = SCREEN_LAYOUTS[platform]
-  const count = screenPositions.length
-  const col = count % layout.columns
-  const row = Math.floor(count / layout.columns)
-  const startX =
-    screenPositions.length > 0
-      ? Math.min(...screenPositions.map((position) => position.x))
-      : layout.start.x
-  const startY =
-    screenPositions.length > 0
-      ? Math.min(...screenPositions.map((position) => position.y))
-      : layout.start.y
-
-  return {
-    x: startX + col * (layout.screen.width + layout.gap),
-    y: startY + row * (layout.screen.height + layout.gap),
-  }
 }

@@ -4,7 +4,7 @@ import type { SessionStatus } from "@/context/session-store"
 import { bridge } from "@/lib/bridge"
 import { formatElementWithAncestry, minifyHtml } from "@/lib/html-utils"
 
-export type PromptDeliveryMode = "immediate" | "followUp"
+export type PromptDeliveryMode = "immediate" | "steer" | "followUp"
 export type PromptDeliveryStatus = "accepted" | "queued"
 
 export interface PromptDeliveryOutcome {
@@ -51,6 +51,7 @@ export interface PromptDeliveryArgs extends BuildDilagPromptPayloadArgs {
   session: PromptDeliverySession
   sessionStatus: SessionStatus
   hasRunningTools: boolean
+  streamingBehavior?: "steer" | "followUp"
   model?: PromptDeliveryModel | null
   thinkingLevel?: AgentThinkingLevel
   agentBridge?: PromptDeliveryAgentBridge
@@ -66,10 +67,12 @@ type ElementSelectionInfo = {
 export function getPromptDeliveryMode(args: {
   sessionStatus: SessionStatus
   hasRunningTools: boolean
+  streamingBehavior?: "steer" | "followUp"
 }): PromptDeliveryMode {
-  return args.sessionStatus === "running" || args.sessionStatus === "busy" || args.hasRunningTools
-    ? "followUp"
-    : "immediate"
+  const isStreaming =
+    args.sessionStatus === "running" || args.sessionStatus === "busy" || args.hasRunningTools
+  if (!isStreaming) return "immediate"
+  return args.streamingBehavior ?? "steer"
 }
 
 export function buildDilagPromptPayload({
@@ -83,6 +86,7 @@ export function buildDilagPromptPayload({
 
   const screenContexts: string[] = []
   const screenNames: string[] = []
+  const screenSummaries: string[] = []
   const fileNotes: string[] = []
   const images: AgentImageContent[] = []
 
@@ -90,7 +94,7 @@ export function buildDilagPromptPayload({
     if (!file.url) continue
 
     if (file.mediaType === "text/html") {
-      appendHtmlScreenContext(file, screenNames, screenContexts)
+      appendHtmlScreenContext(file, screenNames, screenSummaries, screenContexts)
       continue
     }
 
@@ -123,6 +127,15 @@ export function buildDilagPromptPayload({
     promptText += `\n\n${fileNotes.join("\n")}`
   }
 
+  if (!isFirstMessage) {
+    const referencedTypes = screenSummaries.length > 0 ? screenSummaries.join(", ") : "none"
+    promptText +=
+      `\n\n<dilag_context target_screen_type="${platform}">` +
+      `Continue designing for ${platform} screens unless the user explicitly asks for another screen type. ` +
+      `Referenced screens: ${referencedTypes}.` +
+      `</dilag_context>`
+  }
+
   return { text: promptText, images }
 }
 
@@ -130,6 +143,7 @@ export async function deliverDilagPrompt({
   session,
   sessionStatus,
   hasRunningTools,
+  streamingBehavior,
   model,
   thinkingLevel,
   agentBridge = bridge.agent,
@@ -139,7 +153,7 @@ export async function deliverDilagPrompt({
     ...payloadArgs,
     platform: payloadArgs.platform ?? session.platform ?? "web",
   })
-  const mode = getPromptDeliveryMode({ sessionStatus, hasRunningTools })
+  const mode = getPromptDeliveryMode({ sessionStatus, hasRunningTools, streamingBehavior })
 
   await agentBridge.prompt({
     sessionID: session.id,
@@ -148,12 +162,12 @@ export async function deliverDilagPrompt({
     images: payload.images,
     model,
     thinkingLevel,
-    streamingBehavior: mode === "followUp" ? "followUp" : undefined,
+    streamingBehavior: mode === "immediate" ? undefined : mode,
   })
 
   return {
     mode,
-    status: mode === "followUp" ? "queued" : "accepted",
+    status: mode === "immediate" ? "accepted" : "queued",
   }
 }
 
@@ -171,6 +185,7 @@ export function queuedFollowUpPreview(prompt: string): string {
 function appendHtmlScreenContext(
   file: FileUIPart,
   screenNames: string[],
+  screenSummaries: string[],
   screenContexts: string[],
 ): void {
   const base64Match = file.url?.match(/^data:text\/html;base64,(.+)$/)
@@ -179,6 +194,7 @@ function appendHtmlScreenContext(
   try {
     let htmlContent = decodeBase64Utf8(base64Match[1])
     const screenName = file.filename?.replace(/\.html$/i, "") || "Screen"
+    const screenType = extractHtmlAttr(htmlContent, "data-screen-type") ?? "unknown"
     const elementInfo = extractElementSelection(htmlContent)
 
     if (elementInfo) {
@@ -187,9 +203,10 @@ function appendHtmlScreenContext(
         elementInfo.info.html,
         elementInfo.info.ancestorPath,
       )
-      screenNames.push(`${screenName} (${elementInfo.info.tagName})`)
+      screenNames.push(screenName)
+      screenSummaries.push(`${screenName} (${screenType}, ${elementInfo.info.tagName})`)
       screenContexts.push(
-        `<edit_element screen="${screenName}" selector="${elementInfo.info.selector}">\n` +
+        `<edit_element screen="${screenName}" screen_type="${screenType}" selector="${elementInfo.info.selector}">\n` +
           `${compactElement}\n` +
           `</edit_element>`,
       )
@@ -198,10 +215,17 @@ function appendHtmlScreenContext(
 
     const minifiedHtml = minifyHtml(htmlContent)
     screenNames.push(screenName)
-    screenContexts.push(`<screen_context name="${screenName}">${minifiedHtml}</screen_context>`)
+    screenSummaries.push(`${screenName} (${screenType})`)
+    screenContexts.push(
+      `<screen_context name="${screenName}" screen_type="${screenType}">${minifiedHtml}</screen_context>`,
+    )
   } catch (error) {
     console.error("[prompt-delivery] Failed to decode HTML content:", error)
   }
+}
+
+function extractHtmlAttr(html: string, attr: string): string | null {
+  return new RegExp(`${attr}=["']([^"']+)["']`, "i").exec(html)?.[1] ?? null
 }
 
 function extractElementSelection(

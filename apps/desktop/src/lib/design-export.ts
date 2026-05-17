@@ -3,6 +3,7 @@ import JSZip from "jszip"
 import html2canvas from "html2canvas-pro"
 import type { DesignFile } from "@/hooks/use-designs"
 import { bridge } from "@/lib/bridge"
+import { getDesignExportDimensions } from "@/lib/design-viewport"
 
 export function copyToClipboard(html: string | undefined) {
   if (!html) {
@@ -214,9 +215,6 @@ export async function exportImages({
 
   if (!filePath) return
 
-  const dimensions =
-    platform === "mobile" ? { width: 393, height: 852 } : { width: 1280, height: 800 }
-
   const toastId = toast.loading(`Generating ${designs.length} images...`)
   const zip = new JSZip()
 
@@ -234,7 +232,7 @@ export async function exportImages({
 
       const bytes = await renderHtmlToPng({
         html: design.html,
-        ...dimensions,
+        ...getDesignExportDimensions(design, platform),
         scale: 2,
       })
 

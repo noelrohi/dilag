@@ -47,7 +47,7 @@ function RootLayout() {
           <AutoCollapseSidebar />
           <AppSidebar />
           <PersistentSidebarTrigger />
-          <SidebarInset className="min-h-0 overflow-hidden bg-background">
+          <SidebarInset className="min-h-0 overflow-hidden border-l border-border bg-background">
             <Outlet />
           </SidebarInset>
         </SidebarProvider>

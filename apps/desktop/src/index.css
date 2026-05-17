@@ -8,14 +8,14 @@
 
 @custom-variant dark (&:is(.dark *));
 :root {
-  /* Warm Paper - cream tones with terracotta accent */
-  --background: oklch(0.975 0.008 75);
+  /* Warm Paper - cream tones with a near-black primary */
+  --background: #fff;
   --foreground: oklch(0.22 0.015 55);
   --card: oklch(0.995 0.003 75);
   --card-foreground: oklch(0.22 0.015 55);
   --popover: oklch(0.995 0.003 75);
   --popover-foreground: oklch(0.22 0.015 55);
-  --primary: oklch(0.52 0.12 35);
+  --primary: #030303;
   --primary-foreground: oklch(0.98 0.005 75);
   --secondary: oklch(0.94 0.012 75);
   --secondary-foreground: oklch(0.25 0.015 55);
@@ -25,26 +25,32 @@
   --accent-foreground: oklch(0.22 0.015 55);
   --destructive: oklch(0.55 0.18 25);
   --destructive-foreground: oklch(0.98 0.005 75);
-  --border: oklch(0.9 0.01 75);
-  --input: oklch(0.995 0.003 75);
-  --ring: oklch(0.52 0.12 35);
-  --chart-1: oklch(0.52 0.12 35);
-  --chart-2: oklch(0.58 0.1 55);
+  --success: oklch(0.43 0.12 145);
+  --success-foreground: oklch(0.98 0.005 75);
+  --warning: oklch(0.54 0.11 72);
+  --warning-foreground: oklch(0.18 0.015 55);
+  --info: oklch(0.46 0.1 245);
+  --info-foreground: oklch(0.98 0.005 75);
+  --border: #d7d7d7;
+  --input: var(--muted);
+  --ring: #030303;
+  --chart-1: #030303;
+  --chart-2: oklch(0.58 0.1 35);
   --chart-3: oklch(0.48 0.08 145);
   --chart-4: oklch(0.62 0.08 75);
   --chart-5: oklch(0.45 0.1 25);
-  --sidebar: oklch(0.975 0.008 75);
+  --sidebar: var(--muted);
   --sidebar-foreground: oklch(0.22 0.015 55);
-  --sidebar-primary: oklch(0.52 0.12 35);
+  --sidebar-primary: #030303;
   --sidebar-primary-foreground: oklch(0.98 0.005 75);
   --sidebar-accent: oklch(0.94 0.015 75);
   --sidebar-accent-foreground: oklch(0.22 0.015 55);
-  --sidebar-border: oklch(0.9 0.01 75);
-  --sidebar-ring: oklch(0.52 0.12 35);
+  --sidebar-border: #d7d7d7;
+  --sidebar-ring: #030303;
   --font-sans: "Rubik", system-ui, sans-serif;
   --font-serif: "IBM Plex Serif", Georgia, serif;
   --font-mono: "IBM Plex Mono", monospace;
-  --radius: 0.35rem;
+  --radius: 0.75rem;
   --shadow-x: 0px;
   --shadow-y: 1px;
   --shadow-blur: 2px;
@@ -70,8 +76,8 @@
   --card-foreground: oklch(0.95 0.005 250);
   --popover: oklch(0.18 0.01 250);
   --popover-foreground: oklch(0.95 0.005 250);
-  --primary: oklch(0.65 0.03 250);
-  --primary-foreground: oklch(0.12 0.01 250);
+  --primary: oklch(0.76 0.14 170);
+  --primary-foreground: oklch(0.11 0.018 180);
   --secondary: oklch(0.22 0.01 250);
   --secondary-foreground: oklch(0.95 0.005 250);
   --muted: oklch(0.22 0.01 250);
@@ -80,26 +86,32 @@
   --accent-foreground: oklch(0.95 0.005 250);
   --destructive: oklch(0.6 0.2 25);
   --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.76 0.14 170);
+  --success-foreground: oklch(0.11 0.018 180);
+  --warning: oklch(0.78 0.14 75);
+  --warning-foreground: oklch(0.14 0.01 250);
+  --info: oklch(0.72 0.08 250);
+  --info-foreground: oklch(0.14 0.01 250);
   --border: oklch(0.28 0.01 250);
-  --input: oklch(0.18 0.01 250);
-  --ring: oklch(0.65 0.03 250);
-  --chart-1: oklch(0.65 0.03 250);
-  --chart-2: oklch(0.55 0.025 250);
-  --chart-3: oklch(0.7 0.02 250);
+  --input: var(--muted);
+  --ring: oklch(0.76 0.14 170);
+  --chart-1: oklch(0.76 0.14 170);
+  --chart-2: oklch(0.68 0.11 35);
+  --chart-3: oklch(0.72 0.08 250);
   --chart-4: oklch(0.45 0.03 250);
   --chart-5: oklch(0.75 0.015 250);
-  --sidebar: oklch(0.245 0.004 250);
+  --sidebar: var(--muted);
   --sidebar-foreground: oklch(0.86 0.004 250);
-  --sidebar-primary: oklch(0.72 0.02 250);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.76 0.14 170);
+  --sidebar-primary-foreground: oklch(0.11 0.018 180);
   --sidebar-accent: oklch(0.31 0.004 250);
   --sidebar-accent-foreground: oklch(0.96 0.004 250);
   --sidebar-border: oklch(0.34 0.004 250);
-  --sidebar-ring: oklch(0.65 0.03 250);
+  --sidebar-ring: oklch(0.76 0.14 170);
   --font-sans: "Rubik", system-ui, sans-serif;
   --font-serif: "IBM Plex Serif", Georgia, serif;
   --font-mono: "IBM Plex Mono", monospace;
-  --radius: 0.35rem;
+  --radius: 0.75rem;
   --shadow-x: 0px;
   --shadow-y: 1px;
   --shadow-blur: 2px;
@@ -133,6 +145,12 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -267,6 +285,33 @@
   }
 }
 
+@keyframes text-shimmer-sweep {
+  from {
+    background-position: 120% center;
+  }
+  to {
+    background-position: -20% center;
+  }
+}
+
+@keyframes slot-count-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes slot-count-down {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 /* Animation utilities */
 .animate-slide-up {
   animation: slide-up 0.2s ease-out;
@@ -278,6 +323,44 @@
 
 .animate-stream-in {
   animation: fade-in 0.1s ease-out;
+}
+
+.text-shimmer-sweep {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-muted-foreground) 0%,
+    var(--color-muted-foreground) calc(50% - var(--shimmer-spread, 36px)),
+    color-mix(in oklch, var(--color-foreground) 88%, var(--color-muted-foreground)) 50%,
+    var(--color-muted-foreground) calc(50% + var(--shimmer-spread, 36px)),
+    var(--color-muted-foreground) 100%
+  );
+  background-size: 220% 100%;
+  animation: text-shimmer-sweep var(--shimmer-duration, 0.95s) cubic-bezier(0.35, 0, 0.25, 1)
+    infinite;
+}
+
+.animate-slot-count-up {
+  animation: slot-count-up 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slot-count-down {
+  animation: slot-count-down 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer-sweep,
+  .animate-slot-count-up,
+  .animate-slot-count-down {
+    animation: none;
+  }
+
+  .animate-slot-count-up {
+    transform: translateY(-50%);
+  }
+
+  .animate-slot-count-down {
+    transform: translateY(0);
+  }
 }
 
 /* Code styling */

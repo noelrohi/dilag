@@ -9,6 +9,7 @@ import {
 import { copyHtmlFiles, loadDesignsForSession, validateHtml } from "./designs.js"
 import {
   abortAgentSession,
+  clearAgentPromptQueue,
   createAgentSessionForDirectory,
   deleteAgentSession,
   getAgentMessages,
@@ -117,11 +118,15 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
         images?: Array<{ type: "image"; data: string; mimeType: string }>
         model?: { providerID: string; modelID: string } | null
         thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+        streamingBehavior?: "steer" | "followUp"
       },
     ) => promptAgentSession(args),
   )
   ipcMain.handle(CHANNELS.agent.abort, (_event, args: { sessionID: string }) =>
     abortAgentSession(args),
+  )
+  ipcMain.handle(CHANNELS.agent.clearQueue, (_event, args: { sessionID: string }) =>
+    clearAgentPromptQueue(args),
   )
   ipcMain.handle(
     CHANNELS.agent.renameSession,

@@ -32,13 +32,32 @@ describe("prompt delivery", () => {
       content: "Make the hero calmer",
       platform: "web",
       isFirstMessage: true,
-      files: [htmlFile("Home.html", "<html><body><main>Hero</main></body></html>")],
+      files: [
+        htmlFile(
+          "Home.html",
+          '<html data-screen-type="mobile"><body><main>Hero</main></body></html>',
+        ),
+      ],
     })
 
     expect(payload.text).toContain("/skill:dilag-web-design @Home Make the hero calmer")
-    expect(payload.text).toContain('<screen_context name="Home">')
+    expect(payload.text).toContain('<screen_context name="Home" screen_type="mobile">')
     expect(payload.text).toContain("</screen_context>")
     expect(queuedFollowUpPreview(payload.text)).toBe("@Home Make the hero calmer")
+  })
+
+  it("adds follow-up platform context and referenced screen types", () => {
+    const payload = buildDilagPromptPayload({
+      content: "Keep iterating",
+      platform: "mobile",
+      isFirstMessage: false,
+      files: [htmlFile("Arena.html", '<html data-screen-type="mobile"><body>Arena</body></html>')],
+    })
+
+    expect(payload.text).toContain("@Arena Keep iterating")
+    expect(payload.text).toContain('<screen_context name="Arena" screen_type="mobile">')
+    expect(payload.text).toContain('<dilag_context target_screen_type="mobile">')
+    expect(payload.text).toContain("Referenced screens: Arena (mobile).")
   })
 
   it("previews expanded skill-block prompts by showing only the user message", () => {
@@ -48,20 +67,48 @@ describe("prompt delivery", () => {
     expect(queuedFollowUpPreview(queuedPrompt)).toBe("@Home Polish copy")
   })
 
-  it("uses follow-up delivery only while the session is busy", () => {
+  it("uses steering delivery by default while the session is busy", () => {
     expect(getPromptDeliveryMode({ sessionStatus: "idle", hasRunningTools: false })).toBe(
       "immediate",
     )
-    expect(getPromptDeliveryMode({ sessionStatus: "unknown", hasRunningTools: true })).toBe(
-      "followUp",
-    )
+    expect(getPromptDeliveryMode({ sessionStatus: "unknown", hasRunningTools: true })).toBe("steer")
     expect(getPromptDeliveryMode({ sessionStatus: "running", hasRunningTools: false })).toBe(
-      "followUp",
+      "steer",
     )
+    expect(
+      getPromptDeliveryMode({
+        sessionStatus: "running",
+        hasRunningTools: false,
+        streamingBehavior: "followUp",
+      }),
+    ).toBe("followUp")
   })
 
-  it("passes Pi streamingBehavior only for queued follow-ups", async () => {
+  it("passes Pi streamingBehavior only for queued prompts", async () => {
     const prompt = vi.fn().mockResolvedValue(undefined)
+
+    await expect(
+      deliverDilagPrompt({
+        agentBridge: { prompt },
+        session: { id: "session-1", cwd: "/project", platform: "web" },
+        content: "Steer this",
+        isFirstMessage: false,
+        sessionStatus: "running",
+        hasRunningTools: false,
+        model: null,
+      }),
+    ).resolves.toEqual({ mode: "steer", status: "queued" })
+
+    expect(prompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionID: "session-1",
+        directory: "/project",
+        text: expect.stringContaining("Steer this"),
+        streamingBehavior: "steer",
+      }),
+    )
+
+    prompt.mockClear()
 
     await expect(
       deliverDilagPrompt({
@@ -71,6 +118,7 @@ describe("prompt delivery", () => {
         isFirstMessage: false,
         sessionStatus: "running",
         hasRunningTools: false,
+        streamingBehavior: "followUp",
         model: null,
       }),
     ).resolves.toEqual({ mode: "followUp", status: "queued" })
@@ -79,7 +127,7 @@ describe("prompt delivery", () => {
       expect.objectContaining({
         sessionID: "session-1",
         directory: "/project",
-        text: "Queue this",
+        text: expect.stringContaining("Queue this"),
         streamingBehavior: "followUp",
       }),
     )
@@ -100,7 +148,7 @@ describe("prompt delivery", () => {
 
     expect(prompt).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: "Send now",
+        text: expect.stringContaining("Send now"),
         streamingBehavior: undefined,
       }),
     )
