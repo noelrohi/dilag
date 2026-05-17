@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import { useCallback, useMemo, type PointerEvent as ReactPointerEvent } from "react"
+import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react"
 import {
   MagicStick,
   Settings,
@@ -7,15 +7,15 @@ import {
   Pin,
   AddSquare,
   AddCircle,
+  ArchiveDownMinimlistic,
   MenuDots,
   TrashBinMinimalistic,
-  SidebarMinimalistic,
-  Folder,
-  FolderOpen,
   FolderPathConnect,
   Pen,
   ChatRoundLine,
+  ClockCircle,
 } from "@solar-icons/react"
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -34,9 +34,34 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@dilag/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@dilag/ui/alert-dialog"
+import { Button } from "@dilag/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@dilag/ui/dialog"
+import { Input } from "@dilag/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
 import { AuthSettings } from "@/components/blocks/auth/auth-settings"
 import { useProjectMutations, useProjectsList } from "@/hooks/use-projects"
@@ -63,15 +88,59 @@ function formatRelativeTime(dateStr: string): string {
   return `${Math.floor(diffDays / 30)}mo`
 }
 
+function getNextUntitledProjectName(projects: ProjectMeta[]): string {
+  const baseName = "Untitled project"
+  const existingNames = new Set(projects.map((project) => project.name.trim().toLowerCase()))
+
+  if (!existingNames.has(baseName.toLowerCase())) return baseName
+
+  for (let index = 2; ; index += 1) {
+    const candidate = `${baseName} ${index}`
+    if (!existingNames.has(candidate.toLowerCase())) return candidate
+  }
+}
+
+type ProjectSortMode = "created" | "updated"
+type ProjectOrganizeMode = "by-project" | "recent-projects" | "chronological-list"
+
 export function AppSidebar() {
   const location = useLocation()
-  const { sessions, deleteSession } = useSessions()
+  const navigate = useNavigate()
+  const { sessions, renameSession, deleteSession } = useSessions()
   const { data: projects = [] } = useProjectsList()
   const { createProject, addExistingProject, updateProject, removeProject } = useProjectMutations()
-  const { openNewDesign, openProjectComposer } = useNewDesignFlow({ projects })
+  const { openNewDesign, openProjectComposer } = useNewDesignFlow({
+    projects,
+  })
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false)
+  const [addProjectMenuOpen, setAddProjectMenuOpen] = useState(false)
+  const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false)
+  const [newProjectName, setNewProjectName] = useState("")
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [renameProjectDialog, setRenameProjectDialog] = useState<ProjectMeta | null>(null)
+  const [renameProjectName, setRenameProjectName] = useState("")
+  const [isRenamingProject, setIsRenamingProject] = useState(false)
+  const [projectsSectionExpanded, setProjectsSectionExpanded] = useState(true)
+  const [projectSortMode, setProjectSortMode] = useState<ProjectSortMode>("updated")
+  const [projectOrganizeMode, setProjectOrganizeMode] =
+    useState<ProjectOrganizeMode>("recent-projects")
+  const [archiveAllProjectsOpen, setArchiveAllProjectsOpen] = useState(false)
 
   const pinnedProjects = useMemo(() => projects.filter((project) => project.pinned), [projects])
-  const regularProjects = useMemo(() => projects.filter((project) => !project.pinned), [projects])
+  const regularProjects = useMemo(() => {
+    const items = projects.filter((project) => !project.pinned)
+    if (projectSortMode === "created") {
+      return [...items].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+    }
+    return [...items].sort(
+      (a, b) =>
+        new Date(b.last_opened_at).getTime() - new Date(a.last_opened_at).getTime() ||
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+  }, [projects, projectSortMode])
+  const showProjectHeaderActions = projects.length === 0 || projectMenuOpen || addProjectMenuOpen
 
   const sessionsByProject = useMemo(() => {
     const map = new Map<string, SessionMeta[]>()
@@ -95,24 +164,88 @@ export function AppSidebar() {
     openNewDesign()
   }
 
-  const handleStartFromScratch = async () => {
-    const name = window.prompt("Project name")?.trim()
+  const openCreateProjectDialog = () => {
+    setNewProjectName(getNextUntitledProjectName(projects))
+    setCreateProjectDialogOpen(true)
+  }
+
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim()
     if (!name) return
-    const project = await createProject({ name })
-    openProjectComposer(project.id)
+
+    try {
+      setIsCreatingProject(true)
+      const project = await createProject({ name })
+      setCreateProjectDialogOpen(false)
+      openProjectComposer(project.id)
+    } catch (err) {
+      console.error("Failed to create project:", err)
+      window.alert(err instanceof Error ? err.message : "Failed to create project")
+    } finally {
+      setIsCreatingProject(false)
+    }
   }
 
   const handleUseExistingFolder = async () => {
-    const folder = await bridge.dialog.openDirectory()
-    if (!folder) return
-    const project = await addExistingProject({ path: folder })
-    openProjectComposer(project.id)
+    try {
+      const folder = await bridge.dialog.openDirectory()
+      if (!folder) return
+      const project = await addExistingProject({ path: folder })
+      openProjectComposer(project.id)
+    } catch (err) {
+      console.error("Failed to add project:", err)
+      window.alert(err instanceof Error ? err.message : "Failed to add project")
+    }
   }
 
-  const handleCollapseAll = () => {
-    projects.forEach((project) => {
-      if (project.expanded) updateProject({ id: project.id, updates: { expanded: false } })
+  const runAfterMenuClose = (action: () => void | Promise<void>) => {
+    window.setTimeout(() => void action(), 0)
+  }
+
+  const openRenameProjectDialog = (project: ProjectMeta) => {
+    runAfterMenuClose(() => {
+      setRenameProjectDialog(project)
+      setRenameProjectName(project.name)
     })
+  }
+
+  const handleRenameProject = async () => {
+    const project = renameProjectDialog
+    const name = renameProjectName.trim()
+    if (!project || !name) return
+
+    if (name === project.name) {
+      setRenameProjectDialog(null)
+      return
+    }
+
+    try {
+      setIsRenamingProject(true)
+      await updateProject({ id: project.id, updates: { name } })
+      setRenameProjectDialog(null)
+    } catch (err) {
+      console.error("Failed to rename project:", err)
+      window.alert(err instanceof Error ? err.message : "Failed to rename project")
+    } finally {
+      setIsRenamingProject(false)
+    }
+  }
+
+  const handleArchiveAllProjects = async () => {
+    try {
+      await Promise.all(projects.map((project) => removeProject(project.id)))
+      window.localStorage.removeItem("dilag-last-project-id")
+      await navigate({ to: "/" })
+    } catch (err) {
+      console.error("Failed to archive projects:", err)
+      window.alert(err instanceof Error ? err.message : "Failed to archive projects")
+    }
+  }
+
+  const handleSetProjectOrganizeMode = (mode: ProjectOrganizeMode) => {
+    setProjectOrganizeMode(mode)
+    if (mode === "recent-projects") setProjectSortMode("updated")
+    if (mode === "chronological-list") setProjectSortMode("created")
   }
 
   const handleStartNewChat = (project: ProjectMeta) => {
@@ -172,9 +305,10 @@ export function AppSidebar() {
                     onTogglePinned={() =>
                       updateProject({ id: project.id, updates: { pinned: !project.pinned } })
                     }
-                    onRename={(name) => updateProject({ id: project.id, updates: { name } })}
+                    onRequestRename={() => openRenameProjectDialog(project)}
                     onRemove={() => removeProject(project.id)}
-                    onStartNewChat={() => handleStartNewChat(project)}
+                    onStartNewChat={() => void handleStartNewChat(project)}
+                    onRenameSession={renameSession}
                     onDeleteSession={deleteSession}
                   />
                 ))}
@@ -185,72 +319,127 @@ export function AppSidebar() {
 
         <SidebarGroup className="group-data-[collapsible=icon]:hidden min-h-0 flex-1">
           <SidebarGroupLabel className="px-2 pt-2 text-[13px] font-medium text-sidebar-foreground/45 flex items-center justify-between group/projects">
-            <span>Projects</span>
+            <span className="flex min-w-0 items-center gap-1">
+              <span>Projects</span>
+              {regularProjects.length > 0 && (
+                <button
+                  className="rounded p-0.5 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  onClick={() => setProjectsSectionExpanded((expanded) => !expanded)}
+                  title={projectsSectionExpanded ? "Collapse projects" : "Expand projects"}
+                  aria-label={projectsSectionExpanded ? "Collapse projects" : "Expand projects"}
+                >
+                  {projectsSectionExpanded ? (
+                    <ChevronDownIcon className="size-3.5" />
+                  ) : (
+                    <ChevronRightIcon className="size-3.5" />
+                  )}
+                </button>
+              )}
+            </span>
             <div
               className={`flex items-center gap-0.5 transition-opacity ${
-                projects.length === 0 ? "opacity-100" : "opacity-0 group-hover/projects:opacity-100"
+                showProjectHeaderActions
+                  ? "opacity-100"
+                  : "opacity-0 group-hover/projects:opacity-100"
               }`}
             >
-              <button
-                className="p-0.5 rounded hover:bg-sidebar-accent"
-                onClick={handleCollapseAll}
-                title="Collapse all"
-              >
-                <SidebarMinimalistic size={14} />
-              </button>
-              <DropdownMenu>
+              <DropdownMenu open={projectMenuOpen} onOpenChange={setProjectMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <button className="p-0.5 rounded hover:bg-sidebar-accent" title="Project menu">
                     <MenuDots size={14} />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" align="start" className="w-48">
-                  <DropdownMenuItem onClick={handleStartFromScratch}>
-                    Start from scratch
+                <DropdownMenuContent side="right" align="start" className="w-56">
+                  <DropdownMenuItem
+                    disabled={projects.length === 0}
+                    onSelect={() => runAfterMenuClose(() => setArchiveAllProjectsOpen(true))}
+                  >
+                    <ArchiveDownMinimlistic size={16} className="mr-2" />
+                    Archive all projects
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleUseExistingFolder}>
-                    Use an existing folder
-                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <FolderPathConnect size={16} className="mr-2" />
+                      Organize sidebar
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-56">
+                      <DropdownMenuRadioGroup
+                        value={projectOrganizeMode}
+                        onValueChange={(value) =>
+                          handleSetProjectOrganizeMode(value as ProjectOrganizeMode)
+                        }
+                      >
+                        <DropdownMenuRadioItem value="by-project">By project</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="recent-projects">
+                          Recent projects
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="chronological-list">
+                          Chronological list
+                        </DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem disabled>Move down</DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <ClockCircle size={16} className="mr-2" />
+                      Sort by
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-52">
+                      <DropdownMenuRadioGroup
+                        value={projectSortMode}
+                        onValueChange={(value) => setProjectSortMode(value as ProjectSortMode)}
+                      >
+                        <DropdownMenuRadioItem value="created">Created</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="updated">Updated</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
+              <DropdownMenu open={addProjectMenuOpen} onOpenChange={setAddProjectMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <button className="p-0.5 rounded hover:bg-sidebar-accent" title="Add project">
                     <AddCircle size={14} />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="right" align="start" className="w-48">
-                  <DropdownMenuItem onClick={handleStartFromScratch}>
+                <DropdownMenuContent side="right" align="start" className="w-56">
+                  <DropdownMenuItem onSelect={() => runAfterMenuClose(openCreateProjectDialog)}>
                     Start from scratch
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleUseExistingFolder}>
+                  <DropdownMenuItem onSelect={() => runAfterMenuClose(handleUseExistingFolder)}>
                     Use an existing folder
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </SidebarGroupLabel>
-          <SidebarGroupContent className="overflow-y-auto">
-            <SidebarMenu>
-              {regularProjects.map((project) => (
-                <ProjectItem
-                  key={project.id}
-                  project={project}
-                  sessions={sessionsByProject.get(project.id) ?? []}
-                  onToggleExpanded={() =>
-                    updateProject({ id: project.id, updates: { expanded: !project.expanded } })
-                  }
-                  onTogglePinned={() =>
-                    updateProject({ id: project.id, updates: { pinned: !project.pinned } })
-                  }
-                  onRename={(name) => updateProject({ id: project.id, updates: { name } })}
-                  onRemove={() => removeProject(project.id)}
-                  onStartNewChat={() => handleStartNewChat(project)}
-                  onDeleteSession={deleteSession}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
+          {projectsSectionExpanded && (
+            <SidebarGroupContent className="overflow-y-auto">
+              <SidebarMenu>
+                {regularProjects.map((project) => (
+                  <ProjectItem
+                    key={project.id}
+                    project={project}
+                    sessions={sessionsByProject.get(project.id) ?? []}
+                    onToggleExpanded={() =>
+                      updateProject({ id: project.id, updates: { expanded: !project.expanded } })
+                    }
+                    onTogglePinned={() =>
+                      updateProject({ id: project.id, updates: { pinned: !project.pinned } })
+                    }
+                    onRequestRename={() => openRenameProjectDialog(project)}
+                    onRemove={() => removeProject(project.id)}
+                    onStartNewChat={() => void handleStartNewChat(project)}
+                    onRenameSession={renameSession}
+                    onDeleteSession={deleteSession}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          )}
         </SidebarGroup>
       </SidebarContent>
 
@@ -283,6 +472,109 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarFooter>
       <SidebarResizeHandle />
+
+      <Dialog
+        open={createProjectDialogOpen}
+        onOpenChange={(open) => {
+          if (!isCreatingProject) setCreateProjectDialogOpen(open)
+        }}
+      >
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>New project</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handleCreateProject()
+            }}
+          >
+            <Input
+              value={newProjectName}
+              onChange={(event) => setNewProjectName(event.target.value)}
+              onFocus={(event) => event.currentTarget.select()}
+              placeholder="Folder name"
+              autoFocus
+            />
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isCreatingProject}
+                onClick={() => setCreateProjectDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!newProjectName.trim() || isCreatingProject}>
+                {isCreatingProject ? "Creating..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={renameProjectDialog !== null}
+        onOpenChange={(open) => {
+          if (!isRenamingProject && !open) setRenameProjectDialog(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Rename project</DialogTitle>
+            <DialogDescription className="sr-only">
+              Enter a new folder name for this project.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handleRenameProject()
+            }}
+          >
+            <Input
+              value={renameProjectName}
+              onChange={(event) => setRenameProjectName(event.target.value)}
+              onFocus={(event) => event.currentTarget.select()}
+              placeholder="Folder name"
+              autoFocus
+            />
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isRenamingProject}
+                onClick={() => setRenameProjectDialog(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!renameProjectName.trim() || isRenamingProject}>
+                {isRenamingProject ? "Renaming..." : "Rename"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={archiveAllProjectsOpen} onOpenChange={setArchiveAllProjectsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive all projects?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes every project from the sidebar. Your local project folders stay on disk.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => void handleArchiveAllProjects()}
+            >
+              Archive all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   )
 }
@@ -337,18 +629,20 @@ function ProjectItem({
   sessions,
   onToggleExpanded,
   onTogglePinned,
-  onRename,
+  onRequestRename,
   onRemove,
   onStartNewChat,
+  onRenameSession,
   onDeleteSession,
 }: {
   project: ProjectMeta
   sessions: SessionMeta[]
   onToggleExpanded: () => void
   onTogglePinned: () => void
-  onRename: (name: string) => void
+  onRequestRename: () => void
   onRemove: () => void
   onStartNewChat: () => void
+  onRenameSession: (sessionId: string, name: string) => void
   onDeleteSession: (sessionId: string) => void
 }) {
   const navigate = useNavigate()
@@ -358,23 +652,29 @@ function ProjectItem({
       <SidebarMenuItem className="group/item">
         <SidebarMenuButton asChild>
           <div onClick={onToggleExpanded} role="button" tabIndex={0}>
+            <span className="min-w-0 truncate text-[15px] text-sidebar-foreground/75">
+              {project.name}
+            </span>
             <button
-              className="-ml-1 p-0.5 rounded hover:bg-sidebar-accent"
+              className="shrink-0 rounded p-0.5 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               onClick={(event) => {
                 event.stopPropagation()
                 onToggleExpanded()
               }}
               aria-label={project.expanded ? "Collapse project" : "Expand project"}
             >
-              {project.expanded ? <FolderOpen size={14} /> : <Folder size={14} />}
+              {project.expanded ? (
+                <ChevronDownIcon className="size-3.5" />
+              ) : (
+                <ChevronRightIcon className="size-3.5" />
+              )}
             </button>
-            <span className="truncate text-[15px] text-sidebar-foreground/75">{project.name}</span>
           </div>
         </SidebarMenuButton>
         <Tooltip>
           <TooltipTrigger asChild>
             <SidebarMenuAction
-              className="right-7 opacity-0 group-hover/item:opacity-100 transition-opacity"
+              className="right-7 transition-opacity"
               showOnHover
               onClick={(event) => {
                 event.stopPropagation()
@@ -398,8 +698,9 @@ function ProjectItem({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuAction
-              className="opacity-0 group-hover/item:opacity-100 transition-opacity"
+              className="transition-opacity"
               showOnHover
+              aria-label={`${project.name} actions`}
             >
               <MenuDots size={16} />
             </SidebarMenuAction>
@@ -415,14 +716,7 @@ function ProjectItem({
               <FolderPathConnect size={16} className="mr-2" />
               Open in Finder
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                const name = window.prompt("Project name", project.name)?.trim()
-                if (name && name !== project.name) {
-                  onRename(name)
-                }
-              }}
-            >
+            <DropdownMenuItem onSelect={onRequestRename}>
               <Pen size={16} className="mr-2" />
               Rename project
             </DropdownMenuItem>
@@ -453,7 +747,7 @@ function ProjectItem({
               <SidebarMenuItem key={session.id} className="group/chat">
                 <SidebarMenuButton
                   isActive={isSessionActive}
-                  className="h-8 pl-8 text-sidebar-foreground/80 data-[active=true]:bg-black/20 data-[active=true]:font-medium data-[active=true]:text-sidebar-foreground"
+                  className="h-8 pl-8 text-sidebar-foreground/80 data-[active=true]:bg-sidebar-accent/55 data-[active=true]:font-normal data-[active=true]:text-sidebar-foreground/85"
                   onClick={() =>
                     navigate({
                       to: "/project/$projectId/session/$sessionId",
@@ -468,16 +762,25 @@ function ProjectItem({
                 </span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <SidebarMenuAction
-                      className="opacity-0 group-hover/chat:opacity-100 transition-opacity"
-                      showOnHover
-                    >
+                    <SidebarMenuAction className="transition-opacity" showOnHover>
                       <MenuDots size={16} />
                     </SidebarMenuAction>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="right" align="start" className="w-40">
                     <DropdownMenuItem
-                      onClick={() => onDeleteSession(session.id)}
+                      onSelect={() => {
+                        const name = window.prompt("Chat name", session.name)?.trim()
+                        if (name && name !== session.name) {
+                          onRenameSession(session.id, name)
+                        }
+                      }}
+                    >
+                      <Pen size={16} className="mr-2" />
+                      Rename chat
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => onDeleteSession(session.id)}
                       className="text-destructive focus:text-destructive"
                     >
                       <TrashBinMinimalistic size={16} className="mr-2" />
