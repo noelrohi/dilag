@@ -25,7 +25,7 @@ import { randomUUID } from "node:crypto"
 import { Type } from "typebox"
 import { CHANNELS } from "../shared/channels.js"
 import { DILAG_SYSTEM_PROMPT, syncDilagDesignSkills } from "./design-skill-pack.js"
-import { getDilagSkillsDir, getPiAgentDir } from "./paths.js"
+import { getDilagSkillsDir, getPiAgentDir, getPiSessionDir } from "./paths.js"
 
 type EventSender = (channel: string, event: unknown) => void
 
@@ -363,6 +363,18 @@ export async function abortAgentSession(args: { sessionID: string }): Promise<vo
   emitSessionIdle(runtime.id)
 }
 
+export async function clearAgentPromptQueue(args: {
+  sessionID: string
+}): Promise<{ sessionID: string; steering: string[]; followUp: string[] }> {
+  const runtime = getRuntimeSession(args.sessionID)
+  const queue = runtime.session.clearQueue()
+  return {
+    sessionID: runtime.id,
+    steering: queue.steering,
+    followUp: queue.followUp,
+  }
+}
+
 export async function renameAgentSession(args: {
   sessionID: string
   name: string
@@ -447,7 +459,8 @@ export async function navigateAgentTree(args: {
   label?: string
 }): Promise<{ editorText?: string; cancelled: boolean; aborted?: boolean }> {
   const runtime = getRuntimeSession(args.sessionID)
-  const result = await runtime.session.navigateTree(args.targetId, {
+  const targetId = resolveTreeTargetId(runtime, args.targetId)
+  const result = await runtime.session.navigateTree(targetId, {
     summarize: args.summarize,
     customInstructions: args.customInstructions,
     replaceInstructions: args.replaceInstructions,
@@ -462,6 +475,46 @@ export async function navigateAgentTree(args: {
     cancelled: result.cancelled,
     aborted: result.aborted,
   }
+}
+
+function resolveTreeTargetId(runtime: RuntimeSession, targetId: string): string {
+  const tree = runtime.session.sessionManager.getTree() as PiSessionTreeNode[]
+  const nodes = flattenTreeNodes(tree)
+  if (nodes.some((node) => node.entry.id === targetId)) return targetId
+
+  // Live Pi message events do not include the persisted session-entry id, so the
+  // renderer temporarily receives ids like `${sessionID}:assistant:${timestamp}`.
+  // Tree navigation requires the persisted entry id. Translate synthetic ids by
+  // matching their role/timestamp against the current Pi session tree.
+  const synthetic = parseSyntheticMessageId(runtime.id, targetId)
+  if (!synthetic) return targetId
+
+  const match = nodes.find((node) => {
+    const entry = node.entry
+    return (
+      entry.message?.role === synthetic.role &&
+      (Date.parse(entry.timestamp) === synthetic.timestamp ||
+        entry.message?.timestamp === synthetic.timestamp)
+    )
+  })
+  return match?.entry.id ?? targetId
+}
+
+function flattenTreeNodes(nodes: PiSessionTreeNode[]): PiSessionTreeNode[] {
+  return nodes.flatMap((node) => [node, ...flattenTreeNodes(node.children)])
+}
+
+function parseSyntheticMessageId(
+  sessionID: string,
+  id: string,
+): { role: "user" | "assistant"; timestamp: number } | null {
+  const prefix = `${sessionID}:`
+  if (!id.startsWith(prefix)) return null
+  const [role, timestampText] = id.slice(prefix.length).split(":")
+  if (role !== "user" && role !== "assistant") return null
+  const timestamp = Number(timestampText)
+  if (!Number.isFinite(timestamp)) return null
+  return { role, timestamp }
 }
 
 async function createRuntimeSession(
@@ -585,16 +638,20 @@ function getRuntimeSession(sessionID: string): RuntimeSession {
   return runtime
 }
 
+export function releaseAgentSessionsForDirectory(cwd: string): void {
+  const normalizedCwd = path.resolve(cwd)
+  for (const [sessionID, runtime] of sessions) {
+    if (path.resolve(runtime.cwd) !== normalizedCwd) continue
+    runtime.unsubscribe()
+    sessions.delete(sessionID)
+  }
+}
+
 async function createModelRegistry(): Promise<ModelRegistry> {
   const pi = await loadPi()
   const agentDir = getPiAgentDir()
   const authStorage = pi.AuthStorage.create(path.join(agentDir, "auth.json"))
   return pi.ModelRegistry.create(authStorage, path.join(agentDir, "models.json"))
-}
-
-function getPiSessionDir(cwd: string): string {
-  const safePath = `--${cwd.replace(/^[/\\]/, "").replace(/[/\\:]/g, "-")}--`
-  return path.join(getPiAgentDir(), "sessions", safePath)
 }
 
 async function findSessionFile(cwd: string, sessionID: string): Promise<string | undefined> {

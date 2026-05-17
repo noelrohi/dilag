@@ -101,7 +101,6 @@ describe("use-sessions", () => {
       parts: {},
       sessionStatus: {},
       sessionDiffs: {},
-      sessionRevert: {},
       sessionErrors: {},
       promptQueues: {},
       isServerReady: true,
@@ -112,7 +111,7 @@ describe("use-sessions", () => {
   })
 
   describe("sendMessage", () => {
-    it("creates a project chat and sends the first prompt in the project cwd", async () => {
+    it("creates a project chat with an independent platform and sends the first prompt in the project cwd", async () => {
       const project: ProjectMeta = {
         id: "project-1",
         name: "Checkout app",
@@ -131,7 +130,7 @@ describe("use-sessions", () => {
           created_at: "2026-05-15T00:00:00.000Z",
           updated_at: "2026-05-15T00:00:00.000Z",
           cwd: directory,
-          platform: project.platform,
+          platform: "web",
           projectId: project.id,
           favorite: project.pinned,
         })
@@ -141,7 +140,7 @@ describe("use-sessions", () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       await act(async () => {
-        await expect(result.current.createSessionInProject(project)).resolves.toBe(
+        await expect(result.current.createSessionInProject(project, "web")).resolves.toBe(
           "project-session-1",
         )
       })
@@ -159,9 +158,18 @@ describe("use-sessions", () => {
         expect.objectContaining({
           sessionID: "project-session-1",
           directory: project.path,
-          text: "/skill:dilag-mobile-design Build a checkout flow",
+          text: "/skill:dilag-web-design Build a checkout flow",
           images: [],
           model: null,
+        }),
+      )
+      expect(window.desktopBridge!.sessions.saveMeta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          session: expect.objectContaining({
+            id: "project-session-1",
+            platform: "web",
+            projectId: project.id,
+          }),
         }),
       )
     })
@@ -251,13 +259,13 @@ describe("use-sessions", () => {
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("running")
     })
 
-    it("queues follow-up prompts through Pi while a session is running", async () => {
+    it("queues steering prompts through Pi while a session is running", async () => {
       useSessionStore.setState({ sessionStatus: { "session-1": "running" } })
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       await act(async () => {
         await expect(result.current.sendMessage("Also make it dark")).resolves.toEqual({
-          mode: "followUp",
+          mode: "steer",
           status: "queued",
         })
       })
@@ -266,6 +274,30 @@ describe("use-sessions", () => {
         expect.objectContaining({
           sessionID: "session-1",
           text: "/skill:dilag-web-design Also make it dark",
+          streamingBehavior: "steer",
+        }),
+      )
+    })
+
+    it("can queue follow-up prompts explicitly while a session is running", async () => {
+      useSessionStore.setState({ sessionStatus: { "session-1": "running" } })
+      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await expect(
+          result.current.sendMessage("After that, tighten spacing", undefined, {
+            streamingBehavior: "followUp",
+          }),
+        ).resolves.toEqual({
+          mode: "followUp",
+          status: "queued",
+        })
+      })
+
+      expect(mockPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionID: "session-1",
+          text: "/skill:dilag-web-design After that, tighten spacing",
           streamingBehavior: "followUp",
         }),
       )
@@ -321,13 +353,12 @@ describe("use-sessions", () => {
   })
 
   describe("tree navigation", () => {
-    it("uses Pi tree navigation for timeline revert", async () => {
-      useSessionStore.getState().setSessionRevert("session-1", { messageID: "stale-message" })
-
+    it("uses Pi tree navigation for forking from a message", async () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+      let forkedSessionId: string | null = null
 
       await act(async () => {
-        await result.current.revertToMessage("msg-1")
+        forkedSessionId = await result.current.forkSession("msg-1")
       })
 
       expect(mockNavigateTree).toHaveBeenCalledWith({
@@ -335,7 +366,7 @@ describe("use-sessions", () => {
         targetId: "msg-1",
         summarize: false,
       })
-      expect(useSessionStore.getState().sessionRevert["session-1"]).toBeNull()
+      expect(forkedSessionId).toBe("session-1")
     })
   })
 })

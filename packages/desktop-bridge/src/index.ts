@@ -9,6 +9,7 @@ import type {
   AppInfo,
   AgentImageContent,
   AgentMessage,
+  AgentPromptQueueState,
   AgentProvider,
   AgentProviderData,
   AgentQuestionRequest,
@@ -71,6 +72,7 @@ export interface DesktopBridge {
       streamingBehavior?: "steer" | "followUp"
     }): Promise<void>
     abort(args: { sessionID: string }): Promise<void>
+    clearQueue(args: { sessionID: string }): Promise<AgentPromptQueueState>
     renameSession(args: { sessionID: string; name: string; directory?: string }): Promise<void>
     deleteSession(args: { sessionID: string; directory?: string }): Promise<void>
     listQuestions(): Promise<AgentQuestionRequest[]>

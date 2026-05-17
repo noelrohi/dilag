@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { Platform, ProjectMeta } from "@dilag/desktop-bridge"
 import { bridge } from "@/lib/bridge"
+import type { SessionMeta } from "@/context/session-store"
+import { sessionKeys } from "@/hooks/use-session-data"
 
 export const projectKeys = {
   all: ["projects"] as const,
@@ -65,7 +67,22 @@ export function useProjectMutations() {
       id: string
       updates: Partial<Pick<ProjectMeta, "name" | "platform" | "pinned" | "expanded">>
     }) => bridge.projects.update(args),
-    onSuccess: upsertProjectInCache,
+    onSuccess: (project) => {
+      upsertProjectInCache(project)
+      queryClient.setQueryData<SessionMeta[]>(
+        sessionKeys.list(),
+        (old) =>
+          old?.map((session) =>
+            session.projectId === project.id
+              ? {
+                  ...session,
+                  cwd: project.path,
+                  favorite: project.pinned,
+                }
+              : session,
+          ) ?? [],
+      )
+    },
   })
 
   const removeProject = useMutation({

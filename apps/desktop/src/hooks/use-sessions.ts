@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   useSessionStore,
   useCurrentSessionId,
-  useFilteredSessionMessages,
+  useSessionMessages,
   useSessionStatus,
   useIsServerReady,
   useError,
@@ -26,6 +26,10 @@ import { bridge } from "@/lib/bridge"
 import type { AgentMessage as BridgeAgentMessage, ProjectMeta } from "@dilag/desktop-bridge"
 import type { FileUIPart } from "ai"
 import { deliverDilagPrompt } from "@/lib/prompt-delivery"
+
+export type SendMessageOptions = {
+  streamingBehavior?: "steer" | "followUp"
+}
 
 // Convert bridge message parts to our internal format.
 function convertPart(
@@ -69,7 +73,7 @@ export function useSessions() {
 
   // Zustand for client state
   const currentSessionId = useCurrentSessionId()
-  const messages = useFilteredSessionMessages(currentSessionId)
+  const messages = useSessionMessages(currentSessionId)
   const sessionStatus = useSessionStatus(currentSessionId)
   const hasRunningTools = useHasRunningTools(currentSessionId)
   const isServerReady = useIsServerReady()
@@ -92,7 +96,6 @@ export function useSessions() {
     setMessages,
     setSessionStatus,
     setSessionError,
-    setSessionRevert,
     clearDebugEvents,
     setError,
     setServerReady,
@@ -119,14 +122,6 @@ export function useSessions() {
   // Load messages for a session - defined early so it can be used in effects
   const loadSessionMessages = useCallback(
     async (sessionId: string, directory?: string) => {
-      // Load session info first to get revert state
-      try {
-        await bridge.agent.getSession({ sessionID: sessionId, directory: directory ?? "" })
-        setSessionRevert(sessionId, null)
-      } catch (err) {
-        console.debug(`[loadSessionMessages(${sessionId})] Failed to get session info:`, err)
-      }
-
       // Load messages
       let response
       try {
@@ -159,7 +154,7 @@ export function useSessions() {
         })
       }
     },
-    [setMessages, setSessionRevert],
+    [setMessages],
   )
 
   // Handle reconnection bootstrap - refetch state after SSE reconnects
@@ -272,7 +267,7 @@ export function useSessions() {
   }, [currentSessionId, subscribeToSession, saveSessionUpdate, currentSession, queryClient])
 
   const createSession = useCallback(
-    async (name?: string, platform: "web" | "mobile" = "web"): Promise<string | null> => {
+    async (name?: string, platform?: "web" | "mobile"): Promise<string | null> => {
       try {
         setError(null)
 
@@ -295,9 +290,10 @@ export function useSessions() {
           created_at: now,
           updated_at: now,
           cwd,
-          platform: project.platform ?? platform,
+          platform: platform ?? project.platform ?? "web",
           projectId: project.id,
         }
+        await bridge.sessions.saveMeta({ session: sessionMeta })
 
         // Update React Query cache optimistically. Pi SDK owns persistence.
         queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
@@ -320,7 +316,11 @@ export function useSessions() {
   )
 
   const createSessionInProject = useCallback(
-    async (project: ProjectMeta, name?: string): Promise<string | null> => {
+    async (
+      project: ProjectMeta,
+      platform: "web" | "mobile" = project.platform,
+      name?: string,
+    ): Promise<string | null> => {
       try {
         setError(null)
         const response = await bridge.agent.createSession({ directory: project.path })
@@ -331,10 +331,11 @@ export function useSessions() {
           created_at: now,
           updated_at: now,
           cwd: project.path,
-          platform: project.platform,
+          platform,
           projectId: project.id,
           favorite: project.pinned,
         }
+        await bridge.sessions.saveMeta({ session: sessionMeta })
         queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
           old ? [...old, sessionMeta] : [sessionMeta],
         )
@@ -362,6 +363,41 @@ export function useSessions() {
     [sessions, setCurrentSessionId, loadSessionMessages],
   )
 
+  const renameSession = useCallback(
+    async (sessionId: string, name: string) => {
+      const nextName = name.trim()
+      if (!nextName) return
+
+      try {
+        const session = sessions.find((item) => item.id === sessionId)
+        await bridge.agent.renameSession({
+          sessionID: sessionId,
+          name: nextName,
+          directory: session?.cwd,
+        })
+        queryClient.setQueryData<SessionMeta[]>(
+          sessionKeys.list(),
+          (old) =>
+            old?.map((item) =>
+              item.id === sessionId
+                ? { ...item, name: nextName, updated_at: new Date().toISOString() }
+                : item,
+            ) ?? [],
+        )
+        if (session) {
+          await bridge.sessions.saveMeta({
+            session: { ...session, name: nextName, updated_at: new Date().toISOString() },
+          })
+        }
+        queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to rename session")
+        console.error("Failed to rename session:", err)
+      }
+    },
+    [queryClient, sessions, setError],
+  )
+
   const deleteSession = useCallback(
     async (sessionId: string) => {
       try {
@@ -375,6 +411,7 @@ export function useSessions() {
         )
 
         if (session?.projectId) {
+          await removeSession(sessionId).catch(() => undefined)
           queryClient.setQueryData<SessionMeta[]>(
             sessionKeys.list(),
             (old) => old?.filter((item) => item.id !== sessionId) ?? [],
@@ -438,50 +475,6 @@ export function useSessions() {
     [currentSessionId, currentSession, loadSessionMessages, setError],
   )
 
-  // Navigate the Pi session tree to a specific message. This replaces the old
-  // revert/unrevert API with Pi's tree cursor model.
-  const revertToMessage = useCallback(
-    async (messageId: string): Promise<boolean> => {
-      if (!currentSessionId || !currentSession) return false
-
-      try {
-        setError(null)
-
-        await bridge.agent.navigateTree({
-          sessionID: currentSessionId,
-          targetId: messageId,
-          summarize: false,
-        })
-        await loadSessionMessages(currentSessionId, currentSession.cwd)
-        setSessionRevert(currentSessionId, null)
-
-        return true
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to revert session")
-        console.error("Failed to revert session:", err)
-        return false
-      }
-    },
-    [currentSessionId, currentSession, loadSessionMessages, setError, setSessionRevert],
-  )
-
-  // Clear any stale client-side revert state left from older session data.
-  const unrevertSession = useCallback(async (): Promise<boolean> => {
-    if (!currentSessionId || !currentSession) return false
-
-    try {
-      setError(null)
-
-      setSessionRevert(currentSessionId, null)
-
-      return true
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to unrevert session")
-      console.error("Failed to unrevert session:", err)
-      return false
-    }
-  }, [currentSessionId, currentSession, setError, setSessionRevert])
-
   // Fork session with designs only - creates a new session and copies screen designs (no chat history)
   const forkSessionDesignsOnly = useCallback(async (): Promise<string | null> => {
     if (!currentSessionId || !currentSession?.cwd) return null
@@ -513,6 +506,7 @@ export function useSessions() {
         projectId: currentSession.projectId,
         favorite: currentSession.favorite,
       }
+      await bridge.sessions.saveMeta({ session: sessionMeta })
 
       queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
         old ? [...old, sessionMeta] : [sessionMeta],
@@ -532,7 +526,7 @@ export function useSessions() {
   }, [currentSessionId, currentSession, queryClient, setCurrentSessionId, setMessages, setError])
 
   const sendMessage = useCallback(
-    async (content: string, files?: FileUIPart[]) => {
+    async (content: string, files?: FileUIPart[], options?: SendMessageOptions) => {
       console.log("[sendMessage] called with:", {
         content: content?.slice(0, 50),
         currentSessionId,
@@ -591,6 +585,7 @@ export function useSessions() {
           isFirstMessage: messages.length === 0,
           sessionStatus,
           hasRunningTools,
+          streamingBehavior: options?.streamingBehavior,
           model: selectedModel,
           thinkingLevel: selectedThinkingLevel,
         })
@@ -639,13 +634,12 @@ export function useSessions() {
     createSession,
     createSessionInProject,
     selectSession,
+    renameSession,
     deleteSession,
     sendMessage,
     stopSession,
     forkSession,
     forkSessionDesignsOnly,
-    revertToMessage,
-    unrevertSession,
     clearDebugEvents,
     toggleFavorite,
   }

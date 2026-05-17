@@ -23,6 +23,7 @@ export const CHANNELS = {
     getMessages: "agent:get-messages",
     prompt: "agent:prompt",
     abort: "agent:abort",
+    clearQueue: "agent:clear-queue",
     renameSession: "agent:rename-session",
     deleteSession: "agent:delete-session",
     listQuestions: "agent:list-questions",
