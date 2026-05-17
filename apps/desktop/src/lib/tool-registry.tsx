@@ -108,9 +108,7 @@ function countUnifiedDiffLines(diff: string | undefined): { additions: number; d
 }
 
 function fileDiffCounts(p: ToolRenderProps): { additions: number; deletions: number } {
-  const filediff = p.metadata?.filediff as
-    | { additions?: number; deletions?: number }
-    | undefined
+  const filediff = p.metadata?.filediff as { additions?: number; deletions?: number } | undefined
   if (filediff) {
     return {
       additions: filediff.additions ?? 0,

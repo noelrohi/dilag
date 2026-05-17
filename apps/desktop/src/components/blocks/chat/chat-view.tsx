@@ -597,7 +597,8 @@ function AssistantWorkGroup({
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 border-b border-border/40 pb-3">
         {parts.map((part, partIndex) => {
-          const isPartStreaming = part.type === "reasoning" ? isStreaming && partIndex === parts.length - 1 : isStreaming
+          const isPartStreaming =
+            part.type === "reasoning" ? isStreaming && partIndex === parts.length - 1 : isStreaming
 
           return (
             <div
@@ -668,7 +669,10 @@ function AssistantMessage({
         />
 
         {finalParts.map((part, partIndex) => {
-          const isPartStreaming = part.type === "reasoning" ? isStreaming && partIndex === finalParts.length - 1 : isStreaming
+          const isPartStreaming =
+            part.type === "reasoning"
+              ? isStreaming && partIndex === finalParts.length - 1
+              : isStreaming
 
           return (
             <div

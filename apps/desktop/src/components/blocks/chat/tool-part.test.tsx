@@ -55,7 +55,9 @@ describe("ToolPart", () => {
       />,
     )
 
-    expect(screen.getByRole("button", { name: /Writing.*notes-app-dashboard\.html.*\+3/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Writing.*notes-app-dashboard\.html.*\+3/ }),
+    ).toBeInTheDocument()
     expect(screen.queryByText("Thinking...")).not.toBeInTheDocument()
   })
 
@@ -82,6 +84,8 @@ describe("ToolPart", () => {
       />,
     )
 
-    expect(screen.getByRole("button", { name: /Edited.*profile\.html.*\+3.*-2/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Edited.*profile\.html.*\+3.*-2/ }),
+    ).toBeInTheDocument()
   })
 })

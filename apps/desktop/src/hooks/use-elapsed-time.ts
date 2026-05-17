@@ -46,11 +46,7 @@ function getElapsedSnapshot() {
 }
 
 export function useElapsedTime(startTime: number, endTime?: number): string {
-  const now = useSyncExternalStore(
-    subscribeToElapsedTicker,
-    getElapsedSnapshot,
-    getElapsedSnapshot,
-  )
+  const now = useSyncExternalStore(subscribeToElapsedTicker, getElapsedSnapshot, getElapsedSnapshot)
   const end = endTime ?? now
   const [elapsed, setElapsed] = useState(() => formatDuration(end - startTime))
 

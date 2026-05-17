@@ -25,10 +25,9 @@ describe("useElapsedTime", () => {
   })
 
   it("recomputes immediately when the start time changes", () => {
-    const { result, rerender } = renderHook(
-      ({ startTime }) => useElapsedTime(startTime),
-      { initialProps: { startTime: 8_000 } },
-    )
+    const { result, rerender } = renderHook(({ startTime }) => useElapsedTime(startTime), {
+      initialProps: { startTime: 8_000 },
+    })
 
     expect(result.current).toBe("2s")
 

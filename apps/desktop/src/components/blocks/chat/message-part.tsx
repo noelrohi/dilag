@@ -11,7 +11,10 @@ interface MessagePartProps {
   isStreaming?: boolean
 }
 
-export const MessagePart = memo(function MessagePart({ part, isStreaming = false }: MessagePartProps) {
+export const MessagePart = memo(function MessagePart({
+  part,
+  isStreaming = false,
+}: MessagePartProps) {
   return (
     <ErrorBoundary fallback={<InlineErrorFallback message="Failed to render message part" />}>
       <MessagePartContent part={part} isStreaming={isStreaming} />

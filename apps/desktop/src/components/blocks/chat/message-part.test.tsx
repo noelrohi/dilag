@@ -23,6 +23,8 @@ describe("MessagePart", () => {
     render(<MessagePart part={reasoningPart} isStreaming={false} />)
 
     expect(screen.getByText(/Thought/)).toBeInTheDocument()
-    expect(screen.queryByText("I should inspect the project before editing.")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("I should inspect the project before editing."),
+    ).not.toBeInTheDocument()
   })
 })

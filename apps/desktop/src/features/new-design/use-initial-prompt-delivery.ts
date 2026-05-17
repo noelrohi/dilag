@@ -37,12 +37,5 @@ export function useInitialPromptDelivery({
 
     const files = initialFilesJson ? (JSON.parse(initialFilesJson) as FileUIPart[]) : undefined
     void sendMessage(initialPrompt || "", files)
-  }, [
-    isServerReady,
-    hasRouteSession,
-    selectedSessionId,
-    routeSessionId,
-    sendMessage,
-    storage,
-  ])
+  }, [isServerReady, hasRouteSession, selectedSessionId, routeSessionId, sendMessage, storage])
 }

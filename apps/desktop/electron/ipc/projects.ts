@@ -124,10 +124,7 @@ export async function addExistingProject(args: {
   })
 }
 
-async function addProjectAtPath(args: {
-  path: string
-  platform?: Platform
-}): Promise<ProjectMeta> {
+async function addProjectAtPath(args: { path: string; platform?: Platform }): Promise<ProjectMeta> {
   const normalizedPath = normalizeProjectPath(args.path)
   const existing = getProjectByPath(normalizedPath)
   if (existing) return touchProject({ id: existing.id })

@@ -11,8 +11,9 @@ import {
   type UseInitialPromptDeliveryArgs,
 } from "./use-initial-prompt-delivery"
 
-function createStorage(initialValues: Record<string, string>): InitialPromptStorage &
-  NewDesignStorage & { values: Map<string, string> } {
+function createStorage(
+  initialValues: Record<string, string>,
+): InitialPromptStorage & NewDesignStorage & { values: Map<string, string> } {
   const values = new Map(Object.entries(initialValues))
   return {
     values,

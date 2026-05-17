@@ -138,9 +138,9 @@ describe("SkillInvocationBlock", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Skill web-design/ }))
 
-    expect(screen.getAllByText("Skill").some((node) => node.classList.contains("text-muted-foreground"))).toBe(
-      true,
-    )
+    expect(
+      screen.getAllByText("Skill").some((node) => node.classList.contains("text-muted-foreground")),
+    ).toBe(true)
     expect(await screen.findByText(/Follow the design rules/)).toBeInTheDocument()
   })
 })

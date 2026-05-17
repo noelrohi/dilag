@@ -66,16 +66,12 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
     [config, open, props],
   )
   const shouldShimmer = status === "pending" && !isFileMutationTool(tool)
-  const shouldShimmerTitle = (status === "pending" || status === "running") && isFileMutationTool(tool)
+  const shouldShimmerTitle =
+    (status === "pending" || status === "running") && isFileMutationTool(tool)
 
-  const statusLabel =
-    status === "completed" ? "Success" : status === "error" ? "Failed" : "Running"
+  const statusLabel = status === "completed" ? "Success" : status === "error" ? "Failed" : "Running"
   const StatusIcon =
-    status === "completed"
-      ? CheckCircle
-      : status === "error"
-        ? DangerTriangle
-        : ClockCircle
+    status === "completed" ? CheckCircle : status === "error" ? DangerTriangle : ClockCircle
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
