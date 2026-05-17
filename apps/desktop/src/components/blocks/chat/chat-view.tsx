@@ -18,20 +18,23 @@ import {
   ArrowUp,
   MagicStick,
   BranchingPathsUp,
-  UndoLeft,
-  ClockCircle,
   Copy,
+  CheckCircle,
   AltArrowRight,
+  Stop,
+  TrashBinMinimalistic,
 } from "@solar-icons/react"
+import { BookOpen } from "lucide-react"
 import { usePendingMessage } from "@/hooks/use-chat-interface"
+import { useElapsedTime } from "@/hooks/use-elapsed-time"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
-import { useSessions } from "@/hooks/use-sessions"
+import { useSessions, type SendMessageOptions } from "@/hooks/use-sessions"
 import {
   useMessageParts,
   useSessionError,
-  useSessionRevert,
   useSessionStore,
-  useQueuedFollowUps,
+  usePromptQueue,
+  type PromptQueueState,
   type SessionStatus,
   type Message as SessionMessage,
 } from "@/context/session-store"
@@ -69,8 +72,6 @@ import {
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
-import { TimelineDialog } from "@/components/blocks/dialogs/dialog-timeline"
-import { RevertBanner } from "./revert-banner"
 import { QuestionList } from "./question-list"
 import { AttachmentBridgeConnector } from "./attachment-bridge-connector"
 import type { MessagePart as MessagePartType } from "@/context/session-store"
@@ -290,14 +291,6 @@ export function isAssistantMessageStreaming(
   )
 }
 
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (minutes > 0) return `${minutes}m ${seconds}s`
-  return `${seconds}s`
-}
-
 function ThinkingIndicator() {
   return (
     <div className="flex items-center gap-3 py-4 animate-slide-up">
@@ -345,9 +338,11 @@ function extractTextFromParts(parts: { type: string; text?: string }[]): string 
 
 // Parse and clean text: remove screen context blocks, identify inline @ScreenName refs
 export function parseMessageText(text: string): { cleanText: string; hasScreenRefs: boolean } {
-  // Remove <screen_context> blocks (hidden from display, only for AI)
+  // Remove context blocks hidden from display and used only for AI.
   let cleanText = text
-    .replace(/<screen_context name="[^"]+">[\s\S]*?<\/screen_context>/g, "")
+    .replace(/<screen_context\b[^>]*>[\s\S]*?<\/screen_context>/g, "")
+    .replace(/<edit_element\b[^>]*>[\s\S]*?<\/edit_element>/g, "")
+    .replace(/<dilag_context\b[^>]*>[\s\S]*?<\/dilag_context>/g, "")
     .trim()
 
   // Also handle legacy <referenced_screen> format
@@ -359,6 +354,51 @@ export function parseMessageText(text: string): { cleanText: string; hasScreenRe
   const hasScreenRefs = /@[\w-]+/.test(cleanText)
 
   return { cleanText, hasScreenRefs }
+}
+
+export function getDisplayMessageText(rawText: string): string {
+  const skillBlock = parseSkillBlock(rawText)
+  const displayText = skillBlock?.userMessage ?? rawText
+  return parseMessageText(displayText).cleanText
+}
+
+function CopyMessageAction({
+  messageId,
+  onCopyText,
+}: {
+  messageId: string
+  onCopyText: (messageId: string) => void | Promise<void>
+}) {
+  const [copied, setCopied] = useState(false)
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
+    }
+  }, [])
+
+  const handleCopy = useCallback(async () => {
+    await onCopyText(messageId)
+    setCopied(true)
+
+    if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current)
+    resetTimeoutRef.current = setTimeout(() => setCopied(false), 1200)
+  }, [messageId, onCopyText])
+
+  return (
+    <MessageAction
+      tooltip={copied ? "Copied" : "Copy text"}
+      onClick={() => void handleCopy()}
+      className={cn(copied && "text-success hover:text-success")}
+    >
+      {copied ? (
+        <CheckCircle key="copied" size={14} className="animate-in zoom-in-75 duration-150" />
+      ) : (
+        <Copy key="copy" size={14} className="animate-in fade-in duration-100" />
+      )}
+    </MessageAction>
+  )
 }
 
 // Render text with inline @ScreenName highlights
@@ -385,7 +425,7 @@ export function HighlightedText({ text }: { text: string }) {
   )
 }
 
-function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
+export function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
   return (
     <div className="mr-auto w-full max-w-[95%] animate-slide-up">
       <Collapsible>
@@ -396,8 +436,13 @@ function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
             "hover:bg-muted/30 hover:text-foreground data-[state=open]:bg-muted/20 data-[state=open]:text-foreground",
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center overflow-hidden text-left">
-            <span className="truncate font-medium text-foreground">Used {skill.name}</span>
+          <div className="grid min-w-0 flex-1 grid-cols-[16px_minmax(0,1fr)] items-center gap-2.5">
+            <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/80">
+              <BookOpen className="size-[15px] stroke-[1.75]" />
+            </span>
+            <span className="truncate text-left text-foreground">
+              <span className="font-medium">Skill</span> {skill.name}
+            </span>
           </div>
           <AltArrowRight
             size={16}
@@ -407,10 +452,10 @@ function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
             )}
           />
         </CollapsibleTrigger>
-        <CollapsibleContent className="mt-1 overflow-hidden rounded-lg bg-[#2a2a2a] text-[#e2e2e2] shadow-sm">
+        <CollapsibleContent className="mt-1 overflow-hidden rounded-lg border border-border/60 bg-card text-card-foreground shadow-sm">
           <div className="max-h-72 overflow-y-auto p-3">
-            <div className="mb-3 text-xs font-medium text-[#a8a8a8]">Skill</div>
-            <div className="prose prose-sm prose-invert max-w-none text-sm [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-[#e2e2e2] [&_code]:!text-[#e2e2e2] [&_*]:!border-neutral-700/70">
+            <div className="mb-3 text-xs font-medium text-muted-foreground">Skill</div>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-card-foreground [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-card-foreground [&_code]:!text-card-foreground [&_*]:!border-border/70 [&_h1]:text-card-foreground [&_h2]:text-card-foreground [&_h3]:text-card-foreground [&_li]:text-card-foreground [&_p]:text-card-foreground [&_strong]:text-card-foreground">
               <MessageResponse>{`**${skill.name}**\n\n${skill.content}`}</MessageResponse>
             </div>
           </div>
@@ -425,24 +470,20 @@ function UserMessage({
   message,
   index,
   onFork,
-  onRevert,
   onCopyText,
-  onOpenTimeline,
   hideActions,
 }: {
   message: SessionMessage
   index: number
   onFork: (messageId: string) => void
-  onRevert: (messageId: string) => void
-  onCopyText: (messageId: string) => void
-  onOpenTimeline: () => void
+  onCopyText: (messageId: string) => void | Promise<void>
   hideActions?: boolean
 }) {
   const parts = useMessageParts(message.id)
   const rawTextContent = extractTextFromParts(parts)
   const skillBlock = parseSkillBlock(rawTextContent)
-  const displayText = skillBlock?.userMessage ?? rawTextContent
-  const { cleanText, hasScreenRefs } = parseMessageText(displayText)
+  const cleanText = getDisplayMessageText(rawTextContent)
+  const { hasScreenRefs } = parseMessageText(cleanText)
   const fileParts = parts.filter((p) => p.type === "file" && p.url)
 
   return (
@@ -490,17 +531,9 @@ function UserMessage({
           </MessageContent>
           {!hideActions && (
             <MessageActions>
-              <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
-                <Copy size={14} />
-              </MessageAction>
+              <CopyMessageAction messageId={message.id} onCopyText={onCopyText} />
               <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
                 <BranchingPathsUp size={14} />
-              </MessageAction>
-              <MessageAction tooltip="Revert to here" onClick={() => onRevert(message.id)}>
-                <UndoLeft size={14} />
-              </MessageAction>
-              <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
-                <ClockCircle size={14} />
               </MessageAction>
             </MessageActions>
           )}
@@ -508,17 +541,9 @@ function UserMessage({
       )}
       {skillBlock && !cleanText && fileParts.length === 0 && !hideActions && (
         <MessageActions>
-          <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
-            <Copy size={14} />
-          </MessageAction>
+          <CopyMessageAction messageId={message.id} onCopyText={onCopyText} />
           <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
             <BranchingPathsUp size={14} />
-          </MessageAction>
-          <MessageAction tooltip="Revert to here" onClick={() => onRevert(message.id)}>
-            <UndoLeft size={14} />
-          </MessageAction>
-          <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
-            <ClockCircle size={14} />
           </MessageAction>
         </MessageActions>
       )}
@@ -549,9 +574,9 @@ function AssistantWorkGroup({
 }) {
   if (parts.length === 0) return null
 
-  const completed = completedAt ?? Date.now()
-  const elapsed = formatDuration(completed - startedAt)
+  const elapsed = useElapsedTime(startedAt, completedAt)
   const commandCount = parts.filter((part) => part.type === "tool").length
+  const prefix = completedAt === undefined ? "Working" : "Worked for"
 
   return (
     <Collapsible>
@@ -562,7 +587,7 @@ function AssistantWorkGroup({
         )}
       >
         <span>
-          Worked for {elapsed}
+          {prefix} {elapsed}
           {commandCount > 0 && `, ${commandCount} command${commandCount === 1 ? "" : "s"}`}
         </span>
         <AltArrowRight
@@ -571,15 +596,19 @@ function AssistantWorkGroup({
         />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 border-b border-border/40 pb-3">
-        {parts.map((part, partIndex) => (
-          <div
-            key={part.id}
-            className="animate-stream-in"
-            style={{ animationDelay: `${partIndex * 35}ms` }}
-          >
-            <MessagePart part={part} isStreaming={isStreaming} />
-          </div>
-        ))}
+        {parts.map((part, partIndex) => {
+          const isPartStreaming = part.type === "reasoning" ? isStreaming && partIndex === parts.length - 1 : isStreaming
+
+          return (
+            <div
+              key={part.id}
+              className="animate-stream-in"
+              style={{ animationDelay: `${partIndex * 35}ms` }}
+            >
+              <MessagePart part={part} isStreaming={isPartStreaming} />
+            </div>
+          )
+        })}
       </CollapsibleContent>
     </Collapsible>
   )
@@ -593,15 +622,13 @@ function AssistantMessage({
   turnAssistantMessages,
   onFork,
   onCopyText,
-  onOpenTimeline,
 }: {
   message: SessionMessage
   index: number
   isLast: boolean
   turnAssistantMessages: SessionMessage[]
   onFork: (messageId: string) => void
-  onCopyText: (messageId: string) => void
-  onOpenTimeline: () => void
+  onCopyText: (messageId: string) => void | Promise<void>
 }) {
   const parts = useMessageParts(message.id)
   const partsByMessageId = useSessionStore((state) => state.parts)
@@ -640,15 +667,19 @@ function AssistantMessage({
           completedAt={workCompletedAt}
         />
 
-        {finalParts.map((part, partIndex) => (
-          <div
-            key={part.id}
-            className="animate-stream-in"
-            style={{ animationDelay: `${partIndex * 50}ms` }}
-          >
-            <MessagePart part={part} isStreaming={isStreaming} />
-          </div>
-        ))}
+        {finalParts.map((part, partIndex) => {
+          const isPartStreaming = part.type === "reasoning" ? isStreaming && partIndex === finalParts.length - 1 : isStreaming
+
+          return (
+            <div
+              key={part.id}
+              className="animate-stream-in"
+              style={{ animationDelay: `${partIndex * 50}ms` }}
+            >
+              <MessagePart part={part} isStreaming={isPartStreaming} />
+            </div>
+          )
+        })}
 
         {/* Thinking indicator - show when streaming and no renderable parts yet */}
         {isStreaming && renderableParts.length === 0 && <ThinkingIndicator />}
@@ -658,14 +689,9 @@ function AssistantMessage({
       </MessageContent>
       {!isStreaming && isLast && (
         <MessageActions>
-          <MessageAction tooltip="Copy text" onClick={() => onCopyText(message.id)}>
-            <Copy size={14} />
-          </MessageAction>
+          <CopyMessageAction messageId={message.id} onCopyText={onCopyText} />
           <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
             <BranchingPathsUp size={14} />
-          </MessageAction>
-          <MessageAction tooltip="View timeline" onClick={onOpenTimeline}>
-            <ClockCircle size={14} />
           </MessageAction>
         </MessageActions>
       )}
@@ -751,17 +777,20 @@ function ChatInputArea({
   isLoading,
   sendMessage,
   stopSession,
+  sessionId,
   sessionCwd,
-  queuedFollowUps,
+  promptQueue,
 }: {
   isLoading: boolean
   sendMessage: (
     message: string,
     files?: import("ai").FileUIPart[],
+    options?: SendMessageOptions,
   ) => Promise<PromptDeliveryOutcome | undefined>
   stopSession: () => Promise<void>
+  sessionId: string
   sessionCwd: string | null
-  queuedFollowUps: string[]
+  promptQueue: PromptQueueState
 }) {
   const composerTextareaId = useId()
   const { textInput, attachments, screenRefs } = usePromptInputController()
@@ -773,11 +802,27 @@ function ChatInputArea({
   const [highlightedMentionIndex, setHighlightedMentionIndex] = useState(0)
   const [mentionedFiles, setMentionedFiles] = useState<MentionedFileRef[]>([])
   const mentionSearchRequestRef = useRef(0)
+  const nextStreamingBehaviorRef = useRef<"steer" | "followUp">("steer")
   const hasInput = textInput.value.trim().length > 0
   const hasComposerReferences =
     attachments.files.length > 0 || screenRefs.references.length > 0 || mentionedFiles.length > 0
   const hasSubmittableInput = hasInput || hasComposerReferences
-  const hasRuntimeQueuedFollowUps = queuedFollowUps.length > 0
+  const queuedPrompts = useMemo(
+    () => [
+      ...promptQueue.steering.map((prompt, index) => ({
+        id: `steer-${index}-${prompt}`,
+        prompt,
+        label: "Steer",
+      })),
+      ...promptQueue.followUp.map((prompt, index) => ({
+        id: `follow-up-${index}-${prompt}`,
+        prompt,
+        label: "Follow-up",
+      })),
+    ],
+    [promptQueue],
+  )
+  const hasQueuedPrompts = queuedPrompts.length > 0
   const { pendingMessage, clearPendingMessage } = usePendingMessage()
 
   // Handle pending messages from server error overlay or other sources
@@ -898,10 +943,14 @@ function ChatInputArea({
 
   const handleComposerKeyDownCapture = useCallback(
     (e: ReactKeyboardEvent<HTMLFormElement>) => {
-      if (!mentionOpen) return
-
       const target = e.target as HTMLElement | null
       if (!target || target.id !== composerTextareaId) return
+
+      if (e.key === "Enter" && !e.shiftKey && isLoading) {
+        nextStreamingBehaviorRef.current = e.altKey ? "followUp" : "steer"
+      }
+
+      if (!mentionOpen) return
 
       if (e.key === "Escape") {
         e.preventDefault()
@@ -942,11 +991,21 @@ function ChatInputArea({
     [
       composerTextareaId,
       highlightedMentionIndex,
+      isLoading,
       mentionOpen,
       mentionSearchResults,
       selectMentionResult,
     ],
   )
+
+  const clearPromptQueue = useCallback(async () => {
+    try {
+      await bridge.agent.clearQueue({ sessionID: sessionId })
+      useSessionStore.getState().setPromptQueue(sessionId, { steering: [], followUp: [] })
+    } catch {
+      toast.error("Failed to clear queued prompts")
+    }
+  }, [sessionId])
 
   const resolveMentionedFileParts = useCallback(async () => {
     const parts: import("ai").FileUIPart[] = []
@@ -1021,13 +1080,18 @@ function ChatInputArea({
     }
 
     try {
+      const streamingBehavior = isLoading ? nextStreamingBehaviorRef.current : undefined
       const delivery = await sendMessage(
         trimmedText,
         mergedFiles.length > 0 ? mergedFiles : undefined,
+        { streamingBehavior },
       )
       if (delivery?.status === "queued") {
-        toast.success("Queued follow-up message")
+        toast.success(
+          delivery.mode === "followUp" ? "Queued follow-up message" : "Queued steering message",
+        )
       }
+      nextStreamingBehaviorRef.current = "steer"
       setMentionedFiles([])
       setMentionOpen(false)
       setMentionSearchResults([])
@@ -1062,43 +1126,43 @@ function ChatInputArea({
         {/* Gradient fade */}
         <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
-        {(isLoading || hasRuntimeQueuedFollowUps) && (
-          <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <ClockCircle size={14} className="shrink-0 text-primary" />
-                <span className="truncate">
-                  {isLoading
-                    ? "Agent is working. Send now to queue a follow-up."
-                    : "Follow-up queued."}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => stopSession()}
-                className="shrink-0 font-medium text-foreground/80 transition-colors hover:text-foreground"
-              >
-                Stop
-              </button>
-            </div>
-            {hasRuntimeQueuedFollowUps && (
-              <div className="mt-2 space-y-1.5 border-t border-border/50 pt-2">
-                {queuedFollowUps.map((prompt, index) => (
-                  <div key={`${index}-${prompt}`} className="flex gap-2 text-foreground/75">
-                    <span className="shrink-0 text-muted-foreground">Queued</span>
-                    <span className="min-w-0 truncate">{queuedFollowUpPreview(prompt)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         <PromptInput
           onSubmit={async ({ text, files }) => handleSubmit(text, files)}
           onKeyDownCapture={handleComposerKeyDownCapture}
-          className={cn(isLoading && "opacity-80")}
+          className={cn(
+            "rounded-2xl bg-sidebar text-sidebar-foreground [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border",
+            isLoading && "opacity-80",
+          )}
         >
+          {hasQueuedPrompts && (
+            <div className="w-full divide-y divide-sidebar-border/70 border-b border-sidebar-border/70">
+              {queuedPrompts.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex min-h-9 items-center justify-between gap-3 px-3 py-1.5 text-xs"
+                >
+                  <div className="flex min-w-0 items-center gap-2 text-sidebar-foreground/75">
+                    <AltArrowRight size={13} className="shrink-0 text-sidebar-foreground/45" />
+                    <span className="truncate">{queuedFollowUpPreview(item.prompt)}</span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span className="inline-flex h-6 items-center rounded-md px-1.5 font-medium text-sidebar-foreground/65">
+                      {item.label}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Clear queued prompts"
+                      title="Clear queued prompts"
+                      onClick={() => void clearPromptQueue()}
+                      className="inline-flex size-6 items-center justify-center rounded-md text-sidebar-foreground/45 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    >
+                      <TrashBinMinimalistic size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <PromptInputAttachments>
             {(attachment) => <PromptInputAttachment data={attachment} />}
           </PromptInputAttachments>
@@ -1136,7 +1200,7 @@ function ChatInputArea({
             <PromptInputTextarea
               id={composerTextareaId}
               data-chat-composer-textarea
-              placeholder="Describe what to design..."
+              placeholder={isLoading ? "Ask for follow-up changes" : "Describe what to design..."}
               className="min-h-[56px] max-h-[200px]"
               onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                 syncCaretPosition(event.currentTarget)
@@ -1186,17 +1250,44 @@ function ChatInputArea({
             {/* Right side - attachment menu + submit */}
             <div className="flex items-center gap-1">
               <PromptInputAddAttachmentButton />
+              {isLoading && hasSubmittableInput && (
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  onClick={() => {
+                    nextStreamingBehaviorRef.current = "steer"
+                  }}
+                  className="h-9 rounded-xl px-2.5 text-xs font-medium text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                >
+                  <AltArrowRight size={14} />
+                  Steer
+                </Button>
+              )}
               <PromptInputSubmit
-                disabled={!hasSubmittableInput}
-                aria-label={isLoading ? "Queue follow-up" : "Send message"}
+                type={isLoading ? "button" : "submit"}
+                onClick={
+                  isLoading
+                    ? (event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        void stopSession()
+                      }
+                    : undefined
+                }
+                disabled={isLoading ? false : !hasSubmittableInput}
+                aria-label={isLoading ? "Stop agent" : "Send message"}
                 className={cn(
-                  "size-9 rounded-xl transition-all duration-200",
-                  hasSubmittableInput
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "bg-muted text-muted-foreground",
+                  "size-9 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-200 hover:bg-primary/90 disabled:opacity-45 disabled:shadow-none",
+                  isLoading
+                    ? "pointer-events-auto cursor-pointer"
+                    : !hasSubmittableInput && "cursor-not-allowed",
                 )}
               >
-                {isLoading ? <ClockCircle size={16} /> : <ArrowUp size={16} />}
+                {isLoading ? (
+                  <Stop size={16} weight="Bold" className="text-primary-foreground" />
+                ) : (
+                  <ArrowUp size={16} weight="Linear" className="text-primary-foreground" />
+                )}
               </PromptInputSubmit>
             </div>
           </PromptInputFooter>
@@ -1275,19 +1366,11 @@ export function ChatView() {
     stopSession,
     createSession,
     forkSession,
-    revertToMessage,
-    unrevertSession,
   } = useSessions()
 
   const navigate = useNavigate()
 
-  // Timeline dialog state
-  const [timelineOpen, setTimelineOpen] = useState(false)
-
-  // Get revert state for current session
-  const sessionRevert = useSessionRevert(currentSessionId)
-  const queuedFollowUps = useQueuedFollowUps(currentSessionId)
-
+  const promptQueue = usePromptQueue(currentSessionId)
   // Handler for forking from a message
   const handleFork = useCallback(
     async (messageId: string) => {
@@ -1299,14 +1382,6 @@ export function ChatView() {
     [forkSession, navigate],
   )
 
-  // Handler for reverting to a message
-  const handleRevert = useCallback(
-    async (messageId: string) => {
-      await revertToMessage(messageId)
-    },
-    [revertToMessage],
-  )
-
   // Handler for copying message text
   const handleCopyText = useCallback(async (messageId: string) => {
     const state = useSessionStore.getState()
@@ -1315,14 +1390,7 @@ export function ChatView() {
       .filter((p) => p.type === "text" && p.text)
       .map((p) => p.text!)
       .join("")
-    const skillBlock = parseSkillBlock(rawText)
-    const text = skillBlock?.userMessage ?? rawText
-    await navigator.clipboard.writeText(text)
-  }, [])
-
-  // Handler for opening the timeline
-  const handleOpenTimeline = useCallback(() => {
-    setTimelineOpen(true)
+    await navigator.clipboard.writeText(getDisplayMessageText(rawText))
   }, [])
 
   // Check if there's a pending initial prompt (from landing page navigation)
@@ -1364,10 +1432,7 @@ export function ChatView() {
   return (
     <PromptInputProvider>
       <AttachmentBridgeConnector />
-      <div className="flex flex-col h-full">
-        {/* Revert banner - shown when session is in revert state */}
-        {sessionRevert && <RevertBanner onUnrevert={unrevertSession} />}
-
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-4">
@@ -1399,9 +1464,7 @@ export function ChatView() {
                     message={message}
                     index={index}
                     onFork={handleFork}
-                    onRevert={handleRevert}
                     onCopyText={handleCopyText}
-                    onOpenTimeline={handleOpenTimeline}
                     hideActions={hideInitialMessageActions && message.id === firstUserMessageId}
                   />
                 ) : (
@@ -1413,7 +1476,6 @@ export function ChatView() {
                     turnAssistantMessages={turnAssistantMessages}
                     onFork={handleFork}
                     onCopyText={handleCopyText}
-                    onOpenTimeline={handleOpenTimeline}
                   />
                 )
               })
@@ -1431,19 +1493,11 @@ export function ChatView() {
             isLoading={isLoading}
             sendMessage={sendMessage}
             stopSession={stopSession}
+            sessionId={currentSessionId}
             sessionCwd={currentSession?.cwd ?? null}
-            queuedFollowUps={queuedFollowUps}
+            promptQueue={promptQueue}
           />
         </div>
-
-        {/* Timeline dialog */}
-        <TimelineDialog
-          open={timelineOpen}
-          onOpenChange={setTimelineOpen}
-          messages={messages}
-          onFork={handleFork}
-          onRevert={handleRevert}
-        />
       </div>
     </PromptInputProvider>
   )

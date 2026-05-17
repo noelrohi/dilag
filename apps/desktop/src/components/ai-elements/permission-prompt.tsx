@@ -36,57 +36,57 @@ const PERMISSION_CONFIG: Record<
   bash: {
     icon: Monitor,
     label: "Shell Command",
-    colorClass: "text-amber-500",
+    colorClass: "text-warning",
   },
   edit: {
     icon: Pen,
     label: "Edit File",
-    colorClass: "text-blue-500",
+    colorClass: "text-info",
   },
   write: {
     icon: Pen,
     label: "Write File",
-    colorClass: "text-green-500",
+    colorClass: "text-success",
   },
   read: {
     icon: File,
     label: "Read File",
-    colorClass: "text-purple-500",
+    colorClass: "text-primary",
   },
   glob: {
     icon: FolderPathConnect,
     label: "Search Files",
-    colorClass: "text-cyan-500",
+    colorClass: "text-info",
   },
   grep: {
     icon: Magnifer,
     label: "Search Content",
-    colorClass: "text-cyan-500",
+    colorClass: "text-info",
   },
   list: {
     icon: FolderOpen,
     label: "List Directory",
-    colorClass: "text-purple-500",
+    colorClass: "text-primary",
   },
   webfetch: {
     icon: Global,
     label: "Fetch URL",
-    colorClass: "text-indigo-500",
+    colorClass: "text-info",
   },
   websearch: {
     icon: Global,
     label: "Web Search",
-    colorClass: "text-indigo-500",
+    colorClass: "text-info",
   },
   task: {
     icon: Bolt,
     label: "Run Task",
-    colorClass: "text-orange-500",
+    colorClass: "text-warning",
   },
   external_directory: {
     icon: FolderOpen,
     label: "External Directory",
-    colorClass: "text-rose-500",
+    colorClass: "text-destructive",
   },
 }
 
@@ -255,7 +255,7 @@ export function PermissionPrompt({ request, onReply, className }: PermissionProm
   const metadataDisplay = getMetadataDisplay()
 
   return (
-    <Alert className={cn("flex flex-col gap-3 border-amber-500/30 bg-amber-500/5", className)}>
+    <Alert className={cn("flex flex-col gap-3 border-warning/30 bg-warning/5", className)}>
       <Icon size={16} className={config.colorClass} />
 
       <div className="flex flex-col gap-2">

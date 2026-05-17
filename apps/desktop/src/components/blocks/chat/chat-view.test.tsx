@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import {
   parseMessageText,
   HighlightedText,
@@ -11,6 +12,8 @@ import {
   getChatActivityLabel,
   isAssistantMessageStreaming,
   parseSkillBlock,
+  getDisplayMessageText,
+  SkillInvocationBlock,
 } from "./chat-view"
 import type { MessagePart } from "@/context/session-store"
 
@@ -90,6 +93,55 @@ Build a landing page`
 
   it("returns null for ordinary user messages", () => {
     expect(parseSkillBlock("Build a landing page")).toBeNull()
+  })
+})
+
+describe("getDisplayMessageText", () => {
+  it("returns the visible user prompt without hidden context blocks", () => {
+    const input = `@home Polish this
+
+<screen_context name="Home">HTML</screen_context>
+
+<dilag_context target_screen_type="mobile">metadata</dilag_context>`
+
+    expect(getDisplayMessageText(input)).toBe("@home Polish this")
+  })
+
+  it("unwraps skill prompts before cleaning hidden context blocks", () => {
+    const input = `<skill name="web-design" location="/skills/web/SKILL.md">
+Skill instructions
+</skill>
+
+Build a landing page
+
+<screen_context name="Home">HTML</screen_context>`
+
+    expect(getDisplayMessageText(input)).toBe("Build a landing page")
+  })
+})
+
+describe("SkillInvocationBlock", () => {
+  it("uses the tool-row trigger treatment and theme-aware expanded panel", async () => {
+    render(
+      <SkillInvocationBlock
+        skill={{
+          name: "web-design",
+          location: "/skills/web-design/SKILL.md",
+          content: "# Web Design\n\nFollow the design rules.",
+        }}
+      />,
+    )
+
+    const triggerLabel = screen.getByText("Skill")
+    expect(triggerLabel).toHaveClass("font-medium")
+    expect(screen.getByText("web-design")).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: /Skill web-design/ }))
+
+    expect(screen.getAllByText("Skill").some((node) => node.classList.contains("text-muted-foreground"))).toBe(
+      true,
+    )
+    expect(await screen.findByText(/Follow the design rules/)).toBeInTheDocument()
   })
 })
 

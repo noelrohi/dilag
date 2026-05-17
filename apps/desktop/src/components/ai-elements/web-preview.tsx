@@ -546,7 +546,7 @@ export const WebPreviewConsole = ({
                   </span>
                 )}
                 {warnCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600">
+                  <span className="px-1.5 py-0.5 rounded bg-warning/10 text-warning">
                     {warnCount} warning{warnCount !== 1 && "s"}
                   </span>
                 )}
@@ -589,8 +589,8 @@ export const WebPreviewConsole = ({
                     className={cn(
                       "px-3 py-1.5 flex gap-2",
                       log.level === "error" && "bg-destructive/5 text-destructive",
-                      log.level === "warn" && "bg-yellow-500/5 text-yellow-600",
-                      log.level === "info" && "text-blue-600",
+                      log.level === "warn" && "bg-warning/5 text-warning",
+                      log.level === "info" && "text-info",
                     )}
                   >
                     <span className="text-muted-foreground shrink-0">

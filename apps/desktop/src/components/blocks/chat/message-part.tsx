@@ -1,3 +1,4 @@
+import { memo } from "react"
 import type { MessagePart as MessagePartType } from "@/context/session-store"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Reasoning, ReasoningTrigger, ReasoningContent } from "@/components/ai-elements/reasoning"
@@ -10,20 +11,20 @@ interface MessagePartProps {
   isStreaming?: boolean
 }
 
-export function MessagePart({ part, isStreaming = false }: MessagePartProps) {
+export const MessagePart = memo(function MessagePart({ part, isStreaming = false }: MessagePartProps) {
   return (
     <ErrorBoundary fallback={<InlineErrorFallback message="Failed to render message part" />}>
       <MessagePartContent part={part} isStreaming={isStreaming} />
     </ErrorBoundary>
   )
-}
+})
 
 function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
   switch (part.type) {
     case "text":
       if (!part.text?.trim()) return null
       return (
-        <div className="prose prose-sm prose-invert max-w-none">
+        <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
           <MessageResponse>{part.text}</MessageResponse>
         </div>
       )
@@ -31,7 +32,7 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
     case "reasoning":
       if (!part.text?.trim()) return null
       return (
-        <Reasoning isStreaming={isStreaming} defaultOpen={false} className="mb-0">
+        <Reasoning isStreaming={isStreaming} defaultOpen={isStreaming} className="mb-0">
           <ReasoningTrigger />
           <ReasoningContent>{part.text}</ReasoningContent>
         </Reasoning>
@@ -44,7 +45,7 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
       if (part.tool === "question" && part.state.status !== "completed") {
         return null
       }
-      return <ToolPart tool={part.tool} state={part.state} />
+      return <ToolPart tool={part.tool} state={part.state} isMessageComplete={!isStreaming} />
 
     case "file":
       if (!part.url) return null

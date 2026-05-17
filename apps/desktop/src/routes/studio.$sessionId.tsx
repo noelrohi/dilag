@@ -7,6 +7,7 @@ import { useSessionMutations } from "@/hooks/use-session-data"
 import { useSessionDesigns, designKeys } from "@/hooks/use-designs"
 import { usePngGenerator } from "@/hooks/use-png-generator"
 import { useChatWidth } from "@/hooks/use-chat-width"
+import { useInitialPromptDelivery } from "@/features/new-design/use-initial-prompt-delivery"
 import {
   useScreenPositions,
   useSessionStore,
@@ -29,15 +30,8 @@ import {
 import { ChatView } from "@/components/blocks/chat/chat-view"
 import { PageHeader, PageHeaderLeft, PageHeaderRight } from "@/components/blocks/layout/page-header"
 import { DesignCanvas } from "@/components/canvas"
-import {
-  Copy,
-  AltArrowDown,
-  BranchingPathsUp,
-  Pen,
-  Palette,
-  Play,
-  Download,
-} from "@solar-icons/react"
+import { Copy, BranchingPathsUp, Pen, Palette, Play, Download } from "@solar-icons/react"
+import { Ellipsis } from "lucide-react"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import {
   DropdownMenu,
@@ -89,6 +83,7 @@ export function StudioPageContent({
     selectSession,
     sendMessage,
     sessions,
+    currentSessionId,
     isServerReady,
     isLoading,
     isLoadingSessions,
@@ -118,6 +113,14 @@ export function StudioPageContent({
   useEffect(() => {
     selectSession(sessionId)
   }, [sessionId, selectSession])
+
+  useInitialPromptDelivery({
+    isServerReady,
+    routeSessionId: sessionId,
+    selectedSessionId: currentSessionId,
+    hasRouteSession: !!currentSession,
+    sendMessage,
+  })
 
   // Persist positions for newly discovered designs. Rendering does not depend on this:
   // DesignCanvas reconciles temporary positions while storage/session state hydrates.
@@ -223,21 +226,6 @@ export function StudioPageContent({
     setRenameOpen(false)
   }, [currentSession, newName, sessionId, updateSession, queryClient])
 
-  // Auto-send initial prompt if stored
-  useEffect(() => {
-    if (!isServerReady || !currentSession) return
-
-    const initialPrompt = localStorage.getItem("dilag-initial-prompt")
-    const initialFilesJson = localStorage.getItem("dilag-initial-files")
-    if (initialPrompt || initialFilesJson) {
-      localStorage.removeItem("dilag-initial-prompt")
-      localStorage.removeItem("dilag-initial-files")
-
-      const files = initialFilesJson ? JSON.parse(initialFilesJson) : undefined
-      sendMessage(initialPrompt || "", files)
-    }
-  }, [isServerReady, currentSession, sendMessage])
-
   // Keyboard shortcuts for selection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -276,7 +264,7 @@ export function StudioPageContent({
 
   return (
     <AttachmentBridgeProvider>
-      <div className="h-full flex flex-col bg-background overflow-hidden">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
         <PageHeader>
           <PageHeaderLeft>
             <span className="text-sm font-medium truncate max-w-[200px]">
@@ -284,8 +272,12 @@ export function StudioPageContent({
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center justify-center size-6 hover:bg-muted rounded">
-                  <AltArrowDown size={14} className="text-muted-foreground" />
+                <button
+                  type="button"
+                  aria-label="Session actions"
+                  className="flex items-center justify-center size-6 hover:bg-muted rounded"
+                >
+                  <Ellipsis size={16} className="text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -368,7 +360,7 @@ export function StudioPageContent({
         {/* Main content */}
         <ResizablePanelGroup
           direction="horizontal"
-          className="flex-1 overflow-hidden"
+          className="flex-1 min-h-0 overflow-hidden"
           onLayout={(sizes) => {
             if (sizes[0] > 0) {
               updateSize(sizes[0])
@@ -385,7 +377,7 @@ export function StudioPageContent({
             collapsedSize={0}
             className="overflow-hidden"
           >
-            <div className="h-full">
+            <div className="h-full min-h-0">
               <ChatView />
             </div>
           </ResizablePanel>
