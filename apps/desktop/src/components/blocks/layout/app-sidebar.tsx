@@ -643,7 +643,7 @@ function ProjectItem({
   onRemove: () => void
   onStartNewChat: () => void
   onRenameSession: (sessionId: string, name: string) => void
-  onDeleteSession: (sessionId: string) => void
+  onDeleteSession: (sessionId: string) => void | Promise<void>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -780,7 +780,17 @@ function ProjectItem({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onSelect={() => onDeleteSession(session.id)}
+                      onSelect={() => {
+                        void (async () => {
+                          await onDeleteSession(session.id)
+                          if (isSessionActive) {
+                            navigate({
+                              to: "/project/$projectId",
+                              params: { projectId: project.id },
+                            })
+                          }
+                        })()
+                      }}
                       className="text-destructive focus:text-destructive"
                     >
                       <TrashBinMinimalistic size={16} className="mr-2" />
