@@ -62,7 +62,9 @@ Dilag-owned app state lives under `~/.dilag/`; generated designs live in project
 └── skills/                        # Built-in Dilag design skills for Pi
 
 {project-cwd}/
-└── .designs/                      # Generated HTML screens
+├── .designs/                      # Canonical generated HTML screens
+│   └── **/*.html
+└── screens/                       # Legacy fallback display only
     └── **/*.html
 ```
 
@@ -96,7 +98,7 @@ This keeps chat rendering, tool rendering, project-file diff badges, and the que
 5. Prompts are sent through `bridge.agent.prompt()` with the selected model and optional image attachments.
 6. Pi streams normalized events back through `bridge.agent.onEvent()`.
 7. Pi tools write generated screens into `{project-cwd}/.designs/`.
-8. The design loader reads `{project-cwd}/.designs/**/*.html` from disk and updates the canvas.
+8. The design loader reads canonical `{project-cwd}/.designs/**/*.html` files, then legacy fallback `{project-cwd}/screens/**/*.html` files, and updates the canvas.
 
 ## Messages And Timeline
 
@@ -110,13 +112,9 @@ Tree navigation replaces the old revert/unrevert model. Timeline actions call `b
 
 ## Generated Output
 
-Generated screens are plain HTML files in the active project cwd:
+Generated screens are plain HTML files in the active project cwd. `.designs/**/*.html` is canonical for all new and updated output. `screens/**/*.html` is deprecated and loaded only as a legacy fallback so older or mistaken runs do not leave the canvas empty.
 
-```text
-{project-cwd}/.designs/**/*.html
-```
-
-The canvas preview is runtime-independent. If valid screen files exist, the renderer can display them regardless of which agent runtime produced them.
+The canvas preview is runtime-independent. If valid screen files exist in those display locations, the renderer can display them regardless of which agent runtime produced them.
 
 ## Quality Gates
 

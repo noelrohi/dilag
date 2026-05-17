@@ -24,7 +24,8 @@ import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { Type } from "typebox"
 import { CHANNELS } from "../shared/channels.js"
-import { getDilagSkillsDir, getPiAgentDir, resolveDesignAssetDir } from "./paths.js"
+import { DILAG_SYSTEM_PROMPT, syncDilagDesignSkills } from "./design-skill-pack.js"
+import { getDilagSkillsDir, getPiAgentDir } from "./paths.js"
 
 type EventSender = (channel: string, event: unknown) => void
 
@@ -100,19 +101,6 @@ const PREFERRED_DEFAULT_MODELS = [
 ]
 const DEBUG_PI_SMOKE = process.env.DILAG_DEBUG_PI === "1"
 
-const DILAG_SYSTEM_PROMPT = `You are Dilag, a UI design agent that produces production-grade HTML screen prototypes.
-
-## Workspace invariants
-- The current working directory is the active Dilag project directory. Treat it as the only workspace.
-- Create and edit design files inside this directory only. Do not write to the user home directory, parent directories, or absolute paths outside the current working directory.
-- Write every generated screen to .designs/<kebab-name>.html. Do not use screens/, the project root, or any other folder for generated screens.
-- The write tool creates parent directories automatically; do not run mkdir just to create .designs/.
-- Before editing an existing screen, inspect the project files and prefer .designs/*.html.
-
-## Design workflow
-- For new design requests, use the dilag-web-design or dilag-mobile-design skill when instructed by the user message.
-- Never inline full HTML in your assistant reply. Use write/edit, then summarize briefly.`
-
 let eventSender: EventSender | undefined
 let piModulePromise: Promise<typeof import("@earendil-works/pi-coding-agent")> | undefined
 
@@ -144,6 +132,7 @@ export async function stopAgentRuntime(): Promise<void> {
   await Promise.all(
     Array.from(sessions.values()).map(async (runtime) => {
       runtime.unsubscribe()
+      runtime.session.clearQueue()
       await runtime.session.abort().catch(() => undefined)
     }),
   )
@@ -308,6 +297,7 @@ export async function promptAgentSession(args: {
   images?: Array<{ type: "image"; data: string; mimeType: string }>
   model?: RequestedAgentModel | null
   thinkingLevel?: AgentThinkingLevel
+  streamingBehavior?: "steer" | "followUp"
 }): Promise<void> {
   const runtime = await ensureRuntimeSession(
     args.sessionID,
@@ -343,6 +333,7 @@ export async function promptAgentSession(args: {
     void runtime.session
       .prompt(args.text, {
         images: args.images,
+        streamingBehavior: args.streamingBehavior,
         preflightResult: (success) => {
           debugPiSmoke("prompt.preflight", { sessionID: runtime.id, success })
           if (!success) return
@@ -367,6 +358,7 @@ export async function promptAgentSession(args: {
 
 export async function abortAgentSession(args: { sessionID: string }): Promise<void> {
   const runtime = getRuntimeSession(args.sessionID)
+  runtime.session.clearQueue()
   await runtime.session.abort()
   emitSessionIdle(runtime.id)
 }
@@ -531,7 +523,7 @@ async function createPiSession(
   requestedModel?: RequestedAgentModel | null,
   thinkingLevel?: AgentThinkingLevel,
 ) {
-  await syncDilagSkills()
+  await syncDilagDesignSkills()
   const pi = await loadPi()
   const registry = await createModelRegistry()
   const model = requestedModel
@@ -564,47 +556,6 @@ async function createPiSession(
     uiContext: createBridgeUiContext(),
   })
   return result
-}
-
-async function syncDilagSkills(): Promise<void> {
-  const assetDir = resolveDesignAssetDir()
-  const skillsDir = getDilagSkillsDir()
-  const mobileSkillDir = path.join(skillsDir, "dilag-mobile-design")
-  const webSkillDir = path.join(skillsDir, "dilag-web-design")
-
-  const [common, mobile, web] = await Promise.all([
-    fsp.readFile(path.join(assetDir, "designer-common.md"), "utf8"),
-    fsp.readFile(path.join(assetDir, "mobile-designer-prompt.md"), "utf8"),
-    fsp.readFile(path.join(assetDir, "web-designer-prompt.md"), "utf8"),
-  ])
-
-  await Promise.all([
-    fsp.mkdir(mobileSkillDir, { recursive: true }),
-    fsp.mkdir(webSkillDir, { recursive: true }),
-  ])
-
-  await Promise.all([
-    fsp.writeFile(
-      path.join(mobileSkillDir, "SKILL.md"),
-      renderDesignSkill(mobile, common).replace("name: mobile-design", "name: dilag-mobile-design"),
-    ),
-    fsp.writeFile(
-      path.join(webSkillDir, "SKILL.md"),
-      renderDesignSkill(web, common).replace("name: web-design", "name: dilag-web-design"),
-    ),
-  ])
-}
-
-function renderDesignSkill(template: string, common: string): string {
-  const fallback = "(none specified - use your judgment based on the user's request)"
-  const brand = process.env.DILAG_BRAND_TOKENS?.trim() || fallback
-  const domain = process.env.DILAG_DOMAIN_HINT?.trim() || fallback
-  const refs = process.env.DILAG_REFERENCE_URLS?.trim() || fallback
-  return template
-    .replace("{{COMMON}}", common)
-    .replace("{{BRAND_TOKENS}}", brand)
-    .replace("{{DOMAIN_HINT}}", domain)
-    .replace("{{REFERENCE_URLS}}", refs)
 }
 
 function bindRuntimeSession(session: AgentSession, cwd: string): RuntimeSession {
@@ -846,6 +797,11 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
     const phase =
       event.type === "message_start" ? "start" : event.type === "message_end" ? "end" : "update"
     emitMessage(runtime, event.message as PiMessage, phase)
+    return
+  }
+
+  if (event.type === "queue_update") {
+    emitPromptQueueUpdate(runtime.id, event.steering, event.followUp)
     return
   }
 
@@ -1210,6 +1166,21 @@ function humanizeProviderName(id: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
+}
+
+function emitPromptQueueUpdate(
+  sessionID: string,
+  steering: readonly string[],
+  followUp: readonly string[],
+) {
+  emitAgentEvent({
+    type: "prompt.queue.updated",
+    properties: {
+      sessionID,
+      steering: [...steering],
+      followUp: [...followUp],
+    },
+  })
 }
 
 function emitSessionStatus(sessionID: string, status: "running" | "idle" | "error") {

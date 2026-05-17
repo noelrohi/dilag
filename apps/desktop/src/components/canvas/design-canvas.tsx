@@ -17,28 +17,20 @@ import { GhostScreenNode } from "./ghost-screen-node"
 import { CanvasControls } from "./canvas-controls"
 import type { DesignFile } from "@/hooks/use-designs"
 import type { ElementInfo } from "@/context/element-selection-store"
+import {
+  getGhostScreenPosition,
+  reconcileScreenPositions,
+  type ScreenPosition,
+} from "@/lib/screen-layout"
 import { cn } from "@/lib/utils"
+
+export type { ScreenPosition } from "@/lib/screen-layout"
 
 // Register custom node types
 const nodeTypes = {
   screen: ScreenNode,
   "ghost-screen": GhostScreenNode,
 }
-
-export interface ScreenPosition {
-  id: string
-  x: number
-  y: number
-}
-
-// Layout constants for ghost node positioning (must match studio route)
-const MOBILE_WIDTH = 280
-const MOBILE_HEIGHT = 584
-const WEB_WIDTH = 640
-const WEB_HEIGHT = 400
-const GAP = 60
-const MOBILE_COLUMNS = 4
-const WEB_COLUMNS = 2
 
 interface DesignCanvasProps {
   designs: DesignFile[]
@@ -72,23 +64,32 @@ function DesignCanvasInner({
 }: DesignCanvasProps) {
   const { getNodes } = useReactFlow()
 
-  // Convert ScreenPosition[] to React Flow nodes
+  // Convert designs and persisted ScreenPosition[] to React Flow nodes. The
+  // layout module reconciles missing persisted positions so available HTML
+  // screens still render while stored positions hydrate after reopening a session.
   const initialNodes = useMemo((): Node[] => {
-    const screenNodes = positions
-      .map((pos) => {
-        const design = designs.find((d) => d.filename === pos.id)
+    const renderablePositions = reconcileScreenPositions({
+      designs,
+      persistedPositions: positions,
+      platform,
+    })
+    const designById = new Map(designs.map((design) => [design.filename, design]))
+
+    const screenNodes = renderablePositions
+      .map((screenPosition) => {
+        const design = designById.get(screenPosition.id)
         if (!design) return null
 
         return {
-          id: pos.id,
+          id: screenPosition.id,
           type: "screen",
-          position: { x: pos.x, y: pos.y },
-          selected: selectedIds?.has(pos.id) ?? false,
+          position: { x: screenPosition.x, y: screenPosition.y },
+          selected: selectedIds?.has(screenPosition.id) ?? false,
           data: {
             design,
             platform,
             sessionCwd,
-            onDelete: onDeleteScreen ? () => onDeleteScreen(pos.id) : undefined,
+            onDelete: onDeleteScreen ? () => onDeleteScreen(screenPosition.id) : undefined,
             onAddToComposer: onCaptureScreen ? () => onCaptureScreen(design) : undefined,
             onEditElementWithAI: onEditElementWithAI
               ? (element: ElementInfo) => onEditElementWithAI(design, element)
@@ -96,31 +97,14 @@ function DesignCanvasInner({
           } as ScreenNodeData,
         } as Node
       })
-      .filter((n): n is Node => n !== null)
+      .filter((node): node is Node => node !== null)
 
-    // Add a ghost placeholder node when the AI is actively generating
+    // Add a ghost placeholder node when the AI is actively generating.
     if (isLoading) {
-      const isMobile = platform === "mobile"
-      const width = isMobile ? MOBILE_WIDTH : WEB_WIDTH
-      const height = isMobile ? MOBILE_HEIGHT : WEB_HEIGHT
-      const columns = isMobile ? MOBILE_COLUMNS : WEB_COLUMNS
-
-      const count = screenNodes.length
-      const col = count % columns
-      const row = Math.floor(count / columns)
-
-      // Find the start position from existing nodes, or use defaults
-      const startX =
-        screenNodes.length > 0 ? Math.min(...screenNodes.map((n) => n.position.x)) : 100
-      const startY = screenNodes.length > 0 ? Math.min(...screenNodes.map((n) => n.position.y)) : 40
-
       screenNodes.push({
         id: "__ghost__",
         type: "ghost-screen",
-        position: {
-          x: startX + col * (width + GAP),
-          y: startY + row * (height + GAP),
-        },
+        position: getGhostScreenPosition({ screenPositions: renderablePositions, platform }),
         selectable: false,
         draggable: false,
         data: { platform },
@@ -149,16 +133,18 @@ function DesignCanvasInner({
   const prevNodeKeyRef = useRef<string>("")
 
   useEffect(() => {
-    // Include modified_at timestamps to detect content changes, not just add/remove
+    // Include positions and modified_at timestamps to detect placement hydration,
+    // content changes, and add/remove changes.
     const nodeKey = initialNodes
       .map((n) => {
-        if (n.type === "ghost-screen") return `${n.id}:ghost`
-        return `${n.id}:${(n.data as ScreenNodeData).design.modified_at}`
+        const positionKey = `${n.position.x}:${n.position.y}`
+        if (n.type === "ghost-screen") return `${n.id}:ghost:${positionKey}`
+        return `${n.id}:${positionKey}:${(n.data as ScreenNodeData).design.modified_at}`
       })
       .sort()
       .join(",")
 
-    // Sync when nodes change (add/remove) OR when content changes (edit)
+    // Sync when nodes change (add/remove), positions hydrate, or content changes (edit).
     if (nodeKey !== prevNodeKeyRef.current) {
       prevNodeKeyRef.current = nodeKey
       isExternalSyncRef.current = true

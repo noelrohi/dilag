@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { bridge } from "@/lib/bridge"
 import { useSessionStore } from "@/context/session-store"
+import { isGeneratedScreenFile } from "@dilag/desktop-bridge"
 
 export type ViolationRule =
   | "keyframes"
@@ -30,21 +31,8 @@ async function loadSessionDesigns(sessionCwd: string): Promise<DesignFile[]> {
   return bridge.designs.loadForSession({ sessionCwd })
 }
 
-function normalizePath(path: string): string {
-  return path.replace(/\\/g, "/").replace(/\/$/, "")
-}
-
 export function isSessionDesignFileChange(file: string, sessionCwd: string): boolean {
-  const normalizedFile = normalizePath(file)
-  const normalizedCwd = normalizePath(sessionCwd)
-  const relativePath = normalizedFile.startsWith(normalizedCwd + "/")
-    ? normalizedFile.slice(normalizedCwd.length + 1)
-    : normalizedFile
-
-  return (
-    relativePath.endsWith(".html") &&
-    relativePath.startsWith(".designs/")
-  )
+  return isGeneratedScreenFile(file, sessionCwd)
 }
 
 /**

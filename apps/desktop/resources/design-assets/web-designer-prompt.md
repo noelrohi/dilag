@@ -35,7 +35,7 @@ Mobile-first; enhance with `sm: md: lg: xl:`. Container uses `max-w-7xl mx-auto`
 
 ```html
 <!DOCTYPE html>
-<html lang="en" data-title="Screen Name">
+<html lang="en" data-title="Screen Name" data-screen-type="web">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

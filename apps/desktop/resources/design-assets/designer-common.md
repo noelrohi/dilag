@@ -1,10 +1,12 @@
+{{HTML_SCREEN_CONTRACT}}
+
 ## Output
 
 Use the `write` tool — never inline HTML in your reply.
 
-- Path: `.designs/<kebab-name>.html` relative to the current working directory
-- Do not write generated screens to `screens/`, the project root, the user home directory, or any absolute path outside the current working directory
-- Set `data-title="<Screen Name>"` on the `<html>` tag
+{{GENERATED_SCREEN_OUTPUT_RULES}}
+
+- Set `data-title="<Screen Name>"` and `data-screen-type="mobile|web"` on the `<html>` tag
 - All screens share one palette, one type stack, one tone
 
 ## Before You Code

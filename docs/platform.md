@@ -7,7 +7,7 @@ Dilag is an AI-powered design studio for mobile and web apps. The desktop app tu
 A Dilag project is a local folder registered in SQLite with:
 
 - project metadata in `~/.dilag/state.sqlite`
-- generated screen files in `{project-cwd}/.designs/**/*.html`
+- canonical generated screen files in `{project-cwd}/.designs/**/*.html` (`screens/**/*.html` is legacy fallback display only)
 - chat history backed by the embedded agent runtime under `~/.dilag/pi`
 - Dilag design skills loaded from `~/.dilag/skills`
 
@@ -35,7 +35,7 @@ Web:          Next.js 16 marketing site
 4. Dilag creates or selects a project cwd and starts an agent session there.
 5. The first prompt activates the matching design skill.
 6. The agent writes HTML screens into `{project-cwd}/.designs/`.
-7. The canvas renders generated screens.
+7. The canvas renders `.designs/**/*.html`, plus legacy `screens/**/*.html` fallback files when present.
 8. User continues iterating through chat in Studio.
 
 ## Runtime Flow
@@ -46,7 +46,7 @@ Web:          Next.js 16 marketing site
 4. The Electron host creates or opens an agent session in the selected project cwd.
 5. First prompt is prefixed with `/skill:dilag-web-design` or `/skill:dilag-mobile-design`.
 6. Agent tools write HTML into `{project-cwd}/.designs/`.
-7. The design loader reads generated files and refreshes the canvas.
+7. The design loader reads canonical `.designs/**/*.html` files, falls back to legacy `screens/**/*.html` display files, and refreshes the canvas.
 8. Follow-up chat prompts update or add screens in the same project cwd.
 
 ## Agent Bridge
@@ -99,13 +99,9 @@ Runtime permission prompts are intentionally skipped for the Pi path. Tool scope
 
 ## Generated Output
 
-Generated screens are plain HTML files in the active project cwd:
+Generated screens are plain HTML files in the active project cwd. `.designs/**/*.html` is canonical for all new and updated output. `screens/**/*.html` is deprecated and loaded only as a legacy fallback.
 
-```text
-{project-cwd}/.designs/**/*.html
-```
-
-The preview system is runtime-independent: if the files exist and validate, the canvas can render them.
+The preview system is runtime-independent: if files exist in those display locations and validate, the canvas can render them.
 
 ## Session Tree
 
@@ -123,6 +119,7 @@ Use this checklist when validating the desktop app:
 - Studio loads the created session and existing messages.
 - A prompt streams assistant output and tool activity.
 - Generated `.designs/**/*.html` files appear and render on the canvas.
+- Legacy `screens/**/*.html` files still render as fallback display files.
 - Follow-up chat updates or adds screens.
 - Question prompts can be answered or rejected.
 - Abort stops an in-flight prompt cleanly.
