@@ -65,7 +65,7 @@ function HomePage() {
 
   return (
     <div className="h-full flex flex-col bg-background relative overflow-hidden">
-      <PageHeader />
+      <PageHeader className="border-b-0" />
       <main className="flex-1 overflow-auto px-8 py-10">
         <div className="mx-auto flex min-h-full w-full max-w-5xl items-center">
           <div className="grid w-full gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
@@ -180,7 +180,7 @@ function HomePage() {
 function HomeLoadingState() {
   return (
     <div className="h-full flex flex-col bg-background">
-      <PageHeader />
+      <PageHeader className="border-b-0" />
       <main className="flex-1 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
           <DilagIcon animated className="size-9 text-primary" />

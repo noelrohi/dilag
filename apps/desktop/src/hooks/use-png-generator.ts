@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import { bridge } from "@/lib/bridge"
 import { generatePngToPath } from "@/lib/design-export"
 import type { DesignFile } from "./use-designs"
+import { getCanonicalGeneratedScreenPath } from "@dilag/desktop-bridge"
 
 /**
  * Auto-generates PNG assets for designs when HTML is newer than PNG
@@ -22,7 +23,9 @@ export function usePngGenerator(
 
     const generate = async (design: DesignFile) => {
       const basePath = design.file_path?.replace(/\.html$/, ".png")
-      const pngPath = basePath ?? `${sessionCwd}/.designs/${design.filename.replace(".html", ".png")}`
+      const pngPath =
+        basePath ??
+        getCanonicalGeneratedScreenPath(sessionCwd, design.filename.replace(".html", ".png"))
 
       // Skip if already generating (mark immediately to prevent race condition)
       if (generating.current.has(pngPath)) return

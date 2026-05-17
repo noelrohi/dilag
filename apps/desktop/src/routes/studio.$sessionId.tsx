@@ -52,6 +52,8 @@ import { AttachmentBridgeProvider } from "@/context/attachment-bridge"
 import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context"
 import { toast } from "sonner"
 import { bridge } from "@/lib/bridge"
+import { findMissingScreenPositions } from "@/lib/screen-layout"
+import { getCanonicalGeneratedScreenPath } from "@dilag/desktop-bridge"
 
 export const Route = createFileRoute("/studio/$sessionId")({
   component: StudioRoutePage,
@@ -61,17 +63,6 @@ function StudioRoutePage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" })
   return <StudioPageContent sessionId={sessionId} />
 }
-
-// Layout constants
-const MOBILE_WIDTH = 280
-const MOBILE_HEIGHT = 584
-const WEB_WIDTH = 640
-const WEB_HEIGHT = 400
-const GAP = 60
-const START_X = 100
-const START_Y = 40
-const MOBILE_COLUMNS = 4
-const WEB_COLUMNS = 2
 
 export function StudioPageContent({
   sessionId,
@@ -128,34 +119,19 @@ export function StudioPageContent({
     selectSession(sessionId)
   }, [sessionId, selectSession])
 
-  // Sync screen positions when designs change
+  // Persist positions for newly discovered designs. Rendering does not depend on this:
+  // DesignCanvas reconciles temporary positions while storage/session state hydrates.
   useEffect(() => {
     if (designs.length === 0) return
 
-    const existingIds = screenPositions.map((p) => p.id)
-    const newDesigns = designs.filter((d) => !existingIds.includes(d.filename))
+    const missingPositions = findMissingScreenPositions({
+      designs,
+      persistedPositions: screenPositions,
+      platform: currentSession?.platform ?? "web",
+    })
 
-    if (newDesigns.length > 0) {
-      // Position new screens in grid after existing ones
-      const startIndex = existingIds.length
-      const isMobile = currentSession?.platform === "mobile"
-      const width = isMobile ? MOBILE_WIDTH : WEB_WIDTH
-      const height = isMobile ? MOBILE_HEIGHT : WEB_HEIGHT
-      const columns = isMobile ? MOBILE_COLUMNS : WEB_COLUMNS
-
-      const newPositions = newDesigns.map((design, i) => {
-        const index = startIndex + i
-        const col = index % columns
-        const row = Math.floor(index / columns)
-
-        return {
-          id: design.filename,
-          x: START_X + col * (width + GAP),
-          y: START_Y + row * (height + GAP),
-        }
-      })
-
-      setScreenPositions(sessionId, [...screenPositions, ...newPositions])
+    if (missingPositions.length > 0) {
+      setScreenPositions(sessionId, [...screenPositions, ...missingPositions])
     }
   }, [designs, screenPositions, sessionId, setScreenPositions, currentSession?.platform])
 
@@ -170,7 +146,9 @@ export function StudioPageContent({
     if (!deleteTarget || !currentSession?.cwd) return
 
     const design = designs.find((item) => item.filename === deleteTarget.filename)
-    const filePath = design?.file_path ?? `${currentSession.cwd}/.designs/${deleteTarget.filename}`
+    const filePath =
+      design?.file_path ??
+      getCanonicalGeneratedScreenPath(currentSession.cwd, deleteTarget.filename)
     try {
       await bridge.designs.delete({ filePath })
       // Remove from positions

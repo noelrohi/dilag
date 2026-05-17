@@ -28,7 +28,6 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
-  SidebarTrigger,
   useSidebar,
 } from "@dilag/ui/sidebar"
 import {
@@ -40,8 +39,9 @@ import {
 } from "@dilag/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
 import { AuthSettings } from "@/components/blocks/auth/auth-settings"
-import { useProjectMutations, useProjectsList, getDefaultProject } from "@/hooks/use-projects"
+import { useProjectMutations, useProjectsList } from "@/hooks/use-projects"
 import { useSessions } from "@/hooks/use-sessions"
+import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
 import { bridge } from "@/lib/bridge"
 import type { ProjectMeta } from "@dilag/desktop-bridge"
 import type { SessionMeta } from "@/context/session-store"
@@ -65,10 +65,10 @@ function formatRelativeTime(dateStr: string): string {
 
 export function AppSidebar() {
   const location = useLocation()
-  const navigate = useNavigate()
-  const { sessions, deleteSession, createSessionInProject } = useSessions()
+  const { sessions, deleteSession } = useSessions()
   const { data: projects = [] } = useProjectsList()
   const { createProject, addExistingProject, updateProject, removeProject } = useProjectMutations()
+  const { openNewDesign, openProjectComposer } = useNewDesignFlow({ projects })
 
   const pinnedProjects = useMemo(() => projects.filter((project) => project.pinned), [projects])
   const regularProjects = useMemo(() => projects.filter((project) => !project.pinned), [projects])
@@ -92,26 +92,21 @@ export function AppSidebar() {
   }, [sessions])
 
   const handleNewDesign = () => {
-    const project = getDefaultProject(projects)
-    if (project) {
-      navigate({ to: "/project/$projectId", params: { projectId: project.id } })
-    } else {
-      navigate({ to: "/" })
-    }
+    openNewDesign()
   }
 
   const handleStartFromScratch = async () => {
     const name = window.prompt("Project name")?.trim()
     if (!name) return
     const project = await createProject({ name })
-    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
+    openProjectComposer(project.id)
   }
 
   const handleUseExistingFolder = async () => {
     const folder = await bridge.dialog.openDirectory()
     if (!folder) return
     const project = await addExistingProject({ path: folder })
-    navigate({ to: "/project/$projectId", params: { projectId: project.id } })
+    openProjectComposer(project.id)
   }
 
   const handleCollapseAll = () => {
@@ -120,30 +115,24 @@ export function AppSidebar() {
     })
   }
 
-  const handleStartNewChat = async (project: ProjectMeta) => {
-    const sessionId = await createSessionInProject(project)
-    if (!sessionId) return
-    navigate({
-      to: "/project/$projectId/session/$sessionId",
-      params: { projectId: project.id, sessionId },
-    })
+  const handleStartNewChat = (project: ProjectMeta) => {
+    openProjectComposer(project.id)
   }
 
   return (
     <Sidebar collapsible="offcanvas" variant="inset" className="group/sidebar-resizable">
-      <SidebarHeader className="h-[48px] pb-1 flex-row items-center justify-end px-3">
-        <SidebarTrigger
-          className="size-7 rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          aria-label="Collapse sidebar"
-        />
-      </SidebarHeader>
+      <SidebarHeader className="h-[44px] flex-row items-center px-3 py-0" />
 
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               <SidebarMenuItem>
-                <SidebarMenuButton className="h-8 text-[15px]" onClick={handleNewDesign} tooltip="New design">
+                <SidebarMenuButton
+                  className="h-8 text-[15px]"
+                  onClick={handleNewDesign}
+                  tooltip="New design"
+                >
                   <AddSquare size={17} />
                   <span>New design</span>
                 </SidebarMenuButton>
@@ -301,33 +290,36 @@ export function AppSidebar() {
 function SidebarResizeHandle() {
   const { state } = useSidebar()
 
-  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (state === "collapsed") return
-    event.preventDefault()
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (state === "collapsed") return
+      event.preventDefault()
 
-    const wrapper = event.currentTarget.closest<HTMLElement>('[data-slot="sidebar-wrapper"]')
-    if (!wrapper) return
+      const wrapper = event.currentTarget.closest<HTMLElement>('[data-slot="sidebar-wrapper"]')
+      if (!wrapper) return
 
-    const minWidth = 240
-    const maxWidth = 420
+      const minWidth = 240
+      const maxWidth = 420
 
-    const handlePointerMove = (moveEvent: PointerEvent) => {
-      const nextWidth = Math.min(maxWidth, Math.max(minWidth, moveEvent.clientX))
-      wrapper.style.setProperty("--sidebar-width", `${nextWidth}px`)
-    }
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        const nextWidth = Math.min(maxWidth, Math.max(minWidth, moveEvent.clientX))
+        wrapper.style.setProperty("--sidebar-width", `${nextWidth}px`)
+      }
 
-    const handlePointerUp = () => {
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      document.body.style.cursor = ""
-      document.body.style.userSelect = ""
-    }
+      const handlePointerUp = () => {
+        window.removeEventListener("pointermove", handlePointerMove)
+        window.removeEventListener("pointerup", handlePointerUp)
+        document.body.style.cursor = ""
+        document.body.style.userSelect = ""
+      }
 
-    document.body.style.cursor = "col-resize"
-    document.body.style.userSelect = "none"
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp, { once: true })
-  }, [state])
+      document.body.style.cursor = "col-resize"
+      document.body.style.userSelect = "none"
+      window.addEventListener("pointermove", handlePointerMove)
+      window.addEventListener("pointerup", handlePointerUp, { once: true })
+    },
+    [state],
+  )
 
   return (
     <div
