@@ -23,13 +23,9 @@ import { useModelStore } from "@/hooks/use-models"
 import { useAgentStore } from "@/hooks/use-agents"
 import { withErrorHandler } from "@/lib/async-utils"
 import { bridge } from "@/lib/bridge"
-import type {
-  AgentImageContent as BridgeAgentImageContent,
-  AgentMessage as BridgeAgentMessage,
-  ProjectMeta,
-} from "@dilag/desktop-bridge"
+import type { AgentMessage as BridgeAgentMessage, ProjectMeta } from "@dilag/desktop-bridge"
 import type { FileUIPart } from "ai"
-import { formatElementWithAncestry, minifyHtml } from "@/lib/html-utils"
+import { deliverDilagPrompt } from "@/lib/prompt-delivery"
 
 // Convert bridge message parts to our internal format.
 function convertPart(
@@ -578,121 +574,28 @@ export function useSessions() {
         )
         console.log("[sendMessage] directory:", directory)
 
-        // On first message, prepend skill instruction
-        const platform = currentSession.platform ?? "web"
-        const isFirstMessage = messages.length === 0
-        const skillHint = isFirstMessage ? `/skill:dilag-${platform}-design ` : ""
-
-        let promptText = skillHint + content
-
-        // HTML screen references: prepend @ScreenName inline, append HTML context at end
-        const screenContexts: string[] = []
-        const screenNames: string[] = []
-        const fileNotes: string[] = []
-        const images: BridgeAgentImageContent[] = []
-
-        if (files && files.length > 0) {
-          for (const file of files) {
-            if (file.url) {
-              // HTML files: collect for inline @name prefix and hidden context block
-              if (file.mediaType === "text/html") {
-                const base64Match = file.url.match(/^data:text\/html;base64,(.+)$/)
-                if (base64Match) {
-                  try {
-                    let htmlContent = decodeURIComponent(escape(atob(base64Match[1])))
-                    const screenName = file.filename?.replace(".html", "") || "Screen"
-
-                    // Check for element selection marker
-                    const elementMarkerMatch = htmlContent.match(
-                      /<!-- dilag-element-selection: ({.*?}) -->/,
-                    )
-                    let elementInfo: {
-                      selector: string
-                      html: string
-                      tagName: string
-                      ancestorPath?: string[]
-                    } | null = null
-
-                    if (elementMarkerMatch) {
-                      try {
-                        elementInfo = JSON.parse(elementMarkerMatch[1])
-                        // Remove the marker from the HTML content
-                        htmlContent = htmlContent.replace(elementMarkerMatch[0], "").trim()
-                      } catch (e) {
-                        console.error("[sendMessage] Failed to parse element selection marker:", e)
-                      }
-                    }
-
-                    // Format with or without element context
-                    if (elementInfo) {
-                      // For element editing: compact format only, no full HTML
-                      // AI can read the screen file if it needs full context
-                      const compactElement = formatElementWithAncestry(
-                        elementInfo.html,
-                        elementInfo.ancestorPath,
-                      )
-                      screenNames.push(`${screenName} (${elementInfo.tagName})`)
-                      screenContexts.push(
-                        `<edit_element screen="${screenName}" selector="${elementInfo.selector}">\n` +
-                          `${compactElement}\n` +
-                          `</edit_element>`,
-                      )
-                    } else {
-                      // For full screen reference: minify HTML
-                      const minifiedHtml = minifyHtml(htmlContent)
-                      screenNames.push(screenName)
-                      screenContexts.push(
-                        `<screen_context name="${screenName}">${minifiedHtml}</screen_context>`,
-                      )
-                    }
-                  } catch (e) {
-                    console.error("[sendMessage] Failed to decode HTML content:", e)
-                  }
-                }
-              } else if (file.mediaType?.startsWith("image/")) {
-                const dataUrlMatch = file.url.match(/^data:([^;,]+);base64,(.+)$/)
-                if (dataUrlMatch) {
-                  images.push({
-                    type: "image",
-                    mimeType: dataUrlMatch[1] || file.mediaType,
-                    data: dataUrlMatch[2],
-                  })
-                } else if (file.filename) {
-                  fileNotes.push(`Attached image not inlined: ${file.filename}`)
-                }
-              } else if (file.filename) {
-                fileNotes.push(`Attached file not inlined: ${file.filename}`)
-              }
-            }
-          }
-        }
-
-        // Update the text part with inline @names and append screen context
-        if (screenNames.length > 0) {
-          const inlineRefs = screenNames.map((name) => `@${name}`).join(" ")
-          const contextBlock = screenContexts.join("\n\n")
-          promptText = `${skillHint}${inlineRefs} ${content}\n\n${contextBlock}`
-        }
-
-        if (fileNotes.length > 0) {
-          promptText += `\n\n${fileNotes.join("\n")}`
-        }
-
         console.log("[sendMessage] calling bridge.agent.prompt with:", {
           sessionID: currentSessionId,
           agent: agentName,
           model: selectedModel,
           thinkingLevel: selectedThinkingLevel,
         })
-        await bridge.agent.prompt({
-          sessionID: currentSessionId,
-          directory,
-          text: promptText,
-          images,
+        const delivery = await deliverDilagPrompt({
+          session: {
+            id: currentSessionId,
+            cwd: directory,
+            platform: currentSession.platform ?? "web",
+          },
+          content,
+          files,
+          isFirstMessage: messages.length === 0,
+          sessionStatus,
+          hasRunningTools,
           model: selectedModel,
           thinkingLevel: selectedThinkingLevel,
         })
-        console.log("[sendMessage] prompt accepted")
+        console.log("[sendMessage] prompt accepted", delivery)
+        return delivery
       } catch (err) {
         if (!isMountedRef.current) return
         setError(err instanceof Error ? err.message : "Failed to send message")
@@ -701,7 +604,16 @@ export function useSessions() {
         throw err
       }
     },
-    [currentSessionId, currentSession, messages, setError, setSessionStatus, setSessionError],
+    [
+      currentSessionId,
+      currentSession,
+      messages,
+      sessionStatus,
+      hasRunningTools,
+      setError,
+      setSessionStatus,
+      setSessionError,
+    ],
   )
 
   const toggleFavorite = useCallback(

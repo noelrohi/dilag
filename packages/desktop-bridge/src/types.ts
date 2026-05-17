@@ -140,6 +140,12 @@ export interface AgentImageContent {
   mimeType: string
 }
 
+export interface AgentPromptQueueState {
+  sessionID: string
+  steering: string[]
+  followUp: string[]
+}
+
 export interface AgentMessagePart {
   id: string
   messageID: string

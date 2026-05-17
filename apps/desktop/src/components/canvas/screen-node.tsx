@@ -32,6 +32,7 @@ import {
 import { ElementHighlight } from "./element-highlight"
 import { ElementSelectionMenu } from "./element-selection-menu"
 import { getMobileViewportSize } from "@/lib/design-viewport"
+import { getCanonicalGeneratedScreenPath } from "@dilag/desktop-bridge"
 
 // Constants for frame sizes
 const WEB_WIDTH = 640
@@ -87,7 +88,9 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
     return injectInspector(withScrollbar)
   }, [design.html])
 
-  const filePath = design.file_path ?? (sessionCwd ? `${sessionCwd}/.designs/${design.filename}` : undefined)
+  const filePath =
+    design.file_path ??
+    (sessionCwd ? getCanonicalGeneratedScreenPath(sessionCwd, design.filename) : undefined)
 
   // Handle messages from iframe
   useEffect(() => {

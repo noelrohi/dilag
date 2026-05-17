@@ -15,11 +15,12 @@ import { PageHeader } from "@/components/blocks/layout/page-header"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
+import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
 import { useProjectMutations, useProjectsList } from "@/hooks/use-projects"
 import { useSessions } from "@/hooks/use-sessions"
 import { cn } from "@/lib/utils"
 import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react"
-import { createFileRoute, Outlet, useMatch, useNavigate, useParams } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useMatch, useParams } from "@tanstack/react-router"
 import type { FileUIPart } from "ai"
 import { useEffect } from "react"
 
@@ -33,36 +34,25 @@ function ProjectComposerPage() {
     from: "/project/$projectId/session/$sessionId",
     shouldThrow: false,
   })
-  const navigate = useNavigate()
   const { data: projects = [], isLoading: isLoadingProjects } = useProjectsList()
   const { updateProject, touchProject } = useProjectMutations()
   const { createSessionInProject, isServerReady } = useSessions()
+  const { rememberProject, submitProjectComposer } = useNewDesignFlow({
+    projects,
+    touchProject,
+    createSessionInProject,
+  })
   const project = projects.find((item) => item.id === projectId)
 
   useEffect(() => {
     if (project) {
-      localStorage.setItem("dilag-last-project-id", project.id)
+      rememberProject(project.id)
     }
-  }, [project])
+  }, [project, rememberProject])
 
   const handleSubmit = async (text: string, files?: FileUIPart[]) => {
-    if (!project || (!text.trim() && (!files || files.length === 0))) return
-    localStorage.setItem("dilag-initial-prompt", text)
-    localStorage.setItem("dilag-initial-platform", project.platform)
-    if (files && files.length > 0) {
-      localStorage.setItem("dilag-initial-files", JSON.stringify(files))
-    } else {
-      localStorage.removeItem("dilag-initial-files")
-    }
-
-    await touchProject(project.id)
-    const sessionId = await createSessionInProject(project)
-    if (sessionId) {
-      navigate({
-        to: "/project/$projectId/session/$sessionId",
-        params: { projectId: project.id, sessionId },
-      })
-    }
+    if (!project) return
+    await submitProjectComposer(project, text, files)
   }
 
   if (sessionRouteMatch) {
@@ -72,7 +62,7 @@ function ProjectComposerPage() {
   if (!project) {
     return (
       <div className="h-full flex flex-col bg-background">
-        <PageHeader />
+        <PageHeader className="border-b-0" />
         <main className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
           {isLoadingProjects ? "Opening your workspace…" : "Project not found"}
         </main>
@@ -82,7 +72,7 @@ function ProjectComposerPage() {
 
   return (
     <div className="h-full flex flex-col bg-background relative overflow-hidden">
-      <PageHeader />
+      <PageHeader className="border-b-0" />
       <main className="relative flex-1 flex flex-col overflow-auto">
         <div className="flex-1 flex items-center justify-center px-6 py-16">
           <div className="w-full max-w-2xl">

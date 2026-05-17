@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import fsp from "node:fs/promises"
 import path from "node:path"
-import type { SessionMeta } from "@dilag/desktop-bridge"
+import { getCanonicalGeneratedScreenDirectory, type SessionMeta } from "@dilag/desktop-bridge"
 import { getSessionsDir, getSessionsFile } from "./paths.js"
 
 type SessionsStore = { sessions: SessionMeta[] }
@@ -21,7 +21,7 @@ async function saveSessionsStore(store: SessionsStore) {
 
 export async function createSessionDir(sessionId: string): Promise<string> {
   const sessionDir = path.join(getSessionsDir(), sessionId)
-  await fsp.mkdir(path.join(sessionDir, ".designs"), { recursive: true })
+  await fsp.mkdir(getCanonicalGeneratedScreenDirectory(sessionDir), { recursive: true })
   return sessionDir
 }
 

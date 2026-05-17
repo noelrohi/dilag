@@ -3,6 +3,8 @@
  * The Electron Pi adapter emits this stable event envelope for the renderer.
  */
 
+import type { AgentPromptQueueState } from "@dilag/desktop-bridge"
+
 export type ToolStateStatus = "pending" | "running" | "completed" | "error"
 
 export interface ToolState {
@@ -41,6 +43,13 @@ export interface Part {
 export interface Event {
   type: string
   properties?: unknown
+}
+
+export type PromptQueueState = Omit<AgentPromptQueueState, "sessionID">
+
+export interface EventPromptQueueUpdated extends Event {
+  type: "prompt.queue.updated"
+  properties: AgentPromptQueueState
 }
 
 export interface EventMessagePartUpdated extends Event {
@@ -227,6 +236,23 @@ export interface EventQuestionRejected {
     sessionID: string
     requestID: string
   }
+}
+
+/**
+ * Type guard for prompt.queue.updated events
+ */
+export function isEventPromptQueueUpdated(event: Event): event is EventPromptQueueUpdated {
+  return (
+    event.type === "prompt.queue.updated" &&
+    "properties" in event &&
+    event.properties !== null &&
+    typeof event.properties === "object" &&
+    "sessionID" in event.properties &&
+    "steering" in event.properties &&
+    "followUp" in event.properties &&
+    Array.isArray((event.properties as Record<string, unknown>).steering) &&
+    Array.isArray((event.properties as Record<string, unknown>).followUp)
+  )
 }
 
 /**
@@ -469,6 +495,10 @@ export function isEventQuestionRejected(event: Event): event is Event & EventQue
  */
 export function extractSessionId(event: Event): string | null {
   // Handle known event types first with type guards
+  if (isEventPromptQueueUpdated(event)) {
+    return event.properties.sessionID ?? null
+  }
+
   if (isEventMessagePartUpdated(event)) {
     return event.properties.part.sessionID ?? null
   }

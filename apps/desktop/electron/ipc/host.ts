@@ -1,9 +1,11 @@
 import { app, dialog, ipcMain, shell, type BrowserWindow } from "electron"
 import { autoUpdater } from "electron-updater"
 import fsp from "node:fs/promises"
-import path from "node:path"
 import { CHANNELS } from "../shared/channels.js"
-import type { UpdateDownloadEvent } from "@dilag/desktop-bridge"
+import {
+  getCanonicalGeneratedScreenDirectory,
+  type UpdateDownloadEvent,
+} from "@dilag/desktop-bridge"
 import { copyHtmlFiles, loadDesignsForSession, validateHtml } from "./designs.js"
 import {
   abortAgentSession,
@@ -202,8 +204,8 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
     CHANNELS.designs.copyBetweenSessions,
     async (_event, args: { sourceCwd: string; destCwd: string }) => {
       await copyHtmlFiles(
-        path.join(args.sourceCwd, ".designs"),
-        path.join(args.destCwd, ".designs"),
+        getCanonicalGeneratedScreenDirectory(args.sourceCwd),
+        getCanonicalGeneratedScreenDirectory(args.destCwd),
       )
     },
   )

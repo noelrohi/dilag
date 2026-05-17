@@ -103,6 +103,7 @@ describe("use-sessions", () => {
       sessionDiffs: {},
       sessionRevert: {},
       sessionErrors: {},
+      promptQueues: {},
       isServerReady: true,
       error: null,
       debugEvents: [],
@@ -248,6 +249,26 @@ describe("use-sessions", () => {
       })
 
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("running")
+    })
+
+    it("queues follow-up prompts through Pi while a session is running", async () => {
+      useSessionStore.setState({ sessionStatus: { "session-1": "running" } })
+      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await expect(result.current.sendMessage("Also make it dark")).resolves.toEqual({
+          mode: "followUp",
+          status: "queued",
+        })
+      })
+
+      expect(mockPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionID: "session-1",
+          text: "/skill:dilag-web-design Also make it dark",
+          streamingBehavior: "followUp",
+        }),
+      )
     })
 
     it("handles prompt errors gracefully", async () => {

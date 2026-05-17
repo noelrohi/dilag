@@ -89,7 +89,7 @@ async function createWindow() {
     show: false,
     // macOS: hide title bar and keep traffic lights inset to match the renderer chrome.
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 22 },
+    trafficLightPosition: { x: 16, y: 15 },
     // Hex approximation of oklch(0.14 0.01 250) used by the renderer's CSS.
     backgroundColor: "#070A0D",
     webPreferences: {

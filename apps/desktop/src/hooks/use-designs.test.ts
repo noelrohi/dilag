@@ -150,10 +150,16 @@ describe("isSessionDesignFileChange", () => {
     expect(isSessionDesignFileChange(".designs/home.html", "/sessions/abc")).toBe(true)
   })
 
-  it("ignores root, screens, non-html, and nested non-design files", () => {
+  it("matches legacy screens html files as displayable designs", () => {
+    expect(isSessionDesignFileChange("/sessions/abc/screens/home.html", "/sessions/abc")).toBe(true)
+    expect(isSessionDesignFileChange("screens/home.html", "/sessions/abc")).toBe(true)
+  })
+
+  it("ignores root, non-html, and nested non-design files", () => {
     expect(isSessionDesignFileChange("/sessions/abc/home.html", "/sessions/abc")).toBe(false)
-    expect(isSessionDesignFileChange("/sessions/abc/screens/home.html", "/sessions/abc")).toBe(false)
-    expect(isSessionDesignFileChange("/sessions/abc/.designs/home.png", "/sessions/abc")).toBe(false)
+    expect(isSessionDesignFileChange("/sessions/abc/.designs/home.png", "/sessions/abc")).toBe(
+      false,
+    )
     expect(isSessionDesignFileChange("/sessions/abc/src/home.html", "/sessions/abc")).toBe(false)
   })
 })

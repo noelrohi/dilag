@@ -2,6 +2,7 @@ import { useMemo } from "react"
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
+import type { ScreenPosition } from "@/lib/screen-layout"
 import {
   isEventMessagePartUpdated,
   isEventMessageUpdated,
@@ -20,8 +21,10 @@ import {
   isEventQuestionAsked,
   isEventQuestionReplied,
   isEventQuestionRejected,
+  isEventPromptQueueUpdated,
   type PermissionRequest,
   type QuestionRequest,
+  type PromptQueueState,
   type EventQuestionAsked,
   type EventQuestionReplied,
   type EventQuestionRejected,
@@ -37,9 +40,10 @@ export type {
   QuestionInfo,
   QuestionOption,
 } from "@/lib/event-guards"
+export type { ScreenPosition } from "@/lib/screen-layout"
 
 // Re-export SDK types
-export type { ToolState, FileDiff }
+export type { ToolState, FileDiff, PromptQueueState }
 
 // Our internal session status type (simpler than SDK's object type)
 export type SessionStatus = "idle" | "running" | "busy" | "error" | "unknown"
@@ -131,13 +135,6 @@ export interface DesignScreen {
   createdAt: number
 }
 
-// Screen position for canvas
-export interface ScreenPosition {
-  id: string
-  x: number
-  y: number
-}
-
 /**
  * Session Store - Zustand store for CLIENT-ONLY and REAL-TIME state
  *
@@ -159,6 +156,7 @@ interface SessionState {
   sessionDiffs: Record<string, FileDiff[]> // Keyed by sessionId
   sessionErrors: Record<string, { name: string; message: string } | null> // Keyed by sessionId
   sessionRevert: Record<string, SessionRevertState | null> // Keyed by sessionId - tracks revert state
+  promptQueues: Record<string, PromptQueueState> // Keyed by sessionId
 
   // New event state
   serverHealth: ServerHealth
@@ -189,6 +187,7 @@ interface SessionState {
   setSessionDiffs: (sessionId: string, diffs: FileDiff[]) => void
   setSessionError: (sessionId: string, error: { name: string; message: string } | null) => void
   setSessionRevert: (sessionId: string, revert: SessionRevertState | null) => void
+  setPromptQueue: (sessionId: string, queue: PromptQueueState) => void
   removeMessage: (sessionId: string, messageId: string) => void
   removeMessagesAfter: (sessionId: string, messageId: string) => void
   clearSessionData: (sessionId: string) => void
@@ -276,6 +275,16 @@ function shouldKeepExistingPart(existing: MessagePart, incoming: MessagePart): b
   return isTerminalToolStatus(existingStatus) && !isTerminalToolStatus(incomingStatus)
 }
 
+function shouldRefreshDesignsForToolPart(
+  existing: MessagePart | undefined,
+  incoming: MessagePart,
+): boolean {
+  if (incoming.type !== "tool") return false
+  if (incoming.tool !== "write" && incoming.tool !== "edit") return false
+  if (incoming.state?.status !== "completed") return false
+  return existing?.state?.status !== "completed"
+}
+
 export const useSessionStore = create<SessionState>()(
   persist(
     immer((set, get) => ({
@@ -288,6 +297,7 @@ export const useSessionStore = create<SessionState>()(
       sessionDiffs: {},
       sessionErrors: {},
       sessionRevert: {},
+      promptQueues: {},
       serverHealth: { lastHeartbeat: 0, isHealthy: false },
       pendingPermissions: {},
       pendingQuestions: {},
@@ -344,15 +354,25 @@ export const useSessionStore = create<SessionState>()(
           const parts = state.parts[messageId]
           if (!parts) {
             state.parts[messageId] = [part]
+            if (shouldRefreshDesignsForToolPart(undefined, part)) {
+              state.designRefreshTick += 1
+            }
             return
           }
 
           const result = binarySearch(parts, part.id, (p) => p.id)
           if (result.found) {
-            if (shouldKeepExistingPart(parts[result.index], part)) return
+            const existing = parts[result.index]
+            if (shouldKeepExistingPart(existing, part)) return
             parts[result.index] = part
+            if (shouldRefreshDesignsForToolPart(existing, part)) {
+              state.designRefreshTick += 1
+            }
           } else {
             parts.splice(result.index, 0, part)
+            if (shouldRefreshDesignsForToolPart(undefined, part)) {
+              state.designRefreshTick += 1
+            }
           }
         }),
 
@@ -374,6 +394,14 @@ export const useSessionStore = create<SessionState>()(
       setSessionRevert: (sessionId, revert) =>
         set((state) => {
           state.sessionRevert[sessionId] = revert
+        }),
+
+      setPromptQueue: (sessionId, queue) =>
+        set((state) => {
+          state.promptQueues[sessionId] = {
+            steering: [...queue.steering],
+            followUp: [...queue.followUp],
+          }
         }),
 
       removeMessage: (sessionId, messageId) =>
@@ -412,6 +440,7 @@ export const useSessionStore = create<SessionState>()(
           delete state.sessionDiffs[sessionId]
           delete state.sessionErrors[sessionId]
           delete state.sessionRevert[sessionId]
+          delete state.promptQueues[sessionId]
           delete state.pendingPermissions[sessionId]
           delete state.pendingQuestions[sessionId]
           if (state.currentSessionId === sessionId) {
@@ -600,6 +629,7 @@ export const useSessionStore = create<SessionState>()(
           state.sessionDiffs = {}
           state.sessionErrors = {}
           state.sessionRevert = {}
+          state.promptQueues = {}
           state.pendingPermissions = {}
           state.pendingQuestions = {}
           state.serverHealth = { lastHeartbeat: 0, isHealthy: false }
@@ -622,6 +652,7 @@ export const useSessionStore = create<SessionState>()(
           setSessionDiffs,
           setSessionError,
           setSessionRevert,
+          setPromptQueue,
           removeMessage,
           setServerHealth,
           addPendingPermission,
@@ -636,6 +667,12 @@ export const useSessionStore = create<SessionState>()(
         addDebugEvent(event)
 
         // Use type guards for type-safe event handling
+        if (isEventPromptQueueUpdated(event)) {
+          const { sessionID, steering, followUp } = event.properties
+          setPromptQueue(sessionID, { steering, followUp })
+          return
+        }
+
         if (isEventMessagePartUpdated(event)) {
           const sdkPart = event.properties.part
           if (sdkPart.messageID) {
@@ -837,6 +874,8 @@ const EMPTY_MESSAGES: Message[] = []
 const EMPTY_PARTS: MessagePart[] = []
 const EMPTY_DIFFS: FileDiff[] = []
 const EMPTY_POSITIONS: ScreenPosition[] = []
+const EMPTY_PROMPT_QUEUE: PromptQueueState = { steering: [], followUp: [] }
+const EMPTY_PROMPT_QUEUE_MESSAGES: string[] = []
 
 // Selector hooks for Zustand state
 export const useCurrentSessionId = () => useSessionStore((state) => state.currentSessionId)
@@ -867,6 +906,16 @@ export const useResetRealtimeState = () => useSessionStore((state) => state.rese
 export const useAllSessionStatuses = () => useSessionStore((state) => state.sessionStatus)
 export const useSessionRevert = (sessionId: string | null) =>
   useSessionStore((state) => (sessionId ? (state.sessionRevert[sessionId] ?? null) : null))
+export const usePromptQueue = (sessionId: string | null) =>
+  useSessionStore((state) =>
+    sessionId ? (state.promptQueues[sessionId] ?? EMPTY_PROMPT_QUEUE) : EMPTY_PROMPT_QUEUE,
+  )
+export const useQueuedFollowUps = (sessionId: string | null) =>
+  useSessionStore((state) =>
+    sessionId
+      ? (state.promptQueues[sessionId]?.followUp ?? EMPTY_PROMPT_QUEUE_MESSAGES)
+      : EMPTY_PROMPT_QUEUE_MESSAGES,
+  )
 
 // New event state selectors
 const EMPTY_PERMISSIONS: PermissionRequest[] = []

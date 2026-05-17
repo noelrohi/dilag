@@ -68,6 +68,7 @@ export interface DesktopBridge {
       images?: AgentImageContent[]
       model?: { providerID: string; modelID: string } | null
       thinkingLevel?: AgentThinkingLevel
+      streamingBehavior?: "steer" | "followUp"
     }): Promise<void>
     abort(args: { sessionID: string }): Promise<void>
     renameSession(args: { sessionID: string; name: string; directory?: string }): Promise<void>
@@ -189,6 +190,7 @@ export type {
   AgentModel,
   AgentProvider,
   AgentProviderData,
+  AgentPromptQueueState,
   AgentQuestionInfo,
   AgentQuestionOption,
   AgentQuestionRequest,
@@ -214,6 +216,28 @@ export type {
 } from "./types.js"
 
 export type { SkillPreview } from "./types.js"
+
+export {
+  GENERATED_SCREEN_CANONICAL_DIR,
+  GENERATED_SCREEN_EXTENSION,
+  GENERATED_SCREEN_LEGACY_FALLBACK_DIRS,
+  classifyGeneratedScreenFile,
+  getCanonicalGeneratedScreenDirectory,
+  getCanonicalGeneratedScreenPath,
+  getGeneratedScreenDirectories,
+  getGeneratedScreenFallbackKey,
+  getGeneratedScreenSearchDirectories,
+  isGeneratedScreenFile,
+  renderGeneratedScreenOutputRules,
+  renderGeneratedScreenSystemPromptRules,
+  renderHtmlScreenContract,
+} from "./generated-screen-policy.ts"
+
+export type {
+  GeneratedScreenDirectory,
+  GeneratedScreenDirectoryKind,
+  GeneratedScreenFileMatch,
+} from "./generated-screen-policy.ts"
 
 declare global {
   interface Window {

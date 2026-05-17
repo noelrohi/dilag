@@ -49,7 +49,7 @@ Numbers in circles are forgettable. Make achievements feel like real rewards:
 
 ```html
 <!DOCTYPE html>
-<html lang="en" data-title="Screen Name">
+<html lang="en" data-title="Screen Name" data-screen-type="mobile">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=393, initial-scale=1.0" />

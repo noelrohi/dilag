@@ -1,7 +1,13 @@
 import fs from "node:fs"
 import fsp from "node:fs/promises"
 import path from "node:path"
-import type { DesignFile, Violation } from "@dilag/desktop-bridge"
+import {
+  getGeneratedScreenDirectories,
+  getGeneratedScreenFallbackKey,
+  type DesignFile,
+  type GeneratedScreenDirectory,
+  type Violation,
+} from "@dilag/desktop-bridge"
 
 function extractHtmlAttr(html: string, attr: string): string | null {
   return new RegExp(`${attr}=["']([^"']+)["']`).exec(html)?.[1] ?? null
@@ -51,18 +57,28 @@ export function validateHtml(html: string): Violation[] {
   return violations
 }
 
-async function loadDesignsFromDir(dir: string, seen: Set<string>, out: DesignFile[]) {
-  if (!fs.existsSync(dir)) return
-  for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
-    const filePath = path.join(dir, entry.name)
+async function loadDesignsFromDir(
+  sessionCwd: string,
+  directory: GeneratedScreenDirectory,
+  seenScreenPaths: Set<string>,
+  out: DesignFile[],
+  currentDir = directory.path,
+) {
+  if (!fs.existsSync(currentDir)) return
+  for (const entry of await fsp.readdir(currentDir, { withFileTypes: true })) {
+    const filePath = path.join(currentDir, entry.name)
     if (entry.isDirectory()) {
-      await loadDesignsFromDir(filePath, seen, out)
+      await loadDesignsFromDir(sessionCwd, directory, seenScreenPaths, out, filePath)
       continue
     }
-    if (!entry.isFile() || !entry.name.endsWith(".html") || seen.has(filePath)) continue
+    if (!entry.isFile() || !entry.name.endsWith(".html")) continue
+
+    const screenPath = getGeneratedScreenFallbackKey(filePath, sessionCwd)
+    if (!screenPath || seenScreenPaths.has(screenPath)) continue
+
     const html = await fsp.readFile(filePath, "utf8")
     const stat = await fsp.stat(filePath)
-    seen.add(filePath)
+    seenScreenPaths.add(screenPath)
     out.push({
       filename: entry.name,
       file_path: filePath,
@@ -77,8 +93,10 @@ async function loadDesignsFromDir(dir: string, seen: Set<string>, out: DesignFil
 
 export async function loadDesignsForSession(sessionCwd: string): Promise<DesignFile[]> {
   const designs: DesignFile[] = []
-  const seen = new Set<string>()
-  await loadDesignsFromDir(path.join(sessionCwd, ".designs"), seen, designs)
+  const seenScreenPaths = new Set<string>()
+  for (const directory of getGeneratedScreenDirectories(sessionCwd)) {
+    await loadDesignsFromDir(sessionCwd, directory, seenScreenPaths, designs)
+  }
   return designs.sort((a, b) => a.modified_at - b.modified_at)
 }
 

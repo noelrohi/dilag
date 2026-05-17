@@ -4,6 +4,7 @@ import { NuqsAdapter } from "nuqs/adapters/tanstack-router"
 import { SidebarProvider, SidebarInset } from "@dilag/ui/sidebar"
 import { AppSidebar } from "@/components/blocks/layout/app-sidebar"
 import { AutoCollapseSidebar } from "@/components/blocks/layout/auto-collapse-sidebar"
+import { PersistentSidebarTrigger } from "@/components/blocks/layout/persistent-sidebar-trigger"
 import { AppProviders } from "@/components/app-providers"
 import { useZoom } from "@/hooks/use-zoom"
 
@@ -22,10 +23,31 @@ function RootLayout() {
   return (
     <AppProviders>
       <NuqsAdapter>
-        <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "19rem" } as CSSProperties}>
+        <SidebarProvider
+          defaultOpen={true}
+          style={
+            {
+              "--sidebar-width": "19rem",
+              "--traffic-light-left": "16px",
+              "--traffic-light-top": "15px",
+              "--traffic-light-size": "12px",
+              "--traffic-light-gap": "10px",
+              "--titlebar-control-gap": "12px",
+              "--titlebar-control-size": "24px",
+              "--titlebar-control-left":
+                "calc(var(--traffic-light-left) + (var(--traffic-light-size) * 3) + (var(--traffic-light-gap) * 2) + var(--titlebar-control-gap))",
+              "--titlebar-control-offset-y": "1px",
+              "--titlebar-control-center-y":
+                "calc(var(--traffic-light-top) + (var(--traffic-light-size) / 2) + var(--titlebar-control-offset-y))",
+              "--titlebar-content-left":
+                "calc(var(--titlebar-control-left) + var(--titlebar-control-size) + 4px)",
+            } as CSSProperties
+          }
+        >
           <AutoCollapseSidebar />
           <AppSidebar />
-          <SidebarInset className="h-svh overflow-hidden border border-border/80 bg-background shadow-sm ring-1 ring-white/5">
+          <PersistentSidebarTrigger />
+          <SidebarInset className="min-h-0 overflow-hidden bg-background">
             <Outlet />
           </SidebarInset>
         </SidebarProvider>
