@@ -1,6 +1,6 @@
 import type { Violation, ViolationRule } from "@/hooks/use-designs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
-import { DangerTriangle } from "@solar-icons/react"
+import { IconAlertTriangle as DangerTriangle } from "@tabler/icons-react"
 
 const RULE_LABELS: Record<ViolationRule, string> = {
   keyframes: "@keyframes animation",
@@ -26,7 +26,7 @@ export function ViolationBadge({ violations }: Props) {
           className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20"
           aria-label={`${violations.length} rule violation${violations.length === 1 ? "" : "s"}`}
         >
-          <DangerTriangle weight="Bold" className="w-3 h-3" />
+          <DangerTriangle className="w-3 h-3" />
           <span className="font-medium tabular-nums">{violations.length}</span>
         </button>
       </TooltipTrigger>

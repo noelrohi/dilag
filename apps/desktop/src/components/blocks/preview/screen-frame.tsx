@@ -1,12 +1,5 @@
 import { cn } from "@/lib/utils"
-import {
-  MenuDots,
-  TrashBinMinimalistic,
-  Copy,
-  Code,
-  Download,
-  FolderOpen,
-} from "@solar-icons/react"
+import { IconDots as MenuDots, IconTrash as TrashBinMinimalistic, IconCopy as Copy, IconCode as Code, IconDownload as Download, IconFolderOpen as FolderOpen } from "@tabler/icons-react"
 import {
   DropdownMenu,
   DropdownMenuContent,

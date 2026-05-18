@@ -2,7 +2,7 @@
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { AltArrowDown, Magnifer } from "@solar-icons/react"
+import { IconChevronDown as AltArrowDown, IconSearch as Magnifer } from "@tabler/icons-react"
 import type { ComponentProps } from "react"
 
 export type TaskItemFileProps = ComponentProps<"div">

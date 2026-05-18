@@ -5,17 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/c
 import { Input } from "@dilag/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@dilag/ui/tooltip"
 import { cn } from "@/lib/utils"
-import {
-  AltArrowDown,
-  Restart,
-  ArrowLeft,
-  ArrowRight,
-  MaximizeSquare,
-  MinimizeSquare,
-  Monitor,
-  Smartphone,
-  Tablet,
-} from "@solar-icons/react"
+import { IconChevronDown as AltArrowDown, IconRefresh as Restart, IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconMaximize as MaximizeSquare, IconMinimize as MinimizeSquare, IconDeviceDesktop as Monitor, IconDeviceMobile as Smartphone, IconDeviceTablet as Tablet } from "@tabler/icons-react"
 import type { ComponentProps, ReactNode } from "react"
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 

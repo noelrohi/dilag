@@ -2,7 +2,7 @@
 
 import { Button } from "@dilag/ui/button"
 import { cn } from "@/lib/utils"
-import { AltArrowDown } from "@solar-icons/react"
+import { IconChevronDown as AltArrowDown } from "@tabler/icons-react"
 import type { ComponentProps } from "react"
 import { useCallback } from "react"
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom"

@@ -5,7 +5,7 @@ import IntegrationsSection from "@/components/integrations-8"
 import HeroSection from "@/components/hero-section"
 import FooterSection from "@/components/footer"
 import { DOWNLOAD_URL } from "@/lib/constants"
-import { Download, ArrowRight } from "lucide-react"
+import { IconDownload as Download, IconArrowRight as ArrowRight } from "@tabler/icons-react"
 
 export default function Home() {
   return (

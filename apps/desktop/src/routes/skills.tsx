@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState, useEffect, useCallback } from "react"
-import {
-  MagicStick,
-  TrashBinMinimalistic,
-  DownloadMinimalistic,
-  SquareArrowRightUp,
-  Refresh,
-  CheckCircle,
-  CloseCircle,
-  Magnifer,
-} from "@solar-icons/react"
+import { IconWand as MagicStick, IconTrash as TrashBinMinimalistic, IconDownload as DownloadMinimalistic, IconExternalLink as SquareArrowRightUp, IconRefresh as Refresh, IconCircleCheck as CheckCircle, IconCircleX as CloseCircle, IconSearch as Magnifer } from "@tabler/icons-react"
 import { PageHeader } from "@/components/blocks/layout/page-header"
 import { cn } from "@/lib/utils"
 import { bridge } from "@/lib/bridge"

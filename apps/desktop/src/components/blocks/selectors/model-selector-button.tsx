@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { AltArrowDown, AddCircle, Refresh } from "@solar-icons/react"
+import { IconChevronDown as AltArrowDown, IconCirclePlus as AddCircle, IconRefresh as Refresh } from "@tabler/icons-react"
 import { Button } from "@dilag/ui/button"
 import { cn } from "@/lib/utils"
 import {

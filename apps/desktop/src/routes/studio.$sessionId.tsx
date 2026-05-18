@@ -30,8 +30,8 @@ import {
 import { ChatView } from "@/components/blocks/chat/chat-view"
 import { PageHeader, PageHeaderLeft, PageHeaderRight } from "@/components/blocks/layout/page-header"
 import { DesignCanvas } from "@/components/canvas"
-import { Copy, BranchingPathsUp, Pen, Palette, Play, Download } from "@solar-icons/react"
-import { Ellipsis } from "lucide-react"
+import { IconCopy as Copy, IconGitBranch as BranchingPathsUp, IconPencil as Pen, IconPalette as Palette, IconPlayerPlay as Play, IconDownload as Download } from "@tabler/icons-react"
+import { IconDots as Ellipsis } from "@tabler/icons-react"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import {
   DropdownMenu,

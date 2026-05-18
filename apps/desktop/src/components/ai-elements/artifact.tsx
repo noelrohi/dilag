@@ -3,7 +3,7 @@
 import { Button } from "@dilag/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@dilag/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { CloseCircle } from "@solar-icons/react"
+import { IconCircleX as CloseCircle } from "@tabler/icons-react"
 import type { ComponentProps, HTMLAttributes } from "react"
 
 export type ArtifactProps = HTMLAttributes<HTMLDivElement>

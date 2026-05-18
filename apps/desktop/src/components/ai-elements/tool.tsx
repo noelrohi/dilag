@@ -4,14 +4,7 @@ import { Badge } from "@dilag/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
 import type { ToolUIPart } from "ai"
-import {
-  CheckCircle,
-  AltArrowDown,
-  CloseCircle,
-  ClockCircle,
-  Settings,
-  RecordCircle,
-} from "@solar-icons/react"
+import { IconCircleCheck as CheckCircle, IconChevronDown as AltArrowDown, IconCircleX as CloseCircle, IconClock as ClockCircle, IconSettings as Settings, IconCircleDot as RecordCircle } from "@tabler/icons-react"
 import type { ComponentProps, ReactNode } from "react"
 import { isValidElement } from "react"
 import { CodeBlock } from "./code-block"

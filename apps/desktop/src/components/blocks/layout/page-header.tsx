@@ -1,4 +1,4 @@
-import { AddSquare } from "@solar-icons/react"
+import { IconSquarePlus as AddSquare } from "@tabler/icons-react"
 import { Button } from "@dilag/ui/button"
 import { useSidebar } from "@dilag/ui/sidebar"
 import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"

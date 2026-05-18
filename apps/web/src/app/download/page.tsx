@@ -2,7 +2,7 @@ import { Button } from "@dilag/ui/button"
 import { Badge } from "@dilag/ui/badge"
 import { SiteHeader } from "@/components/site-header"
 import { DOWNLOAD_URL } from "@/lib/constants"
-import { DownloadSimple, WindowsLogo, CheckCircle, Clock } from "@phosphor-icons/react/dist/ssr"
+import { IconDownload as DownloadSimple, IconBrandWindows as WindowsLogo, IconCircleCheckFilled as CheckCircle, IconClock as Clock } from "@tabler/icons-react"
 
 export default function DownloadPage() {
   return (
@@ -19,7 +19,7 @@ export default function DownloadPage() {
       <main className="max-w-4xl mx-auto px-6 pt-28 pb-16">
         <div className="text-center mb-4">
           <Badge variant="outline" className="mb-6">
-            <DownloadSimple weight="bold" className="w-3 h-3" />
+            <DownloadSimple className="w-3 h-3" />
             Download
           </Badge>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
@@ -53,13 +53,13 @@ export default function DownloadPage() {
             </p>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-              <CheckCircle weight="fill" className="w-4 h-4 text-emerald-500" />
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
               <span>Ready to download</span>
             </div>
 
             <Button className="w-full gap-2" asChild>
               <a href={DOWNLOAD_URL}>
-                <DownloadSimple weight="bold" className="w-4 h-4" />
+                <DownloadSimple className="w-4 h-4" />
                 Download for macOS
               </a>
             </Button>
@@ -68,7 +68,7 @@ export default function DownloadPage() {
           <div className="relative flex flex-col items-center p-8 rounded-2xl border border-border bg-card/30 opacity-75">
             <div className="w-24 h-24 mb-6 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-[#00A4EF] to-[#0078D4] rounded-[22px] shadow-xl flex items-center justify-center">
-                <WindowsLogo weight="fill" className="w-14 h-14 text-white" />
+                <WindowsLogo className="w-14 h-14 text-white" />
               </div>
             </div>
 
@@ -78,12 +78,12 @@ export default function DownloadPage() {
             </p>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-              <Clock weight="fill" className="w-4 h-4 text-amber-500" />
+              <Clock className="w-4 h-4 text-amber-500" />
               <span>Coming soon</span>
             </div>
 
             <Button variant="outline" className="w-full gap-2" disabled>
-              <DownloadSimple weight="bold" className="w-4 h-4" />
+              <DownloadSimple className="w-4 h-4" />
               Download for Windows
             </Button>
           </div>
@@ -98,7 +98,7 @@ export default function DownloadPage() {
               <span className="font-sans">macOS 11.0 or later</span>
             </div>
             <div className="flex items-center gap-2">
-              <WindowsLogo weight="fill" className="w-4 h-4" />
+              <WindowsLogo className="w-4 h-4" />
               <span className="font-sans">Windows 10/11 (coming soon)</span>
             </div>
           </div>

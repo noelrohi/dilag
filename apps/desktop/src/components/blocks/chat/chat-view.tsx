@@ -10,22 +10,8 @@ import {
 } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
-import {
-  Monitor,
-  DangerCircle,
-  ClipboardText,
-  CloseCircle,
-  DangerTriangle,
-  ArrowUp,
-  MagicStick,
-  BranchingPathsUp,
-  Copy,
-  CheckCircle,
-  AltArrowRight,
-  Stop,
-  TrashBinMinimalistic,
-} from "@solar-icons/react"
-import { BookOpen } from "lucide-react"
+import { IconDeviceDesktop as Monitor, IconAlertCircle as DangerCircle, IconClipboardText as ClipboardText, IconCircleX as CloseCircle, IconAlertTriangle as DangerTriangle, IconArrowUp as ArrowUp, IconWand as MagicStick, IconGitBranch as BranchingPathsUp, IconCopy as Copy, IconCircleCheck as CheckCircle, IconChevronRight as AltArrowRight, IconPlayerStop as Stop, IconTrash as TrashBinMinimalistic } from "@tabler/icons-react"
+import { IconBook as BookOpen } from "@tabler/icons-react"
 import { usePendingMessage } from "@/hooks/use-chat-interface"
 import { useElapsedTime } from "@/hooks/use-elapsed-time"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
@@ -1291,9 +1277,9 @@ function ChatInputArea({
                 )}
               >
                 {isLoading ? (
-                  <Stop size={16} weight="Bold" className="text-primary-foreground" />
+                  <Stop size={16} className="text-primary-foreground" />
                 ) : (
-                  <ArrowUp size={16} weight="Linear" className="text-primary-foreground" />
+                  <ArrowUp size={16} className="text-primary-foreground" />
                 )}
               </PromptInputSubmit>
             </div>

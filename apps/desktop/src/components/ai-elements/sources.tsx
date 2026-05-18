@@ -2,7 +2,7 @@
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { Book, AltArrowDown } from "@solar-icons/react"
+import { IconBook as Book, IconChevronDown as AltArrowDown } from "@tabler/icons-react"
 import type { ComponentProps } from "react"
 
 export type SourcesProps = ComponentProps<"div">

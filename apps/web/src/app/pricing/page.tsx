@@ -3,7 +3,7 @@ import { Button } from "@dilag/ui/button"
 import { Badge } from "@dilag/ui/badge"
 import { SiteHeader } from "@/components/site-header"
 import { DOWNLOAD_URL } from "@/lib/constants"
-import { Check, Sparkle, DownloadSimple } from "@phosphor-icons/react/dist/ssr"
+import { IconCheck as Check, IconSparkles as Sparkle, IconDownload as DownloadSimple } from "@tabler/icons-react"
 
 export default function PricingPage() {
   return (
@@ -19,7 +19,7 @@ export default function PricingPage() {
       <main className="max-w-4xl mx-auto px-6 pt-28 pb-16">
         <div className="text-center mb-12">
           <Badge className="gap-1 mb-6">
-            <Sparkle weight="fill" className="w-3 h-3" />
+            <Sparkle className="w-3 h-3" />
             Free Forever
           </Badge>
           <h1 className="text-4xl font-bold tracking-tight mb-4">Simple pricing</h1>
@@ -50,7 +50,7 @@ export default function PricingPage() {
                 "All future updates",
               ].map((feature) => (
                 <li key={feature} className="flex items-center gap-3 text-sm">
-                  <Check weight="bold" className="w-4 h-4 text-primary shrink-0" />
+                  <Check className="w-4 h-4 text-primary shrink-0" />
                   <span>{feature}</span>
                 </li>
               ))}
@@ -58,7 +58,7 @@ export default function PricingPage() {
 
             <Button className="w-full gap-2" asChild>
               <a href={DOWNLOAD_URL}>
-                <DownloadSimple weight="bold" className="w-4 h-4" />
+                <DownloadSimple className="w-4 h-4" />
                 Download for macOS
               </a>
             </Button>

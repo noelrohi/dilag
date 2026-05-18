@@ -3,7 +3,7 @@ import type { MessagePart as MessagePartType } from "@/context/session-store"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Reasoning, ReasoningTrigger, ReasoningContent } from "@/components/ai-elements/reasoning"
 import { ToolPart } from "./tool-part"
-import { CodeFile } from "@solar-icons/react"
+import { IconFileCode as CodeFile } from "@tabler/icons-react"
 import { ErrorBoundary, InlineErrorFallback } from "@/components/blocks/errors/error-boundary"
 
 interface MessagePartProps {

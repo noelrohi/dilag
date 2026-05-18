@@ -3,7 +3,7 @@ import { useState, useMemo } from "react"
 import { useSessions } from "@/hooks/use-sessions"
 import { PageHeader } from "@/components/blocks/layout/page-header"
 import { cn } from "@/lib/utils"
-import { Magnifer, MenuDots, TrashBinMinimalistic, Global, Star } from "@solar-icons/react"
+import { IconSearch as Magnifer, IconDots as MenuDots, IconTrash as TrashBinMinimalistic, IconWorld as Global, IconStar as Star } from "@tabler/icons-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -195,7 +195,7 @@ function ProjectCard({
             : "text-muted-foreground/30 hover:text-muted-foreground opacity-0 group-hover:opacity-100",
         )}
       >
-        <Star size={20} weight={isFavorite ? "Bold" : "Linear"} />
+        <Star size={20} fill={isFavorite ? "currentColor" : "none"} />
       </button>
 
       <div className="relative h-32 bg-gradient-to-br from-primary/5 via-muted/30 to-accent/5 overflow-hidden">
@@ -238,7 +238,7 @@ function ProjectCard({
               >
                 <Star
                   size={16}
-                  weight={isFavorite ? "Bold" : "Linear"}
+                  fill={isFavorite ? "currentColor" : "none"}
                   className={cn("mr-2", isFavorite && "text-amber-500")}
                 />
                 {isFavorite ? "Unfavorite" : "Favorite"}

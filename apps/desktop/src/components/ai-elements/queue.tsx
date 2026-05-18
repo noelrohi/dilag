@@ -4,7 +4,7 @@ import { Button } from "@dilag/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { ScrollArea } from "@dilag/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { AltArrowDown, Paperclip } from "@solar-icons/react"
+import { IconChevronDown as AltArrowDown, IconPaperclip as Paperclip } from "@tabler/icons-react"
 import type { ComponentProps } from "react"
 
 export type QueueMessagePart = {

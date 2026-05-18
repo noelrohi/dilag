@@ -4,7 +4,7 @@ import { Button } from "@dilag/ui/button"
 import { Separator } from "@dilag/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { Bookmark } from "@solar-icons/react"
+import { IconBookmark as Bookmark } from "@tabler/icons-react"
 import type { ComponentProps, HTMLAttributes } from "react"
 
 export type CheckpointProps = HTMLAttributes<HTMLDivElement>

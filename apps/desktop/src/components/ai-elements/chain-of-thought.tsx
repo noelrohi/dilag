@@ -4,7 +4,7 @@ import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import { Badge } from "@dilag/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { Lightbulb, AltArrowDown, Record } from "@solar-icons/react"
+import { IconBulb as Lightbulb, IconChevronDown as AltArrowDown, IconCircle as Record } from "@tabler/icons-react"
 import type { ComponentProps, ReactNode } from "react"
 import { createContext, memo, useContext, useMemo } from "react"
 

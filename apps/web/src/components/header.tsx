@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { DilagLogo } from "@/components/dilag-logo"
-import { Menu, X } from "lucide-react"
+import { IconMenu2 as Menu, IconX as X } from "@tabler/icons-react"
 import { Button } from "@dilag/ui/button"
 import React from "react"
 import { cn } from "@/lib/utils"

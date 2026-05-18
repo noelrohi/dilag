@@ -7,7 +7,7 @@ import {
   DialogClose,
 } from "@dilag/ui/dialog"
 import { Button } from "@dilag/ui/button"
-import { ArrowLeft, ArrowRight, CloseCircle } from "@solar-icons/react"
+import { IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconCircleX as CloseCircle } from "@tabler/icons-react"
 import type { DesignFile } from "@/hooks/use-designs"
 import { cn } from "@/lib/utils"
 import { IPhoneFrame } from "./iphone-frame"

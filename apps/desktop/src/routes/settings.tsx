@@ -1,16 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState, useEffect } from "react"
-import {
-  Sun,
-  Moon,
-  Monitor,
-  SquareArrowRightUp,
-  TrashBinMinimalistic,
-  Refresh,
-  Server,
-  InfoCircle,
-  Palette,
-} from "@solar-icons/react"
+import { IconSun as Sun, IconMoon as Moon, IconDeviceDesktop as Monitor, IconExternalLink as SquareArrowRightUp, IconTrash as TrashBinMinimalistic, IconRefresh as Refresh, IconServer as Server, IconInfoCircle as InfoCircle, IconPalette as Palette } from "@tabler/icons-react"
 import { useTheme } from "@/components/theme-provider"
 import { useUpdaterContext } from "@/context/updater-context"
 import { PageHeader } from "@/components/blocks/layout/page-header"

@@ -1,21 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react"
-import {
-  MagicStick,
-  Settings,
-  PlugCircle,
-  Pin,
-  AddSquare,
-  AddCircle,
-  ArchiveDownMinimlistic,
-  MenuDots,
-  TrashBinMinimalistic,
-  FolderPathConnect,
-  Pen,
-  ChatRoundLine,
-  ClockCircle,
-} from "@solar-icons/react"
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
+import { IconWand as MagicStick, IconSettings as Settings, IconPlug as PlugCircle, IconPin as Pin, IconSquarePlus as AddSquare, IconCirclePlus as AddCircle, IconArchive as ArchiveDownMinimlistic, IconDots as MenuDots, IconTrash as TrashBinMinimalistic, IconFolderSymlink as FolderPathConnect, IconPencil as Pen, IconMessageCircle as ChatRoundLine, IconClock as ClockCircle } from "@tabler/icons-react"
+import { IconChevronDown as ChevronDownIcon, IconChevronRight as ChevronRightIcon } from "@tabler/icons-react"
 import {
   Sidebar,
   SidebarContent,

@@ -4,7 +4,7 @@ import { Badge } from "@dilag/ui/badge"
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@dilag/ui/carousel"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@dilag/ui/hover-card"
 import { cn } from "@/lib/utils"
-import { ArrowLeft, ArrowRight } from "@solar-icons/react"
+import { IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight } from "@tabler/icons-react"
 import {
   type ComponentProps,
   createContext,

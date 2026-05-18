@@ -12,7 +12,7 @@ import {
 } from "@dilag/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { SortVertical } from "@solar-icons/react"
+import { IconArrowsSort as SortVertical } from "@tabler/icons-react"
 import type { ComponentProps } from "react"
 import { createContext, useContext } from "react"
 import { Shimmer } from "./shimmer"

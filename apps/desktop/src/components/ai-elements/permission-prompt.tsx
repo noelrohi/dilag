@@ -5,19 +5,7 @@ import { Alert, AlertTitle, AlertDescription } from "@dilag/ui/alert"
 import { Button } from "@dilag/ui/button"
 import { Textarea } from "@dilag/ui/textarea"
 import { cn } from "@/lib/utils"
-import {
-  AltArrowDown,
-  AltArrowUp,
-  Magnifer,
-  ShieldWarning,
-  Monitor,
-  FolderPathConnect,
-  Global,
-  Bolt,
-  FolderOpen,
-  File,
-  Pen,
-} from "@solar-icons/react"
+import { IconChevronDown as AltArrowDown, IconChevronUp as AltArrowUp, IconSearch as Magnifer, IconShieldExclamation as ShieldWarning, IconDeviceDesktop as Monitor, IconFolderSymlink as FolderPathConnect, IconWorld as Global, IconBolt as Bolt, IconFolderOpen as FolderOpen, IconFile as File, IconPencil as Pen } from "@tabler/icons-react"
 import type { PermissionRequest } from "@/context/session-store"
 
 export type PermissionReply = "once" | "always" | "reject"

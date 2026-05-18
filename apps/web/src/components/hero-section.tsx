@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Sparkle } from "lucide-react"
+import { IconSparkles as Sparkle } from "@tabler/icons-react"
 import { Button } from "@dilag/ui/button"
 import Image from "next/image"
 import { TextEffect } from "@dilag/ui/text-effect"

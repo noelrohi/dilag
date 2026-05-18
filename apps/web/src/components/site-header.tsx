@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button } from "@dilag/ui/button"
 import { DilagLogo } from "./dilag-logo"
-import { DownloadSimple } from "@phosphor-icons/react/dist/ssr"
+import { IconDownload as DownloadSimple } from "@tabler/icons-react"
 
 export function SiteHeader() {
   return (
@@ -43,7 +43,7 @@ export function SiteHeader() {
 
         <Button size="sm" className="rounded-full" asChild>
           <Link href="/download">
-            <DownloadSimple weight="bold" className="w-4 h-4" />
+            <DownloadSimple className="w-4 h-4" />
             <span className="hidden sm:inline">Download</span>
           </Link>
         </Button>

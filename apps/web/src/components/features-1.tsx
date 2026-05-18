@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader } from "@dilag/ui/card"
-import { Lightning, CodeBlock, Sparkle } from "@phosphor-icons/react/dist/ssr"
+import { IconBolt as Lightning, IconCode as CodeBlock, IconSparkles as Sparkle } from "@tabler/icons-react"
 import { ReactNode } from "react"
 
 export default function Features() {

@@ -2,7 +2,7 @@
 
 import { Button } from "@dilag/ui/button"
 import { cn } from "@/lib/utils"
-import { CheckCircle, Copy } from "@solar-icons/react"
+import { IconCircleCheck as CheckCircle, IconCopy as Copy } from "@tabler/icons-react"
 import {
   type ComponentProps,
   createContext,

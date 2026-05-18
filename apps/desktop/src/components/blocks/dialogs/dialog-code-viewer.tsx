@@ -1,7 +1,7 @@
 import { File } from "@pierre/diffs/react"
 import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogClose } from "@dilag/ui/dialog"
 import { Button } from "@dilag/ui/button"
-import { Copy, CheckCircle, Download, CloseCircle } from "@solar-icons/react"
+import { IconCopy as Copy, IconCircleCheck as CheckCircle, IconDownload as Download, IconCircleX as CloseCircle } from "@tabler/icons-react"
 import { useState, useCallback, type ReactNode } from "react"
 import { copyToClipboard, downloadHtml } from "@/lib/design-export"
 

@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react"
 import { Button } from "@dilag/ui/button"
-import { Refresh, DangerTriangle } from "@solar-icons/react"
+import { IconRefresh as Refresh, IconAlertTriangle as DangerTriangle } from "@tabler/icons-react"
 
 interface ErrorBoundaryProps {
   children: ReactNode

@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@dilag/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { AltArrowDown, SquareArrowRightUp, ChatDots } from "@solar-icons/react"
+import { IconChevronDown as AltArrowDown, IconExternalLink as SquareArrowRightUp, IconMessageCircle as ChatDots } from "@tabler/icons-react"
 import { type ComponentProps, createContext, useContext } from "react"
 
 const providers = {

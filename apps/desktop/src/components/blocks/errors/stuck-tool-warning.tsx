@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { DangerTriangle } from "@solar-icons/react"
+import { IconAlertTriangle as DangerTriangle } from "@tabler/icons-react"
 import {
   useCurrentSessionId,
   useRunningQuestionTools,

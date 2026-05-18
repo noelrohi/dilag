@@ -9,7 +9,7 @@
     "baseColor": "zinc",
     "cssVariables": true
   },
-  "iconLibrary": "lucide",
+  "iconLibrary": "tabler",
   "aliases": {
     "components": "src/components",
     "utils": "src/lib/utils",

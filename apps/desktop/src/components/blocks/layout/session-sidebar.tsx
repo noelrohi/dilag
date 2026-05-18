@@ -1,19 +1,5 @@
 import { useMemo, useState } from "react"
-import {
-  AddCircle,
-  TrashBinMinimalistic,
-  Magnifer,
-  ClockCircle,
-  BranchingPathsUp,
-  Restart,
-  MagicStick,
-  Calendar,
-  ArchiveDownMinimlistic,
-  SidebarMinimalistic,
-  Settings,
-  WiFiRouter,
-  WiFiRouterMinimalistic,
-} from "@solar-icons/react"
+import { IconCirclePlus as AddCircle, IconTrash as TrashBinMinimalistic, IconSearch as Magnifer, IconClock as ClockCircle, IconGitBranch as BranchingPathsUp, IconRefresh as Restart, IconWand as MagicStick, IconCalendar as Calendar, IconArchive as ArchiveDownMinimlistic, IconLayoutSidebar as SidebarMinimalistic, IconSettings as Settings, IconRouter as WiFiRouter, IconRouter as WiFiRouterMinimalistic } from "@tabler/icons-react"
 import { Link } from "@tanstack/react-router"
 import { useSessions } from "@/hooks/use-sessions"
 import { useConnectionStatus, type ConnectionStatus } from "@/context/global-events"

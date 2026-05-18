@@ -1,5 +1,5 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
-import { AltArrowRight, CheckCircle, DangerTriangle, ClockCircle } from "@solar-icons/react"
+import { IconChevronRight as AltArrowRight, IconCircleCheck as CheckCircle, IconAlertTriangle as DangerTriangle, IconClock as ClockCircle } from "@tabler/icons-react"
 import { getToolConfig, isStructuredSubtitle, type ToolRenderProps } from "@/lib/tool-registry"
 import type { ToolState } from "@/context/session-store"
 import { cn } from "@/lib/utils"
