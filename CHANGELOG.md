@@ -5,6 +5,26 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-18
+
+### Added
+
+- **Embedded Pi Runtime**: Desktop sessions now run through the embedded Pi coding-agent SDK with provider/model selection, Pi session persistence, question UI support, timeline navigation, and generated screen output under `.designs/`.
+- **Project Workspaces**: Added project-scoped chats and session flows so Dilag can list Pi sessions by project directory and continue existing work after restart.
+- **Repro Session Skill**: Replaced the old Claude/opencode repro command with a repo-local `$repro-session` skill and JSONL inspector for Dilag Pi session debugging.
+
+### Changed
+
+- **Electron Desktop Shell**: Migrated the desktop shell away from the legacy Tauri/opencode sidecar path and removed stale sidecar wiring.
+- **Studio Workflow**: Refined prompt delivery, generated screen policy, chat tool rendering, fork/session behavior, and project session navigation.
+- **Release Workflow**: Updated tagged releases to build and publish Electron artifacts with `electron-builder`.
+
+### Fixed
+
+- **Startup and Sidebar State**: Smoothed desktop startup behavior and project/sidebar session state after the Pi migration.
+- **Packaged Assets**: Fixed packaged app asset loading for built-in design resources.
+- **Initial Prompt Flow**: Send the initial project prompt directly and keep generated screens aligned with the active project cwd.
+
 ## [0.5.3] - 2026-04-22
 
 ### Fixed

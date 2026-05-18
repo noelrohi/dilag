@@ -107,7 +107,9 @@ function summarize(file, entries) {
 
   const unresolvedTools = calls.filter((call) => !results.has(call.id))
   const latestUser = [...messages].reverse().find((entry) => entry.message.role === "user")
-  const latestAssistant = [...messages].reverse().find((entry) => entry.message.role === "assistant")
+  const latestAssistant = [...messages]
+    .reverse()
+    .find((entry) => entry.message.role === "assistant")
   const recentTools = calls.slice(-recentLimit).map((call) => {
     const result = results.get(call.id)
     return {
@@ -133,7 +135,11 @@ function summarize(file, entries) {
     messages: messages.length,
     roleCounts,
     latestUser: latestUser
-      ? { id: latestUser.id, timestamp: latestUser.timestamp, text: safeText(contentText(latestUser.message.content)) }
+      ? {
+          id: latestUser.id,
+          timestamp: latestUser.timestamp,
+          text: safeText(contentText(latestUser.message.content)),
+        }
       : null,
     latestAssistant: latestAssistant
       ? {
@@ -171,7 +177,8 @@ async function listDesignFiles(cwd) {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name)
       if (entry.isDirectory()) await walk(fullPath)
-      else if (entry.isFile() && entry.name.endsWith(".html")) out.push(path.relative(cwd, fullPath))
+      else if (entry.isFile() && entry.name.endsWith(".html"))
+        out.push(path.relative(cwd, fullPath))
     }
   }
   await walk(designsDir)
@@ -215,12 +222,16 @@ if (asJson) {
     console.log(`Roles: ${JSON.stringify(match.roleCounts)}`)
     if (match.latestUser) console.log(`Latest user: ${match.latestUser.text}`)
     if (match.latestAssistant) {
-      console.log(`Latest assistant: ${match.latestAssistant.text || "(tool-only assistant message)"}`)
+      console.log(
+        `Latest assistant: ${match.latestAssistant.text || "(tool-only assistant message)"}`,
+      )
       if (match.latestAssistant.toolCalls.length > 0) {
         console.log(`Latest assistant tools: ${match.latestAssistant.toolCalls.join(", ")}`)
       }
     }
-    console.log(`Design files: ${match.designFiles.length > 0 ? match.designFiles.join(", ") : "(none)"}`)
+    console.log(
+      `Design files: ${match.designFiles.length > 0 ? match.designFiles.join(", ") : "(none)"}`,
+    )
     console.log("Recent tools:")
     for (const tool of match.recentTools) {
       console.log(`- ${tool.name} ${tool.status} ${tool.timestamp} ${tool.resultPreview}`)

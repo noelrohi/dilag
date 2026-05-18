@@ -6,66 +6,20 @@ on:
       - "v*.*.*"
 
 jobs:
-  publish-tauri:
+  create-release:
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            args: --target aarch64-apple-darwin
-            target: aarch64-apple-darwin
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-            target: x86_64-apple-darwin
 
-    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Import Apple Certificate
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-
-          echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Install desktop dependencies
-        run: bun install
-        working-directory: apps/desktop
-
       - name: Extract changelog for release notes
         id: changelog
         run: |
-          # Extract version number from tag (e.g., v0.2.0 -> 0.2.0)
           VERSION="${GITHUB_REF_NAME#v}"
 
-          # Extract the section for this version from CHANGELOG.md
-          # Matches from "## [X.Y.Z]" until the next "## [" or end of file
           NOTES=$(awk -v ver="$VERSION" '
             /^## \[/ {
               if (found) exit
@@ -74,37 +28,67 @@ jobs:
             found { print }
           ' CHANGELOG.md)
 
-          # If no changelog entry found, use a default message
           if [ -z "$NOTES" ]; then
-            NOTES="Release ${{ github.ref_name }}"
+            NOTES="Release $GITHUB_REF_NAME"
           fi
 
-          # Output using heredoc delimiter for multiline support
           {
             echo "notes<<EOF"
             echo "$NOTES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-          echo "Extracted release notes for version $VERSION"
-
-      - name: Build and release with Tauri Action
-        uses: tauri-apps/tauri-action@v0
+      - name: Create GitHub release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Dilag API URL for trial registration (compile-time)
-          DILAG_API_URL: https://dilag.noelrohi.com
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: ${{ steps.changelog.outputs.notes }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "Dilag $GITHUB_REF_NAME" \
+              --notes "$RELEASE_NOTES" \
+              --latest
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "Dilag $GITHUB_REF_NAME" \
+              --notes "$RELEASE_NOTES" \
+              --latest \
+              --verify-tag
+          fi
+
+  publish-electron:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-14
+            arch: arm64
+          - platform: macos-13
+            arch: x64
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          projectPath: apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: "Dilag ${{ github.ref_name }}"
-          releaseBody: ${{ steps.changelog.outputs.notes }}
-          releaseDraft: false
-          prerelease: false
-          args: ${{ matrix.args }}
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and publish Electron app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          DILAG_API_URL: https://dilag.noelrohi.com
+        run: bun run --cwd apps/desktop dist -- --mac dmg zip --${{ matrix.arch }} --publish always
