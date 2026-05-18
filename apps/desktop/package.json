@@ -72,7 +72,7 @@
   "dependencies": {
     "@dilag/desktop-bridge": "workspace:*",
     "@dilag/ui": "workspace:*",
-    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.75.3",
     "@pierre/diffs": "^1.0.4",
     "@tabler/icons-react": "catalog:",
     "@tailwindcss/vite": "^4.1.18",
@@ -121,7 +121,7 @@
     "electron": "41.2.2",
     "electron-builder": "^26.8.1",
     "jsdom": "^27.3.0",
-    "react-grab": "^0.0.98",
+    "react-grab": "^0.1.37",
     "tsdown": "^0.21.9",
     "tw-animate-css": "catalog:",
     "typescript": "catalog:",
