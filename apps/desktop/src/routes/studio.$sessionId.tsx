@@ -15,6 +15,7 @@ import {
 } from "@/context/session-store"
 import { Button } from "@dilag/ui/button"
 import { Input } from "@dilag/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@dilag/ui/resizable"
 import {
   AlertDialog,
@@ -306,42 +307,46 @@ export function StudioPageContent({
           </PageHeaderLeft>
 
           <PageHeaderRight>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2.5 text-xs gap-1.5"
-              onClick={() => setPreviewOpen(true)}
-              disabled={designs.length === 0}
-            >
-              <Play size={14} />
-              Preview
-              {selectedScreenIds.size > 0 && (
-                <span className="text-muted-foreground">({selectedScreenIds.size})</span>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2.5 text-xs gap-1.5"
-              onClick={() => {
-                const toExport =
-                  selectedScreenIds.size > 0
-                    ? designs.filter((d) => selectedScreenIds.has(d.filename))
-                    : designs
-                exportImages({
-                  designs: toExport,
-                  sessionName: currentSession?.name ?? "designs",
-                  platform: currentSession?.platform ?? "mobile",
-                })
-              }}
-              disabled={designs.length === 0}
-            >
-              <Download size={14} />
-              Export
-              {selectedScreenIds.size > 0 && (
-                <span className="text-muted-foreground">({selectedScreenIds.size})</span>
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-7"
+                  onClick={() => setPreviewOpen(true)}
+                  disabled={designs.length === 0}
+                  aria-label="Preview designs"
+                >
+                  <Play size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Preview</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-7"
+                  onClick={() => {
+                    const toExport =
+                      selectedScreenIds.size > 0
+                        ? designs.filter((d) => selectedScreenIds.has(d.filename))
+                        : designs
+                    exportImages({
+                      designs: toExport,
+                      sessionName: currentSession?.name ?? "designs",
+                      platform: currentSession?.platform ?? "mobile",
+                    })
+                  }}
+                  disabled={designs.length === 0}
+                  aria-label="Export designs"
+                >
+                  <Download size={14} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Export</TooltipContent>
+            </Tooltip>
           </PageHeaderRight>
         </PageHeader>
 
