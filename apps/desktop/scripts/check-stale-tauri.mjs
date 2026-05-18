@@ -13,18 +13,14 @@ const stalePaths = [
 ]
 
 const staleTextPatterns = [
-  { label: ["OPENCODE", "TARGET"].join("_"), pattern: new RegExp(["OPENCODE", "TARGET"].join("_")) },
+  {
+    label: ["OPENCODE", "TARGET"].join("_"),
+    pattern: new RegExp(["OPENCODE", "TARGET"].join("_")),
+  },
   { label: ["fetch", "opencode"].join("-"), pattern: new RegExp(["fetch", "opencode"].join("-")) },
 ]
 
-const ignoredDirs = new Set([
-  ".git",
-  ".turbo",
-  "dist",
-  "dist-electron",
-  "node_modules",
-  "release",
-])
+const ignoredDirs = new Set([".git", ".turbo", "dist", "dist-electron", "node_modules", "release"])
 const ignoredFiles = new Set(["bun.lock", "CHANGELOG.md"])
 const textExtensions = new Set([
   ".cjs",
@@ -69,6 +65,8 @@ const found = stalePaths.filter((relativePath) => existsSync(join(repoRoot, rela
 scanDirectory(repoRoot, found)
 
 if (found.length > 0) {
-  console.error(`Stale Tauri/opencode sidecar artifacts found:\n${found.map((p) => `- ${p}`).join("\n")}`)
+  console.error(
+    `Stale Tauri/opencode sidecar artifacts found:\n${found.map((p) => `- ${p}`).join("\n")}`,
+  )
   process.exit(1)
 }

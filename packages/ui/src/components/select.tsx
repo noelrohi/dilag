@@ -2,7 +2,11 @@
 
 import * as React from "react"
 import { Select as SelectPrimitive } from "radix-ui"
-import { IconCheck as CheckIcon, IconChevronDown as ChevronDownIcon, IconChevronUp as ChevronUpIcon } from "@tabler/icons-react"
+import {
+  IconCheck as CheckIcon,
+  IconChevronDown as ChevronDownIcon,
+  IconChevronUp as ChevronUpIcon,
+} from "@tabler/icons-react"
 
 import { cn } from "../lib/utils"
 

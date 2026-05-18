@@ -2,7 +2,11 @@
 
 import { useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
-import { IconCircleCheck as CheckCircle, IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight } from "@tabler/icons-react"
+import {
+  IconCircleCheck as CheckCircle,
+  IconArrowLeft as ArrowLeft,
+  IconArrowRight as ArrowRight,
+} from "@tabler/icons-react"
 import type { QuestionRequest } from "@/context/session-store"
 
 export interface QuestionPromptProps {

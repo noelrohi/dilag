@@ -26,7 +26,15 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@dilag/ui/select"
 import { cn } from "@/lib/utils"
 import type { ChatStatus, FileUIPart } from "ai"
-import { IconPaperclip as Paperclip, IconCircleX as CloseCircle, IconPlayerStop as Stop, IconRefresh as Restart, IconArrowDownLeft as ArrowLeftDown, IconPhoto as GalleryMinimalistic, IconMicrophone as Microphone2 } from "@tabler/icons-react"
+import {
+  IconPaperclip as Paperclip,
+  IconCircleX as CloseCircle,
+  IconPlayerStop as Stop,
+  IconRefresh as Restart,
+  IconArrowDownLeft as ArrowLeftDown,
+  IconPhoto as GalleryMinimalistic,
+  IconMicrophone as Microphone2,
+} from "@tabler/icons-react"
 import { nanoid } from "nanoid"
 import {
   type ChangeEvent,

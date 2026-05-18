@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { IconArrowLeft as ArrowLeft, IconAlertCircle as DangerCircle, IconRefresh as Restart } from "@tabler/icons-react"
+import {
+  IconArrowLeft as ArrowLeft,
+  IconAlertCircle as DangerCircle,
+  IconRefresh as Restart,
+} from "@tabler/icons-react"
 import { Dialog, DialogContent } from "@dilag/ui/dialog"
 import { Input } from "@dilag/ui/input"
 import { Field, FieldLabel } from "@dilag/ui/field"

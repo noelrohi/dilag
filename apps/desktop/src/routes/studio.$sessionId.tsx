@@ -30,7 +30,14 @@ import {
 import { ChatView } from "@/components/blocks/chat/chat-view"
 import { PageHeader, PageHeaderLeft, PageHeaderRight } from "@/components/blocks/layout/page-header"
 import { DesignCanvas } from "@/components/canvas"
-import { IconCopy as Copy, IconGitBranch as BranchingPathsUp, IconPencil as Pen, IconPalette as Palette, IconPlayerPlay as Play, IconDownload as Download } from "@tabler/icons-react"
+import {
+  IconCopy as Copy,
+  IconGitBranch as BranchingPathsUp,
+  IconPencil as Pen,
+  IconPalette as Palette,
+  IconPlayerPlay as Play,
+  IconDownload as Download,
+} from "@tabler/icons-react"
 import { IconDots as Ellipsis } from "@tabler/icons-react"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import {
@@ -79,13 +86,8 @@ export function StudioPageContent({
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
   const { size: chatSize, updateSize, minSize } = useChatWidth()
 
-  const {
-    selectSession,
-    sessions,
-    isLoading,
-    isLoadingSessions,
-    forkSessionDesignsOnly,
-  } = useSessions()
+  const { selectSession, sessions, isLoading, isLoadingSessions, forkSessionDesignsOnly } =
+    useSessions()
   const { updateSession } = useSessionMutations()
 
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId)

@@ -2,7 +2,12 @@ import { Button } from "@dilag/ui/button"
 import { Badge } from "@dilag/ui/badge"
 import { SiteHeader } from "@/components/site-header"
 import { DOWNLOAD_URL } from "@/lib/constants"
-import { IconDownload as DownloadSimple, IconBrandWindows as WindowsLogo, IconCircleCheckFilled as CheckCircle, IconClock as Clock } from "@tabler/icons-react"
+import {
+  IconDownload as DownloadSimple,
+  IconBrandWindows as WindowsLogo,
+  IconCircleCheckFilled as CheckCircle,
+  IconClock as Clock,
+} from "@tabler/icons-react"
 
 export default function DownloadPage() {
   return (

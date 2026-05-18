@@ -1,4 +1,7 @@
-import { IconChevronDown as AltArrowDown, IconCircleCheck as CheckCircle } from "@tabler/icons-react"
+import {
+  IconChevronDown as AltArrowDown,
+  IconCircleCheck as CheckCircle,
+} from "@tabler/icons-react"
 import { Button } from "@dilag/ui/button"
 import {
   DropdownMenu,

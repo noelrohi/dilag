@@ -11,14 +11,19 @@ import {
   ContextMenuTrigger,
   ContextMenuShortcut,
 } from "@dilag/ui/context-menu"
-import { IconCopy as Copy, IconCode as Code, IconDownload as Download, IconTrash as TrashBinMinimalistic, IconFolderOpen as FolderOpen, IconMessageCircle as ChatRoundDots, IconPhoto as Gallery } from "@tabler/icons-react"
+import {
+  IconCopy as Copy,
+  IconCode as Code,
+  IconDownload as Download,
+  IconTrash as TrashBinMinimalistic,
+  IconFolderOpen as FolderOpen,
+  IconMessageCircle as ChatRoundDots,
+  IconPhoto as Gallery,
+} from "@tabler/icons-react"
 import { copyFilePath, copyToClipboard, downloadHtml, exportAsPng } from "@/lib/design-export"
 import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer"
 import { injectInspector, type ElementInspectorMessage } from "@/lib/element-inspector"
-import {
-  useElementSelectionStore,
-  type ElementInfo,
-} from "@/context/element-selection-store"
+import { useElementSelectionStore, type ElementInfo } from "@/context/element-selection-store"
 import { ElementHighlight } from "./element-highlight"
 import { ElementSelectionMenu } from "./element-selection-menu"
 import { getMobileViewportSize } from "@/lib/design-viewport"

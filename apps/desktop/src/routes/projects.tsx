@@ -3,7 +3,13 @@ import { useState, useMemo } from "react"
 import { useSessions } from "@/hooks/use-sessions"
 import { PageHeader } from "@/components/blocks/layout/page-header"
 import { cn } from "@/lib/utils"
-import { IconSearch as Magnifer, IconDots as MenuDots, IconTrash as TrashBinMinimalistic, IconWorld as Global, IconStar as Star } from "@tabler/icons-react"
+import {
+  IconSearch as Magnifer,
+  IconDots as MenuDots,
+  IconTrash as TrashBinMinimalistic,
+  IconWorld as Global,
+  IconStar as Star,
+} from "@tabler/icons-react"
 import {
   DropdownMenu,
   DropdownMenuContent,

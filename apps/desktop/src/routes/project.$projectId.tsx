@@ -19,7 +19,11 @@ import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
 import { getDefaultProject, useProjectMutations, useProjectsList } from "@/hooks/use-projects"
 import { useSessions } from "@/hooks/use-sessions"
 import { cn } from "@/lib/utils"
-import { IconArrowUp as ArrowUp, IconDeviceDesktop as Monitor, IconDeviceMobile as Smartphone } from "@tabler/icons-react"
+import {
+  IconArrowUp as ArrowUp,
+  IconDeviceDesktop as Monitor,
+  IconDeviceMobile as Smartphone,
+} from "@tabler/icons-react"
 import { createFileRoute, Outlet, useMatch, useNavigate, useParams } from "@tanstack/react-router"
 import type { FileUIPart } from "ai"
 import { useCallback, useEffect, useRef, useState } from "react"

@@ -1,7 +1,24 @@
 import { useEffect, useRef, type ReactNode, type FC } from "react"
 import type { ToolState } from "@/context/session-store"
-import { IconCheckbox as CheckSquare, IconCircle as Record, IconPalette as Pallete2 } from "@tabler/icons-react"
-import { IconTerminal2 as Terminal, IconSearch as Search, IconWorld as Globe, IconGlass as Glasses, IconPencil as PencilLine, IconFilePlus as FilePlus2, IconFolder as FolderTree, IconRobot as Bot, IconSettings as Settings, IconClipboardList as ClipboardList, IconBook as BookOpen, IconHelpCircle as CircleHelp } from "@tabler/icons-react"
+import {
+  IconCheckbox as CheckSquare,
+  IconCircle as Record,
+  IconPalette as Pallete2,
+} from "@tabler/icons-react"
+import {
+  IconTerminal2 as Terminal,
+  IconSearch as Search,
+  IconWorld as Globe,
+  IconGlass as Glasses,
+  IconPencil as PencilLine,
+  IconFilePlus as FilePlus2,
+  IconFolder as FolderTree,
+  IconRobot as Bot,
+  IconSettings as Settings,
+  IconClipboardList as ClipboardList,
+  IconBook as BookOpen,
+  IconHelpCircle as CircleHelp,
+} from "@tabler/icons-react"
 import { diffLines } from "diff"
 import { cn } from "@/lib/utils"
 

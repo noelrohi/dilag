@@ -1,6 +1,11 @@
 import { useReactFlow, useViewport } from "@xyflow/react"
 import { useCallback } from "react"
-import { IconMaximize as Maximize, IconRefresh as Restart, IconCircleMinus as MinusCircle, IconCirclePlus as AddCircle } from "@tabler/icons-react"
+import {
+  IconMaximize as Maximize,
+  IconRefresh as Restart,
+  IconCircleMinus as MinusCircle,
+  IconCirclePlus as AddCircle,
+} from "@tabler/icons-react"
 
 export function CanvasControls() {
   const { setViewport, fitView, getViewport } = useReactFlow()

@@ -1,6 +1,10 @@
 import { useState, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { IconCircleCheck as CheckCircle, IconSearch as Magnifer, IconChevronDown as AltArrowDown } from "@tabler/icons-react"
+import {
+  IconCircleCheck as CheckCircle,
+  IconSearch as Magnifer,
+  IconChevronDown as AltArrowDown,
+} from "@tabler/icons-react"
 import { Dialog, DialogContent } from "@dilag/ui/dialog"
 import { Input } from "@dilag/ui/input"
 import { cn } from "@/lib/utils"

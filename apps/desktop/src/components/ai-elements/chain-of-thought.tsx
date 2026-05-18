@@ -4,7 +4,11 @@ import { useControllableState } from "radix-ui/internal"
 import { Badge } from "@dilag/ui/badge"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { IconBulb as Lightbulb, IconChevronDown as AltArrowDown, IconCircle as Record } from "@tabler/icons-react"
+import {
+  IconBulb as Lightbulb,
+  IconChevronDown as AltArrowDown,
+  IconCircle as Record,
+} from "@tabler/icons-react"
 import type { ComponentProps, ReactNode } from "react"
 import { createContext, memo, useContext, useMemo } from "react"
 

@@ -10,7 +10,21 @@ import {
 } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
-import { IconDeviceDesktop as Monitor, IconAlertCircle as DangerCircle, IconClipboardText as ClipboardText, IconCircleX as CloseCircle, IconAlertTriangle as DangerTriangle, IconArrowUp as ArrowUp, IconWand as MagicStick, IconGitBranch as BranchingPathsUp, IconCopy as Copy, IconCircleCheck as CheckCircle, IconChevronRight as AltArrowRight, IconPlayerStop as Stop, IconTrash as TrashBinMinimalistic } from "@tabler/icons-react"
+import {
+  IconDeviceDesktop as Monitor,
+  IconAlertCircle as DangerCircle,
+  IconClipboardText as ClipboardText,
+  IconCircleX as CloseCircle,
+  IconAlertTriangle as DangerTriangle,
+  IconArrowUp as ArrowUp,
+  IconWand as MagicStick,
+  IconGitBranch as BranchingPathsUp,
+  IconCopy as Copy,
+  IconCircleCheck as CheckCircle,
+  IconChevronRight as AltArrowRight,
+  IconPlayerStop as Stop,
+  IconTrash as TrashBinMinimalistic,
+} from "@tabler/icons-react"
 import { IconBook as BookOpen } from "@tabler/icons-react"
 import { usePendingMessage } from "@/hooks/use-chat-interface"
 import { useElapsedTime } from "@/hooks/use-elapsed-time"
@@ -1367,48 +1381,48 @@ export function ChatView() {
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-4">
-            {messages.length === 0 ? null : (
-              messages.map((message, index) => {
-                // Check if this is the last assistant message
-                const isLastAssistant =
-                  message.role === "assistant" &&
-                  !messages.slice(index + 1).some((m) => m.role === "assistant")
+            {messages.length === 0
+              ? null
+              : messages.map((message, index) => {
+                  // Check if this is the last assistant message
+                  const isLastAssistant =
+                    message.role === "assistant" &&
+                    !messages.slice(index + 1).some((m) => m.role === "assistant")
 
-                const nextMessage = messages[index + 1]
-                const isLastAssistantInTurn = !nextMessage || nextMessage.role === "user"
-                if (message.role === "assistant" && !isLastAssistantInTurn) return null
+                  const nextMessage = messages[index + 1]
+                  const isLastAssistantInTurn = !nextMessage || nextMessage.role === "user"
+                  if (message.role === "assistant" && !isLastAssistantInTurn) return null
 
-                let turnStart = index
-                while (turnStart > 0 && messages[turnStart - 1].role === "assistant") turnStart--
-                const turnAssistantMessages = messages
-                  .slice(turnStart, index + 1)
-                  .filter(
-                    (item): item is SessionMessage & { role: "assistant" } =>
-                      item.role === "assistant",
+                  let turnStart = index
+                  while (turnStart > 0 && messages[turnStart - 1].role === "assistant") turnStart--
+                  const turnAssistantMessages = messages
+                    .slice(turnStart, index + 1)
+                    .filter(
+                      (item): item is SessionMessage & { role: "assistant" } =>
+                        item.role === "assistant",
+                    )
+
+                  return message.role === "user" ? (
+                    <UserMessage
+                      key={message.id}
+                      message={message}
+                      index={index}
+                      onFork={handleFork}
+                      onCopyText={handleCopyText}
+                      hideActions={hideInitialMessageActions && message.id === firstUserMessageId}
+                    />
+                  ) : (
+                    <AssistantMessage
+                      key={message.id}
+                      message={message}
+                      index={index}
+                      isLast={isLastAssistant}
+                      turnAssistantMessages={turnAssistantMessages}
+                      onFork={handleFork}
+                      onCopyText={handleCopyText}
+                    />
                   )
-
-                return message.role === "user" ? (
-                  <UserMessage
-                    key={message.id}
-                    message={message}
-                    index={index}
-                    onFork={handleFork}
-                    onCopyText={handleCopyText}
-                    hideActions={hideInitialMessageActions && message.id === firstUserMessageId}
-                  />
-                ) : (
-                  <AssistantMessage
-                    key={message.id}
-                    message={message}
-                    index={index}
-                    isLast={isLastAssistant}
-                    turnAssistantMessages={turnAssistantMessages}
-                    onFork={handleFork}
-                    onCopyText={handleCopyText}
-                  />
-                )
-              })
-            )}
+                })}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>

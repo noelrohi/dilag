@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from "react"
-import { IconAlertTriangle as DangerTriangle, IconCircleX as CloseCircle, IconCopy as Copy, IconMessageCircle as ChatRoundDots, IconChevronDown as AltArrowDown, IconCircleCheck as CheckCircle } from "@tabler/icons-react"
+import {
+  IconAlertTriangle as DangerTriangle,
+  IconCircleX as CloseCircle,
+  IconCopy as Copy,
+  IconMessageCircle as ChatRoundDots,
+  IconChevronDown as AltArrowDown,
+  IconCircleCheck as CheckCircle,
+} from "@tabler/icons-react"
 import { Button } from "@dilag/ui/button"
 import { cn } from "@/lib/utils"
 import { bridge } from "@/lib/bridge"

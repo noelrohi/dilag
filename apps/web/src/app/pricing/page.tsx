@@ -3,7 +3,11 @@ import { Button } from "@dilag/ui/button"
 import { Badge } from "@dilag/ui/badge"
 import { SiteHeader } from "@/components/site-header"
 import { DOWNLOAD_URL } from "@/lib/constants"
-import { IconCheck as Check, IconSparkles as Sparkle, IconDownload as DownloadSimple } from "@tabler/icons-react"
+import {
+  IconCheck as Check,
+  IconSparkles as Sparkle,
+  IconDownload as DownloadSimple,
+} from "@tabler/icons-react"
 
 export default function PricingPage() {
   return (

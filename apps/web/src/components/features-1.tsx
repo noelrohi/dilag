@@ -1,5 +1,9 @@
 import { Card, CardContent, CardHeader } from "@dilag/ui/card"
-import { IconBolt as Lightning, IconCode as CodeBlock, IconSparkles as Sparkle } from "@tabler/icons-react"
+import {
+  IconBolt as Lightning,
+  IconCode as CodeBlock,
+  IconSparkles as Sparkle,
+} from "@tabler/icons-react"
 import { ReactNode } from "react"
 
 export default function Features() {

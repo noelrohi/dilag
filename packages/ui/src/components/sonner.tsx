@@ -1,6 +1,12 @@
 "use client"
 
-import { IconCircleCheck as CircleCheckIcon, IconInfoCircle as InfoIcon, IconLoader2 as Loader2Icon, IconXboxX as OctagonXIcon, IconAlertTriangle as TriangleAlertIcon } from "@tabler/icons-react"
+import {
+  IconCircleCheck as CircleCheckIcon,
+  IconInfoCircle as InfoIcon,
+  IconLoader2 as Loader2Icon,
+  IconXboxX as OctagonXIcon,
+  IconAlertTriangle as TriangleAlertIcon,
+} from "@tabler/icons-react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
 const Toaster = ({ theme = "system", ...props }: ToasterProps) => {

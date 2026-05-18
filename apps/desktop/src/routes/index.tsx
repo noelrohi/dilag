@@ -7,7 +7,11 @@ import {
 } from "@/hooks/use-projects"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import { bridge } from "@/lib/bridge"
-import { IconCirclePlus as AddCircle, IconSquarePlus as AddSquare, IconHistory as History } from "@tabler/icons-react"
+import {
+  IconCirclePlus as AddCircle,
+  IconSquarePlus as AddSquare,
+  IconHistory as History,
+} from "@tabler/icons-react"
 import { Button } from "@dilag/ui/button"
 import { Input } from "@dilag/ui/input"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
