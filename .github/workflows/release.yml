@@ -4,21 +4,31 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, for example v0.6.0"
+        required: true
+        type: string
 
 jobs:
   create-release:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
       - name: Extract changelog for release notes
         id: changelog
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
 
           NOTES=$(awk -v ver="$VERSION" '
             /^## \[/ {
@@ -29,7 +39,7 @@ jobs:
           ' CHANGELOG.md)
 
           if [ -z "$NOTES" ]; then
-            NOTES="Release $GITHUB_REF_NAME"
+            NOTES="Release $RELEASE_TAG"
           fi
 
           {
@@ -43,14 +53,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: ${{ steps.changelog.outputs.notes }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release edit "$GITHUB_REF_NAME" \
-              --title "Dilag $GITHUB_REF_NAME" \
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --title "Dilag $RELEASE_TAG" \
               --notes "$RELEASE_NOTES" \
               --latest
           else
-            gh release create "$GITHUB_REF_NAME" \
-              --title "Dilag $GITHUB_REF_NAME" \
+            gh release create "$RELEASE_TAG" \
+              --title "Dilag $RELEASE_TAG" \
               --notes "$RELEASE_NOTES" \
               --latest \
               --verify-tag
@@ -60,19 +70,15 @@ jobs:
     needs: create-release
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-14
-            arch: arm64
-          - platform: macos-13
-            arch: x64
+    runs-on: macos-14
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
-    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -91,4 +97,5 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           DILAG_API_URL: https://dilag.noelrohi.com
-        run: bun run --cwd apps/desktop dist -- --mac dmg zip --${{ matrix.arch }} --publish always
+          EP_GH_IGNORE_TIME: true
+        run: bun run --cwd apps/desktop dist -- --mac dmg zip --arm64 --publish always -c.publish.releaseType=release
