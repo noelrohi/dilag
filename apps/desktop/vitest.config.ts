@@ -12,7 +12,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
-      exclude: ["node_modules/", "src/test/", "src-tauri/", "**/*.d.ts", "src/routeTree.gen.ts"],
+      exclude: ["node_modules/", "src/test/", "**/*.d.ts", "src/routeTree.gen.ts"],
     },
   },
   resolve: {

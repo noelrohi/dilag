@@ -73,7 +73,6 @@
     "@dilag/desktop-bridge": "workspace:*",
     "@dilag/ui": "workspace:*",
     "@earendil-works/pi-coding-agent": "^0.74.0",
-    "@opencode-ai/sdk": "1.4.3",
     "@pierre/diffs": "^1.0.4",
     "@tabler/icons-react": "catalog:",
     "@tailwindcss/vite": "^4.1.18",

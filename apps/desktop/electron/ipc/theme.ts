@@ -10,7 +10,7 @@ export function registerThemeHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.theme.setTitlebarTheme, (_event, args: { isDark: boolean }) => {
     if (process.platform !== "darwin") return
     const window = getWindow()
-    if (!window) return
+    if (!window || window.isDestroyed()) return
     window.setBackgroundColor(args.isDark ? DARK_BG : LIGHT_BG)
   })
 }
