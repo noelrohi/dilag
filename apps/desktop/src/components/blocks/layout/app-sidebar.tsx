@@ -10,6 +10,7 @@ import {
   IconArchive as ArchiveDownMinimlistic,
   IconDots as MenuDots,
   IconTrash as TrashBinMinimalistic,
+  IconFolder as FolderIcon,
   IconFolderSymlink as FolderPathConnect,
   IconPencil as Pen,
   IconMessageCircle as ChatRoundLine,
@@ -326,7 +327,7 @@ export function AppSidebar() {
               <span>Projects</span>
               {regularProjects.length > 0 && (
                 <button
-                  className="rounded p-0.5 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  className="rounded p-0.5 opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-foreground group-hover/projects:opacity-100 group-focus-within/projects:opacity-100"
                   onClick={() => setProjectsSectionExpanded((expanded) => !expanded)}
                   title={projectsSectionExpanded ? "Collapse projects" : "Expand projects"}
                   aria-label={projectsSectionExpanded ? "Collapse projects" : "Expand projects"}
@@ -655,11 +656,12 @@ function ProjectItem({
       <SidebarMenuItem className="group/item">
         <SidebarMenuButton asChild>
           <div onClick={onToggleExpanded} role="button" tabIndex={0}>
+            <FolderIcon className="size-4 shrink-0 text-sidebar-foreground/55" />
             <span className="min-w-0 truncate text-[15px] text-sidebar-foreground/75">
               {project.name}
             </span>
             <button
-              className="shrink-0 rounded p-0.5 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              className="shrink-0 rounded p-0.5 text-sidebar-foreground/50 opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-foreground group-hover/item:opacity-100 group-focus-within/item:opacity-100"
               onClick={(event) => {
                 event.stopPropagation()
                 onToggleExpanded()
