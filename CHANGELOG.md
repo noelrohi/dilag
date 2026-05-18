@@ -5,6 +5,22 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-05-18
+
+### Added
+
+- **Design Export Options**: Export selected or all generated screens as HTML, PNG, or combined PNG + HTML ZIP archives.
+- **Canvas Auto Positioning**: Added an automatic screen layout action to reset generated screens into a clean grid.
+
+### Changed
+
+- **Project Rename Flow**: Renaming projects now updates display names without moving project folders or Pi session data.
+- **Streaming Composer Shortcuts**: Plain Enter inserts a newline while a session is running; Cmd/Ctrl+Enter steers the active session and Alt+Enter queues a follow-up.
+
+### Fixed
+
+- **Finder Opening**: Use Electron's native path shell API to open project folders reliably when folder names include URL-sensitive characters.
+
 ## [0.6.2] - 2026-05-18
 
 ### Fixed
