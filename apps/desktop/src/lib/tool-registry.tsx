@@ -134,11 +134,20 @@ function fileDiffCounts(p: ToolRenderProps): { additions: number; deletions: num
 function SlotNumber({ value, direction }: { value: number; direction: "up" | "down" }) {
   const previousRef = useRef(value)
   const previous = previousRef.current
+  const shouldAnimate = previous !== value
   const width = `${Math.max(String(previous).length, String(value).length)}ch`
 
   useEffect(() => {
     previousRef.current = value
   }, [value])
+
+  if (!shouldAnimate) {
+    return (
+      <span className="inline-block h-4 text-right leading-4 align-[-3px]" style={{ width }}>
+        {value}
+      </span>
+    )
+  }
 
   return (
     <span className="relative inline-block h-4 overflow-hidden align-[-3px]" style={{ width }}>

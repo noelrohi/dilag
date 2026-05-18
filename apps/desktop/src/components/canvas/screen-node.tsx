@@ -320,6 +320,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                     scale={scale}
                     offset={iframeOffset}
                     onEditWithAI={() => onEditElementWithAI(selectedElement)}
+                    onClose={clearSelection}
                   />
                 )}
               </IPhoneFrame>
@@ -378,6 +379,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                     scale={scale}
                     offset={iframeOffset}
                     onEditWithAI={() => onEditElementWithAI(selectedElement)}
+                    onClose={clearSelection}
                   />
                 )}
               </div>

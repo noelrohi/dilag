@@ -1,6 +1,7 @@
 import { memo } from "react"
 import { Button } from "@dilag/ui/button"
 import { MagicStick, Copy } from "@solar-icons/react"
+import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ElementInfo } from "@/context/element-selection-store"
 import { toast } from "sonner"
@@ -14,6 +15,8 @@ interface ElementSelectionMenuProps {
   offset?: { x: number; y: number }
   /** Callback when "Edit with AI" is clicked */
   onEditWithAI: () => void
+  /** Callback to close/deselect */
+  onClose: () => void
 }
 
 /**
@@ -25,6 +28,7 @@ function ElementSelectionMenuComponent({
   scale,
   offset = { x: 0, y: 0 },
   onEditWithAI,
+  onClose,
 }: ElementSelectionMenuProps) {
   // Calculate position (above the element)
   const scaledRect = {
@@ -62,8 +66,8 @@ function ElementSelectionMenuComponent({
         variant="default"
         className="h-7 w-7 p-0"
         onClick={onEditWithAI}
-        title="Edit with AI"
-        aria-label="Edit with AI"
+        title="Edit selected element"
+        aria-label="Edit selected element"
       >
         <MagicStick size={14} />
       </Button>
@@ -79,6 +83,17 @@ function ElementSelectionMenuComponent({
         aria-label="Copy CSS selector"
       >
         <Copy size={14} />
+      </Button>
+
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+        onClick={onClose}
+        title="Close"
+        aria-label="Close element menu"
+      >
+        <X size={14} />
       </Button>
     </div>
   )

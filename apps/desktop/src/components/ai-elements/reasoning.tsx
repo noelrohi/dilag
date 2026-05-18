@@ -3,7 +3,6 @@
 import { useControllableState } from "@radix-ui/react-use-controllable-state"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { Lightbulb } from "lucide-react"
 import type { ComponentProps, ReactNode } from "react"
 import { createContext, memo, useContext, useEffect, useState } from "react"
 import { Streamdown } from "streamdown"
@@ -111,7 +110,7 @@ export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & 
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer duration={1}>Thinking...</Shimmer>
+    return <Shimmer as="span" duration={1}>Thinking...</Shimmer>
   }
   if (duration === undefined) {
     return <p>Thought for a few seconds</p>
@@ -131,7 +130,7 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "group grid h-8 w-full grid-cols-[16px_minmax(0,1fr)] items-center gap-2.5 rounded-md px-2 py-1.5 text-left",
+          "group grid h-8 w-full grid-cols-1 items-center rounded-md px-2 py-1.5 text-left",
           "text-sm text-muted-foreground select-none cursor-default transition-colors",
           "hover:bg-muted/30 hover:text-foreground data-[state=open]:bg-muted/20 data-[state=open]:text-foreground",
           className,
@@ -139,14 +138,9 @@ export const ReasoningTrigger = memo(
         {...props}
       >
         {children ?? (
-          <>
-            <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/80">
-              <Lightbulb className="size-[15px] stroke-[1.75]" />
-            </span>
-            <span className="min-w-0 flex-1 truncate text-left">
-              {getThinkingMessage(isStreaming, duration)}
-            </span>
-          </>
+          <span className="min-w-0 flex-1 truncate text-left">
+            {getThinkingMessage(isStreaming, duration)}
+          </span>
         )}
       </CollapsibleTrigger>
     )
