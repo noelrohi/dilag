@@ -6,6 +6,7 @@ import {
   getCanonicalGeneratedScreenDirectory,
   type UpdateDownloadEvent,
 } from "@dilag/desktop-bridge"
+import { isNewerAppVersion } from "../../src/lib/version.js"
 import { copyHtmlFiles, loadDesignsForSession, validateHtml } from "./designs.js"
 import {
   abortAgentSession,
@@ -282,14 +283,17 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.updater.check, async () => {
     const result = await autoUpdater.checkForUpdates()
     const info = result?.updateInfo
-    return info
-      ? {
-          version: info.version,
-          currentVersion: app.getVersion(),
-          body: info.releaseNotes?.toString(),
-          date: info.releaseDate,
-        }
-      : null
+    const currentVersion = app.getVersion()
+    if (!info || !isNewerAppVersion(info.version, currentVersion)) {
+      return null
+    }
+
+    return {
+      version: info.version,
+      currentVersion,
+      body: info.releaseNotes?.toString(),
+      date: info.releaseDate,
+    }
   })
   ipcMain.handle(CHANNELS.updater.download, async () => {
     const window = getWindow()

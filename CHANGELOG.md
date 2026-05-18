@@ -5,6 +5,13 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-05-18
+
+### Fixed
+
+- **Packaged Desktop Routing**: Use hash routing when the Electron renderer is loaded from `file://` so the app opens the project composer instead of TanStack Router's default `Not Found` screen.
+- **Update Notifications**: Ignore updater results whose release version is not newer than the installed app version, preventing same-version update prompts.
+
 ## [0.6.1] - 2026-05-18
 
 ### Fixed

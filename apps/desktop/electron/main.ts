@@ -23,7 +23,16 @@ type SmokeReport = {
   hasBridge: boolean
   bootstrapPort: number
   ipcPort: number
+  rendererReady?: boolean
+  locationHref?: string
+  bodyText?: string
   error?: string
+}
+
+type RendererSmokeState = Pick<SmokeReport, "bodyText" | "locationHref">
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // IPC handlers registered once at startup. They read the current window via
@@ -73,6 +82,54 @@ function waitForSmokeReport(timeoutMs = 10_000): Promise<SmokeReport> {
   })
 }
 
+async function waitForRendererSmokeState(timeoutMs = 10_000): Promise<SmokeReport> {
+  const deadline = Date.now() + timeoutMs
+  let lastState: RendererSmokeState = {}
+
+  while (Date.now() < deadline) {
+    const state = (await mainWindow?.webContents.executeJavaScript(
+      `({
+        bodyText: document.body.innerText.slice(0, 1000),
+        locationHref: window.location.href
+      })`,
+      true,
+    )) as RendererSmokeState | undefined
+
+    lastState = state ?? lastState
+    const bodyText = state?.bodyText?.trim() ?? ""
+    if (bodyText.includes("Not Found")) {
+      return {
+        hasBridge: false,
+        bootstrapPort: 0,
+        ipcPort: 0,
+        rendererReady: false,
+        ...state,
+        error: "Renderer routed to Not Found.",
+      }
+    }
+    if (bodyText.length > 0) {
+      return {
+        hasBridge: true,
+        bootstrapPort: 0,
+        ipcPort: 0,
+        rendererReady: true,
+        ...state,
+      }
+    }
+
+    await delay(250)
+  }
+
+  return {
+    hasBridge: false,
+    bootstrapPort: 0,
+    ipcPort: 0,
+    rendererReady: false,
+    ...lastState,
+    error: "Timed out waiting for renderer content.",
+  }
+}
+
 async function createWindow() {
   const additionalArguments = [`--dilag-bootstrap-port=${getBootstrapPort()}`]
   if (SMOKE_TEST) additionalArguments.push("--dilag-smoke-test")
@@ -118,9 +175,17 @@ async function createWindow() {
   }
 
   if (SMOKE_TEST) {
-    const result = await (smokeReport ?? waitForSmokeReport())
+    const bridgeResult = await (smokeReport ?? waitForSmokeReport())
+    const rendererResult = await waitForRendererSmokeState()
+    const result = {
+      ...bridgeResult,
+      rendererReady: rendererResult.rendererReady,
+      locationHref: rendererResult.locationHref,
+      bodyText: rendererResult.bodyText,
+      error: bridgeResult.error ?? rendererResult.error,
+    }
     console.log(`[electron-smoke] ${JSON.stringify(result)}`)
-    app.exit(result.hasBridge ? 0 : 1)
+    app.exit(result.hasBridge && result.rendererReady ? 0 : 1)
   }
 }
 

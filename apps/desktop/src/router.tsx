@@ -1,7 +1,12 @@
-import { createRouter } from "@tanstack/react-router"
+import { createHashHistory, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
 
-export const router = createRouter({ routeTree })
+const isPackagedFileRenderer = typeof window !== "undefined" && window.location.protocol === "file:"
+
+export const router = createRouter({
+  routeTree,
+  history: isPackagedFileRenderer ? createHashHistory() : undefined,
+})
 
 declare module "@tanstack/react-router" {
   interface Register {
