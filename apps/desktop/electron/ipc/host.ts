@@ -279,6 +279,13 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
     return result.canceled ? null : (result.filePaths[0] ?? null)
   })
   ipcMain.handle(CHANNELS.shell.openExternal, (_event, url: string) => shell.openExternal(url))
+  ipcMain.handle(CHANNELS.shell.openPath, async (_event, filePath: string) => {
+    const error = await shell.openPath(filePath)
+    if (error) throw new Error(error)
+  })
+  ipcMain.handle(CHANNELS.shell.showItemInFolder, (_event, filePath: string) => {
+    shell.showItemInFolder(filePath)
+  })
 
   ipcMain.handle(CHANNELS.updater.check, async () => {
     const result = await autoUpdater.checkForUpdates()

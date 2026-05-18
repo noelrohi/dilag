@@ -1020,11 +1020,10 @@ export const PromptInputTextarea = ({
   const [isComposing, setIsComposing] = useState(false)
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if (e.key === "Enter") {
+    const isPlainEnter = e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey
+
+    if (isPlainEnter) {
       if (isComposing || e.nativeEvent.isComposing) {
-        return
-      }
-      if (e.shiftKey) {
         return
       }
       e.preventDefault()

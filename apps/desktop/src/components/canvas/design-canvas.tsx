@@ -16,7 +16,11 @@ import { ScreenNode, type ScreenNodeData } from "./screen-node"
 import { CanvasControls } from "./canvas-controls"
 import type { DesignFile } from "@/hooks/use-designs"
 import type { ElementInfo } from "@/context/element-selection-store"
-import { reconcileScreenPositions, type ScreenPosition } from "@/lib/screen-layout"
+import {
+  getAutoScreenPositions,
+  reconcileScreenPositions,
+  type ScreenPosition,
+} from "@/lib/screen-layout"
 import { resolveDesignPlatform } from "@/lib/design-viewport"
 import { cn } from "@/lib/utils"
 
@@ -188,6 +192,10 @@ function DesignCanvasInner({
     [onCaptureScreen],
   )
 
+  const handleAutoPosition = useCallback(() => {
+    onPositionsChange(getAutoScreenPositions({ designs, platform }))
+  }, [designs, onPositionsChange, platform])
+
   const dotPatternStyle = {
     backgroundImage: "radial-gradient(var(--canvas-dot-color) 1px, transparent 1px)",
     backgroundSize: "24px 24px",
@@ -227,7 +235,7 @@ function DesignCanvasInner({
       />
 
       {/* Controls rendered outside ReactFlow to ensure they're clickable */}
-      <CanvasControls />
+      <CanvasControls onAutoPosition={designs.length > 0 ? handleAutoPosition : undefined} />
     </div>
   )
 }

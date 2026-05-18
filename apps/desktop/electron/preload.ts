@@ -118,6 +118,8 @@ const bridge: DesktopBridge = {
   },
   shell: {
     openExternal: (url) => ipcRenderer.invoke(CHANNELS.shell.openExternal, url),
+    openPath: (path) => ipcRenderer.invoke(CHANNELS.shell.openPath, path),
+    showItemInFolder: (path) => ipcRenderer.invoke(CHANNELS.shell.showItemInFolder, path),
   },
   updater: {
     check: () => ipcRenderer.invoke(CHANNELS.updater.check),

@@ -14,6 +14,7 @@ import {
   type ScreenPosition,
 } from "@/context/session-store"
 import { Button } from "@dilag/ui/button"
+import { ButtonGroup } from "@dilag/ui/button-group"
 import { Input } from "@dilag/ui/input"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@dilag/ui/resizable"
@@ -37,17 +38,26 @@ import {
   IconPalette as Palette,
   IconPlayerPlay as Play,
   IconDownload as Download,
+  IconChevronDown as AltArrowDown,
+  IconCode as Code,
+  IconPhoto as Gallery,
 } from "@tabler/icons-react"
 import { IconDots as Ellipsis } from "@tabler/icons-react"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dilag/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@dilag/ui/dialog"
-import { copyFilePath, exportImages } from "@/lib/design-export"
+import {
+  copyFilePath,
+  exportHtmlDesigns,
+  exportImages,
+  exportImagesAndHtml,
+} from "@/lib/design-export"
 import { PreviewCarousel } from "@/components/blocks/preview/preview-carousel"
 import { AttachmentBridgeProvider } from "@/context/attachment-bridge"
 import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context"
@@ -217,6 +227,29 @@ export function StudioPageContent({
     setRenameOpen(false)
   }, [currentSession, newName, sessionId, updateSession, queryClient])
 
+  const handleExportDesigns = useCallback(
+    (format: "html" | "png" | "pngAndHtml") => {
+      const toExport =
+        selectedScreenIds.size > 0
+          ? designs.filter((d) => selectedScreenIds.has(d.filename))
+          : designs
+      const options = {
+        designs: toExport,
+        sessionName: currentSession?.name ?? "designs",
+        platform: currentSession?.platform ?? "mobile",
+      } as const
+
+      if (format === "html") {
+        void exportHtmlDesigns(options)
+      } else if (format === "png") {
+        void exportImages(options)
+      } else {
+        void exportImagesAndHtml(options)
+      }
+    },
+    [currentSession?.name, currentSession?.platform, designs, selectedScreenIds],
+  )
+
   // Keyboard shortcuts for selection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -324,31 +357,49 @@ export function StudioPageContent({
               </TooltipTrigger>
               <TooltipContent side="bottom">Preview</TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-7"
-                  onClick={() => {
-                    const toExport =
-                      selectedScreenIds.size > 0
-                        ? designs.filter((d) => selectedScreenIds.has(d.filename))
-                        : designs
-                    exportImages({
-                      designs: toExport,
-                      sessionName: currentSession?.name ?? "designs",
-                      platform: currentSession?.platform ?? "mobile",
-                    })
-                  }}
-                  disabled={designs.length === 0}
-                  aria-label="Export designs"
-                >
-                  <Download size={14} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Export</TooltipContent>
-            </Tooltip>
+            <ButtonGroup>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="size-7"
+                onClick={() => handleExportDesigns("html")}
+                disabled={designs.length === 0}
+                aria-label="Export HTML"
+              >
+                <Download size={14} />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="size-7 px-0"
+                    disabled={designs.length === 0}
+                    aria-label="Export options"
+                  >
+                    <AltArrowDown size={14} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-max">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      className="whitespace-nowrap"
+                      onClick={() => handleExportDesigns("png")}
+                    >
+                      <Gallery size={16} />
+                      Export PNG
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="whitespace-nowrap"
+                      onClick={() => handleExportDesigns("pngAndHtml")}
+                    >
+                      <Code size={16} />
+                      Export PNG + HTML
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ButtonGroup>
           </PageHeaderRight>
         </PageHeader>
 

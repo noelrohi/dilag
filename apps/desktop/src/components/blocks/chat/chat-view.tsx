@@ -103,10 +103,33 @@ type MentionSearchResult = {
   displayName: string
 }
 
+type StreamingComposerShortcutArgs = {
+  key: string
+  shiftKey: boolean
+  metaKey: boolean
+  ctrlKey: boolean
+  altKey: boolean
+  isLoading: boolean
+}
+
 type MentionFileContent = {
   content: string
   encoding?: "base64"
   mimeType?: string
+}
+
+export function getStreamingComposerShortcut({
+  key,
+  shiftKey,
+  metaKey,
+  ctrlKey,
+  altKey,
+  isLoading,
+}: StreamingComposerShortcutArgs): "steer" | "followUp" | "newline" | "defer" {
+  if (!isLoading || key !== "Enter" || shiftKey) return "defer"
+  if (metaKey || ctrlKey) return "steer"
+  if (altKey) return "followUp"
+  return "newline"
 }
 
 function getFileDisplayName(path: string): string {
@@ -470,13 +493,11 @@ export function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
 function UserMessage({
   message,
   index,
-  onFork,
   onCopyText,
   hideActions,
 }: {
   message: SessionMessage
   index: number
-  onFork: (messageId: string) => void
   onCopyText: (messageId: string) => void | Promise<void>
   hideActions?: boolean
 }) {
@@ -533,9 +554,6 @@ function UserMessage({
           {!hideActions && (
             <MessageActions>
               <CopyMessageAction messageId={message.id} onCopyText={onCopyText} />
-              <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
-                <BranchingPathsUp size={14} />
-              </MessageAction>
             </MessageActions>
           )}
         </Message>
@@ -543,9 +561,6 @@ function UserMessage({
       {skillBlock && !cleanText && fileParts.length === 0 && !hideActions && (
         <MessageActions>
           <CopyMessageAction messageId={message.id} onCopyText={onCopyText} />
-          <MessageAction tooltip="Fork from here" onClick={() => onFork(message.id)}>
-            <BranchingPathsUp size={14} />
-          </MessageAction>
         </MessageActions>
       )}
     </>
@@ -953,20 +968,14 @@ function ChatInputArea({
       const target = e.target as HTMLElement | null
       if (!target || target.id !== composerTextareaId) return
 
-      if (e.key === "Enter" && !e.shiftKey && isLoading) {
-        nextStreamingBehaviorRef.current = e.altKey ? "followUp" : "steer"
-      }
-
-      if (!mentionOpen) return
-
-      if (e.key === "Escape") {
+      if (mentionOpen && e.key === "Escape") {
         e.preventDefault()
         e.stopPropagation()
         setMentionOpen(false)
         return
       }
 
-      if (e.key === "ArrowDown") {
+      if (mentionOpen && e.key === "ArrowDown") {
         e.preventDefault()
         e.stopPropagation()
         if (mentionSearchResults.length === 0) return
@@ -974,7 +983,7 @@ function ChatInputArea({
         return
       }
 
-      if (e.key === "ArrowUp") {
+      if (mentionOpen && e.key === "ArrowUp") {
         e.preventDefault()
         e.stopPropagation()
         if (mentionSearchResults.length === 0) return
@@ -984,7 +993,8 @@ function ChatInputArea({
         return
       }
 
-      if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+      const isPlainEnter = e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey
+      if (mentionOpen && (isPlainEnter || e.key === "Tab")) {
         e.preventDefault()
         e.stopPropagation()
         if (mentionSearchResults.length === 0) return
@@ -993,6 +1003,27 @@ function ChatInputArea({
         if (selected) {
           selectMentionResult(selected)
         }
+      }
+
+      const streamingShortcut = getStreamingComposerShortcut({
+        key: e.key,
+        shiftKey: e.shiftKey,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        isLoading,
+      })
+
+      if (streamingShortcut === "steer" || streamingShortcut === "followUp") {
+        e.preventDefault()
+        e.stopPropagation()
+        nextStreamingBehaviorRef.current = streamingShortcut
+        e.currentTarget.requestSubmit()
+        return
+      }
+
+      if (streamingShortcut === "newline") {
+        e.stopPropagation()
       }
     },
     [
@@ -1129,24 +1160,17 @@ function ChatInputArea({
 
   return (
     <div className="relative px-4 pb-4">
-      <div className="space-y-2">
+      <div className="relative isolate">
         {/* Gradient fade */}
         <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
-        <PromptInput
-          onSubmit={async ({ text, files }) => handleSubmit(text, files)}
-          onKeyDownCapture={handleComposerKeyDownCapture}
-          className={cn(
-            "rounded-2xl bg-sidebar text-sidebar-foreground [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border",
-            isLoading && "opacity-80",
-          )}
-        >
-          {hasQueuedPrompts && (
-            <div className="w-full divide-y divide-sidebar-border/70 border-b border-sidebar-border/70">
+        {hasQueuedPrompts && (
+          <div className="relative z-0 mx-auto mb-[-14px] w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-sidebar-border/80 bg-sidebar px-3 pb-5 pt-2 shadow-lg shadow-black/5">
+            <div className="max-h-24 divide-y divide-sidebar-border/60 overflow-y-auto">
               {queuedPrompts.map((item) => (
                 <div
                   key={item.id}
-                  className="flex min-h-9 items-center justify-between gap-3 px-3 py-1.5 text-xs"
+                  className="flex min-h-8 items-center justify-between gap-3 py-1 text-xs"
                 >
                   <div className="flex min-w-0 items-center gap-2 text-sidebar-foreground/75">
                     <AltArrowRight size={13} className="shrink-0 text-sidebar-foreground/45" />
@@ -1169,7 +1193,16 @@ function ChatInputArea({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        <PromptInput
+          onSubmit={async ({ text, files }) => handleSubmit(text, files)}
+          onKeyDownCapture={handleComposerKeyDownCapture}
+          className={cn(
+            "relative z-10 rounded-2xl bg-sidebar text-sidebar-foreground [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border [&_[data-slot=input-group]]:bg-sidebar",
           )}
+        >
           <PromptInputAttachments>
             {(attachment) => <PromptInputAttachment data={attachment} />}
           </PromptInputAttachments>
@@ -1207,6 +1240,7 @@ function ChatInputArea({
             <PromptInputTextarea
               id={composerTextareaId}
               data-chat-composer-textarea
+              aria-keyshortcuts={isLoading ? "Meta+Enter Control+Enter" : undefined}
               placeholder={isLoading ? "Ask for follow-up changes" : "Describe what to design..."}
               className="min-h-[56px] max-h-[200px]"
               onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
@@ -1257,19 +1291,6 @@ function ChatInputArea({
             {/* Right side - attachment menu + submit */}
             <div className="flex items-center gap-1">
               <PromptInputAddAttachmentButton />
-              {isLoading && hasSubmittableInput && (
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  onClick={() => {
-                    nextStreamingBehaviorRef.current = "steer"
-                  }}
-                  className="h-9 rounded-xl px-2.5 text-xs font-medium text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                >
-                  <AltArrowRight size={14} />
-                  Steer
-                </Button>
-              )}
               <PromptInputSubmit
                 type={isLoading ? "button" : "submit"}
                 onClick={
@@ -1407,7 +1428,6 @@ export function ChatView() {
                       key={message.id}
                       message={message}
                       index={index}
-                      onFork={handleFork}
                       onCopyText={handleCopyText}
                       hideActions={hideInitialMessageActions && message.id === firstUserMessageId}
                     />

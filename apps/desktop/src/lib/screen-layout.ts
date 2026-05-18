@@ -116,6 +116,13 @@ export function reconcileScreenPositions({
   })
 }
 
+export function getAutoScreenPositions({
+  designs,
+  platform,
+}: Pick<ScreenPositionsArgs, "designs" | "platform">): ScreenPosition[] {
+  return designs.map((_, index) => getDefaultScreenPositions(designs, index, platform))
+}
+
 export function findMissingScreenPositions(args: ScreenPositionsArgs): ScreenPosition[] {
   const persistedIds = new Set(args.persistedPositions.map((position) => position.id))
 

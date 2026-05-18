@@ -120,4 +120,18 @@ describe("AppSidebar", () => {
       expect.objectContaining({ to: "/studio/$sessionId" }),
     )
   })
+
+  it("opens a project folder through the native path shell API", async () => {
+    const user = userEvent.setup()
+    const projectPath = "/Users/test/dilag/Client portal #1?draft"
+    mockListProjects.mockResolvedValue([project({ path: projectPath })])
+
+    renderSidebar()
+
+    await user.click(await screen.findByRole("button", { name: "Untitled project actions" }))
+    await user.click(await screen.findByRole("menuitem", { name: /open in finder/i }))
+
+    expect(window.desktopBridge!.shell.openPath).toHaveBeenCalledWith(projectPath)
+    expect(window.desktopBridge!.shell.openExternal).not.toHaveBeenCalled()
+  })
 })

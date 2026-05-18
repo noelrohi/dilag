@@ -193,14 +193,31 @@ interface ExportImagesOptions {
   platform?: "mobile" | "web"
 }
 
+type ExportDesignFormat = "html" | "png" | "pngAndHtml"
+
+interface ExportDesignsOptions extends ExportImagesOptions {
+  format?: ExportDesignFormat
+}
+
+function getExportFilenameBase(title: string): string {
+  return title.toLowerCase().replace(/\s+/g, "-")
+}
+
+function getExportFormatLabel(format: ExportDesignFormat): string {
+  if (format === "html") return "HTML"
+  if (format === "png") return "PNG"
+  return "PNG and HTML"
+}
+
 /**
- * Export designs as PNG images to user-selected folder
+ * Export designs to a user-selected ZIP file.
  */
-export async function exportImages({
+export async function exportDesigns({
   designs,
   sessionName = "designs",
   platform = "mobile",
-}: ExportImagesOptions): Promise<void> {
+  format = "html",
+}: ExportDesignsOptions): Promise<void> {
   if (designs.length === 0) {
     toast.error("No designs to export")
     return
@@ -215,7 +232,8 @@ export async function exportImages({
 
   if (!filePath) return
 
-  const toastId = toast.loading(`Generating ${designs.length} images...`)
+  const formatLabel = getExportFormatLabel(format)
+  const toastId = toast.loading(`Generating ${formatLabel} export...`)
   const zip = new JSZip()
 
   // Create a folder inside the zip with the session name
@@ -228,7 +246,16 @@ export async function exportImages({
   try {
     for (let i = 0; i < designs.length; i++) {
       const design = designs[i]
-      toast.loading(`Rendering ${i + 1}/${designs.length}: ${design.title}`, { id: toastId })
+      toast.loading(`Exporting ${i + 1}/${designs.length}: ${design.title}`, { id: toastId })
+      const basename = getExportFilenameBase(design.title)
+
+      if (format === "html" || format === "pngAndHtml") {
+        folder.file(`${basename}.html`, design.html)
+      }
+
+      if (format === "html") {
+        continue
+      }
 
       const bytes = await renderHtmlToPng({
         html: design.html,
@@ -236,8 +263,7 @@ export async function exportImages({
         scale: 2,
       })
 
-      const filename = design.title.toLowerCase().replace(/\s+/g, "-") + ".png"
-      folder.file(filename, bytes)
+      folder.file(`${basename}.png`, bytes)
     }
 
     toast.loading("Saving...", { id: toastId })
@@ -245,11 +271,26 @@ export async function exportImages({
     const buffer = await blob.arrayBuffer()
     await bridge.fs.writeFile(filePath, new Uint8Array(buffer))
 
-    toast.success(`Exported ${designs.length} images`, { id: toastId })
+    toast.success(
+      `Exported ${designs.length} screen${designs.length > 1 ? "s" : ""} as ${formatLabel}`,
+      { id: toastId },
+    )
   } catch (error) {
     console.error("Image export failed:", error)
     toast.error(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`, {
       id: toastId,
     })
   }
+}
+
+export function exportHtmlDesigns(options: ExportImagesOptions): Promise<void> {
+  return exportDesigns({ ...options, format: "html" })
+}
+
+export function exportImages(options: ExportImagesOptions): Promise<void> {
+  return exportDesigns({ ...options, format: "png" })
+}
+
+export function exportImagesAndHtml(options: ExportImagesOptions): Promise<void> {
+  return exportDesigns({ ...options, format: "pngAndHtml" })
 }

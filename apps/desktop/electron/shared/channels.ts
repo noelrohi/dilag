@@ -97,6 +97,8 @@ export const CHANNELS = {
   },
   shell: {
     openExternal: "shell:open-external",
+    openPath: "shell:open-path",
+    showItemInFolder: "shell:show-item-in-folder",
   },
   updater: {
     check: "updater:check",

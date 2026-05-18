@@ -5,9 +5,14 @@ import {
   IconRefresh as Restart,
   IconCircleMinus as MinusCircle,
   IconCirclePlus as AddCircle,
+  IconLayoutGrid as LayoutGrid,
 } from "@tabler/icons-react"
 
-export function CanvasControls() {
+interface CanvasControlsProps {
+  onAutoPosition?: () => void
+}
+
+export function CanvasControls({ onAutoPosition }: CanvasControlsProps) {
   const { setViewport, fitView, getViewport } = useReactFlow()
   const { zoom } = useViewport()
 
@@ -18,6 +23,13 @@ export function CanvasControls() {
   const handleFitView = useCallback(() => {
     fitView({ padding: 0.2, duration: 300 })
   }, [fitView])
+
+  const handleAutoPosition = useCallback(() => {
+    onAutoPosition?.()
+    window.setTimeout(() => {
+      fitView({ padding: 0.2, duration: 300 })
+    }, 50)
+  }, [fitView, onAutoPosition])
 
   const handleZoomIn = useCallback(() => {
     const viewport = getViewport()
@@ -49,6 +61,15 @@ export function CanvasControls() {
         >
           <Maximize size={16} className="text-foreground" />
         </button>
+        {onAutoPosition && (
+          <button
+            onClick={handleAutoPosition}
+            className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+            title="Auto position screens"
+          >
+            <LayoutGrid size={16} className="text-foreground" />
+          </button>
+        )}
         <div className="w-px h-5 bg-border mx-1" />
         <button
           onClick={handleZoomOut}

@@ -329,15 +329,21 @@
 }
 
 .text-shimmer-sweep {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
   background-image: linear-gradient(
     90deg,
     var(--color-muted-foreground) 0%,
     var(--color-muted-foreground) calc(50% - var(--shimmer-spread, 36px)),
-    color-mix(in oklch, var(--color-foreground) 88%, var(--color-muted-foreground)) 50%,
+    var(--color-foreground) 50%,
     var(--color-muted-foreground) calc(50% + var(--shimmer-spread, 36px)),
     var(--color-muted-foreground) 100%
   );
   background-size: 220% 100%;
+  background-position: 120% center;
+  background-repeat: no-repeat;
   animation: text-shimmer-sweep var(--shimmer-duration, 0.95s) cubic-bezier(0.35, 0, 0.25, 1)
     infinite;
 }
@@ -355,6 +361,12 @@
   .animate-slot-count-up,
   .animate-slot-count-down {
     animation: none;
+  }
+
+  .text-shimmer-sweep {
+    color: var(--color-muted-foreground);
+    -webkit-text-fill-color: currentColor;
+    background-image: none;
   }
 
   .animate-slot-count-up {

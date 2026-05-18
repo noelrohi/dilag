@@ -82,7 +82,7 @@ const desktopBridgeMock: DesktopBridge = {
   },
   fs: { stat: vi.fn(), writeFile: vi.fn() },
   dialog: { save: vi.fn(), openDirectory: vi.fn() },
-  shell: { openExternal: vi.fn() },
+  shell: { openExternal: vi.fn(), openPath: vi.fn(), showItemInFolder: vi.fn() },
   updater: {
     check: vi.fn(),
     download: vi.fn(),

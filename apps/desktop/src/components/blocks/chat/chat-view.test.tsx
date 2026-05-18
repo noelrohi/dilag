@@ -13,6 +13,7 @@ import {
   isAssistantMessageStreaming,
   parseSkillBlock,
   getDisplayMessageText,
+  getStreamingComposerShortcut,
   SkillInvocationBlock,
 } from "./chat-view"
 import type { MessagePart } from "@/context/session-store"
@@ -142,6 +143,82 @@ describe("SkillInvocationBlock", () => {
       screen.getAllByText("Skill").some((node) => node.classList.contains("text-muted-foreground")),
     ).toBe(true)
     expect(await screen.findByText(/Follow the design rules/)).toBeInTheDocument()
+  })
+})
+
+describe("getStreamingComposerShortcut", () => {
+  it("uses Cmd/Ctrl+Enter for steering while the session is loading", () => {
+    expect(
+      getStreamingComposerShortcut({
+        key: "Enter",
+        shiftKey: false,
+        metaKey: true,
+        ctrlKey: false,
+        altKey: false,
+        isLoading: true,
+      }),
+    ).toBe("steer")
+
+    expect(
+      getStreamingComposerShortcut({
+        key: "Enter",
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: true,
+        altKey: false,
+        isLoading: true,
+      }),
+    ).toBe("steer")
+  })
+
+  it("does not submit plain Enter as steering while the session is loading", () => {
+    expect(
+      getStreamingComposerShortcut({
+        key: "Enter",
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false,
+        isLoading: true,
+      }),
+    ).toBe("newline")
+  })
+
+  it("keeps Alt+Enter as the queued follow-up shortcut while loading", () => {
+    expect(
+      getStreamingComposerShortcut({
+        key: "Enter",
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: true,
+        isLoading: true,
+      }),
+    ).toBe("followUp")
+  })
+
+  it("defers to normal composer handling when idle or using Shift+Enter", () => {
+    expect(
+      getStreamingComposerShortcut({
+        key: "Enter",
+        shiftKey: false,
+        metaKey: true,
+        ctrlKey: false,
+        altKey: false,
+        isLoading: false,
+      }),
+    ).toBe("defer")
+
+    expect(
+      getStreamingComposerShortcut({
+        key: "Enter",
+        shiftKey: true,
+        metaKey: true,
+        ctrlKey: false,
+        altKey: false,
+        isLoading: true,
+      }),
+    ).toBe("defer")
   })
 })
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   findMissingScreenPositions,
+  getAutoScreenPositions,
   getScreenLayout,
   reconcileScreenPositions,
   type ScreenPosition,
@@ -22,6 +23,19 @@ describe("screen layout", () => {
         platform: "web",
       }),
     ).toEqual(persistedPositions)
+  })
+
+  it("can regenerate all positions from the automatic layout", () => {
+    expect(
+      getAutoScreenPositions({
+        designs: designs(["home.html", "settings.html", "profile.html"]),
+        platform: "web",
+      }),
+    ).toEqual([
+      { id: "home.html", x: 100, y: 40 },
+      { id: "settings.html", x: 800, y: 40 },
+      { id: "profile.html", x: 100, y: 500 },
+    ])
   })
 
   it("derives missing positions deterministically from design order", () => {

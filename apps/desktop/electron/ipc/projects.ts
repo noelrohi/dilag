@@ -5,8 +5,7 @@ import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { DatabaseSync } from "node:sqlite"
 import type { Platform, ProjectMeta } from "@dilag/desktop-bridge"
-import { getDefaultProjectsDir, getPiSessionDir, getSessionsFile, getStateDbPath } from "./paths.js"
-import { releaseAgentSessionsForDirectory } from "./pi.js"
+import { getDefaultProjectsDir, getSessionsFile, getStateDbPath } from "./paths.js"
 
 const MIGRATIONS = [
   `CREATE TABLE IF NOT EXISTS projects (
@@ -53,7 +52,7 @@ function toProject(row: ProjectRow): ProjectMeta {
   return {
     id: row.id,
     path: row.path,
-    name: path.basename(row.path),
+    name: row.name,
     platform: row.platform === "mobile" ? "mobile" : "web",
     pinned: row.pinned === 1,
     expanded: row.expanded === 1,
@@ -76,6 +75,12 @@ function normalizeProjectFolderName(name: string): string {
   if (nextName.includes("/") || nextName.includes("\\")) {
     throw new Error("Project folder name cannot contain path separators")
   }
+  return nextName
+}
+
+function normalizeProjectName(name: string): string {
+  const nextName = name.trim()
+  if (!nextName) throw new Error("Project name cannot be empty")
   return nextName
 }
 
@@ -108,7 +113,7 @@ export async function createProject(args: {
 }): Promise<ProjectMeta> {
   const projectPath = await uniqueProjectPath(args.name)
   await fsp.mkdir(projectPath, { recursive: true })
-  return addProjectAtPath({ path: projectPath, platform: args.platform })
+  return addProjectAtPath({ path: projectPath, name: args.name, platform: args.platform })
 }
 
 export async function addExistingProject(args: {
@@ -120,11 +125,16 @@ export async function addExistingProject(args: {
   if (!stat.isDirectory()) throw new Error("Project path must be a folder")
   return addProjectAtPath({
     path: projectPath,
+    name: path.basename(projectPath),
     platform: args.platform,
   })
 }
 
-async function addProjectAtPath(args: { path: string; platform?: Platform }): Promise<ProjectMeta> {
+async function addProjectAtPath(args: {
+  path: string
+  name: string
+  platform?: Platform
+}): Promise<ProjectMeta> {
   const normalizedPath = normalizeProjectPath(args.path)
   const existing = getProjectByPath(normalizedPath)
   if (existing) return touchProject({ id: existing.id })
@@ -133,7 +143,7 @@ async function addProjectAtPath(args: { path: string; platform?: Platform }): Pr
   const project: ProjectMeta = {
     id: `proj_${randomUUID()}`,
     path: normalizedPath,
-    name: path.basename(normalizedPath),
+    name: normalizeProjectName(args.name),
     platform: args.platform ?? "web",
     pinned: false,
     expanded: true,
@@ -180,71 +190,27 @@ export function getProjectById(id: string): ProjectMeta | null {
   return row ? toProject(row) : null
 }
 
-async function movePiSessionDirectory(oldPath: string, nextPath: string): Promise<void> {
-  const oldSessionDir = getPiSessionDir(oldPath)
-  const nextSessionDir = getPiSessionDir(nextPath)
-  if (oldSessionDir === nextSessionDir || !fs.existsSync(oldSessionDir)) return
-  if (fs.existsSync(nextSessionDir)) {
-    throw new Error("Project session data already exists for the target folder name")
-  }
-  await fsp.mkdir(path.dirname(nextSessionDir), { recursive: true })
-  await fsp.rename(oldSessionDir, nextSessionDir)
-}
-
-async function renameProjectFolder(current: ProjectMeta, name: string): Promise<ProjectMeta> {
-  const nextName = normalizeProjectFolderName(name)
-  if (nextName === path.basename(current.path)) return current
-
-  const nextPath = normalizeProjectPath(path.join(path.dirname(current.path), nextName))
-  const existing = getProjectByPath(nextPath)
-  if (existing && existing.id !== current.id) {
-    throw new Error("A project already exists at the target folder path")
-  }
-  if (fs.existsSync(nextPath)) {
-    throw new Error("A folder already exists with that name")
-  }
-
-  let movedProjectFolder = false
-  try {
-    await fsp.rename(current.path, nextPath)
-    movedProjectFolder = true
-    await movePiSessionDirectory(current.path, nextPath)
-  } catch (err) {
-    if (movedProjectFolder) {
-      await fsp.rename(nextPath, current.path).catch(() => undefined)
-    }
-    throw err
-  }
-
-  releaseAgentSessionsForDirectory(current.path)
-  return { ...current, path: nextPath, name: path.basename(nextPath) }
-}
-
-export async function updateProject(args: {
+export function updateProject(args: {
   id: string
   updates: Partial<Pick<ProjectMeta, "name" | "platform" | "pinned" | "expanded">>
-}): Promise<ProjectMeta> {
+}): ProjectMeta {
   const current = getProjectById(args.id)
   if (!current) throw new Error(`Project ${args.id} not found`)
 
-  const projectWithFolderUpdate =
-    args.updates.name === undefined
-      ? current
-      : await renameProjectFolder(current, args.updates.name)
   const next: ProjectMeta = {
-    ...projectWithFolderUpdate,
+    ...current,
+    ...(args.updates.name !== undefined ? { name: normalizeProjectName(args.updates.name) } : {}),
     ...(args.updates.platform !== undefined ? { platform: args.updates.platform } : {}),
     ...(args.updates.pinned !== undefined ? { pinned: args.updates.pinned } : {}),
     ...(args.updates.expanded !== undefined ? { expanded: args.updates.expanded } : {}),
-    name: path.basename(projectWithFolderUpdate.path),
   }
   getDb()
     .prepare(
       `UPDATE projects
-       SET path = ?, name = ?, platform = ?, pinned = ?, expanded = ?
+       SET name = ?, platform = ?, pinned = ?, expanded = ?
        WHERE id = ?`,
     )
-    .run(next.path, next.name, next.platform, next.pinned ? 1 : 0, next.expanded ? 1 : 0, next.id)
+    .run(next.name, next.platform, next.pinned ? 1 : 0, next.expanded ? 1 : 0, next.id)
   return next
 }
 

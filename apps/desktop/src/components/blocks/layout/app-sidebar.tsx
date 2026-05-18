@@ -526,7 +526,7 @@ export function AppSidebar() {
           <DialogHeader>
             <DialogTitle>Rename project</DialogTitle>
             <DialogDescription className="sr-only">
-              Enter a new folder name for this project.
+              Enter a new name for this project.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -539,7 +539,7 @@ export function AppSidebar() {
               value={renameProjectName}
               onChange={(event) => setRenameProjectName(event.target.value)}
               onFocus={(event) => event.currentTarget.select()}
-              placeholder="Folder name"
+              placeholder="Project name"
               autoFocus
             />
             <DialogFooter className="mt-4">
@@ -713,9 +713,7 @@ function ProjectItem({
               <Pin size={16} className="mr-2" />
               {project.pinned ? "Unpin project" : "Pin project"}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => bridge.shell.openExternal(`file://${encodeURI(project.path)}`)}
-            >
+            <DropdownMenuItem onClick={() => bridge.shell.openPath(project.path)}>
               <FolderPathConnect size={16} className="mr-2" />
               Open in Finder
             </DropdownMenuItem>
