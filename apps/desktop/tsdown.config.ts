@@ -7,6 +7,7 @@ const base = {
   // Electron ships Node 20+; target conservatively.
   target: "node20",
   deps: {
+    alwaysBundle: ["@dilag/desktop-bridge"],
     neverBundle: ["electron", "electron-updater"],
   },
   sourcemap: true,
