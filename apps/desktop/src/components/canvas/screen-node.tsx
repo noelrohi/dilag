@@ -25,8 +25,6 @@ import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer
 import { injectInspector, type ElementInspectorMessage } from "@/lib/element-inspector"
 import {
   useElementSelectionStore,
-  useHoveredElement,
-  useSelectedElement,
   type ElementInfo,
 } from "@/context/element-selection-store"
 import { ElementHighlight } from "./element-highlight"
@@ -78,9 +76,21 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // Element selection state
-  const hoveredElement = useHoveredElement()
-  const selectedElement = useSelectedElement()
-  const { setHovered, setSelected, clearSelection } = useElementSelectionStore()
+  const hoveredElement = useElementSelectionStore(
+    useCallback(
+      (state) => (state.hoveredElement?.screenId === id ? state.hoveredElement : null),
+      [id],
+    ),
+  )
+  const selectedElement = useElementSelectionStore(
+    useCallback(
+      (state) => (state.selectedElement?.screenId === id ? state.selectedElement : null),
+      [id],
+    ),
+  )
+  const setHovered = useElementSelectionStore((state) => state.setHovered)
+  const setSelected = useElementSelectionStore((state) => state.setSelected)
+  const clearSelection = useElementSelectionStore((state) => state.clearSelection)
 
   // Prepare HTML with scrollbar styles and inspector script
   const preparedHtml = useMemo(() => {
@@ -310,7 +320,6 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                     scale={scale}
                     offset={iframeOffset}
                     onEditWithAI={() => onEditElementWithAI(selectedElement)}
-                    onClose={clearSelection}
                   />
                 )}
               </IPhoneFrame>
@@ -369,7 +378,6 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                     scale={scale}
                     offset={iframeOffset}
                     onEditWithAI={() => onEditElementWithAI(selectedElement)}
-                    onClose={clearSelection}
                   />
                 )}
               </div>

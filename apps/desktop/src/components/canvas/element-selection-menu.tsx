@@ -1,6 +1,6 @@
 import { memo } from "react"
 import { Button } from "@dilag/ui/button"
-import { MagicStick, Copy, CloseCircle } from "@solar-icons/react"
+import { MagicStick, Copy } from "@solar-icons/react"
 import { cn } from "@/lib/utils"
 import type { ElementInfo } from "@/context/element-selection-store"
 import { toast } from "sonner"
@@ -14,8 +14,6 @@ interface ElementSelectionMenuProps {
   offset?: { x: number; y: number }
   /** Callback when "Edit with AI" is clicked */
   onEditWithAI: () => void
-  /** Callback to close/deselect */
-  onClose: () => void
 }
 
 /**
@@ -27,7 +25,6 @@ function ElementSelectionMenuComponent({
   scale,
   offset = { x: 0, y: 0 },
   onEditWithAI,
-  onClose,
 }: ElementSelectionMenuProps) {
   // Calculate position (above the element)
   const scaledRect = {
@@ -60,40 +57,28 @@ function ElementSelectionMenuComponent({
       style={menuStyle}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Edit with AI - primary action */}
       <Button
         size="sm"
         variant="default"
-        className="h-7 px-2.5 gap-1.5 text-xs font-medium"
+        className="h-7 w-7 p-0"
         onClick={onEditWithAI}
+        title="Edit with AI"
+        aria-label="Edit with AI"
       >
         <MagicStick size={14} />
-        Edit with AI
       </Button>
 
-      {/* Divider */}
       <div className="w-px h-5 bg-border" />
 
-      {/* Copy selector */}
       <Button
         size="sm"
         variant="ghost"
         className="h-7 w-7 p-0"
         onClick={handleCopySelector}
         title="Copy CSS selector"
+        aria-label="Copy CSS selector"
       >
         <Copy size={14} />
-      </Button>
-
-      {/* Close */}
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-        onClick={onClose}
-        title="Deselect (Esc)"
-      >
-        <CloseCircle size={14} />
       </Button>
     </div>
   )

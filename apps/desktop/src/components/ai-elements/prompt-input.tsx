@@ -866,8 +866,13 @@ export const PromptInput = ({
     [files, add, remove, clear, openFileDialog],
   )
 
+  const isSubmittingRef = useRef(false)
+
   const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault()
+
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
 
     const form = event.currentTarget
     const text = usingProvider
@@ -947,6 +952,9 @@ export const PromptInput = ({
               .catch(() => {
                 // Don't clear on error - user may want to retry
               })
+              .finally(() => {
+                isSubmittingRef.current = false
+              })
           } else {
             // Sync function completed without throwing, clear attachments
             clear()
@@ -954,13 +962,16 @@ export const PromptInput = ({
               controller.textInput.clear()
               controller.screenRefs.clear()
             }
+            isSubmittingRef.current = false
           }
         } catch {
           // Don't clear on error - user may want to retry
+          isSubmittingRef.current = false
         }
       })
       .catch(() => {
         // Don't clear on error - user may want to retry
+        isSubmittingRef.current = false
       })
   }
 

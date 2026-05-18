@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useCallback, useMemo, useSyncExternalStore } from "react"
 import dayjs from "dayjs"
 import duration from "dayjs/plugin/duration"
 
@@ -46,13 +46,16 @@ function getElapsedSnapshot() {
 }
 
 export function useElapsedTime(startTime: number, endTime?: number): string {
-  const now = useSyncExternalStore(subscribeToElapsedTicker, getElapsedSnapshot, getElapsedSnapshot)
-  const end = endTime ?? now
-  const [elapsed, setElapsed] = useState(() => formatDuration(end - startTime))
+  const isComplete = endTime !== undefined
+  const subscribe = useCallback(
+    (listener: () => void) => (isComplete ? () => undefined : subscribeToElapsedTicker(listener)),
+    [isComplete],
+  )
+  const getSnapshot = useCallback(
+    () => (isComplete ? endTime : getElapsedSnapshot()),
+    [endTime, isComplete],
+  )
+  const now = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
-  useEffect(() => {
-    setElapsed(formatDuration(end - startTime))
-  }, [startTime, end])
-
-  return elapsed
+  return useMemo(() => formatDuration((endTime ?? now) - startTime), [endTime, now, startTime])
 }

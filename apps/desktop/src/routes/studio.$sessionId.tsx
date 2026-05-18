@@ -7,7 +7,6 @@ import { useSessionMutations } from "@/hooks/use-session-data"
 import { useSessionDesigns, designKeys } from "@/hooks/use-designs"
 import { usePngGenerator } from "@/hooks/use-png-generator"
 import { useChatWidth } from "@/hooks/use-chat-width"
-import { useInitialPromptDelivery } from "@/features/new-design/use-initial-prompt-delivery"
 import {
   useScreenPositions,
   useSessionStore,
@@ -81,10 +80,7 @@ export function StudioPageContent({
 
   const {
     selectSession,
-    sendMessage,
     sessions,
-    currentSessionId,
-    isServerReady,
     isLoading,
     isLoadingSessions,
     forkSessionDesignsOnly,
@@ -113,14 +109,6 @@ export function StudioPageContent({
   useEffect(() => {
     selectSession(sessionId)
   }, [sessionId, selectSession])
-
-  useInitialPromptDelivery({
-    isServerReady,
-    routeSessionId: sessionId,
-    selectedSessionId: currentSessionId,
-    hasRouteSession: !!currentSession,
-    sendMessage,
-  })
 
   // Persist positions for newly discovered designs. Rendering does not depend on this:
   // DesignCanvas reconciles temporary positions while storage/session state hydrates.

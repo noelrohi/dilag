@@ -25,23 +25,22 @@ function HomePage() {
   const { data: legacyNotice } = useLegacySessionsNotice(projects.length === 0)
 
   useEffect(() => {
-    const cachedProjectId = localStorage.getItem("dilag-last-project-id")
-    if (cachedProjectId) {
-      navigate({
-        to: "/project/$projectId",
-        params: { projectId: cachedProjectId },
-        replace: true,
-      })
-    }
-  }, [navigate])
-
-  useEffect(() => {
     if (isLoadingProjects) return
 
-    const project = getDefaultProject(projects)
+    const cachedProjectId = localStorage.getItem("dilag-last-project-id")
+    const cachedProject = cachedProjectId
+      ? projects.find((project) => project.id === cachedProjectId)
+      : undefined
+    const project = cachedProject ?? getDefaultProject(projects)
+
     if (project) {
       localStorage.setItem("dilag-last-project-id", project.id)
       navigate({ to: "/project/$projectId", params: { projectId: project.id }, replace: true })
+      return
+    }
+
+    if (cachedProjectId) {
+      localStorage.removeItem("dilag-last-project-id")
     }
   }, [isLoadingProjects, navigate, projects])
 

@@ -9,6 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import { useNavigate } from "@tanstack/react-router"
+import { useShallow } from "zustand/react/shallow"
 import {
   Monitor,
   DangerCircle,
@@ -632,10 +633,12 @@ function AssistantMessage({
   onCopyText: (messageId: string) => void | Promise<void>
 }) {
   const parts = useMessageParts(message.id)
-  const partsByMessageId = useSessionStore((state) => state.parts)
-  const turnParts = useMemo(
-    () => turnAssistantMessages.flatMap((turnMessage) => partsByMessageId[turnMessage.id] ?? []),
-    [partsByMessageId, turnAssistantMessages],
+  const turnMessageIds = useMemo(
+    () => turnAssistantMessages.map((turnMessage) => turnMessage.id),
+    [turnAssistantMessages],
+  )
+  const turnParts = useSessionStore(
+    useShallow((state) => turnMessageIds.flatMap((messageId) => state.parts[messageId] ?? [])),
   )
   const sessionError = useSessionError(message.sessionID)
   const sessionStatus = useSessionStore(
@@ -1301,63 +1304,6 @@ function ChatInputArea({
   )
 }
 
-// Component to show the pending prompt immediately (optimistic UI)
-function PendingPrompt() {
-  const promptText = localStorage.getItem("dilag-initial-prompt") || ""
-  const filesJson = localStorage.getItem("dilag-initial-files")
-  let files: { url?: string; mediaType?: string; filename?: string }[] = []
-  try {
-    if (filesJson) files = JSON.parse(filesJson)
-  } catch {
-    /* ignore malformed JSON */
-  }
-
-  return (
-    <>
-      {/* User message */}
-      <Message from="user" className="animate-slide-up ml-0!">
-        <MessageContent className="ml-0! space-y-2">
-          {/* File attachments */}
-          {files.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {files.map((file, idx) => (
-                <div
-                  key={idx}
-                  className="relative rounded-lg overflow-hidden border border-border/50 bg-muted/30"
-                >
-                  {file.mediaType?.startsWith("image/") && file.url ? (
-                    <img
-                      src={file.url}
-                      alt={file.filename || "Attached image"}
-                      className="max-w-[200px] max-h-[200px] object-contain"
-                    />
-                  ) : (
-                    <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-                      <ClipboardText size={16} />
-                      <span className="truncate max-w-[150px]">
-                        {file.filename || "Attachment"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {/* Text content */}
-          {promptText && <p className="whitespace-pre-wrap leading-relaxed">{promptText}</p>}
-        </MessageContent>
-      </Message>
-
-      {/* Thinking indicator for assistant */}
-      <Message from="assistant" className="animate-slide-up">
-        <MessageContent>
-          <ThinkingIndicator />
-        </MessageContent>
-      </Message>
-    </>
-  )
-}
-
 export function ChatView() {
   const {
     messages,
@@ -1397,11 +1343,6 @@ export function ChatView() {
     await navigator.clipboard.writeText(getDisplayMessageText(rawText))
   }, [])
 
-  // Check if there's a pending initial prompt (from landing page navigation)
-  const hasPendingPrompt = Boolean(
-    localStorage.getItem("dilag-initial-prompt") || localStorage.getItem("dilag-initial-files"),
-  )
-
   const firstUserMessageId = useMemo(() => messages.find((m) => m.role === "user")?.id, [messages])
   const hideInitialMessageActions = useMemo(() => {
     const userCount = messages.reduce(
@@ -1440,9 +1381,7 @@ export function ChatView() {
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
         <Conversation className="flex-1 min-h-0">
           <ConversationContent className="px-4">
-            {messages.length === 0 && hasPendingPrompt ? (
-              <PendingPrompt />
-            ) : messages.length === 0 ? null : (
+            {messages.length === 0 ? null : (
               messages.map((message, index) => {
                 // Check if this is the last assistant message
                 const isLastAssistant =

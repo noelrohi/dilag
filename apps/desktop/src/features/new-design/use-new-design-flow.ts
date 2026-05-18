@@ -6,9 +6,6 @@ import { getDefaultProject } from "@/hooks/use-projects"
 
 export const NEW_DESIGN_STORAGE_KEYS = {
   lastProjectId: "dilag-last-project-id",
-  initialPrompt: "dilag-initial-prompt",
-  initialPlatform: "dilag-initial-platform",
-  initialFiles: "dilag-initial-files",
 } as const
 
 export interface NewDesignStorage {
@@ -22,12 +19,22 @@ export interface NewDesignNavigation {
   openProjectStudio(projectId: string, sessionId: string): void
 }
 
+export interface CreateSessionInProjectOptions {
+  platform?: Platform
+  initialPrompt?: string
+  files?: FileUIPart[]
+  name?: string
+}
+
 export interface NewDesignFlowDependencies {
   projects: ProjectMeta[]
   navigation: NewDesignNavigation
   storage: NewDesignStorage
   touchProject: (projectId: string) => Promise<unknown>
-  createSessionInProject: (project: ProjectMeta, platform?: Platform) => Promise<string | null>
+  createSessionInProject: (
+    project: ProjectMeta,
+    options?: CreateSessionInProjectOptions,
+  ) => Promise<string | null>
 }
 
 export interface NewDesignFlow {
@@ -76,18 +83,14 @@ export function createNewDesignFlow({
   ): Promise<string | null> => {
     if (!prompt.trim() && (!files || files.length === 0)) return null
 
-    storage.setItem(NEW_DESIGN_STORAGE_KEYS.initialPrompt, prompt)
-    storage.setItem(NEW_DESIGN_STORAGE_KEYS.initialPlatform, platform)
-    if (files && files.length > 0) {
-      storage.setItem(NEW_DESIGN_STORAGE_KEYS.initialFiles, JSON.stringify(files))
-    } else {
-      storage.removeItem(NEW_DESIGN_STORAGE_KEYS.initialFiles)
-    }
-
     rememberProject(project.id)
     await touchProject(project.id)
 
-    const sessionId = await createSessionInProject(project, platform)
+    const sessionId = await createSessionInProject(project, {
+      platform,
+      initialPrompt: prompt,
+      files,
+    })
     if (!sessionId) return null
 
     navigation.openProjectStudio(project.id, sessionId)

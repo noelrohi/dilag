@@ -75,7 +75,8 @@ export function useSessionDesigns(sessionCwd: string | undefined) {
       return loadSessionDesigns(sessionCwd)
     },
     enabled: !!sessionCwd,
-    refetchInterval: 2000, // Poll every 2 seconds
-    staleTime: 1000, // Consider data stale after 1 second
+    refetchInterval: 10000, // File watcher invalidates immediately; polling is only a fallback.
+    refetchIntervalInBackground: false,
+    staleTime: 5000,
   })
 }

@@ -16,19 +16,20 @@ import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selecto
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
 import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
-import { useProjectMutations, useProjectsList } from "@/hooks/use-projects"
+import { getDefaultProject, useProjectMutations, useProjectsList } from "@/hooks/use-projects"
 import { useSessions } from "@/hooks/use-sessions"
 import { cn } from "@/lib/utils"
 import { ArrowUp, Monitor, Smartphone } from "@solar-icons/react"
-import { createFileRoute, Outlet, useMatch, useParams } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useMatch, useNavigate, useParams } from "@tanstack/react-router"
 import type { FileUIPart } from "ai"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 export const Route = createFileRoute("/project/$projectId")({
   component: ProjectComposerPage,
 })
 
 function ProjectComposerPage() {
+  const navigate = useNavigate()
   const { projectId } = useParams({ from: "/project/$projectId" })
   const sessionRouteMatch = useMatch({
     from: "/project/$projectId/session/$sessionId",
@@ -44,6 +45,8 @@ function ProjectComposerPage() {
   })
   const project = projects.find((item) => item.id === projectId)
   const [targetPlatform, setTargetPlatform] = useState<"web" | "mobile">("web")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmittingRef = useRef(false)
 
   useEffect(() => {
     if (project) {
@@ -52,10 +55,39 @@ function ProjectComposerPage() {
     }
   }, [project, rememberProject])
 
-  const handleSubmit = async (text: string, files?: FileUIPart[]) => {
-    if (!project) return
-    await submitProjectComposer(project, targetPlatform, text, files)
-  }
+  useEffect(() => {
+    if (isLoadingProjects || project) return
+
+    localStorage.removeItem("dilag-last-project-id")
+    const fallbackProject = getDefaultProject(projects)
+
+    if (fallbackProject) {
+      navigate({
+        to: "/project/$projectId",
+        params: { projectId: fallbackProject.id },
+        replace: true,
+      })
+      return
+    }
+
+    navigate({ to: "/", replace: true })
+  }, [isLoadingProjects, navigate, project, projects])
+
+  const handleSubmit = useCallback(
+    async (text: string, files?: FileUIPart[]) => {
+      if (!project || isSubmittingRef.current) return
+
+      isSubmittingRef.current = true
+      setIsSubmitting(true)
+      try {
+        await submitProjectComposer(project, targetPlatform, text, files)
+      } finally {
+        isSubmittingRef.current = false
+        setIsSubmitting(false)
+      }
+    },
+    [project, submitProjectComposer, targetPlatform],
+  )
 
   if (sessionRouteMatch) {
     return <Outlet />
@@ -87,7 +119,7 @@ function ProjectComposerPage() {
             <PlatformToggle value={targetPlatform} onChange={setTargetPlatform} />
 
             <PromptInputProvider>
-              <ComposerInput onSubmit={handleSubmit} disabled={!isServerReady} />
+              <ComposerInput onSubmit={handleSubmit} disabled={!isServerReady || isSubmitting} />
             </PromptInputProvider>
           </div>
         </div>
@@ -100,7 +132,7 @@ function ComposerInput({
   onSubmit,
   disabled,
 }: {
-  onSubmit: (text: string, files?: FileUIPart[]) => void
+  onSubmit: (text: string, files?: FileUIPart[]) => Promise<void>
   disabled: boolean
 }) {
   const { textInput } = usePromptInputController()
@@ -108,7 +140,7 @@ function ComposerInput({
 
   return (
     <PromptInput
-      onSubmit={async ({ text, files }) => onSubmit(text, files)}
+      onSubmit={({ text, files }) => onSubmit(text, files)}
       className="rounded-2xl bg-sidebar text-sidebar-foreground transition-colors duration-200 [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border focus-within:[&_[data-slot=input-group]]:border-primary/50"
     >
       <PromptInputAttachments>

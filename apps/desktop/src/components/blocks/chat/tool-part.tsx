@@ -38,8 +38,11 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
   const Icon = config.icon
   const defaultOpen = DEFAULT_OPEN_TOOLS.includes(tool)
   const [open, setOpen] = useState(defaultOpen)
-  const elapsed = useElapsedTime(state.time?.start ?? Date.now(), state.time?.end)
   const status = displayedToolStatus(state, isMessageComplete)
+  const elapsedStart = state.time?.start ?? Date.now()
+  const elapsedEnd =
+    status === "running" ? state.time?.end : (state.time?.end ?? state.time?.start ?? elapsedStart)
+  const elapsed = useElapsedTime(elapsedStart, elapsedEnd)
 
   // Build render props from state
   const props: ToolRenderProps = useMemo(

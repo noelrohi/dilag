@@ -133,11 +133,15 @@ describe("new design flow", () => {
       flow.submitProjectComposer(checkoutProject, "mobile", "Build checkout", files),
     ).resolves.toBe("session-1")
 
-    expect(storage.values.get(NEW_DESIGN_STORAGE_KEYS.initialPrompt)).toBe("Build checkout")
-    expect(storage.values.get(NEW_DESIGN_STORAGE_KEYS.initialPlatform)).toBe("mobile")
-    expect(storage.values.get(NEW_DESIGN_STORAGE_KEYS.initialFiles)).toBe(JSON.stringify(files))
+    expect(storage.values.has("dilag-initial-prompt")).toBe(false)
+    expect(storage.values.has("dilag-initial-platform")).toBe(false)
+    expect(storage.values.has("dilag-initial-files")).toBe(false)
     expect(touchProject).toHaveBeenCalledWith("checkout")
-    expect(createSessionInProject).toHaveBeenCalledWith(checkoutProject, "mobile")
+    expect(createSessionInProject).toHaveBeenCalledWith(checkoutProject, {
+      platform: "mobile",
+      initialPrompt: "Build checkout",
+      files,
+    })
     expect(navigation.openProjectStudio).toHaveBeenCalledWith("checkout", "session-1")
   })
 

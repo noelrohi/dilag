@@ -31,6 +31,13 @@ export type SendMessageOptions = {
   streamingBehavior?: "steer" | "followUp"
 }
 
+type CreateSessionInProjectOptions = {
+  platform?: "web" | "mobile"
+  initialPrompt?: string
+  files?: FileUIPart[]
+  name?: string
+}
+
 // Convert bridge message parts to our internal format.
 function convertPart(
   part: BridgeAgentMessage["parts"][number],
@@ -318,9 +325,12 @@ export function useSessions() {
   const createSessionInProject = useCallback(
     async (
       project: ProjectMeta,
-      platform: "web" | "mobile" = project.platform,
-      name?: string,
+      optionsOrPlatform: CreateSessionInProjectOptions | "web" | "mobile" = {},
     ): Promise<string | null> => {
+      const options =
+        typeof optionsOrPlatform === "string" ? { platform: optionsOrPlatform } : optionsOrPlatform
+      const platform = options.platform ?? project.platform
+      const { initialPrompt, files, name } = options
       try {
         setError(null)
         const response = await bridge.agent.createSession({ directory: project.path })
@@ -342,6 +352,37 @@ export function useSessions() {
         setCurrentSessionId(response.id)
         setMessages(response.id, [])
         queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+
+        if (initialPrompt?.trim() || (files && files.length > 0)) {
+          const { selectedModel, variants } = useModelStore.getState()
+          const selectedThinkingLevel = selectedModel
+            ? variants[`${selectedModel.providerID}/${selectedModel.modelID}`]
+            : undefined
+
+          setSessionStatus(response.id, "running")
+          setSessionError(response.id, null)
+
+          void deliverDilagPrompt({
+            session: {
+              id: response.id,
+              cwd: project.path,
+              platform,
+            },
+            content: initialPrompt ?? "",
+            files,
+            isFirstMessage: true,
+            sessionStatus: "idle",
+            hasRunningTools: false,
+            model: selectedModel,
+            thinkingLevel: selectedThinkingLevel,
+          }).catch((err) => {
+            if (!isMountedRef.current) return
+            setError(err instanceof Error ? err.message : "Failed to send first message")
+            setSessionStatus(response.id, "error")
+            console.error("Failed to send first project prompt:", err)
+          })
+        }
+
         return response.id
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to create chat")
@@ -349,7 +390,7 @@ export function useSessions() {
         return null
       }
     },
-    [queryClient, setCurrentSessionId, setError, setMessages],
+    [queryClient, setCurrentSessionId, setError, setMessages, setSessionError, setSessionStatus],
   )
 
   const selectSession = useCallback(

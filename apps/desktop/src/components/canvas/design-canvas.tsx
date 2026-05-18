@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useRef } from "react"
+import { useCallback, useMemo, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react"
 import {
   ReactFlow,
   useNodesState,
@@ -143,30 +143,29 @@ function DesignCanvasInner({
     (changes: NodeChange[]) => {
       // Apply changes to internal state
       setNodes((nds) => applyNodeChanges(changes, nds))
-
-      // Skip position sync if this change originated from external state sync
-      // This prevents the feedback loop: setNodes → onNodesChange → onPositionsChange → re-render
-      if (isExternalSyncRef.current) {
-        return
-      }
-
-      // Check for position changes from user interactions (drag) and sync to store
-      const positionChanges = changes.filter(
-        (change) => change.type === "position" && change.position,
-      )
-
-      if (positionChanges.length > 0) {
-        const currentNodes = getNodes()
-        // Exclude ghost placeholder from persisted positions
-        const newPositions: ScreenPosition[] = currentNodes.map((node) => ({
-          id: node.id,
-          x: node.position.x,
-          y: node.position.y,
-        }))
-        onPositionsChange(newPositions)
-      }
     },
-    [setNodes, getNodes, onPositionsChange],
+    [setNodes],
+  )
+
+  const persistNodePositions = useCallback(
+    (nodesToPersist: Node[] = getNodes()) => {
+      if (isExternalSyncRef.current) return
+
+      const newPositions: ScreenPosition[] = nodesToPersist.map((node) => ({
+        id: node.id,
+        x: node.position.x,
+        y: node.position.y,
+      }))
+      onPositionsChange(newPositions)
+    },
+    [getNodes, onPositionsChange],
+  )
+
+  const handleNodeDragStop = useCallback(
+    (_event: ReactMouseEvent, _node: Node, draggedNodes: Node[]) => {
+      persistNodePositions(draggedNodes.length > 0 ? getNodes() : undefined)
+    },
+    [getNodes, persistNodePositions],
   )
 
   // Handle selection changes
@@ -206,6 +205,7 @@ function DesignCanvasInner({
         nodes={nodes}
         nodeTypes={nodeTypes}
         onNodesChange={handleNodesChange}
+        onNodeDragStop={handleNodeDragStop}
         onSelectionChange={handleSelectionChange}
         onNodeDoubleClick={handleNodeDoubleClick}
         // Interactions

@@ -108,7 +108,6 @@ export function ScreenCaptureProvider({ children, platform }: ScreenCaptureProvi
         })
         // Single state update - add screenId (Set naturally handles duplicates)
         setReferencedScreens((prev) => new Set([...prev, screenId]))
-        toast.success(`Selected ${element.tagName} in "${design.title}"`)
         return true
       } catch (err) {
         console.error("Failed to add element to chat:", err)
