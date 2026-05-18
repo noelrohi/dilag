@@ -12,6 +12,6 @@
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
-    "typescript": "~5.8.3"
+    "typescript": "catalog:"
   }
 }

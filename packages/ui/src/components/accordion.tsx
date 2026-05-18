@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
+import { Accordion as AccordionPrimitive } from "radix-ui"
 import { IconChevronDown as ChevronDownIcon } from "@tabler/icons-react"
 
 import { cn } from "../lib/utils"

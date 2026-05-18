@@ -1,6 +1,6 @@
 "use client"
 
-import { useControllableState } from "@radix-ui/react-use-controllable-state"
+import { useControllableState } from "radix-ui/internal"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
 import type { ComponentProps, ReactNode } from "react"

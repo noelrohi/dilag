@@ -11,7 +11,7 @@ import { IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconCircleX a
 import type { DesignFile } from "@/hooks/use-designs"
 import { cn } from "@/lib/utils"
 import { IPhoneFrame } from "./iphone-frame"
-import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
+import { VisuallyHidden } from "radix-ui"
 import { getMobileViewportSize, resolveDesignPlatform } from "@/lib/design-viewport"
 
 const MOBILE_FRAME_SCREEN_WIDTH = 260 // matches iphone-frame screen width

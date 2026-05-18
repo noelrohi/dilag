@@ -1,5 +1,5 @@
 import * as React from "react"
-import * as ContextMenuPrimitive from "@radix-ui/react-context-menu"
+import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
 import { IconCheck as CheckIcon, IconChevronRight as ChevronRightIcon, IconCircle as CircleIcon } from "@tabler/icons-react"
 
 import { cn } from "../lib/utils"
