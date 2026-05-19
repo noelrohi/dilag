@@ -15,6 +15,9 @@ import {
   IconPencil as Pen,
   IconMessageCircle as ChatRoundLine,
   IconClock as ClockCircle,
+  IconCopy,
+  IconLink,
+  IconMarkdown,
 } from "@tabler/icons-react"
 import {
   IconChevronDown as ChevronDownIcon,
@@ -72,7 +75,7 @@ import { useProjectMutations, useProjectsList } from "@/hooks/use-projects"
 import { useSessions } from "@/hooks/use-sessions"
 import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
 import { bridge } from "@/lib/bridge"
-import type { ProjectMeta } from "@dilag/desktop-bridge"
+import type { AgentMessage, AgentMessagePart, ProjectMeta } from "@dilag/desktop-bridge"
 import type { SessionMeta } from "@/context/session-store"
 
 function formatRelativeTime(dateStr: string): string {
@@ -107,10 +110,37 @@ function getNextUntitledProjectName(projects: ProjectMeta[]): string {
 type ProjectSortMode = "created" | "updated"
 type ProjectOrganizeMode = "by-project" | "recent-projects" | "chronological-list"
 
+function formatSessionMessagesAsMarkdown(session: SessionMeta, messages: AgentMessage[]): string {
+  const lines = [
+    `# ${session.name}`,
+    "",
+    `Session ID: ${session.id}`,
+    `Working directory: ${session.cwd}`,
+    "",
+  ]
+
+  for (const message of messages) {
+    const role = message.info.role === "user" ? "User" : "Assistant"
+    const content = message.parts.map(formatMessagePart).filter(Boolean).join("\n\n").trim()
+    if (!content) continue
+    lines.push(`## ${role}`, "", content, "")
+  }
+
+  return lines.join("\n").trimEnd()
+}
+
+function formatMessagePart(part: AgentMessagePart): string {
+  if (part.type === "text") return part.text ?? ""
+  if (part.type === "reasoning") return part.text ? `<reasoning>\n${part.text}\n</reasoning>` : ""
+  if (part.type === "tool") return `[tool: ${part.tool ?? "unknown"}]`
+  if (part.type === "file") return `[file: ${part.filename ?? part.url ?? "attached file"}]`
+  return ""
+}
+
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { sessions, renameSession, deleteSession } = useSessions()
+  const { sessions, renameSession, deleteSession, toggleFavorite } = useSessions()
   const { data: projects = [] } = useProjectsList()
   const { createProject, addExistingProject, updateProject, removeProject } = useProjectMutations()
   const { openNewDesign, openProjectComposer } = useNewDesignFlow({
@@ -314,6 +344,7 @@ export function AppSidebar() {
                     onStartNewChat={() => void handleStartNewChat(project)}
                     onRenameSession={renameSession}
                     onDeleteSession={deleteSession}
+                    onToggleSessionPinned={toggleFavorite}
                   />
                 ))}
               </SidebarMenu>
@@ -439,6 +470,7 @@ export function AppSidebar() {
                     onStartNewChat={() => void handleStartNewChat(project)}
                     onRenameSession={renameSession}
                     onDeleteSession={deleteSession}
+                    onToggleSessionPinned={toggleFavorite}
                   />
                 ))}
               </SidebarMenu>
@@ -638,6 +670,7 @@ function ProjectItem({
   onStartNewChat,
   onRenameSession,
   onDeleteSession,
+  onToggleSessionPinned,
 }: {
   project: ProjectMeta
   sessions: SessionMeta[]
@@ -648,6 +681,7 @@ function ProjectItem({
   onStartNewChat: () => void
   onRenameSession: (sessionId: string, name: string) => void
   onDeleteSession: (sessionId: string) => void | Promise<void>
+  onToggleSessionPinned: (sessionId: string) => void | Promise<void>
 }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -745,6 +779,19 @@ function ProjectItem({
             const isSessionActive =
               location.pathname === `/project/${project.id}/session/${session.id}` ||
               location.pathname === `/studio/${session.id}`
+            const sessionUrl = `${window.location.origin}/project/${project.id}/session/${session.id}`
+            const copyToClipboard = (value: string) => {
+              void navigator.clipboard?.writeText(value)
+            }
+            const copySessionMessages = () => {
+              void (async () => {
+                const messages = await bridge.agent.getMessages({
+                  sessionID: session.id,
+                  directory: session.cwd,
+                })
+                copyToClipboard(formatSessionMessagesAsMarkdown(session, messages ?? []))
+              })()
+            }
 
             return (
               <SidebarMenuItem key={session.id} className="group/chat">
@@ -769,7 +816,11 @@ function ProjectItem({
                       <MenuDots size={16} />
                     </SidebarMenuAction>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent side="right" align="start" className="w-40">
+                  <DropdownMenuContent side="right" align="start" className="w-56">
+                    <DropdownMenuItem onSelect={() => onToggleSessionPinned(session.id)}>
+                      <Pin size={16} className="mr-2" />
+                      {session.favorite ? "Unpin chat" : "Pin chat"}
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onSelect={() => {
                         const name = window.prompt("Chat name", session.name)?.trim()
@@ -781,7 +832,6 @@ function ProjectItem({
                       <Pen size={16} className="mr-2" />
                       Rename chat
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onSelect={() => {
                         void (async () => {
@@ -794,10 +844,26 @@ function ProjectItem({
                           }
                         })()
                       }}
-                      className="text-destructive focus:text-destructive"
                     >
-                      <TrashBinMinimalistic size={16} className="mr-2" />
-                      Delete chat
+                      <ArchiveDownMinimlistic size={16} className="mr-2" />
+                      Archive chat
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => copyToClipboard(session.cwd)}>
+                      <IconCopy size={16} className="mr-2" />
+                      Copy working directory
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => copyToClipboard(session.id)}>
+                      <IconCopy size={16} className="mr-2" />
+                      Copy session ID
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => copyToClipboard(sessionUrl)}>
+                      <IconLink size={16} className="mr-2" />
+                      Copy deeplink
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={copySessionMessages}>
+                      <IconMarkdown size={16} className="mr-2" />
+                      Copy as Markdown
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
