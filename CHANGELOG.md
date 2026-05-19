@@ -5,6 +5,16 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.5] - 2026-05-19
+
+### Added
+
+- **Chat Action Menu**: Chat rows now expose grouped actions for pinning, renaming, archiving, copying session metadata, and copying the full conversation as Markdown.
+
+### Changed
+
+- **Conversation Scrollbar**: Chat scrollbars stay hidden while idle and appear when hovering the conversation content.
+
 ## [0.6.4] - 2026-05-19
 
 ### Changed
