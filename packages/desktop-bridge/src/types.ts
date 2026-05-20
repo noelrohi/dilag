@@ -227,7 +227,7 @@ export type MenuEventId =
 // Download progress events consumed by the renderer updater context.
 export type UpdateDownloadEvent =
   | { event: "Started"; data: { contentLength?: number } }
-  | { event: "Progress"; data: { chunkLength: number } }
+  | { event: "Progress"; data: { chunkLength: number; percent?: number } }
   | { event: "Finished" }
 
 export interface UpdateInfo {

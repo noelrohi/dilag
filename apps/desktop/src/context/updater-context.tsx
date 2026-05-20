@@ -23,6 +23,7 @@ export interface UpdaterState {
   updateInfo: UpdateInfo | null
   downloading: boolean
   downloadProgress: number
+  updateReady: boolean
   error: string | null
 }
 
@@ -45,100 +46,188 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
     updateInfo: null,
     downloading: false,
     downloadProgress: 0,
+    updateReady: false,
     error: null,
   })
 
-  const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const updateRef = useRef<UpdateInfo | null>(null)
   const hasCheckedRef = useRef(false)
-
+  const downloadPromiseRef = useRef<Promise<void> | null>(null)
+  const updateReadyRef = useRef(false)
   const installUpdateRef = useRef<(() => Promise<void>) | null>(null)
 
-  const checkForUpdates = useCallback(async (silent = false) => {
-    setState((prev) => ({ ...prev, checking: true, error: null }))
+  const downloadUpdate = useCallback(
+    async ({ installAfterDownload = false, notifyWhenReady = false } = {}) => {
+      const update = updateRef.current
+      if (!update) return
 
-    try {
-      const updateResult = await bridge.updater.check()
+      if (updateReadyRef.current) {
+        if (installAfterDownload) {
+          await bridge.updater.install()
+        }
+        return
+      }
 
-      if (updateResult) {
-        setUpdate(updateResult)
-        updateRef.current = updateResult
-        setState((prev) => ({
-          ...prev,
-          checking: false,
-          updateAvailable: true,
-          updateInfo: {
-            version: updateResult.version,
-            currentVersion: updateResult.currentVersion,
-            body: updateResult.body ?? undefined,
-          },
-        }))
+      if (!downloadPromiseRef.current) {
+        downloadPromiseRef.current = (async () => {
+          setState((prev) => ({
+            ...prev,
+            downloading: true,
+            downloadProgress: 0,
+            updateReady: false,
+            error: null,
+          }))
 
-        // Show toast notification for available update
-        toast(`Update v${updateResult.version} available`, {
-          description: "A new version is ready to install",
-          duration: Infinity,
-          action: {
-            label: "Update Now",
-            onClick: () => {
-              // Use ref to call the latest installUpdate function
-              installUpdateRef.current?.()
+          let downloaded = 0
+          let contentLength = 0
+
+          try {
+            await bridge.updater.download((event: UpdateDownloadEvent) => {
+              switch (event.event) {
+                case "Started":
+                  downloaded = 0
+                  contentLength = event.data.contentLength ?? 0
+                  setState((prev) => ({ ...prev, downloadProgress: 0 }))
+                  break
+                case "Progress": {
+                  downloaded += event.data.chunkLength
+                  const progress =
+                    typeof event.data.percent === "number"
+                      ? event.data.percent
+                      : contentLength > 0
+                        ? (downloaded / contentLength) * 100
+                        : 0
+                  setState((prev) => ({ ...prev, downloadProgress: Math.round(progress) }))
+                  break
+                }
+                case "Finished":
+                  setState((prev) => ({ ...prev, downloadProgress: 100 }))
+                  break
+              }
+            })
+
+            updateReadyRef.current = true
+            setState((prev) => ({
+              ...prev,
+              downloading: false,
+              downloadProgress: 100,
+              updateReady: true,
+            }))
+
+            if (notifyWhenReady) {
+              toast.success(`Update v${update.version} ready`, {
+                description: "Restart Dilag to finish installing.",
+                duration: Infinity,
+                action: {
+                  label: "Restart & Update",
+                  onClick: () => {
+                    installUpdateRef.current?.()
+                  },
+                },
+              })
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to download update"
+            setState((prev) => ({
+              ...prev,
+              downloading: false,
+              updateReady: false,
+              error: message,
+            }))
+            throw error
+          } finally {
+            downloadPromiseRef.current = null
+          }
+        })()
+      }
+
+      await downloadPromiseRef.current
+
+      if (installAfterDownload) {
+        await bridge.updater.install()
+      }
+    },
+    [],
+  )
+
+  const checkForUpdates = useCallback(
+    async (silent = false) => {
+      setState((prev) => ({ ...prev, checking: true, error: null }))
+
+      try {
+        const updateResult = await bridge.updater.check()
+
+        if (updateResult) {
+          updateRef.current = updateResult
+          updateReadyRef.current = false
+          setState((prev) => ({
+            ...prev,
+            checking: false,
+            updateAvailable: true,
+            updateReady: false,
+            downloadProgress: 0,
+            updateInfo: {
+              version: updateResult.version,
+              currentVersion: updateResult.currentVersion,
+              body: updateResult.body ?? undefined,
             },
-          },
-        })
-      } else {
+          }))
+
+          if (!silent) {
+            toast(`Downloading update v${updateResult.version}`, {
+              description: "The update button will appear when it is ready.",
+            })
+          }
+
+          void downloadUpdate({ notifyWhenReady: !silent }).catch((error) => {
+            if (!silent) {
+              const message = error instanceof Error ? error.message : "Failed to download update"
+              toast.error(message)
+            }
+          })
+        } else {
+          updateRef.current = null
+          updateReadyRef.current = false
+          setState((prev) => ({
+            ...prev,
+            checking: false,
+            updateAvailable: false,
+            updateReady: false,
+            downloadProgress: 0,
+          }))
+
+          // Show feedback only when manually checking (not silent)
+          if (!silent) {
+            toast.success("You're on the latest version")
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to check for updates"
         setState((prev) => ({
           ...prev,
           checking: false,
-          updateAvailable: false,
+          error: message,
         }))
 
-        // Show feedback only when manually checking (not silent)
+        // Show error feedback only when manually checking (not silent)
         if (!silent) {
-          toast.success("You're on the latest version")
+          toast.error(message)
         }
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to check for updates"
-      setState((prev) => ({
-        ...prev,
-        checking: false,
-        error: message,
-      }))
-
-      // Show error feedback only when manually checking (not silent)
-      if (!silent) {
-        toast.error(message)
-      }
-    }
-  }, [])
+    },
+    [downloadUpdate],
+  )
 
   const installUpdate = useCallback(async () => {
-    if (!update) return
-
-    setState((prev) => ({ ...prev, downloading: true, downloadProgress: 0 }))
+    if (!updateRef.current) return
 
     try {
-      let downloaded = 0
-      let contentLength = 0
+      if (updateReadyRef.current) {
+        await bridge.updater.install()
+        return
+      }
 
-      await bridge.updater.download((event: UpdateDownloadEvent) => {
-        switch (event.event) {
-          case "Started":
-            contentLength = event.data.contentLength ?? 0
-            break
-          case "Progress":
-            downloaded += event.data.chunkLength
-            const progress = contentLength > 0 ? (downloaded / contentLength) * 100 : 0
-            setState((prev) => ({ ...prev, downloadProgress: Math.round(progress) }))
-            break
-          case "Finished":
-            setState((prev) => ({ ...prev, downloadProgress: 100 }))
-            break
-        }
-      })
-
-      await bridge.updater.install()
+      await downloadUpdate({ installAfterDownload: true })
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -147,25 +236,27 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
       }))
       toast.error("Failed to install update")
     }
-  }, [update])
+  }, [downloadUpdate])
 
   const dismissUpdate = useCallback(() => {
     setState((prev) => ({
       ...prev,
       updateAvailable: false,
       updateInfo: null,
+      updateReady: false,
+      downloadProgress: 0,
     }))
-    setUpdate(null)
     updateRef.current = null
+    updateReadyRef.current = false
   }, [])
 
-  // Keep installUpdateRef in sync with installUpdate for toast callback
+  // Keep installUpdateRef in sync with installUpdate for toast callbacks.
   useEffect(() => {
     installUpdateRef.current = installUpdate
   }, [installUpdate])
 
   // Check for updates once on mount (with delay to not block app startup)
-  // Use silent mode to avoid showing "up to date" toast on every app launch
+  // Use silent mode to avoid showing "up to date" toast on every app launch.
   useEffect(() => {
     if (hasCheckedRef.current) return
     hasCheckedRef.current = true

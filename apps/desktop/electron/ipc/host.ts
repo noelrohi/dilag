@@ -1,5 +1,5 @@
 import { app, dialog, ipcMain, shell, type BrowserWindow } from "electron"
-import { autoUpdater } from "electron-updater"
+import { autoUpdater, type ProgressInfo } from "electron-updater"
 import fsp from "node:fs/promises"
 import { CHANNELS } from "../shared/channels.js"
 import {
@@ -305,22 +305,29 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.updater.download, async () => {
     const window = getWindow()
     let transferred = 0
-    autoUpdater.on("download-progress", (progress) => {
+    const handleProgress = (progress: ProgressInfo) => {
       const chunkLength = Math.max(0, progress.transferred - transferred)
       transferred = progress.transferred
       window?.webContents.send(CHANNELS.updater.progress, {
         event: "Progress",
-        data: { chunkLength },
+        data: { chunkLength, percent: progress.percent },
       } satisfies UpdateDownloadEvent)
-    })
+    }
+
+    autoUpdater.on("download-progress", handleProgress)
     window?.webContents.send(CHANNELS.updater.progress, {
       event: "Started",
       data: {},
     } satisfies UpdateDownloadEvent)
-    await autoUpdater.downloadUpdate()
-    window?.webContents.send(CHANNELS.updater.progress, {
-      event: "Finished",
-    } satisfies UpdateDownloadEvent)
+
+    try {
+      await autoUpdater.downloadUpdate()
+      window?.webContents.send(CHANNELS.updater.progress, {
+        event: "Finished",
+      } satisfies UpdateDownloadEvent)
+    } finally {
+      autoUpdater.off("download-progress", handleProgress)
+    }
   })
   ipcMain.handle(CHANNELS.updater.install, () => autoUpdater.quitAndInstall())
   ipcMain.handle(CHANNELS.updater.relaunch, () => {
