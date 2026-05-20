@@ -5,6 +5,16 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2026-05-20
+
+### Added
+
+- **Startup Splash**: Desktop startup now waits for workspace bootstrap behind a centered Dilag icon splash, avoiding a brief empty-state flash.
+
+### Changed
+
+- **Update Controls**: Update status now lives inline in Settings, while the titlebar update action appears only when an update is ready and animates alongside sidebar controls.
+
 ## [0.6.6] - 2026-05-20
 
 ### Added

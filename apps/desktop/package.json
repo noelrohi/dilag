@@ -1,7 +1,7 @@
 {
   "name": "@dilag/desktop",
   "private": true,
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "AI-powered design studio for mobile and web app prototypes.",
   "author": "Noel Garcia",
   "type": "module",
