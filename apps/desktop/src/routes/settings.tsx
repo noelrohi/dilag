@@ -46,6 +46,9 @@ function SettingsPage() {
     installUpdate,
     downloading,
     downloadProgress,
+    updateReady,
+    upToDate,
+    error: updateError,
   } = useUpdaterContext()
 
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
@@ -77,7 +80,7 @@ function SettingsPage() {
 
   return (
     <div className="h-dvh flex flex-col bg-background">
-      <PageHeader />
+      <PageHeader className="border-b-0" />
       <main className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-4 py-8">
           {/* Centered content column */}
@@ -136,34 +139,18 @@ function SettingsPage() {
                 </SettingsRow>
                 <SettingsDivider />
                 <SettingsRow label="Updates">
-                  {updateAvailable && updateInfo ? (
-                    <button
-                      onClick={installUpdate}
-                      disabled={downloading}
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-xs font-medium",
-                        "bg-primary text-primary-foreground",
-                        "hover:bg-primary/90 transition-colors",
-                        "disabled:opacity-60",
-                      )}
-                    >
-                      {downloading ? `${downloadProgress}%` : `Install ${updateInfo.version}`}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => checkForUpdates()}
-                      disabled={checking}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md",
-                        "text-xs text-muted-foreground",
-                        "bg-muted/50 hover:bg-muted hover:text-foreground",
-                        "transition-colors disabled:opacity-60",
-                      )}
-                    >
-                      <Refresh size={12} className={cn(checking && "animate-spin")} />
-                      {checking ? "Checking..." : "Check for Updates"}
-                    </button>
-                  )}
+                  <UpdateSettingsControl
+                    checking={checking}
+                    updateAvailable={updateAvailable}
+                    updateVersion={updateInfo?.version}
+                    downloading={downloading}
+                    downloadProgress={downloadProgress}
+                    updateReady={updateReady}
+                    upToDate={upToDate}
+                    error={updateError}
+                    onCheck={() => checkForUpdates()}
+                    onInstall={installUpdate}
+                  />
                 </SettingsRow>
                 <SettingsDivider />
                 <div className="flex items-center gap-2 py-3 px-1">
@@ -221,6 +208,88 @@ function SettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function UpdateSettingsControl({
+  checking,
+  updateAvailable,
+  updateVersion,
+  downloading,
+  downloadProgress,
+  updateReady,
+  upToDate,
+  error,
+  onCheck,
+  onInstall,
+}: {
+  checking: boolean
+  updateAvailable: boolean
+  updateVersion?: string
+  downloading: boolean
+  downloadProgress: number
+  updateReady: boolean
+  upToDate: boolean
+  error: string | null
+  onCheck: () => void
+  onInstall: () => void
+}) {
+  if (updateAvailable && updateReady) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          Ready to install{updateVersion ? ` v${updateVersion}` : ""}
+        </span>
+        <button
+          onClick={onInstall}
+          className={cn(
+            "px-3 py-1.5 rounded-md text-xs font-medium",
+            "bg-primary text-primary-foreground",
+            "hover:bg-primary/90 transition-colors",
+          )}
+        >
+          Update
+        </button>
+      </div>
+    )
+  }
+
+  if (updateAvailable && downloading) {
+    return (
+      <span className="text-xs tabular-nums text-muted-foreground">
+        Downloading {downloadProgress}%
+      </span>
+    )
+  }
+
+  if (checking) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Refresh size={12} className="animate-spin" />
+        Checking…
+      </span>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {error ? <span className="max-w-56 truncate text-xs text-destructive">{error}</span> : null}
+      {!error && upToDate ? (
+        <span className="text-xs text-muted-foreground">You're on the latest version</span>
+      ) : null}
+      <button
+        onClick={onCheck}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-md",
+          "text-xs text-muted-foreground",
+          "bg-muted/50 hover:bg-muted hover:text-foreground",
+          "transition-colors",
+        )}
+      >
+        <Refresh size={12} />
+        Check for Updates
+      </button>
     </div>
   )
 }
