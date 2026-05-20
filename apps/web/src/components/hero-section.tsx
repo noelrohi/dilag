@@ -57,7 +57,7 @@ export default function HeroSection() {
                       </Link>
                     </Button>
                   </div>
-                  <Button asChild size="lg" variant="ghost" className="h-10.5 rounded-xl px-5">
+                  <Button asChild size="lg" variant="outline" className="h-10.5 rounded-xl px-5">
                     <Link href="/pricing">
                       <span className="text-nowrap">Free Forever</span>
                     </Link>
@@ -66,14 +66,14 @@ export default function HeroSection() {
               </div>
             </div>
 
-            <AnimatedGroup className="relative mt-8 overflow-hidden px-4 sm:mt-12 md:mt-20">
-              <div className="ring-background dark:ring-white/10 bg-background relative mx-auto max-w-6xl overflow-hidden rounded-2xl border shadow-2xl shadow-zinc-950/25 ring-1">
+            <AnimatedGroup className="relative mt-8 w-full overflow-hidden px-4 sm:mt-12 md:mt-20 [&>div]:w-full">
+              <div className="ring-background dark:ring-white/10 bg-background relative mx-auto aspect-[3024/1748] w-full max-w-7xl overflow-hidden rounded-2xl border shadow-2xl shadow-zinc-950/25 ring-1">
                 <Image
-                  className="w-full h-auto"
+                  className="object-cover"
                   src="/hero-dark.png"
                   alt="Dilag app screenshot"
-                  width="2700"
-                  height="1440"
+                  fill
+                  sizes="calc(100vw - 2rem)"
                   priority
                 />
               </div>
