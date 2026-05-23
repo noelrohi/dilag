@@ -235,8 +235,11 @@ export async function loginAgentOAuthProvider(
   const pi = await loadPi()
   const authStorage = pi.AuthStorage.create(path.join(getPiAgentDir(), "auth.json"))
   await authStorage.login(args.providerID, {
-    onAuth: async ({ url }) => {
-      await openExternal(url)
+    onAuth: ({ url }) => {
+      void openExternal(url)
+    },
+    onDeviceCode: ({ verificationUri }) => {
+      void openExternal(verificationUri)
     },
     onPrompt: async () => {
       throw new Error("Browser OAuth callback did not complete. Please try again.")
@@ -244,6 +247,7 @@ export async function loginAgentOAuthProvider(
     onProgress: (message) => {
       console.log(`[pi oauth:${args.providerID}] ${message}`)
     },
+    onSelect: async (prompt) => prompt.options[0]?.id,
   })
 }
 

@@ -72,7 +72,7 @@
   "dependencies": {
     "@dilag/desktop-bridge": "workspace:*",
     "@dilag/ui": "workspace:*",
-    "@earendil-works/pi-coding-agent": "^0.75.3",
+    "@earendil-works/pi-coding-agent": "^0.75.5",
     "@pierre/diffs": "^1.0.4",
     "@tabler/icons-react": "catalog:",
     "@tailwindcss/vite": "^4.1.18",
