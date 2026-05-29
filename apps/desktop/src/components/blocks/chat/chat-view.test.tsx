@@ -558,7 +558,9 @@ describe("getAssistantWorkSummary", () => {
       },
     ]
 
-    expect(getAssistantWorkSummary(parts)).toBe("Explored 2 files, made 1 file change, ran 1 command")
+    expect(getAssistantWorkSummary(parts)).toBe(
+      "Explored 2 files, made 1 file change, ran 1 command",
+    )
   })
 })
 

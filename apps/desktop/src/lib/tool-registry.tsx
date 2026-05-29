@@ -204,10 +204,7 @@ function DiffDeltaBadge({ additions, deletions }: { additions: number; deletions
 }
 
 function diffDeltaAriaText({ additions, deletions }: { additions: number; deletions: number }) {
-  return [
-    additions > 0 ? `+${additions}` : undefined,
-    deletions > 0 ? `-${deletions}` : undefined,
-  ]
+  return [additions > 0 ? `+${additions}` : undefined, deletions > 0 ? `-${deletions}` : undefined]
     .filter(Boolean)
     .join(" ")
 }

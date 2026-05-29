@@ -47,9 +47,7 @@ function renderSubtitleAccessibleText(subtitle: ReactNode | StructuredSubtitle) 
   if (!isStructuredSubtitle(subtitle)) return reactNodeText(subtitle)
   if (subtitle.ariaText) return subtitle.ariaText
 
-  return [reactNodeText(subtitle.text), reactNodeText(subtitle.suffix)]
-    .filter(Boolean)
-    .join(" ")
+  return [reactNodeText(subtitle.text), reactNodeText(subtitle.suffix)].filter(Boolean).join(" ")
 }
 
 function displayedToolStatus(state: ToolState, isMessageComplete: boolean): ToolState["status"] {
@@ -91,10 +89,7 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
     () => config.expandedTitle?.(props) ?? title,
     [config, props, title],
   )
-  const contentTitle = useMemo(
-    () => config.contentTitle?.(props) ?? title,
-    [config, props, title],
-  )
+  const contentTitle = useMemo(() => config.contentTitle?.(props) ?? title, [config, props, title])
   const subtitle = useMemo(() => config.subtitle?.(props), [config, props])
   const subtitleText = subtitle ? renderSubtitleAccessibleText(subtitle) : undefined
   const hasContent = !!config.content || status === "error"
@@ -121,9 +116,7 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
       : status === "error" || hasExitCodeFailure
         ? DangerTriangle
         : ClockCircle
-  const triggerLabel = open
-    ? expandedTitle
-    : [title, subtitleText].filter(Boolean).join(" ").trim()
+  const triggerLabel = open ? expandedTitle : [title, subtitleText].filter(Boolean).join(" ").trim()
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>

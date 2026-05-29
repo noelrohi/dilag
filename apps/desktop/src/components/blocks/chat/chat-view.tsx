@@ -670,9 +670,7 @@ export function shouldShimmerAssistantWorkSummary(
   parts: MessagePartType[],
   isMessageComplete: boolean,
 ) {
-  const latestToolPart = [...parts]
-    .reverse()
-    .find((part) => part.type === "tool" && part.state)
+  const latestToolPart = [...parts].reverse().find((part) => part.type === "tool" && part.state)
   if (!latestToolPart) return false
 
   const status = getEffectiveToolStatus(latestToolPart, isMessageComplete)
