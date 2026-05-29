@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react"
 import {
   ReactFlow,
+  SelectionMode,
   useNodesState,
   useReactFlow,
   ReactFlowProvider,
@@ -119,13 +120,14 @@ function DesignCanvasInner({
   const prevNodeKeyRef = useRef<string>("")
 
   useEffect(() => {
-    // Include positions and modified_at timestamps to detect placement hydration,
-    // content changes, and add/remove changes.
+    // Include positions, selection, and modified_at timestamps to detect placement
+    // hydration, external selection updates, content changes, and add/remove changes.
     const nodeKey = initialNodes
       .map((n) => {
         const positionKey = `${n.position.x}:${n.position.y}`
         const data = n.data as ScreenNodeData
-        return `${n.id}:${positionKey}:${data.design.modified_at}:${data.design.screen_type}`
+        const selectionKey = n.selected ? "selected" : "idle"
+        return `${n.id}:${positionKey}:${selectionKey}:${data.design.modified_at}:${data.design.screen_type}`
       })
       .sort()
       .join(",")
@@ -216,8 +218,11 @@ function DesignCanvasInner({
         onNodeDragStop={handleNodeDragStop}
         onSelectionChange={handleSelectionChange}
         onNodeDoubleClick={handleNodeDoubleClick}
+        className="design-canvas-flow"
         // Interactions
         selectionOnDrag
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={[1]}
         panOnScroll
         zoomOnPinch
         selectNodesOnDrag={false}
@@ -226,7 +231,7 @@ function DesignCanvasInner({
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 0.75 }}
         // Keyboard shortcuts
-        deleteKeyCode={["Backspace", "Delete"]}
+        deleteKeyCode={null}
         multiSelectionKeyCode="Shift"
         // Styling
         fitView={false}

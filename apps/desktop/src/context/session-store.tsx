@@ -253,6 +253,72 @@ function binarySearchByTime(arr: Message[], timestamp: number): { index: number 
   return { index: low }
 }
 
+const DUPLICATE_USER_MESSAGE_WINDOW_MS = 5_000
+
+function parseSyntheticRuntimeMessageId(
+  sessionID: string,
+  messageID: string,
+): { role: Message["role"]; timestamp: number } | null {
+  const prefix = `${sessionID}:`
+  if (!messageID.startsWith(prefix)) return null
+
+  const [role, timestampText] = messageID.slice(prefix.length).split(":")
+  if (role !== "user" && role !== "assistant") return null
+
+  const timestamp = Number(timestampText)
+  if (!Number.isFinite(timestamp)) return null
+
+  return { role, timestamp }
+}
+
+function extractTextFromStoreParts(parts: MessagePart[] | undefined): string {
+  return (
+    parts
+      ?.filter((part) => part.type === "text" && part.text)
+      .map((part) => part.text)
+      .join("") ?? ""
+  )
+}
+
+function findDuplicateUserTextMessage(args: {
+  messages: Message[] | undefined
+  parts: Record<string, MessagePart[]>
+  incomingMessage: Message
+  incomingPart: MessagePart
+}): { duplicateId: string; keepIncoming: boolean } | null {
+  const { messages, parts, incomingMessage, incomingPart } = args
+  if (!messages || incomingMessage.role !== "user") return null
+  if (incomingPart.type !== "text" || !incomingPart.text?.trim()) return null
+
+  const incomingSynthetic = parseSyntheticRuntimeMessageId(
+    incomingMessage.sessionID,
+    incomingMessage.id,
+  )
+
+  for (const existingMessage of messages) {
+    if (existingMessage.id === incomingMessage.id || existingMessage.role !== "user") continue
+
+    const existingSynthetic = parseSyntheticRuntimeMessageId(
+      existingMessage.sessionID,
+      existingMessage.id,
+    )
+    if (!incomingSynthetic && !existingSynthetic) continue
+
+    const createdDelta = Math.abs(existingMessage.time.created - incomingMessage.time.created)
+    if (createdDelta > DUPLICATE_USER_MESSAGE_WINDOW_MS) continue
+
+    const existingText = extractTextFromStoreParts(parts[existingMessage.id])
+    if (!existingText || existingText !== incomingPart.text) continue
+
+    return {
+      duplicateId: existingMessage.id,
+      keepIncoming: !!existingSynthetic && !incomingSynthetic,
+    }
+  }
+
+  return null
+}
+
 function isTerminalToolStatus(status: ToolState["status"] | undefined): boolean {
   return status === "completed" || status === "error"
 }
@@ -339,6 +405,35 @@ export const useSessionStore = create<SessionState>()(
 
       updatePart: (messageId, part) =>
         set((state) => {
+          const sessionID = part.sessionID
+          if (sessionID) {
+            const messages = state.messages[sessionID]
+            const incomingMessage = messages?.find((message) => message.id === messageId)
+            if (incomingMessage) {
+              const duplicate = findDuplicateUserTextMessage({
+                messages,
+                parts: state.parts,
+                incomingMessage,
+                incomingPart: part,
+              })
+
+              if (duplicate) {
+                if (duplicate.keepIncoming) {
+                  state.messages[sessionID] = messages!.filter(
+                    (message) => message.id !== duplicate.duplicateId,
+                  )
+                  delete state.parts[duplicate.duplicateId]
+                } else {
+                  state.messages[sessionID] = messages!.filter(
+                    (message) => message.id !== messageId,
+                  )
+                  delete state.parts[messageId]
+                  return
+                }
+              }
+            }
+          }
+
           const parts = state.parts[messageId]
           if (!parts) {
             state.parts[messageId] = [part]

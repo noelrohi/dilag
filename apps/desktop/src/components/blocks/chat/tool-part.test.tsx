@@ -4,6 +4,73 @@ import { describe, expect, it } from "vitest"
 import { ToolPart } from "./tool-part"
 
 describe("ToolPart", () => {
+  it("uses inline command labels before and after expanding a shell row", async () => {
+    render(
+      <ToolPart
+        tool="bash"
+        state={{
+          status: "completed",
+          input: {
+            command:
+              "git diff -- /Users/rohi/xcode/katkat/katkat/Domain/Services/TrackerCSVImport.swift",
+          },
+          metadata: {
+            output: "diff --git a/katkatTests/katkatTests.swift b/katkatTests/katkatTests.swift",
+          },
+        }}
+      />,
+    )
+
+    const trigger = screen.getByRole("button", { name: /Ran git diff --/ })
+    expect(trigger).toBeInTheDocument()
+    expect(trigger).toHaveClass("px-2")
+
+    await userEvent.click(trigger)
+
+    expect(screen.getByRole("button", { name: "Ran command" })).toBeInTheDocument()
+    expect(screen.getByText("Shell")).toBeInTheDocument()
+    expect(screen.getByText("Success")).toBeInTheDocument()
+  })
+
+  it("shows a shell exit code label for non-zero command exits", async () => {
+    render(
+      <ToolPart
+        tool="bash"
+        state={{
+          status: "completed",
+          input: {
+            command:
+              "xcodebuild test -project /Users/rohi/xcode/katkat/katkat.xcodeproj -scheme katkat",
+          },
+          metadata: {
+            exit: 65,
+            output: "Command line invocation:",
+          },
+        }}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole("button", { name: /Ran xcodebuild test/ }))
+
+    expect(screen.getByRole("button", { name: "Ran command" })).toBeInTheDocument()
+    expect(screen.getByText("Exit code 65")).toBeInTheDocument()
+  })
+
+  it("uses the searched-for phrasing for exploration rows", () => {
+    render(
+      <ToolPart
+        tool="grep"
+        state={{
+          status: "completed",
+          input: { pattern: "SmartImport|FoundationModels|Apple Intelligence" },
+          output: "apps/desktop/src/example.ts:1:SmartImport",
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: /Searched for SmartImport/ })).toBeInTheDocument()
+  })
+
   it("shows completed read output after expanding", async () => {
     render(
       <ToolPart

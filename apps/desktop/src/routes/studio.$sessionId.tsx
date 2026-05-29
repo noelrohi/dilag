@@ -4,7 +4,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSessions } from "@/hooks/use-sessions"
 import { useSessionMutations } from "@/hooks/use-session-data"
-import { useSessionDesigns, designKeys } from "@/hooks/use-designs"
+import { useSessionDesigns, designKeys, type DesignFile } from "@/hooks/use-designs"
 import { usePngGenerator } from "@/hooks/use-png-generator"
 import { useChatWidth } from "@/hooks/use-chat-width"
 import {
@@ -70,6 +70,11 @@ export const Route = createFileRoute("/studio/$sessionId")({
   component: StudioRoutePage,
 })
 
+interface DeleteTarget {
+  filename: string
+  title: string
+}
+
 function StudioRoutePage() {
   const { sessionId } = useParams({ from: "/studio/$sessionId" })
   return <StudioPageContent sessionId={sessionId} />
@@ -86,10 +91,7 @@ export function StudioPageContent({
   const queryClient = useQueryClient()
   const [renameOpen, setRenameOpen] = useState(false)
   const [newName, setNewName] = useState("")
-  const [deleteTarget, setDeleteTarget] = useState<{
-    filename: string
-    title: string
-  } | null>(null)
+  const [deleteTargets, setDeleteTargets] = useState<DeleteTarget[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
   const [selectedScreenIds, setSelectedScreenIds] = useState<Set<string>>(new Set())
 
@@ -146,32 +148,61 @@ export function StudioPageContent({
     [sessionId, setScreenPositions],
   )
 
-  const handleDeleteScreen = useCallback(async () => {
-    if (!deleteTarget || !currentSession?.cwd) return
+  const handleDeleteScreens = useCallback(async () => {
+    if (deleteTargets.length === 0 || !currentSession?.cwd) return
 
-    const design = designs.find((item) => item.filename === deleteTarget.filename)
-    const filePath =
-      design?.file_path ??
-      getCanonicalGeneratedScreenPath(currentSession.cwd, deleteTarget.filename)
-    try {
-      await bridge.designs.delete({ filePath })
-      // Remove from positions
+    const targetsWithPaths = deleteTargets.map((target) => {
+      const design = designs.find((item) => item.filename === target.filename)
+      return {
+        ...target,
+        filePath:
+          design?.file_path ?? getCanonicalGeneratedScreenPath(currentSession.cwd, target.filename),
+      }
+    })
+
+    const results = await Promise.allSettled(
+      targetsWithPaths.map(async (target) => {
+        await bridge.designs.delete({ filePath: target.filePath })
+        return target
+      }),
+    )
+    const deletedTargets = results.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
+    )
+    const failedCount = results.length - deletedTargets.length
+
+    if (deletedTargets.length > 0) {
+      const deletedIds = new Set(deletedTargets.map((target) => target.filename))
       setScreenPositions(
         sessionId,
-        screenPositions.filter((p) => p.id !== deleteTarget.filename),
+        screenPositions.filter((p) => !deletedIds.has(p.id)),
       )
-      // Invalidate query to refresh designs
+      setSelectedScreenIds((previous) => {
+        const next = new Set(previous)
+        deletedIds.forEach((id) => next.delete(id))
+        return next
+      })
       queryClient.invalidateQueries({
         queryKey: designKeys.session(currentSession.cwd),
       })
-      toast.success(`Deleted ${deleteTarget.title}`)
-    } catch (err) {
-      toast.error(`Failed to delete: ${err}`)
+      toast.success(
+        deletedTargets.length === 1
+          ? `Deleted ${deletedTargets[0].title}`
+          : `Deleted ${deletedTargets.length} screens`,
+      )
     }
-    setDeleteTarget(null)
+
+    if (failedCount > 0) {
+      toast.error(
+        failedCount === 1 ? "Failed to delete 1 screen" : `Failed to delete ${failedCount} screens`,
+      )
+    }
+
+    setDeleteTargets([])
   }, [
-    deleteTarget,
+    deleteTargets,
     currentSession?.cwd,
+    designs,
     sessionId,
     screenPositions,
     setScreenPositions,
@@ -199,7 +230,7 @@ export function StudioPageContent({
     (filename: string) => {
       const design = designs.find((d) => d.filename === filename)
       if (design) {
-        setDeleteTarget({ filename, title: design.title })
+        setDeleteTargets([{ filename, title: design.title }])
       }
     },
     [designs],
@@ -269,15 +300,21 @@ export function StudioPageContent({
         setSelectedScreenIds(new Set())
       }
 
-      // Delete/Backspace: Delete selected (show confirmation)
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedScreenIds.size > 0) {
+      // Cmd/Ctrl + Delete/Backspace: Delete selected screens.
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedScreenIds.size > 0
+      ) {
         e.preventDefault()
-        // If multiple selected, set deleteTarget to first for now
-        // (Could enhance to batch delete later)
-        const firstSelectedId = Array.from(selectedScreenIds)[0]
-        const design = designs.find((d) => d.filename === firstSelectedId)
-        if (design) {
-          setDeleteTarget({ filename: design.filename, title: design.title })
+        const selectedDesigns = designs.filter((d) => selectedScreenIds.has(d.filename))
+        if (selectedDesigns.length > 0) {
+          setDeleteTargets(
+            selectedDesigns.map((design) => ({
+              filename: design.filename,
+              title: design.title,
+            })),
+          )
         }
       }
     }
@@ -483,22 +520,30 @@ export function StudioPageContent({
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialog
+          open={deleteTargets.length > 0}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTargets([])
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete screen?</AlertDialogTitle>
+              <AlertDialogTitle>
+                {deleteTargets.length === 1 ? "Delete screen?" : "Delete screens?"}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{deleteTarget?.title}"? This action cannot be
-                undone.
+                {deleteTargets.length === 1
+                  ? `Are you sure you want to delete "${deleteTargets[0]?.title}"? This action cannot be undone.`
+                  : `Are you sure you want to delete ${deleteTargets.length} screens? This action cannot be undone.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDeleteScreen}
+                onClick={handleDeleteScreens}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Delete
+                {deleteTargets.length === 1 ? "Delete" : `Delete ${deleteTargets.length}`}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -560,7 +605,7 @@ function CanvasEmptyState({ isLoading }: { isLoading?: boolean }) {
 
 // Wrapper that connects ScreenCaptureContext to DesignCanvas
 interface ConnectedCanvasProps {
-  designs: import("@/hooks/use-designs").DesignFile[]
+  designs: DesignFile[]
   platform: "mobile" | "web"
   positions: ScreenPosition[]
   sessionCwd?: string

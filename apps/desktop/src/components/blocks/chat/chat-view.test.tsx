@@ -11,6 +11,10 @@ import {
   getRenderableAssistantParts,
   getChatActivityLabel,
   isAssistantMessageStreaming,
+  splitAssistantWorkParts,
+  getAssistantWorkSummary,
+  shouldShimmerAssistantWorkSummary,
+  AssistantWorkGroup,
   parseSkillBlock,
   getDisplayMessageText,
   getStreamingComposerShortcut,
@@ -405,6 +409,263 @@ describe("getRenderableAssistantParts", () => {
     ]
 
     expect(getRenderableAssistantParts(parts, false)).toHaveLength(1)
+  })
+})
+
+describe("splitAssistantWorkParts", () => {
+  it("keeps assistant text and files out of the work group", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "reasoning-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "reasoning",
+        text: "I should inspect the project.",
+      },
+      {
+        id: "text-1",
+        messageID: "msg-2",
+        sessionID: "session-1",
+        type: "text",
+        text: "I will update the chat rendering.",
+      },
+      {
+        id: "tool-1",
+        messageID: "msg-3",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "edit",
+        state: {
+          status: "completed",
+          input: { filePath: "src/chat.tsx" },
+        },
+      },
+      {
+        id: "file-1",
+        messageID: "msg-4",
+        sessionID: "session-1",
+        type: "file",
+        url: "file:///preview.png",
+        filename: "preview.png",
+      },
+      {
+        id: "text-2",
+        messageID: "msg-5",
+        sessionID: "session-1",
+        type: "text",
+        text: "Done.",
+      },
+    ]
+
+    expect(splitAssistantWorkParts(parts)).toEqual({
+      workParts: [parts[0], parts[2]],
+      finalParts: [parts[1], parts[3], parts[4]],
+    })
+  })
+
+  it("keeps model step metadata with grouped work rows", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "step-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "step-start",
+        provider: "openai",
+        model: "gpt-5-codex",
+      },
+      {
+        id: "text-1",
+        messageID: "msg-2",
+        sessionID: "session-1",
+        type: "text",
+        text: "Visible response.",
+      },
+    ]
+
+    expect(splitAssistantWorkParts(parts)).toEqual({
+      workParts: [parts[0]],
+      finalParts: [parts[1]],
+    })
+  })
+})
+
+describe("getAssistantWorkSummary", () => {
+  it("summarizes mixed exploration and shell commands", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "search-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "grep",
+        state: {
+          status: "completed",
+          input: { pattern: "SmartImport|FoundationModels" },
+        },
+      },
+      {
+        id: "command-1",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "bash",
+        state: {
+          status: "completed",
+          input: { command: "git diff -- apps/desktop/src/components/blocks/chat/chat-view.tsx" },
+        },
+      },
+      {
+        id: "command-2",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "bash",
+        state: {
+          status: "completed",
+          input: { command: "bun test apps/desktop/src/components/blocks/chat/chat-view.test.tsx" },
+        },
+      },
+    ]
+
+    expect(getAssistantWorkSummary(parts)).toBe("Explored 1 search, ran 2 commands")
+  })
+
+  it("keeps pluralization stable across multiple work categories", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "read-1",
+        type: "tool",
+        tool: "read",
+        state: { status: "completed", input: { path: "src/app.tsx" } },
+      },
+      {
+        id: "read-2",
+        type: "tool",
+        tool: "read",
+        state: { status: "completed", input: { path: "src/chat.tsx" } },
+      },
+      {
+        id: "edit-1",
+        type: "tool",
+        tool: "edit",
+        state: { status: "completed", input: { filePath: "src/chat.tsx" } },
+      },
+      {
+        id: "bash-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "completed", input: { command: "bun test" } },
+      },
+    ]
+
+    expect(getAssistantWorkSummary(parts)).toBe("Explored 2 files, made 1 file change, ran 1 command")
+  })
+})
+
+describe("shouldShimmerAssistantWorkSummary", () => {
+  it("returns true when the latest grouped tool is pending", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "bash-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "completed", input: { command: "ls" } },
+      },
+      {
+        id: "write-1",
+        type: "tool",
+        tool: "write",
+        state: { status: "pending", input: { filePath: "todo-home.html" } },
+      },
+    ]
+
+    expect(shouldShimmerAssistantWorkSummary(parts, false)).toBe(true)
+  })
+
+  it("returns false when only an earlier grouped tool is pending", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "write-1",
+        type: "tool",
+        tool: "write",
+        state: { status: "pending", input: { filePath: "todo-home.html" } },
+      },
+      {
+        id: "bash-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "completed", input: { command: "ls" } },
+      },
+    ]
+
+    expect(shouldShimmerAssistantWorkSummary(parts, false)).toBe(false)
+  })
+
+  it("returns false for stale pending tools after the message is complete", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "write-1",
+        type: "tool",
+        tool: "write",
+        state: { status: "pending", input: { filePath: "portfolio-home.html" } },
+      },
+    ]
+
+    expect(shouldShimmerAssistantWorkSummary(parts, true)).toBe(false)
+  })
+
+  it("returns false after all grouped tools have settled", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "bash-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "completed", input: { command: "ls" } },
+      },
+    ]
+
+    expect(shouldShimmerAssistantWorkSummary(parts, false)).toBe(false)
+  })
+})
+
+describe("AssistantWorkGroup", () => {
+  it("shimmers the summary label while any grouped item is pending", () => {
+    render(
+      <AssistantWorkGroup
+        parts={[
+          {
+            id: "bash-1",
+            type: "tool",
+            tool: "bash",
+            state: { status: "pending", input: { command: "ls -la" } },
+          },
+        ]}
+        isStreaming
+        startedAt={1000}
+      />,
+    )
+
+    expect(screen.getByText("Ran 1 command")).toHaveClass("text-shimmer-sweep")
+  })
+
+  it("does not shimmer stale pending summaries after completion", () => {
+    render(
+      <AssistantWorkGroup
+        parts={[
+          {
+            id: "write-1",
+            type: "tool",
+            tool: "write",
+            state: { status: "pending", input: { filePath: "portfolio-home.html" } },
+          },
+        ]}
+        isStreaming={false}
+        startedAt={1000}
+        completedAt={2000}
+      />,
+    )
+
+    expect(screen.getByText("Made 1 file change")).not.toHaveClass("text-shimmer-sweep")
   })
 })
 

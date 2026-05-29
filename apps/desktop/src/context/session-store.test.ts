@@ -478,6 +478,60 @@ describe("session-store", () => {
       expect(parts[0].text).toBe("Hello")
     })
 
+    it("deduplicates the same user prompt when a live synthetic message races a persisted reload", () => {
+      const sessionId = "session-1"
+      const promptText =
+        '<skill name="dilag-mobile-design" location="/skills/mobile/SKILL.md">\nSkill instructions\n</skill>\n\ncan we create native like ios app notes app'
+
+      useSessionStore.getState().setMessages(sessionId, [
+        {
+          id: "persisted-entry-1",
+          sessionID: sessionId,
+          role: "user",
+          time: { created: 1000, completed: 1000 },
+        },
+      ])
+      useSessionStore.getState().updatePart("persisted-entry-1", {
+        id: "persisted-entry-1:part:0",
+        messageID: "persisted-entry-1",
+        sessionID: sessionId,
+        type: "text",
+        text: promptText,
+      })
+
+      const syntheticMessageId = `${sessionId}:user:1001`
+      useSessionStore.getState().handleEvent({
+        type: "message.updated",
+        properties: {
+          info: {
+            id: syntheticMessageId,
+            sessionID: sessionId,
+            role: "user",
+            time: { created: 1001 },
+          },
+        },
+      } as any)
+      useSessionStore.getState().handleEvent({
+        type: "message.part.updated",
+        properties: {
+          part: {
+            id: `${syntheticMessageId}:part:0`,
+            messageID: syntheticMessageId,
+            sessionID: sessionId,
+            type: "text",
+            text: promptText,
+          },
+        },
+      } as any)
+
+      const userMessages = useSessionStore
+        .getState()
+        .messages[sessionId].filter((message) => message.role === "user")
+      expect(userMessages).toHaveLength(1)
+      expect(userMessages[0].id).toBe("persisted-entry-1")
+      expect(useSessionStore.getState().parts[syntheticMessageId]).toBeUndefined()
+    })
+
     it("should handle session.diff events synthesized from agent file writes", () => {
       const event = {
         type: "session.diff" as const,

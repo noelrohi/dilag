@@ -36,6 +36,7 @@ export interface ToolRenderProps {
 export interface StructuredSubtitle {
   text: ReactNode // Truncatable part (filename, description)
   suffix?: ReactNode // Fixed part (line counts, stats) - never truncated
+  ariaText?: string // Optional complete label when suffix is a component
 }
 
 // Icon type that works with both Lucide and Solar icons
@@ -46,6 +47,7 @@ export interface ToolConfig {
   icon: IconComponent
   title: (props: ToolRenderProps) => string
   expandedTitle?: (props: ToolRenderProps) => string
+  contentTitle?: (props: ToolRenderProps) => string
   chipLabel?: (props: ToolRenderProps) => string | undefined
   subtitle?: (props: ToolRenderProps) => ReactNode | StructuredSubtitle
   content?: (props: ToolRenderProps) => ReactNode
@@ -201,6 +203,15 @@ function DiffDeltaBadge({ additions, deletions }: { additions: number; deletions
   )
 }
 
+function diffDeltaAriaText({ additions, deletions }: { additions: number; deletions: number }) {
+  return [
+    additions > 0 ? `+${additions}` : undefined,
+    deletions > 0 ? `-${deletions}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ")
+}
+
 function PlainToolOutput({ text }: { text: string }) {
   return (
     <pre className="text-xs font-mono leading-relaxed whitespace-pre-wrap break-words text-card-foreground">
@@ -281,6 +292,7 @@ export const TOOLS: Record<string, ToolConfig> = {
       return {
         text: file,
         suffix: <DiffDeltaBadge additions={counts.additions} deletions={counts.deletions} />,
+        ariaText: [file, diffDeltaAriaText(counts)].filter(Boolean).join(" "),
       }
     },
     content: (p) => {
@@ -293,7 +305,10 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   bash: {
     icon: Terminal,
-    title: () => "Ran shell",
+    title: (p) => (p.status === "running" || p.status === "pending" ? "Running" : "Ran"),
+    expandedTitle: (p) =>
+      p.status === "running" || p.status === "pending" ? "Running command" : "Ran command",
+    contentTitle: () => "Shell",
     chipLabel: (p) => {
       const desc = p.metadata?.description as string | undefined
       const { description, command } = getInput(p)
@@ -311,7 +326,7 @@ export const TOOLS: Record<string, ToolConfig> = {
           <span className="text-destructive">(exit {exit})</span>
         ) : null
       return {
-        text: desc || description || command?.slice(0, 50),
+        text: command || desc || description,
         suffix: exitIndicator,
       }
     },
@@ -360,6 +375,7 @@ export const TOOLS: Record<string, ToolConfig> = {
       return {
         text: file || "file",
         suffix: <DiffDeltaBadge additions={counts.additions} deletions={counts.deletions} />,
+        ariaText: [file || "file", diffDeltaAriaText(counts)].filter(Boolean).join(" "),
       }
     },
     content: (p) => {
@@ -498,7 +514,7 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   grep: {
     icon: Search,
-    title: () => "Searched",
+    title: () => "Searched for",
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
       const pattern = getInput(p).pattern

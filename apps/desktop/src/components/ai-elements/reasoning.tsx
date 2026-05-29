@@ -117,9 +117,9 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
     )
   }
   if (duration === undefined) {
-    return <p>Thought for a few seconds</p>
+    return <span>Thought for a few seconds</span>
   }
-  return <p>Thought for {duration} seconds</p>
+  return <span>Thought for {duration} seconds</span>
 }
 
 export const ReasoningTrigger = memo(
@@ -134,7 +134,7 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "group grid h-8 w-full grid-cols-1 items-center rounded-md px-2 py-1.5 text-left",
+          "group grid h-7 w-full grid-cols-1 items-center rounded-md px-2 py-1 text-left",
           "text-sm text-muted-foreground select-none cursor-default transition-colors",
           "hover:bg-muted/30 hover:text-foreground data-[state=open]:bg-muted/20 data-[state=open]:text-foreground",
           className,

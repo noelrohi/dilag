@@ -49,6 +49,8 @@ function RootLayout() {
                   "calc(var(--traffic-light-top) + (var(--traffic-light-size) / 2) + var(--titlebar-control-offset-y))",
                 "--titlebar-content-left":
                   "calc(var(--titlebar-control-left) + var(--titlebar-control-size) + 4px)",
+                "--titlebar-page-header-collapsed-left":
+                  "calc(var(--titlebar-content-left) + var(--titlebar-control-size) + 8px)",
               } as CSSProperties
             }
           >

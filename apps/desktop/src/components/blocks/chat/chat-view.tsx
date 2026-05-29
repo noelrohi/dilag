@@ -22,6 +22,7 @@ import {
   IconCopy as Copy,
   IconCircleCheck as CheckCircle,
   IconChevronRight as AltArrowRight,
+  IconTerminal2 as Terminal,
   IconPlayerStop as Stop,
   IconTrash as TrashBinMinimalistic,
 } from "@tabler/icons-react"
@@ -43,6 +44,7 @@ import { Button } from "@dilag/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
 import { MessagePart } from "./message-part"
+import { Shimmer } from "@/components/ai-elements/shimmer"
 import {
   Conversation,
   ConversationContent,
@@ -566,18 +568,119 @@ function UserMessage({
     </>
   )
 }
-function splitAssistantWorkParts(parts: MessagePartType[]) {
-  let finalTextStart = parts.length
-  while (finalTextStart > 0 && parts[finalTextStart - 1]?.type === "text") {
-    finalTextStart--
-  }
+function isAssistantWorkPart(part: MessagePartType) {
+  return part.type === "reasoning" || part.type === "tool" || part.type === "step-start"
+}
+
+export function splitAssistantWorkParts(parts: MessagePartType[]) {
   return {
-    workParts: parts.slice(0, finalTextStart),
-    finalParts: parts.slice(finalTextStart),
+    workParts: parts.filter(isAssistantWorkPart),
+    finalParts: parts.filter((part) => !isAssistantWorkPart(part)),
   }
 }
 
-function AssistantWorkGroup({
+const EXPLORATION_TOOL_LABELS: Record<string, string> = {
+  grep: "search",
+  websearch: "search",
+  read: "file",
+  glob: "file search",
+  list: "directory",
+  webfetch: "page",
+}
+
+function pluralizeCount(count: number, label: string) {
+  if (count === 1) return `1 ${label}`
+  if (label.endsWith("search")) return `${count} ${label}es`
+  return `${count} ${label}s`
+}
+
+function joinSummaryItems(items: string[]) {
+  if (items.length <= 1) return items[0] ?? ""
+  if (items.length === 2) return `${items[0]} and ${items[1]}`
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`
+}
+
+function sentenceCase(text: string) {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text
+}
+
+export function getAssistantWorkSummary(parts: MessagePartType[]): string | undefined {
+  const toolParts = parts.filter((part) => part.type === "tool" && part.tool)
+  if (toolParts.length === 0) return undefined
+
+  const explorationCounts = new Map<string, number>()
+  let commandCount = 0
+  let fileUpdateCount = 0
+  let taskCount = 0
+  let todoCount = 0
+  let questionCount = 0
+  let otherToolCount = 0
+
+  for (const part of toolParts) {
+    const tool = part.tool!
+    const explorationLabel = EXPLORATION_TOOL_LABELS[tool]
+
+    if (explorationLabel) {
+      explorationCounts.set(explorationLabel, (explorationCounts.get(explorationLabel) ?? 0) + 1)
+    } else if (tool === "bash") {
+      commandCount++
+    } else if (tool === "write" || tool === "edit") {
+      fileUpdateCount++
+    } else if (tool === "task") {
+      taskCount++
+    } else if (tool === "todowrite") {
+      todoCount++
+    } else if (tool === "question") {
+      questionCount++
+    } else {
+      otherToolCount++
+    }
+  }
+
+  const phrases: string[] = []
+  const explorationItems = Array.from(explorationCounts.entries()).map(([label, count]) =>
+    pluralizeCount(count, label),
+  )
+
+  if (explorationItems.length > 0) {
+    phrases.push(`explored ${joinSummaryItems(explorationItems)}`)
+  }
+  if (fileUpdateCount > 0) phrases.push(`made ${pluralizeCount(fileUpdateCount, "file change")}`)
+  if (commandCount > 0) phrases.push(`ran ${pluralizeCount(commandCount, "command")}`)
+  if (taskCount > 0) phrases.push(`ran ${pluralizeCount(taskCount, "task")}`)
+  if (todoCount > 0) phrases.push("updated to-dos")
+  if (questionCount > 0) phrases.push(`asked ${pluralizeCount(questionCount, "question")}`)
+  if (otherToolCount > 0) phrases.push(`used ${pluralizeCount(otherToolCount, "tool")}`)
+
+  return phrases.length > 0 ? sentenceCase(phrases.join(", ")) : undefined
+}
+
+function getEffectiveToolStatus(part: MessagePartType, isMessageComplete: boolean) {
+  const status = part.state?.status
+  if (!status) return undefined
+  if (isMessageComplete && (status === "pending" || status === "running")) return "completed"
+  return status
+}
+
+function isFileMutationToolPart(part: MessagePartType) {
+  return part.tool === "write" || part.tool === "edit"
+}
+
+export function shouldShimmerAssistantWorkSummary(
+  parts: MessagePartType[],
+  isMessageComplete: boolean,
+) {
+  const latestToolPart = [...parts]
+    .reverse()
+    .find((part) => part.type === "tool" && part.state)
+  if (!latestToolPart) return false
+
+  const status = getEffectiveToolStatus(latestToolPart, isMessageComplete)
+  if (status === "pending") return true
+  return status === "running" && isFileMutationToolPart(latestToolPart)
+}
+
+export function AssistantWorkGroup({
   parts,
   isStreaming,
   startedAt,
@@ -591,27 +694,37 @@ function AssistantWorkGroup({
   if (parts.length === 0) return null
 
   const elapsed = useElapsedTime(startedAt, completedAt)
-  const commandCount = parts.filter((part) => part.type === "tool").length
   const prefix = completedAt === undefined ? "Working" : "Worked for"
+  const summary = getAssistantWorkSummary(parts) ?? `${prefix} ${elapsed}`
+  const shouldShimmerSummary = shouldShimmerAssistantWorkSummary(parts, !isStreaming)
 
   return (
     <Collapsible>
       <CollapsibleTrigger
         className={cn(
-          "group flex h-8 w-full items-center justify-start gap-2.5 rounded-md px-0 py-1.5",
+          "group flex h-7 w-full items-center justify-start gap-2 rounded-md px-0 py-1",
           "text-sm text-muted-foreground transition-colors hover:text-foreground",
         )}
       >
-        <span>
-          {prefix} {elapsed}
-          {commandCount > 0 && `, ${commandCount} command${commandCount === 1 ? "" : "s"}`}
+        <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/80">
+          <Terminal className="size-[15px] stroke-[1.75]" />
         </span>
+        {shouldShimmerSummary ? (
+          <Shimmer as="span" className="min-w-0 truncate text-left" duration={0.85}>
+            {summary}
+          </Shimmer>
+        ) : (
+          <span className="min-w-0 truncate text-left">{summary}</span>
+        )}
         <AltArrowRight
           size={14}
-          className="shrink-0 text-muted-foreground transition-transform duration-150 group-data-[state=open]:rotate-90"
+          className={cn(
+            "shrink-0 text-muted-foreground opacity-0 transition-all duration-150",
+            "group-hover:opacity-100 group-data-[state=open]:opacity-100 group-data-[state=open]:rotate-90",
+          )}
         />
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-2 border-b border-border/40 pb-3">
+      <CollapsibleContent className="space-y-0.5 pb-1.5">
         {parts.map((part, partIndex) => {
           const isPartStreaming =
             part.type === "reasoning" ? isStreaming && partIndex === parts.length - 1 : isStreaming
@@ -647,7 +760,6 @@ function AssistantMessage({
   onFork: (messageId: string) => void
   onCopyText: (messageId: string) => void | Promise<void>
 }) {
-  const parts = useMessageParts(message.id)
   const turnMessageIds = useMemo(
     () => turnAssistantMessages.map((turnMessage) => turnMessage.id),
     [turnAssistantMessages],
@@ -660,15 +772,12 @@ function AssistantMessage({
     (state) => state.sessionStatus[message.sessionID] ?? "unknown",
   )
   const isStreaming = isAssistantMessageStreaming(message, sessionStatus)
-  const renderableParts = getRenderableAssistantParts(parts, isStreaming)
   const turnRenderableParts = getRenderableAssistantParts(turnParts, isStreaming)
-  const { finalParts } = splitAssistantWorkParts(renderableParts)
-  const finalPartIds = new Set(finalParts.map((part) => part.id))
-  const workParts = turnRenderableParts.filter((part) => !finalPartIds.has(part.id))
+  const { workParts, finalParts } = splitAssistantWorkParts(turnRenderableParts)
   const workStartedAt = turnAssistantMessages[0]?.time.created ?? message.time.created
   const workCompletedAt = message.time.completed
 
-  if (!isStreaming && renderableParts.length === 0 && !sessionError) {
+  if (!isStreaming && turnRenderableParts.length === 0 && !sessionError) {
     return null
   }
 
@@ -704,7 +813,7 @@ function AssistantMessage({
         })}
 
         {/* Thinking indicator - show when streaming and no renderable parts yet */}
-        {isStreaming && renderableParts.length === 0 && <ThinkingIndicator />}
+        {isStreaming && turnRenderableParts.length === 0 && <ThinkingIndicator />}
 
         {/* Inline error - show on last assistant message when session has error */}
         {isLast && !isStreaming && sessionError && <InlineErrorCard error={sessionError} />}

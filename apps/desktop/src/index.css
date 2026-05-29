@@ -293,6 +293,29 @@
   background-clip: content-box;
 }
 
+.design-canvas-flow {
+  --xy-selection-background-color: oklch(0.205 0 0 / 8%);
+  --xy-selection-border: 1px solid oklch(0.205 0 0 / 68%);
+}
+
+.dark .design-canvas-flow {
+  --xy-selection-background-color: oklch(0.922 0 0 / 10%);
+  --xy-selection-border: 1px solid oklch(0.922 0 0 / 72%);
+}
+
+.design-canvas-flow .react-flow__selection {
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 45%) inset,
+    0 10px 28px oklch(0 0 0 / 10%);
+}
+
+.dark .design-canvas-flow .react-flow__selection {
+  box-shadow:
+    0 0 0 1px oklch(0 0 0 / 25%) inset,
+    0 12px 32px oklch(0 0 0 / 28%);
+}
+
 /* Subtle animations - macOS uses gentle, quick transitions */
 @keyframes fade-in {
   from {
@@ -326,10 +349,14 @@
 
 @keyframes text-shimmer-sweep {
   from {
-    background-position: 120% center;
+    background-position:
+      100% center,
+      center;
   }
   to {
-    background-position: -20% center;
+    background-position:
+      0% center,
+      center;
   }
 }
 
@@ -369,19 +396,22 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   -webkit-background-clip: text;
-  background-image: linear-gradient(
-    90deg,
-    var(--color-muted-foreground) 0%,
-    var(--color-muted-foreground) calc(50% - var(--shimmer-spread, 36px)),
-    var(--color-foreground) 50%,
-    var(--color-muted-foreground) calc(50% + var(--shimmer-spread, 36px)),
-    var(--color-muted-foreground) 100%
-  );
-  background-size: 220% 100%;
-  background-position: 120% center;
-  background-repeat: no-repeat;
-  animation: text-shimmer-sweep var(--shimmer-duration, 0.95s) cubic-bezier(0.35, 0, 0.25, 1)
-    infinite;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--shimmer-spread, 36px)),
+      var(--color-background),
+      transparent calc(50% + var(--shimmer-spread, 36px))
+    ),
+    linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground));
+  background-size:
+    250% 100%,
+    auto;
+  background-position:
+    100% center,
+    center;
+  background-repeat: no-repeat, no-repeat;
+  animation: text-shimmer-sweep var(--shimmer-duration, 2s) linear infinite;
 }
 
 .animate-slot-count-up {

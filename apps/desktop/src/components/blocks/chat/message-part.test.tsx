@@ -22,7 +22,9 @@ describe("MessagePart", () => {
   it("collapses completed reasoning by default", () => {
     render(<MessagePart part={reasoningPart} isStreaming={false} />)
 
-    expect(screen.getByText(/Thought/)).toBeInTheDocument()
+    const trigger = screen.getByRole("button", { name: /Thought/ })
+    expect(trigger).toHaveClass("h-7", "py-1")
+    expect(screen.getByText(/Thought/).tagName).toBe("SPAN")
     expect(
       screen.queryByText("I should inspect the project before editing."),
     ).not.toBeInTheDocument()

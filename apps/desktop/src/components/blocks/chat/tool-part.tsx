@@ -5,12 +5,17 @@ import {
   IconAlertTriangle as DangerTriangle,
   IconClock as ClockCircle,
 } from "@tabler/icons-react"
-import { getToolConfig, isStructuredSubtitle, type ToolRenderProps } from "@/lib/tool-registry"
+import {
+  getToolConfig,
+  isStructuredSubtitle,
+  type StructuredSubtitle,
+  type ToolRenderProps,
+} from "@/lib/tool-registry"
 import type { ToolState } from "@/context/session-store"
 import { cn } from "@/lib/utils"
 import { Shimmer } from "@/components/ai-elements/shimmer"
 import { useElapsedTime } from "@/hooks/use-elapsed-time"
-import { useMemo, useState, type ReactNode } from "react"
+import { isValidElement, useMemo, useState, type ReactNode } from "react"
 
 interface ToolPartProps {
   tool: string
@@ -21,10 +26,30 @@ interface ToolPartProps {
 // Tools are collapsed by default; the turn-level work group owns first-level disclosure.
 const DEFAULT_OPEN_TOOLS: string[] = []
 
-function renderSubtitleText(subtitle: ReactNode | { text: ReactNode }) {
+function renderSubtitleText(subtitle: ReactNode | StructuredSubtitle) {
   const value = isStructuredSubtitle(subtitle) ? subtitle.text : subtitle
   if (typeof value === "string" || typeof value === "number") return String(value)
   return "Working"
+}
+
+function reactNodeText(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") return ""
+  if (typeof node === "string" || typeof node === "number") return String(node)
+  if (Array.isArray(node)) return node.map(reactNodeText).filter(Boolean).join(" ")
+  if (!isValidElement(node)) return ""
+
+  const props = node.props as { "aria-label"?: unknown; children?: ReactNode }
+  if (typeof props["aria-label"] === "string") return props["aria-label"]
+  return reactNodeText(props.children)
+}
+
+function renderSubtitleAccessibleText(subtitle: ReactNode | StructuredSubtitle) {
+  if (!isStructuredSubtitle(subtitle)) return reactNodeText(subtitle)
+  if (subtitle.ariaText) return subtitle.ariaText
+
+  return [reactNodeText(subtitle.text), reactNodeText(subtitle.suffix)]
+    .filter(Boolean)
+    .join(" ")
 }
 
 function displayedToolStatus(state: ToolState, isMessageComplete: boolean): ToolState["status"] {
@@ -40,7 +65,6 @@ function isFileMutationTool(tool: string) {
 
 export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartProps) {
   const config = getToolConfig(tool)
-  const Icon = config.icon
   const defaultOpen = DEFAULT_OPEN_TOOLS.includes(tool)
   const [open, setOpen] = useState(defaultOpen)
   const status = displayedToolStatus(state, isMessageComplete)
@@ -67,7 +91,12 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
     () => config.expandedTitle?.(props) ?? title,
     [config, props, title],
   )
+  const contentTitle = useMemo(
+    () => config.contentTitle?.(props) ?? title,
+    [config, props, title],
+  )
   const subtitle = useMemo(() => config.subtitle?.(props), [config, props])
+  const subtitleText = subtitle ? renderSubtitleAccessibleText(subtitle) : undefined
   const hasContent = !!config.content || status === "error"
   const content = useMemo(
     () => (open && config.content ? config.content(props) : null),
@@ -76,68 +105,78 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
   const shouldShimmer = status === "pending" && !isFileMutationTool(tool)
   const shouldShimmerTitle =
     (status === "pending" || status === "running") && isFileMutationTool(tool)
+  const exitCode = tool === "bash" ? (props.metadata?.exit as number | null | undefined) : undefined
+  const hasExitCodeFailure = exitCode !== undefined && exitCode !== null && exitCode !== 0
 
-  const statusLabel = status === "completed" ? "Success" : status === "error" ? "Failed" : "Running"
+  const statusLabel = hasExitCodeFailure
+    ? `Exit code ${exitCode}`
+    : status === "completed"
+      ? "Success"
+      : status === "error"
+        ? "Failed"
+        : "Running"
   const StatusIcon =
-    status === "completed" ? CheckCircle : status === "error" ? DangerTriangle : ClockCircle
+    status === "completed" && !hasExitCodeFailure
+      ? CheckCircle
+      : status === "error" || hasExitCodeFailure
+        ? DangerTriangle
+        : ClockCircle
+  const triggerLabel = open
+    ? expandedTitle
+    : [title, subtitleText].filter(Boolean).join(" ").trim()
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger
+        aria-label={triggerLabel}
         className={cn(
-          "group flex w-full items-center justify-between gap-2",
-          "h-8 px-2 py-1.5 rounded-md",
+          "group flex w-full items-center justify-start gap-1.5",
+          "h-7 overflow-hidden rounded-md px-2 py-1",
           "text-sm select-none cursor-default",
-          "text-muted-foreground hover:bg-muted/30 hover:text-foreground transition-colors",
-          "data-[state=open]:bg-muted/20 data-[state=open]:text-foreground",
+          "text-muted-foreground hover:text-foreground transition-colors",
+          "data-[state=open]:text-foreground",
         )}
       >
-        <div className="grid min-w-0 flex-1 grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-2.5">
-          <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/80">
-            <Icon className="size-[15px] stroke-[1.75]" />
-          </span>
-          <div className="flex min-w-0 items-center gap-2 overflow-hidden text-left">
-            {shouldShimmer ? (
-              <Shimmer className="font-medium whitespace-nowrap" duration={0.85}>
-                {subtitle ? renderSubtitleText(subtitle) : title}
-              </Shimmer>
-            ) : (
-              <>
-                <span className="hidden truncate font-medium text-foreground group-data-[state=open]:inline">
-                  {shouldShimmerTitle ? (
-                    <Shimmer className="font-medium whitespace-nowrap" duration={0.85}>
-                      {expandedTitle}
-                    </Shimmer>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left whitespace-nowrap">
+          {shouldShimmer ? (
+            <Shimmer className="min-w-0 truncate whitespace-nowrap" duration={0.85}>
+              {subtitle ? renderSubtitleText(subtitle) : title}
+            </Shimmer>
+          ) : open ? (
+            <span className="min-w-0 truncate text-foreground">
+              {shouldShimmerTitle ? (
+                <Shimmer className="whitespace-nowrap" duration={0.85}>
+                  {expandedTitle}
+                </Shimmer>
+              ) : (
+                expandedTitle
+              )}
+            </span>
+          ) : (
+            <>
+              {shouldShimmerTitle ? (
+                <Shimmer className="shrink-0 whitespace-nowrap" duration={0.85}>
+                  {title}
+                </Shimmer>
+              ) : (
+                <span className="shrink-0 whitespace-nowrap text-foreground">{title}</span>
+              )}
+              {subtitle ? (
+                <span className="flex min-w-0 items-center gap-1.5 truncate text-muted-foreground">
+                  {isStructuredSubtitle(subtitle) ? (
+                    <>
+                      <span className="min-w-0 truncate">{subtitle.text}</span>
+                      {subtitle.suffix && <span className="shrink-0">{subtitle.suffix}</span>}
+                    </>
                   ) : (
-                    expandedTitle
+                    <span className="min-w-0 truncate">{subtitle}</span>
                   )}
                 </span>
-                <span className="flex min-w-0 items-center gap-1.5 group-data-[state=open]:hidden">
-                  {shouldShimmerTitle ? (
-                    <Shimmer className="font-medium whitespace-nowrap" duration={0.85}>
-                      {title}
-                    </Shimmer>
-                  ) : (
-                    <span className="font-medium text-foreground whitespace-nowrap">{title}</span>
-                  )}
-                  {subtitle ? (
-                    <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-                      {isStructuredSubtitle(subtitle) ? (
-                        <>
-                          <span className="truncate">{subtitle.text}</span>
-                          {subtitle.suffix && <span className="shrink-0">{subtitle.suffix}</span>}
-                        </>
-                      ) : (
-                        <span className="truncate">{subtitle}</span>
-                      )}
-                    </span>
-                  ) : null}
-                </span>
-              </>
-            )}
-          </div>
+              ) : null}
+            </>
+          )}
           {status === "running" && (
-            <span className="text-xs tabular-nums text-muted-foreground shrink-0">{elapsed}</span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{elapsed}</span>
           )}
         </div>
         {hasContent && (
@@ -156,7 +195,7 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
           <div className="max-h-72 overflow-y-auto p-3">
             <div className="[&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-card-foreground [&_code]:!text-card-foreground [&_*]:!border-border/70">
               <div className="mb-3 flex items-baseline gap-2 text-xs">
-                <span className="font-medium text-muted-foreground">{title}</span>
+                <span className="font-medium text-muted-foreground">{contentTitle}</span>
                 {subtitle && (
                   <span className="min-w-0 truncate text-card-foreground">
                     {renderSubtitleText(subtitle)}

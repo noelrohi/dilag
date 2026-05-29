@@ -15,11 +15,11 @@ const ShimmerComponent = ({
   children,
   as: Component = "p",
   className,
-  duration = 0.95,
-  spread = 1.25,
+  duration = 2,
+  spread = 2,
 }: TextShimmerProps) => {
   const dynamicSpread = useMemo(
-    () => Math.min(72, Math.max(18, (children?.length ?? 0) * spread)),
+    () => Math.max(16, (children?.length ?? 0) * spread),
     [children, spread],
   )
 
