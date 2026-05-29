@@ -5,6 +5,17 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-05-29
+
+### Added
+
+- **Studio Chat Controls**: Chat work summaries, tool rows, shimmer states, and page controls are more compact, accessible, and informative while Pi runs.
+- **Batch Screen Delete**: Selected screens can be deleted together with Cmd/Ctrl+Delete and a multi-screen confirmation flow.
+
+### Fixed
+
+- **Duplicate User Messages**: Session state now removes synthetic duplicate user messages from overlapping runtime events.
+
 ## [0.6.7] - 2026-05-20
 
 ### Added
