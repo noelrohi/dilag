@@ -5,6 +5,14 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-06-03
+
+### Fixed
+
+- **Native Menu Commands**: View menu sidebar, chat, and zoom commands now route through the active desktop UI reliably.
+- **Session-Only Chat Toggle**: Toggle Chat now appears only on session screens and collapses or restores the Studio chat panel.
+- **macOS App Menu**: Settings and update checks now live in the Dilag app menu with native-sized template icons.
+
 ## [0.7.0] - 2026-05-29
 
 ### Added
