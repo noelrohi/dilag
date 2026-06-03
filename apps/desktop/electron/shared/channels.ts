@@ -82,6 +82,7 @@ export const CHANNELS = {
   },
   menu: {
     event: "menu:event",
+    setState: "menu:set-state",
   },
   dev: {
     viteStdout: "dev:vite-stdout",

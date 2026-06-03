@@ -6,6 +6,7 @@ import { registerZoomHandlers } from "./ipc/zoom.js"
 import { getBootstrapPort, initializeHost, registerHostHandlers } from "./ipc/host.js"
 import { setupApplicationMenu } from "./menu.js"
 import { CHANNELS } from "./shared/channels.js"
+import type { NativeMenuContext, NativeMenuState } from "@dilag/desktop-bridge"
 
 // Resolve paths relative to the bundled main.cjs (dist-electron/).
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -18,6 +19,30 @@ const APP_NAME = "Dilag"
 const APP_ID = "com.rohi.dilag"
 
 let mainWindow: BrowserWindow | null = null
+let applicationMenu: ReturnType<typeof setupApplicationMenu> | null = null
+
+function getMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) {
+    return null
+  }
+  return mainWindow
+}
+
+function isNativeMenuContext(value: unknown): value is NativeMenuContext {
+  return value === "default" || value === "session" || value === "setup"
+}
+
+function normalizeMenuState(value: unknown): NativeMenuState | null {
+  if (!value || typeof value !== "object") return null
+
+  const maybeState = value as { context?: unknown; rendererReady?: unknown }
+  if (!isNativeMenuContext(maybeState.context)) return null
+
+  return {
+    context: maybeState.context,
+    rendererReady: maybeState.rendererReady === true,
+  }
+}
 
 type SmokeReport = {
   hasBridge: boolean
@@ -38,9 +63,9 @@ function delay(ms: number) {
 // IPC handlers registered once at startup. They read the current window via
 // this getter so they always target whatever BrowserWindow is live (supports
 // window recreation on activate).
-registerThemeHandlers(() => mainWindow)
-const zoomHandlers = registerZoomHandlers(() => mainWindow)
-registerHostHandlers(() => mainWindow)
+registerThemeHandlers(getMainWindow)
+const zoomHandlers = registerZoomHandlers(getMainWindow)
+registerHostHandlers(getMainWindow)
 
 app.setName(APP_NAME)
 app.setAppUserModelId(APP_ID)
@@ -136,7 +161,7 @@ async function createWindow() {
 
   const smokeReport = SMOKE_TEST ? waitForSmokeReport() : null
 
-  mainWindow = new BrowserWindow({
+  const window = new BrowserWindow({
     title: APP_NAME,
     icon: getWindowIconPath(),
     width: 1000,
@@ -160,18 +185,30 @@ async function createWindow() {
     },
   })
 
-  mainWindow.once("ready-to-show", () => {
-    mainWindow?.maximize()
-    mainWindow?.show()
+  mainWindow = window
+  applicationMenu?.refresh()
+
+  window.on("closed", () => {
+    if (mainWindow === window) {
+      mainWindow = null
+      applicationMenu?.setState({ context: "default", rendererReady: false })
+      applicationMenu?.refresh()
+    }
+  })
+
+  window.once("ready-to-show", () => {
+    if (window.isDestroyed()) return
+    window.maximize()
+    window.show()
   })
 
   if (DEV_URL) {
-    await mainWindow.loadURL(DEV_URL)
-    mainWindow.webContents.openDevTools({ mode: "detach" })
+    await window.loadURL(DEV_URL)
+    window.webContents.openDevTools({ mode: "detach" })
   } else {
     // Packaged app: renderer built to ../dist/ relative to the app root.
     const indexHtml = path.join(__dirname, "..", "dist", "index.html")
-    await mainWindow.loadFile(indexHtml)
+    await window.loadFile(indexHtml)
   }
 
   if (SMOKE_TEST) {
@@ -193,7 +230,12 @@ app.whenReady().then(async () => {
   if (process.platform === "darwin") app.dock?.setIcon(getDockIconPath())
 
   await initializeHost()
-  setupApplicationMenu(() => mainWindow, zoomHandlers.apply)
+  applicationMenu = setupApplicationMenu(getMainWindow, zoomHandlers)
+  ipcMain.handle(CHANNELS.menu.setState, (_event, state) => {
+    const nextState = normalizeMenuState(state)
+    if (!nextState) return
+    applicationMenu?.setState(nextState)
+  })
   return createWindow()
 })
 

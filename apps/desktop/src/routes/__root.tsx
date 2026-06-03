@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/blocks/layout/app-sidebar"
 import { AutoCollapseSidebar } from "@/components/blocks/layout/auto-collapse-sidebar"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import { PersistentSidebarTrigger } from "@/components/blocks/layout/persistent-sidebar-trigger"
+import { SidebarMenuEventBridge } from "@/components/blocks/layout/sidebar-menu-event-bridge"
 import { AppProviders } from "@/components/app-providers"
 import { getDefaultProject, useProjectsList } from "@/hooks/use-projects"
 import { useSessionsList } from "@/hooks/use-session-data"
@@ -33,6 +34,7 @@ function RootLayout() {
         <WorkspaceBootstrapGate>
           <SidebarProvider
             defaultOpen={true}
+            keyboardShortcut={false}
             style={
               {
                 "--sidebar-width": "19rem",
@@ -55,6 +57,7 @@ function RootLayout() {
             }
           >
             <AutoCollapseSidebar />
+            <SidebarMenuEventBridge />
             <AppSidebar />
             <PersistentSidebarTrigger />
             <SidebarInset className="min-h-0 overflow-hidden border-l border-border bg-background">

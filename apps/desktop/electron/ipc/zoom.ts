@@ -10,15 +10,31 @@ const DEFAULT_ZOOM = 1.0
 // Cache the last value so CHANNELS.zoom.get can respond before the window is ready.
 let lastKnownZoom = DEFAULT_ZOOM
 
+function normalize(level: number) {
+  return Math.round(level * 100) / 100
+}
+
 function clamp(level: number) {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, level))
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, normalize(level)))
+}
+
+function isUsableWindow(window: BrowserWindow | null): window is BrowserWindow {
+  return Boolean(window && !window.isDestroyed() && !window.webContents.isDestroyed())
 }
 
 export function registerZoomHandlers(getWindow: () => BrowserWindow | null) {
+  function readCurrentZoom() {
+    const window = getWindow()
+    if (isUsableWindow(window)) {
+      lastKnownZoom = window.webContents.getZoomFactor()
+    }
+    return lastKnownZoom
+  }
+
   function apply(level: number): number {
     const clamped = clamp(level)
     const window = getWindow()
-    if (window) {
+    if (isUsableWindow(window)) {
       window.webContents.setZoomFactor(clamped)
       // Broadcast so menu-driven zoom changes reach useZoom() in the renderer.
       window.webContents.send(CHANNELS.zoom.changed, clamped)
@@ -27,19 +43,16 @@ export function registerZoomHandlers(getWindow: () => BrowserWindow | null) {
     return clamped
   }
 
-  ipcMain.handle(CHANNELS.zoom.get, () => {
-    const window = getWindow()
-    if (window) {
-      lastKnownZoom = window.webContents.getZoomFactor()
-    }
-    return lastKnownZoom
-  })
+  const zoomIn = () => apply(readCurrentZoom() + ZOOM_STEP)
+  const zoomOut = () => apply(readCurrentZoom() - ZOOM_STEP)
+  const reset = () => apply(DEFAULT_ZOOM)
 
+  ipcMain.handle(CHANNELS.zoom.get, () => readCurrentZoom())
   ipcMain.handle(CHANNELS.zoom.set, (_event, args: { level: number }) => apply(args.level))
-  ipcMain.handle(CHANNELS.zoom.in, () => apply(lastKnownZoom + ZOOM_STEP))
-  ipcMain.handle(CHANNELS.zoom.out, () => apply(lastKnownZoom - ZOOM_STEP))
-  ipcMain.handle(CHANNELS.zoom.reset, () => apply(DEFAULT_ZOOM))
+  ipcMain.handle(CHANNELS.zoom.in, zoomIn)
+  ipcMain.handle(CHANNELS.zoom.out, zoomOut)
+  ipcMain.handle(CHANNELS.zoom.reset, reset)
 
-  // Expose apply so menu accelerators can drive zoom changes without IPC.
-  return { apply }
+  // Expose controls so menu accelerators can drive zoom changes without IPC.
+  return { apply, zoomIn, zoomOut, reset }
 }

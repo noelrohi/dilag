@@ -60,6 +60,7 @@ import {
 } from "@/lib/design-export"
 import { PreviewCarousel } from "@/components/blocks/preview/preview-carousel"
 import { AttachmentBridgeProvider } from "@/context/attachment-bridge"
+import { useMenuEvents } from "@/context/menu-events"
 import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context"
 import { toast } from "sonner"
 import { bridge } from "@/lib/bridge"
@@ -73,6 +74,15 @@ export const Route = createFileRoute("/studio/$sessionId")({
 interface DeleteTarget {
   filename: string
   title: string
+}
+
+function isEditableShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"]',
+    ),
+  )
 }
 
 function StudioRoutePage() {
@@ -97,6 +107,7 @@ export function StudioPageContent({
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
   const { size: chatSize, updateSize, minSize } = useChatWidth()
+  const { registerChatToggle } = useMenuEvents()
 
   const { selectSession, sessions, isLoading, isLoadingSessions, forkSessionDesignsOnly } =
     useSessions()
@@ -124,6 +135,25 @@ export function StudioPageContent({
   useEffect(() => {
     selectSession(sessionId)
   }, [sessionId, selectSession])
+
+  const toggleChatPanel = useCallback(() => {
+    const panel = chatPanelRef.current
+    if (!panel) return
+
+    if (panel.isCollapsed()) {
+      panel.expand(minSize)
+      requestAnimationFrame(() => panel.resize(Math.max(chatSize, minSize)))
+      return
+    }
+
+    const currentSize = panel.getSize()
+    if (currentSize > 0) {
+      updateSize(currentSize)
+    }
+    panel.collapse()
+  }, [chatSize, minSize, updateSize])
+
+  useEffect(() => registerChatToggle(toggleChatPanel), [registerChatToggle, toggleChatPanel])
 
   // Persist positions for newly discovered designs. Rendering does not depend on this:
   // DesignCanvas reconciles temporary positions while storage/session state hydrates.
@@ -284,8 +314,9 @@ export function StudioPageContent({
   // Keyboard shortcuts for selection
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      // Don't trigger canvas shortcuts when typing, composing, or when a focused
+      // widget/dialog has already claimed the shortcut.
+      if (e.defaultPrevented || e.isComposing || isEditableShortcutTarget(e.target)) {
         return
       }
 

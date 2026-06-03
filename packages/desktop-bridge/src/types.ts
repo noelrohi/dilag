@@ -219,10 +219,18 @@ export interface SaveDialogOptions {
 // Menu channel payload.
 export type MenuEventId =
   | "settings"
+  | "new-design"
   | "new-session"
   | "toggle-sidebar"
   | "toggle-chat"
   | "check-updates"
+
+export type NativeMenuContext = "default" | "session" | "setup"
+
+export interface NativeMenuState {
+  context: NativeMenuContext
+  rendererReady: boolean
+}
 
 // Download progress events consumed by the renderer updater context.
 export type UpdateDownloadEvent =

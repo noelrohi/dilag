@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useCallback, useRef, type ReactNode } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useLocation, useNavigate } from "@tanstack/react-router"
+import { toast } from "sonner"
+import type { NativeMenuContext } from "@dilag/desktop-bridge"
 import { useUpdaterContext } from "@/context/updater-context"
+import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
+import { useProjectsList } from "@/hooks/use-projects"
 import { bridge } from "@/lib/bridge"
 
 interface MenuEventHandler {
@@ -11,6 +15,12 @@ interface MenuEventHandler {
 }
 
 const MenuEventsContext = createContext<MenuEventHandler | null>(null)
+
+function getNativeMenuContext(pathname: string): NativeMenuContext {
+  if (/^\/studio\/[^/]+\/?$/.test(pathname)) return "session"
+  if (/^\/project\/[^/]+\/session\/[^/]+\/?$/.test(pathname)) return "session"
+  return "default"
+}
 
 // Custom hook to expose menu event handlers for components that need to respond to menu events
 export function useMenuEvents() {
@@ -23,7 +33,10 @@ export function useMenuEvents() {
 
 export function MenuEventsProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { checkForUpdates } = useUpdaterContext()
+  const { data: projects = [] } = useProjectsList()
+  const { openNewDesign } = useNewDesignFlow({ projects })
 
   // Store callbacks in refs inside the provider (not module-level globals)
   const chatToggleRef = useRef<(() => void) | null>(null)
@@ -36,6 +49,23 @@ export function MenuEventsProvider({ children }: { children: ReactNode }) {
   const toggleChat = useCallback(() => {
     chatToggleRef.current?.()
   }, [])
+
+  const checkForUpdatesFromMenu = useCallback(async () => {
+    const toastId = toast.loading("Checking for updates…")
+    const result = await checkForUpdates(false)
+
+    if (result.status === "available") {
+      toast.success(`Dilag ${result.updateInfo.version} is available`, { id: toastId })
+      return
+    }
+
+    if (result.status === "up-to-date") {
+      toast.success("Dilag is up to date", { id: toastId })
+      return
+    }
+
+    toast.error(result.error, { id: toastId })
+  }, [checkForUpdates])
 
   // Registration functions return cleanup functions
   const registerChatToggle = useCallback((callback: () => void): (() => void) => {
@@ -57,13 +87,21 @@ export function MenuEventsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    const context = getNativeMenuContext(location.pathname)
+    void bridge.menu
+      .setState({ context, rendererReady: true })
+      .catch((error) => console.error("Failed to update native menu state:", error))
+  }, [location.pathname])
+
+  useEffect(() => {
     const unsubscribe = bridge.menu.onEvent((eventId) => {
       switch (eventId) {
         case "settings":
           navigate({ to: "/settings" })
           break
+        case "new-design":
         case "new-session":
-          navigate({ to: "/" })
+          openNewDesign()
           break
         case "toggle-sidebar":
           toggleSidebar()
@@ -72,7 +110,7 @@ export function MenuEventsProvider({ children }: { children: ReactNode }) {
           toggleChat()
           break
         case "check-updates":
-          checkForUpdates()
+          void checkForUpdatesFromMenu()
           break
         default:
           console.log("Unknown menu event:", eventId)
@@ -80,7 +118,7 @@ export function MenuEventsProvider({ children }: { children: ReactNode }) {
     })
 
     return unsubscribe
-  }, [navigate, toggleSidebar, toggleChat, checkForUpdates])
+  }, [navigate, openNewDesign, toggleSidebar, toggleChat, checkForUpdatesFromMenu])
 
   const value: MenuEventHandler = {
     toggleSidebar,

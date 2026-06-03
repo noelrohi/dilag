@@ -103,6 +103,7 @@ const bridge: DesktopBridge = {
   },
   menu: {
     onEvent: (listener) => subscribe(CHANNELS.menu.event, listener),
+    setState: (state) => ipcRenderer.invoke(CHANNELS.menu.setState, state),
   },
   dev: {
     onViteStdout: (listener) => subscribe(CHANNELS.dev.viteStdout, listener),

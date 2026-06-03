@@ -21,6 +21,7 @@ import type {
   DesignFile,
   FileNode,
   MenuEventId,
+  NativeMenuState,
   Platform,
   ProjectMeta,
   SaveDialogOptions,
@@ -141,6 +142,7 @@ export interface DesktopBridge {
 
   menu: {
     onEvent(listener: (id: MenuEventId) => void): Unsubscribe
+    setState(state: NativeMenuState): Promise<void>
   }
 
   // Dev-server log forwarding. Only wired in dev; in prod these subscribe and
@@ -199,6 +201,8 @@ export type {
   DesignFile,
   FileNode,
   MenuEventId,
+  NativeMenuContext,
+  NativeMenuState,
   ProjectMeta,
   SaveDialogOptions,
   SessionMeta,

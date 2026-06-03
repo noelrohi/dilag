@@ -75,7 +75,7 @@ const desktopBridgeMock: DesktopBridge = {
     reset: vi.fn(),
     onChange: vi.fn(() => noopUnsubscribe),
   },
-  menu: { onEvent: vi.fn(() => noopUnsubscribe) },
+  menu: { onEvent: vi.fn(() => noopUnsubscribe), setState: vi.fn(() => Promise.resolve()) },
   dev: {
     onViteStdout: vi.fn(() => noopUnsubscribe),
     onViteError: vi.fn(() => noopUnsubscribe),

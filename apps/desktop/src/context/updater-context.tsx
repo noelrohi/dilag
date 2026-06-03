@@ -27,8 +27,13 @@ export interface UpdaterState {
   error: string | null
 }
 
+export type UpdateCheckResult =
+  | { status: "available"; updateInfo: UpdateInfo }
+  | { status: "up-to-date" }
+  | { status: "error"; error: string }
+
 interface UpdaterContextValue extends UpdaterState {
-  checkForUpdates: (silent?: boolean) => Promise<void>
+  checkForUpdates: (silent?: boolean) => Promise<UpdateCheckResult>
   installUpdate: () => Promise<void>
   dismissUpdate: () => void
 }
@@ -178,12 +183,18 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
   }, [])
 
   const checkForUpdates = useCallback(
-    async (silent = false) => {
+    async (silent = false): Promise<UpdateCheckResult> => {
       setState((prev) => ({ ...prev, checking: true, error: null }))
 
       try {
         const updateResult = await updaterBridge.check()
         if (updateResult) {
+          const updateInfo = {
+            version: updateResult.version,
+            currentVersion: updateResult.currentVersion,
+            body: updateResult.body ?? undefined,
+          }
+
           updateRef.current = updateResult
           updateReadyRef.current = false
           setState((prev) => ({
@@ -193,28 +204,27 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
             updateReady: false,
             upToDate: false,
             downloadProgress: 0,
-            updateInfo: {
-              version: updateResult.version,
-              currentVersion: updateResult.currentVersion,
-              body: updateResult.body ?? undefined,
-            },
+            updateInfo,
           }))
 
           void downloadUpdate().catch(() => {
             // Error state is set by downloadUpdate and rendered inline where needed.
           })
-        } else {
-          updateRef.current = null
-          updateReadyRef.current = false
-          setState((prev) => ({
-            ...prev,
-            checking: false,
-            updateAvailable: false,
-            updateReady: false,
-            upToDate: !silent,
-            downloadProgress: 0,
-          }))
+
+          return { status: "available", updateInfo }
         }
+
+        updateRef.current = null
+        updateReadyRef.current = false
+        setState((prev) => ({
+          ...prev,
+          checking: false,
+          updateAvailable: false,
+          updateReady: false,
+          upToDate: !silent,
+          downloadProgress: 0,
+        }))
+        return { status: "up-to-date" }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to check for updates"
         setState((prev) => ({
@@ -222,6 +232,7 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
           checking: false,
           error: message,
         }))
+        return { status: "error", error: message }
       }
     },
     [downloadUpdate],
