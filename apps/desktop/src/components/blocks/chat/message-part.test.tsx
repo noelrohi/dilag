@@ -24,7 +24,10 @@ describe("MessagePart", () => {
   it("uses model-provided markdown headings as expandable reasoning titles", () => {
     render(
       <MessagePart
-        part={{ ...reasoningPart, text: "**Testing duplicate content**\n\nI'm thinking about tests." }}
+        part={{
+          ...reasoningPart,
+          text: "**Testing duplicate content**\n\nI'm thinking about tests.",
+        }}
         isStreaming={false}
       />,
     )
@@ -37,7 +40,9 @@ describe("MessagePart", () => {
   it("normalizes markdown-ish reasoning titles and excludes the title from body", () => {
     expect(getReasoningTitle("## Plan\nMore detail")).toBe("Plan")
     expect(getReasoningTitle("- Inspect files\nThen edit")).toBeUndefined()
-    expect(getReasoningTitle("**Testing duplicate content**\nMore detail")).toBe("Testing duplicate content")
+    expect(getReasoningTitle("**Testing duplicate content**\nMore detail")).toBe(
+      "Testing duplicate content",
+    )
     expect(getReasoningTitle("\n\n")).toBeUndefined()
     expect(getReasoningBody("## Plan\nMore detail")).toBe("More detail")
     expect(getReasoningBody("I need to inspect files.\nThen edit.")).toBe(

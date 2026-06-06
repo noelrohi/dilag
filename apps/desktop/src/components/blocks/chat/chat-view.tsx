@@ -1336,9 +1336,7 @@ function ChatInputArea({
                       <span className="shrink-0 text-sm font-medium text-sidebar-foreground">
                         {result.displayName}
                       </span>
-                      <span className="truncate text-sm text-muted-foreground">
-                        {result.path}
-                      </span>
+                      <span className="truncate text-sm text-muted-foreground">{result.path}</span>
                     </span>
                   </button>
                 ))

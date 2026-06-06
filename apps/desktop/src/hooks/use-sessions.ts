@@ -53,9 +53,7 @@ function getEffectiveThinkingLevel(
     (candidate) =>
       candidate.providerID === selectedModel.providerID && candidate.id === selectedModel.modelID,
   )
-  const variantList = model?.variants
-    ? (Object.keys(model.variants) as AgentThinkingLevel[])
-    : []
+  const variantList = model?.variants ? (Object.keys(model.variants) as AgentThinkingLevel[]) : []
   if (variantList.length === 0) return undefined
   const storedVariant = variants[`${selectedModel.providerID}/${selectedModel.modelID}`]
   return storedVariant && variantList.includes(storedVariant) ? storedVariant : variantList[0]
@@ -379,7 +377,11 @@ export function useSessions() {
 
         if (initialPrompt?.trim() || (files && files.length > 0)) {
           const { selectedModel, variants } = useModelStore.getState()
-          const selectedThinkingLevel = getEffectiveThinkingLevel(selectedModel, variants, providerData)
+          const selectedThinkingLevel = getEffectiveThinkingLevel(
+            selectedModel,
+            variants,
+            providerData,
+          )
 
           setSessionStatus(response.id, "running")
           setSessionError(response.id, null)

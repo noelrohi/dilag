@@ -138,12 +138,24 @@ function fileDiffCounts(p: ToolRenderProps): { additions: number; deletions: num
   return { additions: 0, deletions: 0 }
 }
 
-function SlotDigit({ digit, previousDigit, direction }: { digit: string; previousDigit: string; direction: "up" | "down" }) {
+function SlotDigit({
+  digit,
+  previousDigit,
+  direction,
+}: {
+  digit: string
+  previousDigit: string
+  direction: "up" | "down"
+}) {
   const hasChanged = digit !== previousDigit
   const displayDigit = digit === " " ? "\u00A0" : digit
 
   if (!hasChanged) {
-    return <span className="inline-flex h-[1em] w-[1ch] items-center justify-center">{displayDigit}</span>
+    return (
+      <span className="inline-flex h-[1em] w-[1ch] items-center justify-center">
+        {displayDigit}
+      </span>
+    )
   }
 
   return (

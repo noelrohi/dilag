@@ -5,6 +5,17 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-06-06
+
+### Added
+
+- **File Mentions**: Project and chat composers now support `@` file mentions with searchable results, selected file chips, and file attachment delivery to Pi.
+
+### Fixed
+
+- **Composer Test Coverage**: Updated session tests for provider data so CI verifies prompt delivery with current model metadata.
+- **Formatting**: Normalized desktop source formatting so repository format checks pass.
+
 ## [0.7.1] - 2026-06-03
 
 ### Fixed

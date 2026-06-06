@@ -151,7 +151,9 @@ function getFileDisplayName(path: string): string {
   return path.split(/[\\/]/).pop() || path
 }
 
-function flattenFileNodes(nodes: Array<{ id: string; isDir?: boolean; children?: any[] }>): string[] {
+function flattenFileNodes(
+  nodes: Array<{ id: string; isDir?: boolean; children?: any[] }>,
+): string[] {
   const files: string[] = []
   const visit = (node: { id: string; isDir?: boolean; children?: any[] }) => {
     if (node.isDir) return node.children?.forEach(visit)
@@ -240,8 +242,10 @@ function ComposerInput({
   const selectMentionResult = useCallback(
     (result: MentionedFile) => {
       if (!activeMention) return
-      if (mentionedFiles.some((file) => file.path === result.path)) toast.info(`"${result.displayName}" is already mentioned`)
-      else if (mentionedFiles.length >= FILE_MENTION_MAX_COUNT) toast.warning(`You can mention up to ${FILE_MENTION_MAX_COUNT} files per message`)
+      if (mentionedFiles.some((file) => file.path === result.path))
+        toast.info(`"${result.displayName}" is already mentioned`)
+      else if (mentionedFiles.length >= FILE_MENTION_MAX_COUNT)
+        toast.warning(`You can mention up to ${FILE_MENTION_MAX_COUNT} files per message`)
       else setMentionedFiles((prev) => [...prev, result])
       const next = removeMentionToken(textInput.value, activeMention)
       textInput.setInput(next.text)
@@ -260,17 +264,30 @@ function ComposerInput({
     (event: KeyboardEvent<HTMLFormElement>) => {
       if (!mentionOpen) return
       if (event.key === "Escape") {
-        event.preventDefault(); setMentionOpen(false); return
+        event.preventDefault()
+        setMentionOpen(false)
+        return
       }
       if (event.key === "ArrowDown") {
-        event.preventDefault(); setHighlightedMentionIndex((prev) => mentionSearchResults.length ? (prev + 1) % mentionSearchResults.length : 0); return
+        event.preventDefault()
+        setHighlightedMentionIndex((prev) =>
+          mentionSearchResults.length ? (prev + 1) % mentionSearchResults.length : 0,
+        )
+        return
       }
       if (event.key === "ArrowUp") {
-        event.preventDefault(); setHighlightedMentionIndex((prev) => mentionSearchResults.length ? (prev - 1 + mentionSearchResults.length) % mentionSearchResults.length : 0); return
+        event.preventDefault()
+        setHighlightedMentionIndex((prev) =>
+          mentionSearchResults.length
+            ? (prev - 1 + mentionSearchResults.length) % mentionSearchResults.length
+            : 0,
+        )
+        return
       }
       if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
         event.preventDefault()
-        const selected = mentionSearchResults[Math.min(highlightedMentionIndex, mentionSearchResults.length - 1)]
+        const selected =
+          mentionSearchResults[Math.min(highlightedMentionIndex, mentionSearchResults.length - 1)]
         if (selected) selectMentionResult(selected)
       }
     },
@@ -280,12 +297,20 @@ function ComposerInput({
   const handleSubmit = async (text: string, files?: FileUIPart[]) => {
     const resolvedFiles: FileUIPart[] = [...(files ?? [])]
     for (const file of mentionedFiles) {
-      const content = await bridge.project.readFile({ sessionCwd: projectPath, filePath: file.path })
+      const content = await bridge.project.readFile({
+        sessionCwd: projectPath,
+        filePath: file.path,
+      })
       if (new TextEncoder().encode(content).length > FILE_MENTION_MAX_SIZE_BYTES) {
         toast.warning(`Skipped ${file.displayName}; file is over 200KB`)
         continue
       }
-      resolvedFiles.push({ type: "file", filename: file.path, mediaType: "text/plain", url: buildFileDataUrl(content) })
+      resolvedFiles.push({
+        type: "file",
+        filename: file.path,
+        mediaType: "text/plain",
+        url: buildFileDataUrl(content),
+      })
     }
     await onSubmit(text, resolvedFiles.length ? resolvedFiles : undefined)
     setMentionedFiles([])
@@ -303,68 +328,112 @@ function ComposerInput({
               <div className="px-3 py-3 text-sm text-muted-foreground">No files found</div>
             ) : (
               mentionSearchResults.map((result, index) => (
-                <button key={result.path} type="button" className={cn("group flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/80", index === highlightedMentionIndex && "bg-sidebar-accent")} onMouseDown={(event) => event.preventDefault()} onClick={() => selectMentionResult(result)}>
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"><ClipboardText size={15} /></span>
-                  <span className="flex min-w-0 items-baseline gap-2"><span className="shrink-0 text-sm font-medium text-sidebar-foreground">{result.displayName}</span><span className="truncate text-sm text-muted-foreground">{result.path}</span></span>
+                <button
+                  key={result.path}
+                  type="button"
+                  className={cn(
+                    "group flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-sidebar-accent/80",
+                    index === highlightedMentionIndex && "bg-sidebar-accent",
+                  )}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => selectMentionResult(result)}
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <ClipboardText size={15} />
+                  </span>
+                  <span className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 text-sm font-medium text-sidebar-foreground">
+                      {result.displayName}
+                    </span>
+                    <span className="truncate text-sm text-muted-foreground">{result.path}</span>
+                  </span>
                 </button>
               ))
             )}
           </div>
-          <div className="border-t border-sidebar-border/50 px-3 pb-2 pt-3 text-sm text-muted-foreground">Type to search for files</div>
+          <div className="border-t border-sidebar-border/50 px-3 pb-2 pt-3 text-sm text-muted-foreground">
+            Type to search for files
+          </div>
         </div>
       )}
       <PromptInput
-      onSubmit={({ text, files }) => handleSubmit(text, files)}
-      onKeyDownCapture={handleKeyDownCapture}
-      className="rounded-2xl bg-sidebar text-sidebar-foreground transition-colors duration-200 [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border focus-within:[&_[data-slot=input-group]]:border-primary/50"
-    >
-      <PromptInputAttachments>
-        {(attachment) => <PromptInputAttachment data={attachment} />}
-      </PromptInputAttachments>
-      {mentionedFiles.length > 0 && (
-        <div className="flex w-full flex-wrap items-start justify-start gap-1.5 px-3 pt-2">
-          {mentionedFiles.map((file) => (
-            <div key={file.id} className="group inline-flex h-6 items-center gap-1 rounded-[5px] bg-foreground/[0.05] pl-1.5 pr-1 ring-1 ring-inset ring-foreground/[0.08]">
-              <ClipboardText size={10} className="text-foreground/45" />
-              <span className="max-w-[220px] truncate text-[12px] font-medium text-foreground/70">{file.path}</span>
-              <button type="button" aria-label={`Remove ${file.displayName}`} className="ml-0.5 flex size-4 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100 hover:bg-foreground/10" onClick={() => setMentionedFiles((prev) => prev.filter((item) => item.id !== file.id))}>
-                <CloseCircle size={10} className="text-foreground/50" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <PromptInputBody>
-        <PromptInputTextarea
-          id={textareaId}
-          placeholder="Describe your app..."
-          disabled={disabled}
-          className="min-h-[56px] max-h-[200px]"
-          onChange={(event) => setCaretPosition(event.currentTarget.selectionStart ?? event.currentTarget.value.length)}
-          onClick={(event) => setCaretPosition(event.currentTarget.selectionStart ?? event.currentTarget.value.length)}
-          onKeyUp={(event) => setCaretPosition(event.currentTarget.selectionStart ?? event.currentTarget.value.length)}
-          onSelect={(event) => setCaretPosition((event.currentTarget as HTMLTextAreaElement).selectionStart ?? 0)}
-        />
-      </PromptInputBody>
-      <PromptInputFooter className="border-t-0">
-        <PromptInputTools>
-          <AgentSelectorButton />
-          <ModelSelectorButton />
-          <ThinkingModeSelector />
-        </PromptInputTools>
-        <div className="flex-1" />
-        <div className="flex items-center gap-1">
-          <PromptInputAddAttachmentButton />
-          <PromptInputSubmit
-            disabled={!hasSubmittableInput || disabled}
-            className={cn(
-              "size-9 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
-            )}
-          >
-            <ArrowUp size={16} className="text-primary-foreground" />
-          </PromptInputSubmit>
-        </div>
-      </PromptInputFooter>
+        onSubmit={({ text, files }) => handleSubmit(text, files)}
+        onKeyDownCapture={handleKeyDownCapture}
+        className="rounded-2xl bg-sidebar text-sidebar-foreground transition-colors duration-200 [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border focus-within:[&_[data-slot=input-group]]:border-primary/50"
+      >
+        <PromptInputAttachments>
+          {(attachment) => <PromptInputAttachment data={attachment} />}
+        </PromptInputAttachments>
+        {mentionedFiles.length > 0 && (
+          <div className="flex w-full flex-wrap items-start justify-start gap-1.5 px-3 pt-2">
+            {mentionedFiles.map((file) => (
+              <div
+                key={file.id}
+                className="group inline-flex h-6 items-center gap-1 rounded-[5px] bg-foreground/[0.05] pl-1.5 pr-1 ring-1 ring-inset ring-foreground/[0.08]"
+              >
+                <ClipboardText size={10} className="text-foreground/45" />
+                <span className="max-w-[220px] truncate text-[12px] font-medium text-foreground/70">
+                  {file.path}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${file.displayName}`}
+                  className="ml-0.5 flex size-4 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-100 hover:bg-foreground/10"
+                  onClick={() =>
+                    setMentionedFiles((prev) => prev.filter((item) => item.id !== file.id))
+                  }
+                >
+                  <CloseCircle size={10} className="text-foreground/50" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <PromptInputBody>
+          <PromptInputTextarea
+            id={textareaId}
+            placeholder="Describe your app..."
+            disabled={disabled}
+            className="min-h-[56px] max-h-[200px]"
+            onChange={(event) =>
+              setCaretPosition(
+                event.currentTarget.selectionStart ?? event.currentTarget.value.length,
+              )
+            }
+            onClick={(event) =>
+              setCaretPosition(
+                event.currentTarget.selectionStart ?? event.currentTarget.value.length,
+              )
+            }
+            onKeyUp={(event) =>
+              setCaretPosition(
+                event.currentTarget.selectionStart ?? event.currentTarget.value.length,
+              )
+            }
+            onSelect={(event) =>
+              setCaretPosition((event.currentTarget as HTMLTextAreaElement).selectionStart ?? 0)
+            }
+          />
+        </PromptInputBody>
+        <PromptInputFooter className="border-t-0">
+          <PromptInputTools>
+            <AgentSelectorButton />
+            <ModelSelectorButton />
+            <ThinkingModeSelector />
+          </PromptInputTools>
+          <div className="flex-1" />
+          <div className="flex items-center gap-1">
+            <PromptInputAddAttachmentButton />
+            <PromptInputSubmit
+              disabled={!hasSubmittableInput || disabled}
+              className={cn(
+                "size-9 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45 disabled:shadow-none",
+              )}
+            >
+              <ArrowUp size={16} className="text-primary-foreground" />
+            </PromptInputSubmit>
+          </div>
+        </PromptInputFooter>
       </PromptInput>
     </div>
   )

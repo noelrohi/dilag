@@ -31,7 +31,10 @@ function normalizeReasoningTitle(line: string | undefined): string {
 }
 
 export function getReasoningTitle(text: string | undefined): string | undefined {
-  const firstLine = text?.split("\n").find((line) => line.trim())?.trim()
+  const firstLine = text
+    ?.split("\n")
+    .find((line) => line.trim())
+    ?.trim()
   return isReasoningHeading(firstLine) ? normalizeReasoningTitle(firstLine) : undefined
 }
 
@@ -45,7 +48,10 @@ export function getReasoningBody(text: string | undefined): string {
   // duplicate content when the model actually emitted a markdown heading/bold title line.
   if (!isReasoningHeading(lines[titleIndex])) return text.trim()
 
-  const body = lines.slice(titleIndex + 1).join("\n").trim()
+  const body = lines
+    .slice(titleIndex + 1)
+    .join("\n")
+    .trim()
   return body || text.trim()
 }
 

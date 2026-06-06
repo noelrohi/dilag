@@ -138,9 +138,7 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
           ) : open ? (
             <span className="min-w-0 truncate text-foreground">
               {shouldShimmerTitle ? (
-                <Shimmer className="whitespace-nowrap">
-                  {expandedTitle}
-                </Shimmer>
+                <Shimmer className="whitespace-nowrap">{expandedTitle}</Shimmer>
               ) : (
                 expandedTitle
               )}
@@ -148,9 +146,7 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
           ) : (
             <>
               {shouldShimmerTitle ? (
-                <Shimmer className="shrink-0 whitespace-nowrap">
-                  {title}
-                </Shimmer>
+                <Shimmer className="shrink-0 whitespace-nowrap">{title}</Shimmer>
               ) : (
                 <span className="shrink-0 whitespace-nowrap text-foreground">{title}</span>
               )}

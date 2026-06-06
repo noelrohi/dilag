@@ -340,7 +340,13 @@ function toolInputKey(part: MessagePart): string {
 }
 
 function isMatchingToolPart(a: MessagePart, b: MessagePart): boolean {
-  return a.type === "tool" && b.type === "tool" && a.id === b.id && a.tool === b.tool && toolInputKey(a) === toolInputKey(b)
+  return (
+    a.type === "tool" &&
+    b.type === "tool" &&
+    a.id === b.id &&
+    a.tool === b.tool &&
+    toolInputKey(a) === toolInputKey(b)
+  )
 }
 
 function shouldRefreshDesignsForToolPart(
@@ -455,7 +461,10 @@ export const useSessionStore = create<SessionState>()(
           ) {
             for (const message of state.messages[incomingPart.sessionID] ?? []) {
               for (const existingPart of state.parts[message.id] ?? []) {
-                if (isMatchingToolPart(existingPart, incomingPart) && isTerminalToolStatus(existingPart.state?.status)) {
+                if (
+                  isMatchingToolPart(existingPart, incomingPart) &&
+                  isTerminalToolStatus(existingPart.state?.status)
+                ) {
                   incomingPart = { ...incomingPart, state: existingPart.state }
                   break
                 }
@@ -498,7 +507,10 @@ export const useSessionStore = create<SessionState>()(
           ) {
             for (const message of state.messages[incomingPart.sessionID] ?? []) {
               for (const existingPart of state.parts[message.id] ?? []) {
-                if (isMatchingToolPart(existingPart, incomingPart) && !isTerminalToolStatus(existingPart.state?.status)) {
+                if (
+                  isMatchingToolPart(existingPart, incomingPart) &&
+                  !isTerminalToolStatus(existingPart.state?.status)
+                ) {
                   existingPart.state = incomingPart.state
                 }
               }

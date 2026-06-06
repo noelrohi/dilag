@@ -200,7 +200,9 @@ function getSupportedThinkingLevels(model?: {
 }
 
 function getSupportedThinkingLevel(
-  model: { reasoning?: boolean; thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>> } | undefined,
+  model:
+    | { reasoning?: boolean; thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>> }
+    | undefined,
   thinkingLevel: AgentThinkingLevel | undefined,
 ): AgentThinkingLevel | undefined {
   const supportedLevels = getSupportedThinkingLevels(model)

@@ -1,10 +1,7 @@
 "use client"
 
 import { useControllableState } from "radix-ui/internal"
-import {
-  IconBrain as BrainIcon,
-  IconChevronDown as ChevronDownIcon,
-} from "@tabler/icons-react"
+import { IconBrain as BrainIcon, IconChevronDown as ChevronDownIcon } from "@tabler/icons-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
 import type { ComponentProps, ReactNode } from "react"
@@ -125,11 +122,7 @@ export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & 
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return (
-      <Shimmer as="span">
-        Thinking...
-      </Shimmer>
-    )
+    return <Shimmer as="span">Thinking...</Shimmer>
   }
   if (duration === undefined) {
     return <span>Thought for a few seconds</span>

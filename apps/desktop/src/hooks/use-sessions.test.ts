@@ -36,6 +36,7 @@ vi.mock("@/hooks/use-models", () => ({
   useModelStore: {
     getState: vi.fn(() => ({ selectedModel: null, variants: {} })),
   },
+  useProviderData: vi.fn(() => ({ data: { models: [] } })),
 }))
 
 vi.mock("@/hooks/use-agents", () => ({
