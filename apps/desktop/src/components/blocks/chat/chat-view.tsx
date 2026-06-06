@@ -84,7 +84,7 @@ import { bridge } from "@/lib/bridge"
 import { queuedFollowUpPreview, type PromptDeliveryOutcome } from "@/lib/prompt-delivery"
 
 const FILE_MENTION_SEARCH_DEBOUNCE_MS = 150
-const FILE_MENTION_SEARCH_LIMIT = 20
+const FILE_MENTION_SEARCH_LIMIT = 8
 const FILE_MENTION_MAX_COUNT = 10
 const FILE_MENTION_MAX_SIZE_BYTES = 200 * 1024
 
@@ -1308,11 +1308,53 @@ function ChatInputArea({
           </div>
         )}
 
+        {mentionOpen && (
+          <div className="absolute inset-x-0 bottom-full z-20 mb-3 overflow-hidden rounded-[1.35rem] border border-sidebar-border/90 bg-sidebar/95 p-2 shadow-2xl shadow-black/20 backdrop-blur-xl animate-slide-up">
+            <div className="px-3 pb-1 pt-1 text-sm text-muted-foreground">Files</div>
+            <div className="max-h-64 overflow-y-auto">
+              {isSearchingMentions ? (
+                <div className="px-3 py-3 text-sm text-muted-foreground">Searching files…</div>
+              ) : mentionSearchResults.length === 0 ? (
+                <div className="px-3 py-3 text-sm text-muted-foreground">No files found</div>
+              ) : (
+                mentionSearchResults.map((result, index) => (
+                  <button
+                    key={result.path}
+                    type="button"
+                    className={cn(
+                      "group flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors",
+                      "hover:bg-sidebar-accent/80",
+                      index === highlightedMentionIndex && "bg-sidebar-accent",
+                    )}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectMentionResult(result)}
+                  >
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <ClipboardText size={15} />
+                    </span>
+                    <span className="flex min-w-0 items-baseline gap-2">
+                      <span className="shrink-0 text-sm font-medium text-sidebar-foreground">
+                        {result.displayName}
+                      </span>
+                      <span className="truncate text-sm text-muted-foreground">
+                        {result.path}
+                      </span>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="border-t border-sidebar-border/50 px-3 pb-2 pt-3 text-sm text-muted-foreground">
+              Type to search for files
+            </div>
+          </div>
+        )}
+
         <PromptInput
           onSubmit={async ({ text, files }) => handleSubmit(text, files)}
           onKeyDownCapture={handleComposerKeyDownCapture}
           className={cn(
-            "relative z-10 rounded-2xl bg-sidebar text-sidebar-foreground [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border [&_[data-slot=input-group]]:bg-sidebar",
+            "relative z-10 rounded-2xl bg-sidebar text-sidebar-foreground transition-colors duration-200 [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border focus-within:[&_[data-slot=input-group]]:border-primary/50",
           )}
         >
           <PromptInputAttachments>
@@ -1363,34 +1405,7 @@ function ChatInputArea({
               onSelect={(event) => syncCaretPosition(event.currentTarget as HTMLTextAreaElement)}
             />
           </PromptInputBody>
-          {mentionOpen && (
-            <div className="w-full px-3 pb-1">
-              <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 bg-card shadow-sm">
-                {isSearchingMentions ? (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">Searching files...</div>
-                ) : mentionSearchResults.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">No files found</div>
-                ) : (
-                  mentionSearchResults.map((result, index) => (
-                    <button
-                      key={result.path}
-                      type="button"
-                      className={cn(
-                        "flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40",
-                        index === highlightedMentionIndex && "bg-muted/50",
-                      )}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectMentionResult(result)}
-                    >
-                      <span className="truncate font-medium">{result.displayName}</span>
-                      <span className="truncate text-xs text-muted-foreground">{result.path}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-          <PromptInputFooter>
+          <PromptInputFooter className="border-t-0">
             {/* Left side - agent selector, model selector, thinking mode */}
             <PromptInputTools className="min-w-0 flex-1">
               <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
