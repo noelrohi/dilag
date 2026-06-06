@@ -20,6 +20,7 @@ import {
   IconHelpCircle as CircleHelp,
 } from "@tabler/icons-react"
 import { diffLines } from "diff"
+import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/lib/utils"
 
 // Tool props passed to render functions
@@ -137,45 +138,56 @@ function fileDiffCounts(p: ToolRenderProps): { additions: number; deletions: num
   return { additions: 0, deletions: 0 }
 }
 
-function SlotNumber({ value, direction }: { value: number; direction: "up" | "down" }) {
+function SlotDigit({ digit, previousDigit, direction }: { digit: string; previousDigit: string; direction: "up" | "down" }) {
+  const hasChanged = digit !== previousDigit
+  const displayDigit = digit === " " ? "\u00A0" : digit
+
+  if (!hasChanged) {
+    return <span className="inline-flex h-[1em] w-[1ch] items-center justify-center">{displayDigit}</span>
+  }
+
+  return (
+    <span className="relative inline-flex h-[1em] w-[1ch] overflow-hidden text-center align-middle">
+      <AnimatePresence initial={false} mode="popLayout">
+        <motion.span
+          key={digit}
+          className="absolute inset-0 flex items-center justify-center leading-none"
+          initial={{ y: direction === "up" ? "100%" : "-100%", opacity: 0.65 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: direction === "up" ? "-100%" : "100%", opacity: 0.65 }}
+          transition={{ type: "spring", stiffness: 520, damping: 42, mass: 0.7 }}
+        >
+          {displayDigit}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  )
+}
+
+function SlotNumber({ value }: { value: number }) {
   const previousRef = useRef(value)
   const previous = previousRef.current
-  const shouldAnimate = previous !== value
-  const width = `${Math.max(String(previous).length, String(value).length)}ch`
+  const direction = value >= previous ? "up" : "down"
+  const width = Math.max(String(previous).length, String(value).length)
+  const previousDigits = String(previous).padStart(width, " ").split("")
+  const digits = String(value).padStart(width, " ").split("")
 
   useEffect(() => {
     previousRef.current = value
   }, [value])
 
-  if (!shouldAnimate) {
-    return (
-      <span className="inline-block h-4 text-right leading-4 align-[-3px]" style={{ width }}>
-        {value}
-      </span>
-    )
-  }
-
   return (
-    <span className="relative inline-block h-4 overflow-hidden align-[-3px]" style={{ width }}>
-      <span
-        key={`${direction}-${previous}-${value}`}
-        className={cn(
-          "absolute inset-x-0 top-0 flex flex-col text-right leading-4 will-change-transform",
-          direction === "up" ? "animate-slot-count-up" : "animate-slot-count-down",
-        )}
-      >
-        {direction === "up" ? (
-          <>
-            <span>{previous}</span>
-            <span>{value}</span>
-          </>
-        ) : (
-          <>
-            <span>{value}</span>
-            <span>{previous}</span>
-          </>
-        )}
-      </span>
+    <span className="inline-flex h-[1em] items-center overflow-hidden align-middle leading-none tabular-nums">
+      {digits.map((digit, index) => (
+        <SlotDigit
+          // The index keeps each column stable; the digit key inside SlotDigit drives only
+          // the changed column's slot transition.
+          key={index}
+          digit={digit}
+          previousDigit={previousDigits[index] ?? " "}
+          direction={direction}
+        />
+      ))}
     </span>
   )
 }
@@ -188,14 +200,14 @@ function DiffDeltaBadge({ additions, deletions }: { additions: number; deletions
       {additions > 0 && (
         <span aria-label={`+${additions}`} className="inline-flex items-center text-success">
           <span aria-hidden="true" className="inline-flex items-center">
-            +<SlotNumber value={additions} direction="up" />
+            +<SlotNumber value={additions} />
           </span>
         </span>
       )}
       {deletions > 0 && (
         <span aria-label={`-${deletions}`} className="inline-flex items-center text-destructive">
           <span aria-hidden="true" className="inline-flex items-center">
-            -<SlotNumber value={deletions} direction="down" />
+            -<SlotNumber value={deletions} />
           </span>
         </span>
       )}

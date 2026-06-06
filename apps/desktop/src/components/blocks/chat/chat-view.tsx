@@ -324,14 +324,9 @@ function ThinkingIndicator() {
         <div className="absolute inset-0 rounded-lg bg-primary/10" />
         <DilagIcon animated className="size-5 text-primary" />
       </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-foreground/90">Thinking</span>
-        <div className="flex gap-1">
-          <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:0ms]" />
-          <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:300ms]" />
-          <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:600ms]" />
-        </div>
-      </div>
+      <Shimmer as="span" className="text-sm font-medium">
+        Thinking
+      </Shimmer>
     </div>
   )
 }
@@ -708,7 +703,7 @@ export function AssistantWorkGroup({
           <Terminal className="size-[15px] stroke-[1.75]" />
         </span>
         {shouldShimmerSummary ? (
-          <Shimmer as="span" className="min-w-0 truncate text-left" duration={0.85}>
+          <Shimmer as="span" className="min-w-0 truncate text-left">
             {summary}
           </Shimmer>
         ) : (
@@ -771,9 +766,6 @@ function AssistantMessage({
   )
   const isStreaming = isAssistantMessageStreaming(message, sessionStatus)
   const turnRenderableParts = getRenderableAssistantParts(turnParts, isStreaming)
-  const { workParts, finalParts } = splitAssistantWorkParts(turnRenderableParts)
-  const workStartedAt = turnAssistantMessages[0]?.time.created ?? message.time.created
-  const workCompletedAt = message.time.completed
 
   if (!isStreaming && turnRenderableParts.length === 0 && !sessionError) {
     return null
@@ -786,18 +778,8 @@ function AssistantMessage({
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
       <MessageContent className="space-y-2 w-full">
-        <AssistantWorkGroup
-          parts={workParts}
-          isStreaming={isStreaming}
-          startedAt={workStartedAt}
-          completedAt={workCompletedAt}
-        />
-
-        {finalParts.map((part, partIndex) => {
-          const isPartStreaming =
-            part.type === "reasoning"
-              ? isStreaming && partIndex === finalParts.length - 1
-              : isStreaming
+        {turnRenderableParts.map((part, partIndex) => {
+          const isPartStreaming = isStreaming
 
           return (
             <div

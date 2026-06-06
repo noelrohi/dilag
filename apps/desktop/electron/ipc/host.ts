@@ -221,7 +221,7 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
     },
   )
   ipcMain.handle(CHANNELS.designs.delete, (_event, args: { filePath: string }) =>
-    fsp.rm(args.filePath),
+    fsp.rm(args.filePath, { force: true }),
   )
   ipcMain.handle(CHANNELS.designs.validateHtml, (_event, args: { html: string }) =>
     validateHtml(args.html),

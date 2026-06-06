@@ -89,7 +89,7 @@
     "html2canvas-pro": "^1.6.4",
     "immer": "^11.0.1",
     "jszip": "^3.10.1",
-    "motion": "^12.23.26",
+    "motion": "^12.40.0",
     "nanoid": "^5.1.6",
     "nuqs": "^2.8.6",
     "radix-ui": "catalog:",

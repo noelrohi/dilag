@@ -11,6 +11,7 @@ import {
   isEventSessionDiff,
   isEventSessionIdle,
   isEventSessionError,
+  isEventSessionUpdated,
   isEventServerHeartbeat,
   isEventFileWatcherUpdated,
   isEventProjectUpdated,
@@ -330,6 +331,18 @@ function shouldKeepExistingPart(existing: MessagePart, incoming: MessagePart): b
   return isTerminalToolStatus(existingStatus) && !isTerminalToolStatus(incomingStatus)
 }
 
+function toolInputKey(part: MessagePart): string {
+  try {
+    return JSON.stringify(part.state?.input ?? null)
+  } catch {
+    return ""
+  }
+}
+
+function isMatchingToolPart(a: MessagePart, b: MessagePart): boolean {
+  return a.type === "tool" && b.type === "tool" && a.id === b.id && a.tool === b.tool && toolInputKey(a) === toolInputKey(b)
+}
+
 function shouldRefreshDesignsForToolPart(
   existing: MessagePart | undefined,
   incoming: MessagePart,
@@ -434,27 +447,58 @@ export const useSessionStore = create<SessionState>()(
             }
           }
 
+          let incomingPart = part
+          if (
+            incomingPart.type === "tool" &&
+            incomingPart.sessionID &&
+            !isTerminalToolStatus(incomingPart.state?.status)
+          ) {
+            for (const message of state.messages[incomingPart.sessionID] ?? []) {
+              for (const existingPart of state.parts[message.id] ?? []) {
+                if (isMatchingToolPart(existingPart, incomingPart) && isTerminalToolStatus(existingPart.state?.status)) {
+                  incomingPart = { ...incomingPart, state: existingPart.state }
+                  break
+                }
+              }
+              if (isTerminalToolStatus(incomingPart.state?.status)) break
+            }
+          }
+
           const parts = state.parts[messageId]
           if (!parts) {
-            state.parts[messageId] = [part]
-            if (shouldRefreshDesignsForToolPart(undefined, part)) {
+            state.parts[messageId] = [incomingPart]
+            if (shouldRefreshDesignsForToolPart(undefined, incomingPart)) {
               state.designRefreshTick += 1
             }
             return
           }
 
-          const result = binarySearch(parts, part.id, (p) => p.id)
+          const result = binarySearch(parts, incomingPart.id, (p) => p.id)
           if (result.found) {
             const existing = parts[result.index]
-            if (shouldKeepExistingPart(existing, part)) return
-            parts[result.index] = part
-            if (shouldRefreshDesignsForToolPart(existing, part)) {
+            if (shouldKeepExistingPart(existing, incomingPart)) return
+            parts[result.index] = incomingPart
+            if (shouldRefreshDesignsForToolPart(existing, incomingPart)) {
               state.designRefreshTick += 1
             }
           } else {
-            parts.splice(result.index, 0, part)
-            if (shouldRefreshDesignsForToolPart(undefined, part)) {
+            parts.splice(result.index, 0, incomingPart)
+            if (shouldRefreshDesignsForToolPart(undefined, incomingPart)) {
               state.designRefreshTick += 1
+            }
+          }
+
+          if (
+            incomingPart.type === "tool" &&
+            incomingPart.sessionID &&
+            isTerminalToolStatus(incomingPart.state?.status)
+          ) {
+            for (const message of state.messages[incomingPart.sessionID] ?? []) {
+              for (const existingPart of state.parts[message.id] ?? []) {
+                if (isMatchingToolPart(existingPart, incomingPart) && !isTerminalToolStatus(existingPart.state?.status)) {
+                  existingPart.state = incomingPart.state
+                }
+              }
             }
           }
         }),
@@ -855,6 +899,12 @@ export const useSessionStore = create<SessionState>()(
               })
             }
           }
+          return
+        }
+
+        // Session metadata updates are synced by useSessions; acknowledge them here so they
+        // don't show up as noisy unhandled debug events during dev/HMR.
+        if (isEventSessionUpdated(event)) {
           return
         }
 

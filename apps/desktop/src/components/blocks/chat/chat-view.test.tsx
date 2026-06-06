@@ -631,7 +631,7 @@ describe("shouldShimmerAssistantWorkSummary", () => {
 })
 
 describe("AssistantWorkGroup", () => {
-  it("shimmers the summary label while any grouped item is pending", () => {
+  it("uses the shimmer treatment while any grouped item is pending", () => {
     render(
       <AssistantWorkGroup
         parts={[
@@ -647,7 +647,7 @@ describe("AssistantWorkGroup", () => {
       />,
     )
 
-    expect(screen.getByText("Ran 1 command")).toHaveClass("text-shimmer-sweep")
+    expect(screen.getByText("Ran 1 command")).toHaveClass("text-transparent")
   })
 
   it("does not shimmer stale pending summaries after completion", () => {

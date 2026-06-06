@@ -132,13 +132,13 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left whitespace-nowrap">
           {shouldShimmer ? (
-            <Shimmer className="min-w-0 truncate whitespace-nowrap" duration={0.85}>
+            <Shimmer className="min-w-0 truncate whitespace-nowrap">
               {subtitle ? renderSubtitleText(subtitle) : title}
             </Shimmer>
           ) : open ? (
             <span className="min-w-0 truncate text-foreground">
               {shouldShimmerTitle ? (
-                <Shimmer className="whitespace-nowrap" duration={0.85}>
+                <Shimmer className="whitespace-nowrap">
                   {expandedTitle}
                 </Shimmer>
               ) : (
@@ -148,7 +148,7 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
           ) : (
             <>
               {shouldShimmerTitle ? (
-                <Shimmer className="shrink-0 whitespace-nowrap" duration={0.85}>
+                <Shimmer className="shrink-0 whitespace-nowrap">
                   {title}
                 </Shimmer>
               ) : (

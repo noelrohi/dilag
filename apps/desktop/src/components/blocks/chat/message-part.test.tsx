@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import { act } from "react"
 import { describe, expect, it } from "vitest"
 import type { MessagePart as MessagePartType } from "@/context/session-store"
 import { MessagePart } from "./message-part"
@@ -28,5 +29,19 @@ describe("MessagePart", () => {
     expect(
       screen.queryByText("I should inspect the project before editing."),
     ).not.toBeInTheDocument()
+  })
+
+  it("re-opens reasoning content when a closed part starts streaming", async () => {
+    const { rerender } = render(<MessagePart part={reasoningPart} isStreaming={false} />)
+
+    expect(
+      screen.queryByText("I should inspect the project before editing."),
+    ).not.toBeInTheDocument()
+
+    await act(async () => {
+      rerender(<MessagePart part={reasoningPart} isStreaming />)
+    })
+
+    expect(screen.getByText("I should inspect the project before editing.")).toBeInTheDocument()
   })
 })

@@ -1,6 +1,10 @@
 "use client"
 
 import { useControllableState } from "radix-ui/internal"
+import {
+  IconBrain as BrainIcon,
+  IconChevronDown as ChevronDownIcon,
+} from "@tabler/icons-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
 import { cn } from "@/lib/utils"
 import type { ComponentProps, ReactNode } from "react"
@@ -72,7 +76,16 @@ export const Reasoning = memo(
       }
     }, [isStreaming, startTime, setDuration])
 
-    // Auto-open when streaming starts, auto-close when streaming ends (once only)
+    // Auto-open whenever streaming starts. A reasoning part can mount closed and later become
+    // the active streaming part as the SDK appends/updates parts, so don't rely on defaultOpen
+    // only being read during the first render.
+    useEffect(() => {
+      if (!isStreaming) return
+      setIsOpen(true)
+      setHasAutoClosed(false)
+    }, [isStreaming, setIsOpen])
+
+    // Auto-close when streaming ends (once only)
     useEffect(() => {
       if (defaultOpen && !isStreaming && isOpen && !hasAutoClosed) {
         // Add a small delay before closing to allow user to see the content
@@ -111,7 +124,7 @@ export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
     return (
-      <Shimmer as="span" duration={1}>
+      <Shimmer as="span">
         Thinking...
       </Shimmer>
     )
@@ -129,22 +142,30 @@ export const ReasoningTrigger = memo(
     getThinkingMessage = defaultGetThinkingMessage,
     ...props
   }: ReasoningTriggerProps) => {
-    const { isStreaming, duration } = useReasoning()
+    const { isStreaming, isOpen, duration } = useReasoning()
 
     return (
       <CollapsibleTrigger
         className={cn(
-          "group grid h-7 w-full grid-cols-1 items-center rounded-md px-2 py-1 text-left",
-          "text-sm text-muted-foreground select-none cursor-default transition-colors",
-          "hover:bg-muted/30 hover:text-foreground data-[state=open]:bg-muted/20 data-[state=open]:text-foreground",
+          "group flex h-7 w-full items-center gap-2 rounded-md px-0 py-1 text-left",
+          "text-sm text-muted-foreground select-none cursor-default transition-colors hover:text-foreground",
           className,
         )}
         {...props}
       >
         {children ?? (
-          <span className="min-w-0 flex-1 truncate text-left">
-            {getThinkingMessage(isStreaming, duration)}
-          </span>
+          <>
+            <BrainIcon className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate text-left">
+              {getThinkingMessage(isStreaming, duration)}
+            </span>
+            <ChevronDownIcon
+              className={cn(
+                "size-4 shrink-0 opacity-0 transition-all duration-150 group-hover:opacity-100",
+                isOpen ? "rotate-180" : "rotate-0",
+              )}
+            />
+          </>
         )}
       </CollapsibleTrigger>
     )
@@ -164,7 +185,9 @@ export const ReasoningContent = memo(({ className, children, ...props }: Reasoni
     )}
     {...props}
   >
-    <Streamdown {...props}>{children}</Streamdown>
+    <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+      {children}
+    </Streamdown>
   </CollapsibleContent>
 ))
 
