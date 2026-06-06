@@ -114,11 +114,14 @@ export function useModels() {
     return Object.keys(selectedModelInfo.variants) as AgentThinkingLevel[]
   }, [selectedModelInfo])
 
-  // Get current variant for selected model
+  // Get current variant for selected model. There is no UI "Default" option: if a
+  // model exposes thinking variants, use the first SDK-advertised level unless
+  // the user has explicitly selected another supported level.
   const currentVariant = useMemo(() => {
-    if (!modelKey) return undefined
-    return variants[modelKey]
-  }, [modelKey, variants])
+    if (!modelKey || variantList.length === 0) return undefined
+    const storedVariant = variants[modelKey]
+    return storedVariant && variantList.includes(storedVariant) ? storedVariant : variantList[0]
+  }, [modelKey, variantList, variants])
 
   // Set variant for current model
   const setCurrentVariant = useCallback(
@@ -129,22 +132,13 @@ export function useModels() {
     [modelKey, setVariant],
   )
 
-  // Cycle through variants: undefined -> variant[0] -> variant[1] -> ... -> undefined
+  // Cycle through SDK-advertised variants only; no fallback "Default" option.
   const cycleVariant = useCallback(() => {
     if (variantList.length === 0) return
 
     const currentIndex = currentVariant ? variantList.indexOf(currentVariant) : -1
-
-    if (currentIndex === -1) {
-      // No variant selected, select first
-      setCurrentVariant(variantList[0])
-    } else if (currentIndex === variantList.length - 1) {
-      // Last variant, cycle back to undefined (default)
-      setCurrentVariant(undefined)
-    } else {
-      // Select next variant
-      setCurrentVariant(variantList[currentIndex + 1])
-    }
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % variantList.length
+    setCurrentVariant(variantList[nextIndex])
   }, [variantList, currentVariant, setCurrentVariant])
 
   const restartServerAndRefresh = useCallback(async () => {

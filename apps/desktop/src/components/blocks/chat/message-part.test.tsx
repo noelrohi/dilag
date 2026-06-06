@@ -1,8 +1,7 @@
 import { render, screen } from "@testing-library/react"
-import { act } from "react"
 import { describe, expect, it } from "vitest"
 import type { MessagePart as MessagePartType } from "@/context/session-store"
-import { MessagePart } from "./message-part"
+import { getReasoningBody, getReasoningTitle, MessagePart } from "./message-part"
 
 const reasoningPart: MessagePartType = {
   id: "reasoning-1",
@@ -13,35 +12,36 @@ const reasoningPart: MessagePartType = {
 }
 
 describe("MessagePart", () => {
-  it("shows reasoning content while it is streaming", () => {
+  it("renders plain prose reasoning inline like Pi TUI", () => {
     render(<MessagePart part={reasoningPart} isStreaming />)
 
-    expect(screen.getByText(/Thinking/)).toBeInTheDocument()
+    expect(screen.queryByText(/Thinking/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Thought/)).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /I should inspect/ })).not.toBeInTheDocument()
     expect(screen.getByText("I should inspect the project before editing.")).toBeInTheDocument()
   })
 
-  it("collapses completed reasoning by default", () => {
-    render(<MessagePart part={reasoningPart} isStreaming={false} />)
+  it("uses model-provided markdown headings as expandable reasoning titles", () => {
+    render(
+      <MessagePart
+        part={{ ...reasoningPart, text: "**Testing duplicate content**\n\nI'm thinking about tests." }}
+        isStreaming={false}
+      />,
+    )
 
-    const trigger = screen.getByRole("button", { name: /Thought/ })
+    const trigger = screen.getByRole("button", { name: /Testing duplicate content/ })
     expect(trigger).toHaveClass("h-7", "py-1")
-    expect(screen.getByText(/Thought/).tagName).toBe("SPAN")
-    expect(
-      screen.queryByText("I should inspect the project before editing."),
-    ).not.toBeInTheDocument()
+    expect(screen.getByText("I'm thinking about tests.")).toBeInTheDocument()
   })
 
-  it("re-opens reasoning content when a closed part starts streaming", async () => {
-    const { rerender } = render(<MessagePart part={reasoningPart} isStreaming={false} />)
-
-    expect(
-      screen.queryByText("I should inspect the project before editing."),
-    ).not.toBeInTheDocument()
-
-    await act(async () => {
-      rerender(<MessagePart part={reasoningPart} isStreaming />)
-    })
-
-    expect(screen.getByText("I should inspect the project before editing.")).toBeInTheDocument()
+  it("normalizes markdown-ish reasoning titles and excludes the title from body", () => {
+    expect(getReasoningTitle("## Plan\nMore detail")).toBe("Plan")
+    expect(getReasoningTitle("- Inspect files\nThen edit")).toBeUndefined()
+    expect(getReasoningTitle("**Testing duplicate content**\nMore detail")).toBe("Testing duplicate content")
+    expect(getReasoningTitle("\n\n")).toBeUndefined()
+    expect(getReasoningBody("## Plan\nMore detail")).toBe("More detail")
+    expect(getReasoningBody("I need to inspect files.\nThen edit.")).toBe(
+      "I need to inspect files.\nThen edit.",
+    )
   })
 })

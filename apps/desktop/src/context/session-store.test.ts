@@ -123,6 +123,29 @@ describe("session-store", () => {
       expect(messages[2].id).toBe("msg-2")
     })
 
+    it("keeps insertion order for messages with identical timestamps", () => {
+      const sessionId = "session-1"
+      useSessionStore.getState().setMessages(sessionId, [])
+
+      useSessionStore.getState().addMessage(sessionId, {
+        id: "user-1",
+        sessionID: sessionId,
+        role: "user",
+        time: { created: 1000 },
+      })
+      useSessionStore.getState().addMessage(sessionId, {
+        id: "assistant-1",
+        sessionID: sessionId,
+        role: "assistant",
+        time: { created: 1000 },
+      })
+
+      expect(useSessionStore.getState().messages[sessionId].map((message) => message.id)).toEqual([
+        "user-1",
+        "assistant-1",
+      ])
+    })
+
     it("should not add duplicate messages", () => {
       const sessionId = "session-1"
       useSessionStore.getState().setMessages(sessionId, [])
@@ -239,7 +262,7 @@ describe("session-store", () => {
       expect(parts[0].state?.output).toBe("file contents")
     })
 
-    it("should maintain part order by id", () => {
+    it("should maintain streamed insertion order", () => {
       const messageId = "msg-1"
 
       const part1: MessagePart = { id: "a-part", messageID: messageId, type: "text", text: "A" }
@@ -253,8 +276,8 @@ describe("session-store", () => {
       const parts = useSessionStore.getState().parts[messageId]
       expect(parts).toHaveLength(3)
       expect(parts[0].id).toBe("a-part")
-      expect(parts[1].id).toBe("b-part")
-      expect(parts[2].id).toBe("c-part")
+      expect(parts[1].id).toBe("c-part")
+      expect(parts[2].id).toBe("b-part")
     })
   })
 
@@ -398,6 +421,37 @@ describe("session-store", () => {
       expect(updated.isStreaming).toBe(false)
     })
 
+    it("should reactivate an existing loaded assistant message when live updates resume", () => {
+      const sessionId = "session-1"
+      const messageId = "msg-1"
+
+      useSessionStore.getState().setMessages(sessionId, [
+        {
+          id: messageId,
+          sessionID: sessionId,
+          role: "assistant",
+          time: { created: 1000, completed: 1000 },
+          isStreaming: false,
+        },
+      ])
+
+      useSessionStore.getState().handleEvent({
+        type: "message.updated",
+        properties: {
+          info: {
+            id: messageId,
+            sessionID: sessionId,
+            role: "assistant",
+            time: { created: 1000 },
+          },
+        },
+      } as any)
+
+      const message = useSessionStore.getState().messages[sessionId][0]
+      expect(message.isStreaming).toBe(true)
+      expect(message.time.completed).toBeUndefined()
+    })
+
     it("should handle session.status event", () => {
       const event = {
         type: "session.status" as const,
@@ -476,6 +530,37 @@ describe("session-store", () => {
       const parts = useSessionStore.getState().parts["msg-1"]
       expect(parts).toHaveLength(1)
       expect(parts[0].text).toBe("Hello")
+    })
+
+    it("preserves streamed assistant part order instead of sorting tool IDs before content IDs", () => {
+      useSessionStore.getState().updatePart("msg-1", {
+        id: "msg-1:part:0",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "reasoning",
+        text: "Think first",
+      })
+      useSessionStore.getState().updatePart("msg-1", {
+        id: "functions.bash:0",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "completed", input: { command: "ls" } },
+      })
+      useSessionStore.getState().updatePart("msg-1", {
+        id: "msg-1:part:2",
+        messageID: "msg-1",
+        sessionID: "session-1",
+        type: "reasoning",
+        text: "Think after command",
+      })
+
+      expect(useSessionStore.getState().parts["msg-1"].map((part) => part.id)).toEqual([
+        "msg-1:part:0",
+        "functions.bash:0",
+        "msg-1:part:2",
+      ])
     })
 
     it("deduplicates the same user prompt when a live synthetic message races a persisted reload", () => {

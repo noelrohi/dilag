@@ -1,5 +1,13 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import { useCallback, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type UIEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 import {
   IconWand as MagicStick,
   IconSettings as Settings,
@@ -77,6 +85,7 @@ import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
 import { bridge } from "@/lib/bridge"
 import type { AgentMessage, AgentMessagePart, ProjectMeta } from "@dilag/desktop-bridge"
 import type { SessionMeta } from "@/context/session-store"
+import { cn } from "@/lib/utils"
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr)
@@ -159,6 +168,8 @@ export function AppSidebar() {
   const [projectOrganizeMode, setProjectOrganizeMode] =
     useState<ProjectOrganizeMode>("recent-projects")
   const [archiveAllProjectsOpen, setArchiveAllProjectsOpen] = useState(false)
+  const [projectScrollFade, setProjectScrollFade] = useState({ top: false, bottom: false })
+  const projectScrollRef = useRef<HTMLDivElement | null>(null)
 
   const pinnedProjects = useMemo(() => projects.filter((project) => project.pinned), [projects])
   const regularProjects = useMemo(() => {
@@ -286,11 +297,37 @@ export function AppSidebar() {
     openProjectComposer(project.id)
   }
 
+  const updateProjectScrollFade = useCallback((element: HTMLElement | null) => {
+    if (!element) return
+    const next = {
+      top: element.scrollTop > 1,
+      bottom: element.scrollTop + element.clientHeight < element.scrollHeight - 1,
+    }
+    setProjectScrollFade((current) =>
+      current.top === next.top && current.bottom === next.bottom ? current : next,
+    )
+  }, [])
+
+  const handleProjectScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      updateProjectScrollFade(event.currentTarget)
+    },
+    [updateProjectScrollFade],
+  )
+
+  useEffect(() => {
+    updateProjectScrollFade(projectScrollRef.current)
+  }, [projectsSectionExpanded, regularProjects, sessionsByProject, updateProjectScrollFade])
+
   return (
-    <Sidebar collapsible="offcanvas" variant="inset" className="group/sidebar-resizable">
+    <Sidebar
+      collapsible="offcanvas"
+      variant="inset"
+      className="group/sidebar-resizable bg-sidebar/80 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/70"
+    >
       <SidebarHeader className="h-[44px] flex-row items-center px-3 py-0" />
 
-      <SidebarContent>
+      <SidebarContent className="scrollbar-none bg-transparent">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
@@ -352,7 +389,15 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden min-h-0 flex-1">
+        <SidebarGroup
+          data-fade-bottom={projectScrollFade.bottom ? "true" : undefined}
+          data-fade-top={projectScrollFade.top ? "true" : undefined}
+          className={cn(
+            "relative group-data-[collapsible=icon]:hidden min-h-0 flex-1",
+            "before:pointer-events-none before:absolute before:left-0 before:right-0 before:top-[30px] before:z-10 before:h-11 before:bg-gradient-to-b before:from-sidebar/80 before:to-transparent before:opacity-0 before:transition-opacity data-[fade-top=true]:before:opacity-100",
+            "after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:right-0 after:z-10 after:h-[72px] after:bg-gradient-to-b after:from-transparent after:to-sidebar/70 after:opacity-0 after:transition-opacity data-[fade-bottom=true]:after:opacity-100",
+          )}
+        >
           <SidebarGroupLabel className="px-2 pt-2 text-[13px] font-medium text-sidebar-foreground/45 flex items-center justify-between group/projects">
             <span className="flex min-w-0 items-center gap-1">
               <span>Projects</span>
@@ -452,7 +497,18 @@ export function AppSidebar() {
             </div>
           </SidebarGroupLabel>
           {projectsSectionExpanded && (
-            <SidebarGroupContent className="overflow-y-auto">
+            <SidebarGroupContent
+              className={cn(
+                "scrollbar-none overflow-y-auto pb-16 pt-2",
+                (projectScrollFade.top || projectScrollFade.bottom) &&
+                  "[mask-image:linear-gradient(to_bottom,transparent_0,black_36px,black_calc(100%_-_72px),transparent_100%)]",
+              )}
+              onScroll={handleProjectScroll}
+              ref={(element) => {
+                projectScrollRef.current = element
+                updateProjectScrollFade(element)
+              }}
+            >
               <SidebarMenu>
                 {regularProjects.map((project) => (
                   <ProjectItem
@@ -479,8 +535,8 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="relative pb-3">
-        <div className="absolute -top-6 left-0 right-0 h-6 bg-gradient-to-t from-sidebar to-transparent pointer-events-none" />
+      <SidebarFooter className="relative bg-sidebar/70 pb-3 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/60">
+        <div className="pointer-events-none absolute -top-10 left-0 right-0 h-10 bg-gradient-to-t from-sidebar/70 via-sidebar/35 to-transparent supports-[backdrop-filter]:from-sidebar/60" />
         <SidebarMenu>
           <SidebarMenuItem>
             <AuthSettings

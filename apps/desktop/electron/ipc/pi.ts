@@ -176,18 +176,39 @@ function getThinkingLevelVariants(model: {
   reasoning?: boolean
   thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>>
 }) {
-  if (!model.reasoning) return undefined
+  const available = getSupportedThinkingLevels(model)
+  if (available.length === 0) return undefined
+  return Object.fromEntries(available.map((level) => [level, {}])) as Record<
+    AgentThinkingLevel,
+    Record<string, unknown>
+  >
+}
+
+function getSupportedThinkingLevels(model?: {
+  reasoning?: boolean
+  thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>>
+}): AgentThinkingLevel[] {
+  if (!model?.reasoning) return []
   const levels: AgentThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"]
-  const available = levels.filter((level) => {
+  if (!model.thinkingLevelMap) return ["off", "low", "medium", "high"]
+  return levels.filter((level) => {
     const mapped = model.thinkingLevelMap?.[level]
     if (mapped === null) return false
     if (level === "xhigh") return mapped !== undefined
     return true
   })
-  return Object.fromEntries(available.map((level) => [level, {}])) as Record<
-    AgentThinkingLevel,
-    Record<string, unknown>
-  >
+}
+
+function getSupportedThinkingLevel(
+  model: { reasoning?: boolean; thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>> } | undefined,
+  thinkingLevel: AgentThinkingLevel | undefined,
+): AgentThinkingLevel | undefined {
+  const supportedLevels = getSupportedThinkingLevels(model)
+  if (supportedLevels.length === 0) return undefined
+  if (thinkingLevel && supportedLevels.includes(thinkingLevel)) return thinkingLevel
+  return supportedLevels.includes("low")
+    ? "low"
+    : (supportedLevels.find((level) => level !== "off") ?? supportedLevels[0])
 }
 
 function modelKey(model: { providerID?: string; provider?: string; id: string }): string {
@@ -581,17 +602,23 @@ async function applyRuntimeModelOptions(
   requestedModel?: RequestedAgentModel | null,
   thinkingLevel?: AgentThinkingLevel,
 ): Promise<void> {
+  let activeModel = runtime.session.model
+
   if (requestedModel) {
     const current = runtime.session.model
     if (current?.provider !== requestedModel.providerID || current?.id !== requestedModel.modelID) {
       const registry = await createModelRegistry()
       const model = registry.find(requestedModel.providerID, requestedModel.modelID)
-      if (model) await runtime.session.setModel(model)
+      if (model) {
+        await runtime.session.setModel(model)
+        activeModel = model
+      }
     }
   }
 
-  if (thinkingLevel) {
-    runtime.session.setThinkingLevel(thinkingLevel)
+  const supportedThinkingLevel = getSupportedThinkingLevel(activeModel, thinkingLevel)
+  if (supportedThinkingLevel) {
+    runtime.session.setThinkingLevel(supportedThinkingLevel)
   }
 }
 
@@ -621,7 +648,7 @@ async function createPiSession(
     cwd,
     agentDir: getPiAgentDir(),
     model,
-    thinkingLevel,
+    thinkingLevel: getSupportedThinkingLevel(model, thinkingLevel),
     modelRegistry: registry,
     sessionManager,
     settingsManager,

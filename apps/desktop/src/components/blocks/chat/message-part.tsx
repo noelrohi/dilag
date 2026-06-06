@@ -1,4 +1,5 @@
 import { memo } from "react"
+import { Streamdown } from "streamdown"
 import type { MessagePart as MessagePartType } from "@/context/session-store"
 import { MessageResponse } from "@/components/ai-elements/message"
 import { Reasoning, ReasoningTrigger, ReasoningContent } from "@/components/ai-elements/reasoning"
@@ -9,6 +10,43 @@ import { ErrorBoundary, InlineErrorFallback } from "@/components/blocks/errors/e
 interface MessagePartProps {
   part: MessagePartType
   isStreaming?: boolean
+}
+
+function isReasoningHeading(line: string | undefined): boolean {
+  if (!line) return false
+  const trimmed = line.trim()
+  return /^#+\s+/.test(trimmed) || /^\*\*.+\*\*$/.test(trimmed)
+}
+
+function normalizeReasoningTitle(line: string | undefined): string {
+  if (!line) return "Reasoning"
+  return (
+    line
+      .replace(/^#+\s*/, "")
+      .replace(/^\*\*(.*)\*\*$/, "$1")
+      .replace(/^[-*]\s*/, "")
+      .replace(/^\d+[.)]\s*/, "")
+      .trim() || "Reasoning"
+  )
+}
+
+export function getReasoningTitle(text: string | undefined): string | undefined {
+  const firstLine = text?.split("\n").find((line) => line.trim())?.trim()
+  return isReasoningHeading(firstLine) ? normalizeReasoningTitle(firstLine) : undefined
+}
+
+export function getReasoningBody(text: string | undefined): string {
+  if (!text) return ""
+  const lines = text.split("\n")
+  const titleIndex = lines.findIndex((line) => line.trim())
+  if (titleIndex === -1) return ""
+
+  // Pi TUI does not synthesize headings; it renders model-provided thinking markdown. Only avoid
+  // duplicate content when the model actually emitted a markdown heading/bold title line.
+  if (!isReasoningHeading(lines[titleIndex])) return text.trim()
+
+  const body = lines.slice(titleIndex + 1).join("\n").trim()
+  return body || text.trim()
 }
 
 export const MessagePart = memo(function MessagePart({
@@ -34,12 +72,24 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
 
     case "reasoning":
       if (!part.text?.trim()) return null
-      return (
-        <Reasoning isStreaming={isStreaming} defaultOpen={isStreaming} className="mb-0">
-          <ReasoningTrigger />
-          <ReasoningContent>{part.text}</ReasoningContent>
-        </Reasoning>
-      )
+      {
+        const title = getReasoningTitle(part.text)
+        if (!title) {
+          return (
+            <div className="not-prose py-1 text-sm italic text-muted-foreground">
+              <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                {part.text.trim()}
+              </Streamdown>
+            </div>
+          )
+        }
+        return (
+          <Reasoning isStreaming={isStreaming} defaultOpen autoClose={false} className="mb-0">
+            <ReasoningTrigger getThinkingMessage={() => <span>{title}</span>} />
+            <ReasoningContent>{getReasoningBody(part.text)}</ReasoningContent>
+          </Reasoning>
+        )
+      }
 
     case "tool":
       if (!part.tool || !part.state) return null

@@ -257,6 +257,17 @@
   background-clip: content-box;
 }
 
+.scrollbar-none,
+.scrollbar-none * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar,
+.scrollbar-none *::-webkit-scrollbar {
+  display: none;
+}
+
 .scrollbar-hover-only {
   scrollbar-color: transparent transparent;
 }

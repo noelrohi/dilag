@@ -669,6 +669,46 @@ describe("AssistantWorkGroup", () => {
 
     expect(screen.getByText("Made 1 file change")).not.toHaveClass("text-shimmer-sweep")
   })
+
+  it("keeps the latest thinking block open while a following tool is running", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AssistantWorkGroup
+        parts={[
+          {
+            id: "reasoning-1",
+            type: "reasoning",
+            text: "I inspected the existing design files.",
+          },
+          {
+            id: "bash-1",
+            type: "tool",
+            tool: "bash",
+            state: { status: "completed", input: { command: "ls -la .designs" } },
+          },
+          {
+            id: "reasoning-2",
+            type: "reasoning",
+            text: "Now I can create the requested screens.",
+          },
+          {
+            id: "write-1",
+            type: "tool",
+            tool: "write",
+            state: { status: "running", input: { filePath: ".designs/dashboard.html" } },
+          },
+        ]}
+        isStreaming
+        startedAt={1000}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: /Made 1 file change, ran 1 command/ }))
+
+    expect(screen.getByText("I inspected the existing design files.")).toBeInTheDocument()
+    expect(screen.getByText("Now I can create the requested screens.")).toBeInTheDocument()
+  })
 })
 
 describe("getChatActivityLabel", () => {

@@ -19,11 +19,16 @@ import {
   sessionKeys,
 } from "@/hooks/use-session-data"
 import { useGlobalEvents, useConnectionStatus, type Event } from "@/context/global-events"
-import { useModelStore } from "@/hooks/use-models"
+import { useModelStore, useProviderData } from "@/hooks/use-models"
 import { useAgentStore } from "@/hooks/use-agents"
 import { withErrorHandler } from "@/lib/async-utils"
 import { bridge } from "@/lib/bridge"
-import type { AgentMessage as BridgeAgentMessage, ProjectMeta } from "@dilag/desktop-bridge"
+import type {
+  AgentMessage as BridgeAgentMessage,
+  AgentProviderData,
+  AgentThinkingLevel,
+  ProjectMeta,
+} from "@dilag/desktop-bridge"
 import type { FileUIPart } from "ai"
 import { deliverDilagPrompt } from "@/lib/prompt-delivery"
 
@@ -36,6 +41,24 @@ type CreateSessionInProjectOptions = {
   initialPrompt?: string
   files?: FileUIPart[]
   name?: string
+}
+
+function getEffectiveThinkingLevel(
+  selectedModel: { providerID: string; modelID: string } | null,
+  variants: Record<string, AgentThinkingLevel | undefined>,
+  providerData: AgentProviderData | undefined,
+): AgentThinkingLevel | undefined {
+  if (!selectedModel) return undefined
+  const model = providerData?.models.find(
+    (candidate) =>
+      candidate.providerID === selectedModel.providerID && candidate.id === selectedModel.modelID,
+  )
+  const variantList = model?.variants
+    ? (Object.keys(model.variants) as AgentThinkingLevel[])
+    : []
+  if (variantList.length === 0) return undefined
+  const storedVariant = variants[`${selectedModel.providerID}/${selectedModel.modelID}`]
+  return storedVariant && variantList.includes(storedVariant) ? storedVariant : variantList[0]
 }
 
 // Convert bridge message parts to our internal format.
@@ -77,6 +100,7 @@ export function useSessions() {
 
   // React Query for sessions list
   const { data: sessions = [], isLoading: isLoadingSessions } = useSessionsList()
+  const { data: providerData } = useProviderData()
 
   // Zustand for client state
   const currentSessionId = useCurrentSessionId()
@@ -355,9 +379,7 @@ export function useSessions() {
 
         if (initialPrompt?.trim() || (files && files.length > 0)) {
           const { selectedModel, variants } = useModelStore.getState()
-          const selectedThinkingLevel = selectedModel
-            ? variants[`${selectedModel.providerID}/${selectedModel.modelID}`]
-            : undefined
+          const selectedThinkingLevel = getEffectiveThinkingLevel(selectedModel, variants, providerData)
 
           setSessionStatus(response.id, "running")
           setSessionError(response.id, null)
@@ -390,7 +412,15 @@ export function useSessions() {
         return null
       }
     },
-    [queryClient, setCurrentSessionId, setError, setMessages, setSessionError, setSessionStatus],
+    [
+      providerData,
+      queryClient,
+      setCurrentSessionId,
+      setError,
+      setMessages,
+      setSessionError,
+      setSessionStatus,
+    ],
   )
 
   const selectSession = useCallback(
@@ -608,9 +638,7 @@ export function useSessions() {
 
       // Get selected model and reasoning level from store
       const { selectedModel, variants } = useModelStore.getState()
-      const selectedThinkingLevel = selectedModel
-        ? variants[`${selectedModel.providerID}/${selectedModel.modelID}`]
-        : undefined
+      const selectedThinkingLevel = getEffectiveThinkingLevel(selectedModel, variants, providerData)
       // Get selected agent from store
       const { selectedAgent } = useAgentStore.getState()
       const agentName = selectedAgent ?? "build"
@@ -671,6 +699,7 @@ export function useSessions() {
       messages,
       sessionStatus,
       hasRunningTools,
+      providerData,
       setError,
       setSessionStatus,
       setSessionError,

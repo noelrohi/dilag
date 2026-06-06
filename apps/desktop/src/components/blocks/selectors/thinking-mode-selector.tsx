@@ -22,10 +22,8 @@ export function ThinkingModeSelector({ className }: ThinkingModeSelectorProps) {
     return null
   }
 
-  const displayLabel = currentVariant ?? "Default"
-  const dotColor = currentVariant
-    ? (variantColors[currentVariant] ?? "bg-primary")
-    : "bg-muted-foreground/50"
+  const displayLabel = currentVariant
+  const dotColor = currentVariant ? (variantColors[currentVariant] ?? "bg-primary") : "bg-primary"
 
   return (
     <Tooltip>

@@ -245,7 +245,7 @@ function binarySearchByTime(arr: Message[], timestamp: number): { index: number 
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2)
-    if (arr[mid].time.created < timestamp) {
+    if (arr[mid].time.created <= timestamp) {
       low = mid + 1
     } else {
       high = mid - 1
@@ -473,16 +473,19 @@ export const useSessionStore = create<SessionState>()(
             return
           }
 
-          const result = binarySearch(parts, incomingPart.id, (p) => p.id)
-          if (result.found) {
-            const existing = parts[result.index]
+          const existingIndex = parts.findIndex((p) => p.id === incomingPart.id)
+          if (existingIndex !== -1) {
+            const existing = parts[existingIndex]
             if (shouldKeepExistingPart(existing, incomingPart)) return
-            parts[result.index] = incomingPart
+            parts[existingIndex] = incomingPart
             if (shouldRefreshDesignsForToolPart(existing, incomingPart)) {
               state.designRefreshTick += 1
             }
           } else {
-            parts.splice(result.index, 0, incomingPart)
+            // Preserve provider content order. Pi's TUI appends assistant content/tool components in
+            // source order as they stream; sorting by id places tool IDs like `functions.bash:0`
+            // before `message:part:N`, which makes thinking/tool blocks render out of order.
+            parts.push(incomingPart)
             if (shouldRefreshDesignsForToolPart(undefined, incomingPart)) {
               state.designRefreshTick += 1
             }
@@ -842,9 +845,9 @@ export const useSessionStore = create<SessionState>()(
               isStreaming: !isCompleted,
             }
             addMessage(info.sessionID, newMessage)
-          } else if (isCompleted) {
+          } else {
             updateMessage(info.sessionID, info.id, {
-              isStreaming: false,
+              isStreaming: !isCompleted,
               time: info.time as { created: number; completed?: number },
             })
           }

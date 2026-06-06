@@ -317,17 +317,26 @@ export function isAssistantMessageStreaming(
   )
 }
 
-function ThinkingIndicator() {
+function DesigningIndicator({ compact = false }: { compact?: boolean }) {
   return (
-    <div className="flex items-center gap-3 py-4 animate-slide-up">
+    <div className={cn("flex items-center gap-3 animate-slide-up", compact ? "py-2" : "py-4")}>
       <div className="relative flex items-center justify-center size-8">
-        <div className="absolute inset-0 rounded-lg bg-primary/10" />
-        <DilagIcon animated className="size-5 text-primary" />
+        <div className="absolute inset-0 rounded-xl bg-primary/10" />
+        <div className="absolute -inset-1 rounded-2xl bg-primary/5 blur-sm" />
+        <DilagIcon animated className="relative size-5 text-primary" />
       </div>
       <Shimmer as="span" className="text-sm font-medium">
-        Thinking
+        Designing screens
       </Shimmer>
     </div>
+  )
+}
+
+function hasActiveToolPart(parts: MessagePartType[]) {
+  return parts.some(
+    (part) =>
+      part.type === "tool" &&
+      (part.state?.status === "pending" || part.state?.status === "running"),
   )
 }
 
@@ -673,6 +682,20 @@ export function shouldShimmerAssistantWorkSummary(
   return status === "running" && isFileMutationToolPart(latestToolPart)
 }
 
+function isReasoningPartStreaming(
+  parts: MessagePartType[],
+  partIndex: number,
+  isStreaming: boolean,
+): boolean {
+  if (!isStreaming || parts[partIndex]?.type !== "reasoning") return false
+
+  // A reasoning block can be followed immediately by a running tool call. In that state the
+  // assistant message is still live, but the reasoning part is no longer the final part, so
+  // checking only `partIndex === parts.length - 1` collapses the exact thinking block the user is
+  // trying to read while tools run. Keep the latest reasoning block open until the message settles.
+  return !parts.slice(partIndex + 1).some((part) => part.type === "reasoning")
+}
+
 export function AssistantWorkGroup({
   parts,
   isStreaming,
@@ -720,7 +743,9 @@ export function AssistantWorkGroup({
       <CollapsibleContent className="space-y-0.5 pb-1.5">
         {parts.map((part, partIndex) => {
           const isPartStreaming =
-            part.type === "reasoning" ? isStreaming && partIndex === parts.length - 1 : isStreaming
+            part.type === "reasoning"
+              ? isReasoningPartStreaming(parts, partIndex, isStreaming)
+              : isStreaming
 
           return (
             <div
@@ -758,6 +783,8 @@ function AssistantMessage({
   )
   const isStreaming = isAssistantMessageStreaming(message, sessionStatus)
   const turnRenderableParts = getRenderableAssistantParts(messageParts, isStreaming)
+  const showAwaitingModelIndicator =
+    isStreaming && turnRenderableParts.length > 0 && !hasActiveToolPart(messageParts)
 
   if (!isStreaming && turnRenderableParts.length === 0 && !sessionError) {
     return null
@@ -784,8 +811,12 @@ function AssistantMessage({
           )
         })}
 
-        {/* Thinking indicator - show when streaming and no renderable parts yet */}
-        {isStreaming && turnRenderableParts.length === 0 && <ThinkingIndicator />}
+        {/* Thinking indicator - show before the first renderable part, and also between tool waves
+            while Pi is waiting on the provider after all current tools have completed. Pi TUI keeps
+            a global working loader visible for this gap; without this row the GUI looks stuck at
+            the last "Ran …" tool even though the session is still running. */}
+        {isStreaming && turnRenderableParts.length === 0 && <DesigningIndicator />}
+        {showAwaitingModelIndicator && <DesigningIndicator compact />}
 
         {/* Inline error - show on last assistant message when session has error */}
         {isLast && !isStreaming && sessionError && <InlineErrorCard error={sessionError} />}
@@ -1481,8 +1512,8 @@ export function ChatView() {
       <AttachmentBridgeConnector />
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
-        <Conversation className="flex-1 min-h-0">
-          <ConversationContent className="px-4">
+        <Conversation className="scrollbar-none flex-1 min-h-0">
+          <ConversationContent className="scrollbar-none px-4">
             {messages.length === 0
               ? null
               : messages.map((message, index) => {
