@@ -24,7 +24,7 @@ import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { Type } from "typebox"
 import { CHANNELS } from "../shared/channels.js"
-import { DILAG_SYSTEM_PROMPT, syncDilagDesignSkills } from "./design-skill-pack.js"
+import { renderDilagSystemPrompt, syncDilagDesignSkills } from "./design-skill-pack.js"
 import { getDilagSkillsDir, getPiAgentDir, getPiSessionDir } from "./paths.js"
 
 type EventSender = (channel: string, event: unknown) => void
@@ -614,7 +614,7 @@ async function createPiSession(
     agentDir: getPiAgentDir(),
     settingsManager,
     additionalSkillPaths: [getDilagSkillsDir()],
-    appendSystemPrompt: [DILAG_SYSTEM_PROMPT],
+    appendSystemPrompt: [renderDilagSystemPrompt(cwd)],
   })
   await resourceLoader.reload()
   const result = await pi.createAgentSession({

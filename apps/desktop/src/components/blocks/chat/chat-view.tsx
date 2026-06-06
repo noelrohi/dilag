@@ -742,30 +742,22 @@ function AssistantMessage({
   message,
   index,
   isLast,
-  turnAssistantMessages,
   onFork,
   onCopyText,
 }: {
   message: SessionMessage
   index: number
   isLast: boolean
-  turnAssistantMessages: SessionMessage[]
   onFork: (messageId: string) => void
   onCopyText: (messageId: string) => void | Promise<void>
 }) {
-  const turnMessageIds = useMemo(
-    () => turnAssistantMessages.map((turnMessage) => turnMessage.id),
-    [turnAssistantMessages],
-  )
-  const turnParts = useSessionStore(
-    useShallow((state) => turnMessageIds.flatMap((messageId) => state.parts[messageId] ?? [])),
-  )
+  const messageParts = useSessionStore(useShallow((state) => state.parts[message.id] ?? []))
   const sessionError = useSessionError(message.sessionID)
   const sessionStatus = useSessionStore(
     (state) => state.sessionStatus[message.sessionID] ?? "unknown",
   )
   const isStreaming = isAssistantMessageStreaming(message, sessionStatus)
-  const turnRenderableParts = getRenderableAssistantParts(turnParts, isStreaming)
+  const turnRenderableParts = getRenderableAssistantParts(messageParts, isStreaming)
 
   if (!isStreaming && turnRenderableParts.length === 0 && !sessionError) {
     return null
@@ -1499,19 +1491,6 @@ export function ChatView() {
                     message.role === "assistant" &&
                     !messages.slice(index + 1).some((m) => m.role === "assistant")
 
-                  const nextMessage = messages[index + 1]
-                  const isLastAssistantInTurn = !nextMessage || nextMessage.role === "user"
-                  if (message.role === "assistant" && !isLastAssistantInTurn) return null
-
-                  let turnStart = index
-                  while (turnStart > 0 && messages[turnStart - 1].role === "assistant") turnStart--
-                  const turnAssistantMessages = messages
-                    .slice(turnStart, index + 1)
-                    .filter(
-                      (item): item is SessionMessage & { role: "assistant" } =>
-                        item.role === "assistant",
-                    )
-
                   return message.role === "user" ? (
                     <UserMessage
                       key={message.id}
@@ -1526,7 +1505,6 @@ export function ChatView() {
                       message={message}
                       index={index}
                       isLast={isLastAssistant}
-                      turnAssistantMessages={turnAssistantMessages}
                       onFork={handleFork}
                       onCopyText={handleCopyText}
                     />

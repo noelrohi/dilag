@@ -5,6 +5,8 @@ import {
   DILAG_MOBILE_DESIGN_SKILL_NAME,
   DILAG_WEB_DESIGN_SKILL_NAME,
   renderDesignSkill,
+  renderDilagEnvironmentBlock,
+  renderDilagSystemPrompt,
   type DilagDesignSkillAssets,
 } from "../../electron/ipc/design-skill-pack"
 
@@ -46,6 +48,32 @@ describe("design skill pack", () => {
     expect(skill).toContain("## HTML Screen Contract")
     expect(skill).toContain("`.designs/<kebab-name>.html`")
     expect(skill).toContain('data-screen-type="web"')
+  })
+
+  it("renders the Dilag system prompt with environment and follow-up constraints", () => {
+    const cwd = "/tmp/dilag-project"
+    const prompt = renderDilagSystemPrompt(cwd)
+
+    expect(prompt).toContain("## Environment")
+    expect(prompt).toContain(`Working directory: ${cwd}`)
+    expect(prompt).toContain("## Design constraints (always apply, even on follow-ups)")
+    expect(prompt).toContain("No decorative animations")
+    expect(prompt).toContain("read existing .designs/*.html first")
+    expect(prompt).toContain(`/skill:${DILAG_WEB_DESIGN_SKILL_NAME}`)
+    expect(prompt).toContain(`/skill:${DILAG_MOBILE_DESIGN_SKILL_NAME}`)
+    expect(prompt).toContain("On follow-ups without a skill prefix")
+    expect(prompt).toContain(".designs/<kebab-name>.html")
+  })
+
+  it("renders environment metadata in OpenCode-style env tags", () => {
+    const env = renderDilagEnvironmentBlock("/tmp/dilag-project")
+
+    expect(env).toContain("<env>")
+    expect(env).toContain("Working directory: /tmp/dilag-project")
+    expect(env).toContain("Is directory a git repo:")
+    expect(env).toContain("Platform:")
+    expect(env).toContain("Today's date:")
+    expect(env).toContain("</env>")
   })
 
   it("uses environment fallback text when optional hints are absent", async () => {

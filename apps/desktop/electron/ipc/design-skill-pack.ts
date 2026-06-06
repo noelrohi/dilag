@@ -1,4 +1,6 @@
+import fs from "node:fs"
 import fsp from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
 import {
   renderGeneratedScreenOutputRules,
@@ -7,8 +9,8 @@ import {
 } from "@dilag/desktop-bridge"
 import { getDilagSkillsDir, resolveDesignAssetDir } from "./paths.js"
 
-export const DILAG_MOBILE_DESIGN_SKILL_NAME = "dilag-mobile-design"
-export const DILAG_WEB_DESIGN_SKILL_NAME = "dilag-web-design"
+export const DILAG_MOBILE_DESIGN_SKILL_NAME = "mobile-design"
+export const DILAG_WEB_DESIGN_SKILL_NAME = "web-design"
 export const DILAG_DESIGN_SKILL_NAMES = {
   mobile: DILAG_MOBILE_DESIGN_SKILL_NAME,
   web: DILAG_WEB_DESIGN_SKILL_NAME,
@@ -31,14 +33,44 @@ export interface DilagDesignSkillEnvironment {
 
 const ENVIRONMENT_FALLBACK = "(none specified - use your judgment based on the user's request)"
 
-export const DILAG_SYSTEM_PROMPT = `You are Dilag, a UI design agent that produces production-grade HTML screen prototypes.
+export function renderDilagEnvironmentBlock(cwd: string): string {
+  const isGitRepo = fs.existsSync(path.join(cwd, ".git"))
+  return [
+    "<env>",
+    `  Working directory: ${cwd}`,
+    `  Is directory a git repo: ${isGitRepo ? "yes" : "no"}`,
+    `  Platform: ${os.platform()}`,
+    `  Today's date: ${new Date().toDateString()}`,
+    "</env>",
+  ].join("\n")
+}
+
+export function renderDilagSystemPrompt(cwd: string): string {
+  return `You are Dilag, a UI design agent that produces production-grade HTML screen prototypes.
+
+## Environment
+${renderDilagEnvironmentBlock(cwd)}
+Treat the working directory above as the only workspace for this project.
 
 ## Workspace invariants
 ${renderGeneratedScreenSystemPromptRules()}
 
+## Design constraints (always apply, even on follow-ups)
+- No decorative animations, @keyframes, or Tailwind animate-* utilities.
+- No inline HTML in assistant replies — use write/edit, then summarize briefly.
+- Preserve palette, typography, and tone across screens in the same project.
+- When editing, read existing .designs/*.html first; prefer edit over creating duplicate files.
+- If the request is ambiguous (platform, screen count, brand direction), use the question tool.
+
+## Tools
+- Use read and glob to inspect existing .designs/*.html before editing.
+- Use write for new screens and edit for updates.
+- Use question when you need a material choice from the user.
+
 ## Design workflow
-- For new design requests, use the ${DILAG_WEB_DESIGN_SKILL_NAME} or ${DILAG_MOBILE_DESIGN_SKILL_NAME} skill when instructed by the user message.
-- Never inline full HTML in your assistant reply. Use write/edit, then summarize briefly.`
+- The first user message of a design session includes a /skill:${DILAG_WEB_DESIGN_SKILL_NAME} or /skill:${DILAG_MOBILE_DESIGN_SKILL_NAME} prefix — follow that skill fully.
+- On follow-ups without a skill prefix, still obey the design constraints above and any <dilag_context> blocks in the user message.`
+}
 
 export async function syncDilagDesignSkills(): Promise<void> {
   const assetDir = resolveDesignAssetDir()

@@ -164,7 +164,7 @@ describe("use-sessions", () => {
         expect.objectContaining({
           sessionID: "project-session-1",
           directory: project.path,
-          text: "/skill:dilag-web-design Build a checkout flow",
+          text: "/skill:web-design Build a checkout flow",
           images: [],
           model: null,
         }),
@@ -191,7 +191,7 @@ describe("use-sessions", () => {
         expect.objectContaining({
           sessionID: "session-1",
           directory: "/mock/cwd/1",
-          text: "/skill:dilag-web-design Hello",
+          text: "/skill:web-design Hello",
           images: [],
           model: null,
         }),
@@ -249,7 +249,7 @@ describe("use-sessions", () => {
 
       expect(mockPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
-          text: "/skill:dilag-web-design Hello with image",
+          text: "/skill:web-design Hello with image",
           images: [{ type: "image", mimeType: "image/png", data: "abc" }],
         }),
       )
@@ -279,7 +279,7 @@ describe("use-sessions", () => {
       expect(mockPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionID: "session-1",
-          text: "/skill:dilag-web-design Also make it dark",
+          text: "/skill:web-design Also make it dark",
           streamingBehavior: "steer",
         }),
       )
@@ -303,7 +303,7 @@ describe("use-sessions", () => {
       expect(mockPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionID: "session-1",
-          text: "/skill:dilag-web-design After that, tighten spacing",
+          text: "/skill:web-design After that, tighten spacing",
           streamingBehavior: "followUp",
         }),
       )

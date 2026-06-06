@@ -44,7 +44,7 @@ Web:          Next.js 16 marketing site
 2. `GlobalEventsProvider` subscribes to `bridge.agent.onEvent()`.
 3. Projects are loaded from `~/.dilag/state.sqlite`.
 4. The Electron host creates or opens an agent session in the selected project cwd.
-5. First prompt is prefixed with `/skill:dilag-web-design` or `/skill:dilag-mobile-design`.
+5. First prompt is prefixed with `/skill:web-design` or `/skill:mobile-design`.
 6. Agent tools write HTML into `{project-cwd}/.designs/`.
 7. The design loader reads canonical `.designs/**/*.html` files, falls back to legacy `screens/**/*.html` display files, and refreshes the canvas.
 8. Follow-up chat prompts update or add screens in the same project cwd.

@@ -481,7 +481,7 @@ describe("session-store", () => {
     it("deduplicates the same user prompt when a live synthetic message races a persisted reload", () => {
       const sessionId = "session-1"
       const promptText =
-        '<skill name="dilag-mobile-design" location="/skills/mobile/SKILL.md">\nSkill instructions\n</skill>\n\ncan we create native like ios app notes app'
+        '<skill name="mobile-design" location="/skills/mobile/SKILL.md">\nSkill instructions\n</skill>\n\ncan we create native like ios app notes app'
 
       useSessionStore.getState().setMessages(sessionId, [
         {

@@ -23,7 +23,7 @@ describe("prompt delivery", () => {
       isFirstMessage: true,
     })
 
-    expect(payload.text).toBe("/skill:dilag-mobile-design Design a login screen")
+    expect(payload.text).toBe("/skill:mobile-design Design a login screen")
     expect(payload.images).toEqual([])
   })
 
@@ -40,7 +40,7 @@ describe("prompt delivery", () => {
       ],
     })
 
-    expect(payload.text).toContain("/skill:dilag-web-design @Home Make the hero calmer")
+    expect(payload.text).toContain("/skill:web-design @Home Make the hero calmer")
     expect(payload.text).toContain('<screen_context name="Home" screen_type="mobile">')
     expect(payload.text).toContain("</screen_context>")
     expect(queuedFollowUpPreview(payload.text)).toBe("@Home Make the hero calmer")
@@ -56,13 +56,17 @@ describe("prompt delivery", () => {
 
     expect(payload.text).toContain("@Arena Keep iterating")
     expect(payload.text).toContain('<screen_context name="Arena" screen_type="mobile">')
-    expect(payload.text).toContain('<dilag_context target_screen_type="mobile">')
+    expect(payload.text).toContain(
+      '<dilag_context target_screen_type="mobile" active_skill="mobile-design">',
+    )
+    expect(payload.text).toContain("Active design skill: mobile-design.")
+    expect(payload.text).toContain("Still apply: no animations, .designs/ output only")
     expect(payload.text).toContain("Referenced screens: Arena (mobile).")
   })
 
   it("previews expanded skill-block prompts by showing only the user message", () => {
     const queuedPrompt =
-      '<skill name="dilag-web-design" location="/skills/web/SKILL.md">\nSkill instructions\n</skill>\n\n@Home Polish copy\n\n<screen_context name="Home">...</screen_context>'
+      '<skill name="web-design" location="/skills/web/SKILL.md">\nSkill instructions\n</skill>\n\n@Home Polish copy\n\n<screen_context name="Home">...</screen_context>'
 
     expect(queuedFollowUpPreview(queuedPrompt)).toBe("@Home Polish copy")
   })

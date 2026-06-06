@@ -94,7 +94,7 @@ This keeps chat rendering, tool rendering, project-file diff badges, and the que
 1. The renderer selects or creates a project registered in `~/.dilag/state.sqlite`.
 2. `bridge.agent.createSession({ directory: project.path })` creates or opens the matching Pi JSONL session for that project cwd.
 3. The sessions list is derived from Pi sessions across SQLite-registered projects.
-4. The first prompt is prefixed with the selected design skill, such as `/skill:dilag-web-design` or `/skill:dilag-mobile-design`.
+4. The first prompt is prefixed with the selected design skill, such as `/skill:web-design` or `/skill:mobile-design`.
 5. Prompts are sent through `bridge.agent.prompt()` with the selected model and optional image attachments.
 6. Pi streams normalized events back through `bridge.agent.onEvent()`.
 7. Pi tools write generated screens into `{project-cwd}/.designs/`.

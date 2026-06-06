@@ -81,7 +81,7 @@ export function buildDilagPromptPayload({
   platform = "web",
   isFirstMessage,
 }: BuildDilagPromptPayloadArgs): DilagPromptPayload {
-  const skillHint = isFirstMessage ? `/skill:dilag-${platform}-design ` : ""
+  const skillHint = isFirstMessage ? `/skill:${platform}-design ` : ""
   let promptText = skillHint + content
 
   const screenContexts: string[] = []
@@ -128,10 +128,13 @@ export function buildDilagPromptPayload({
   }
 
   if (!isFirstMessage) {
+    const skillName = `${platform}-design`
     const referencedTypes = screenSummaries.length > 0 ? screenSummaries.join(", ") : "none"
     promptText +=
-      `\n\n<dilag_context target_screen_type="${platform}">` +
+      `\n\n<dilag_context target_screen_type="${platform}" active_skill="${skillName}">` +
       `Continue designing for ${platform} screens unless the user explicitly asks for another screen type. ` +
+      `Active design skill: ${skillName}. ` +
+      `Still apply: no animations, .designs/ output only, Iconify icons, preserve project palette and typography. ` +
       `Referenced screens: ${referencedTypes}.` +
       `</dilag_context>`
   }
@@ -177,7 +180,7 @@ export function queuedFollowUpPreview(prompt: string): string {
   )
   const displayPrompt = expandedSkillBlock
     ? (expandedSkillBlock[1] ?? "")
-    : prompt.replace(/^\/skill:dilag-(web|mobile)-design\s+/, "")
+    : prompt.replace(/^\/skill:(web|mobile)-design\s+/, "")
   const firstDisplayBlock = displayPrompt.split(/\n\s*\n/)[0]?.trim()
   return firstDisplayBlock || "(attached context)"
 }
