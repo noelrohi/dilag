@@ -9,9 +9,12 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "eslint . --max-warnings=0"
   },
   "devDependencies": {
-    "typescript": "catalog:"
+    "@eslint/js": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   }
 }
