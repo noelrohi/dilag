@@ -45,6 +45,13 @@ vi.mock("@/hooks/use-agents", () => ({
   },
 }))
 
+vi.mock("sonner", () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
 const baseMockSessions: SessionMeta[] = [
   { id: "session-1", name: "Test Session", created_at: "2024-01-01", cwd: "/mock/cwd/1" },
   { id: "session-2", name: "Another Session", created_at: "2024-01-02", cwd: "/mock/cwd/2" },
@@ -55,6 +62,7 @@ import { useSessions } from "./use-sessions"
 import { useSessionStore } from "@/context/session-store"
 import { useModelStore } from "@/hooks/use-models"
 import { useCurrentSession } from "@/hooks/use-session-data"
+import { toast } from "sonner"
 
 const mockPrompt = vi.mocked(window.desktopBridge!.agent.prompt)
 const mockCreateAgentSession = vi.mocked(window.desktopBridge!.agent.createSession)
@@ -111,7 +119,6 @@ describe("use-sessions", () => {
       sessionErrors: {},
       promptQueues: {},
       isServerReady: true,
-      error: null,
       debugEvents: [],
     })
     ;(useModelStore.getState as Mock).mockReturnValue({ selectedModel: null, variants: {} })
@@ -321,7 +328,10 @@ describe("use-sessions", () => {
 
       await waitFor(() => {
         expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("error")
-        expect(useSessionStore.getState().error).toBe("API Error")
+        expect(useSessionStore.getState().sessionErrors["session-1"]).toEqual({
+          name: "PromptError",
+          message: "API Error",
+        })
       })
     })
   })
@@ -343,6 +353,21 @@ describe("use-sessions", () => {
       const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
 
       expect(result.current.isServerReady).toBe(true)
+    })
+
+    it("surfaces rename failures via a toast without setting a global error", async () => {
+      vi.mocked(window.desktopBridge!.agent.renameSession).mockRejectedValueOnce(
+        new Error("Rename failed"),
+      )
+
+      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await result.current.renameSession("session-1", "New name")
+      })
+
+      expect(toast.error).toHaveBeenCalledWith("Rename failed")
+      expect(result.current).not.toHaveProperty("error")
     })
   })
 

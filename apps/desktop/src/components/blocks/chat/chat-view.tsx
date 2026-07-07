@@ -8,7 +8,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, Link } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
 import {
   IconDeviceDesktop as Monitor,
@@ -31,6 +31,7 @@ import { usePendingMessage } from "@/hooks/use-chat-interface"
 import { useElapsedTime } from "@/hooks/use-elapsed-time"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import { useSessions, type SendMessageOptions } from "@/hooks/use-sessions"
+import { useGlobalEvents } from "@/context/global-events"
 import {
   useMessageParts,
   useSessionError,
@@ -885,7 +886,7 @@ function LoadingState() {
   )
 }
 
-function ErrorState({ error }: { error: string }) {
+export function ErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
   return (
     <div className="flex flex-1 items-center justify-center p-8">
       <div className="relative max-w-md text-center animate-slide-up">
@@ -900,6 +901,16 @@ function ErrorState({ error }: { error: string }) {
             <p className="text-xs text-muted-foreground">
               Make sure Pi has an authenticated model provider configured.
             </p>
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            {onRetry && (
+              <Button size="sm" onClick={onRetry}>
+                Retry
+              </Button>
+            )}
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/settings">Open Settings</Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -1457,12 +1468,13 @@ export function ChatView() {
     currentSession,
     isLoading,
     isServerReady,
-    error,
     sendMessage,
     stopSession,
     createSession,
     forkSession,
   } = useSessions()
+
+  const { serverError, retryStart } = useGlobalEvents()
 
   const navigate = useNavigate()
 
@@ -1508,12 +1520,12 @@ export function ChatView() {
     return firstAssistant.isStreaming && firstAssistant.time.completed === undefined
   }, [messages])
 
-  if (!isServerReady) {
-    return <LoadingState />
+  if (serverError) {
+    return <ErrorState error={serverError} onRetry={retryStart} />
   }
 
-  if (error) {
-    return <ErrorState error={error} />
+  if (!isServerReady) {
+    return <LoadingState />
   }
 
   if (!currentSessionId) {

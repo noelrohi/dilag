@@ -27,16 +27,16 @@ export type {
 
 type EventHandler = (event: Event) => void
 
-export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "reconnecting"
+export type ConnectionStatus = "disconnected" | "connecting" | "connected"
 
 interface GlobalEventsContextValue {
   subscribe: (handler: EventHandler) => () => void
   subscribeToSession: (sessionId: string, handler: EventHandler) => () => void
   connectionStatus: ConnectionStatus
-  reconnectAttempt: number
   isConnected: boolean
   isServerReady: boolean
   serverError: string | null
+  retryStart: () => Promise<void>
   bootstrap: () => Promise<void>
 }
 
@@ -46,11 +46,12 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
   const [isServerReady, setIsServerReady] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
-  const [reconnectAttempt] = useState(0)
   const handlersRef = useRef<Set<EventHandler>>(new Set())
   const sessionHandlersRef = useRef<Map<string, Set<EventHandler>>>(new Map())
   const mountedRef = useRef(true)
   const bootstrapCallbacksRef = useRef<Set<() => void>>(new Set())
+  const unsubscribeRef = useRef<(() => void) | undefined>(undefined)
+  const startingRef = useRef(false)
 
   const subscribe = useCallback((handler: EventHandler): (() => void) => {
     handlersRef.current.add(handler)
@@ -91,69 +92,78 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
     bootstrapCallbacksRef.current.forEach((callback) => callback())
   }, [])
 
-  useEffect(() => {
-    mountedRef.current = true
-    let unsubscribe: (() => void) | undefined
+  const startRuntime = useCallback(async () => {
+    // Guard against two concurrent starts (e.g. mount + a fast Retry click).
+    if (startingRef.current) return
+    startingRef.current = true
 
-    async function init() {
-      console.log("[GlobalEvents] Starting agent runtime...")
-      setConnectionStatus("connecting")
+    console.log("[GlobalEvents] Starting agent runtime...")
+    setConnectionStatus("connecting")
+    setServerError(null)
 
-      try {
-        await bridge.agent.start()
-        console.log("[GlobalEvents] Agent runtime started")
+    try {
+      await bridge.agent.start()
+      console.log("[GlobalEvents] Agent runtime started")
 
+      if (!mountedRef.current) return
+      setConnectionStatus("connected")
+      setIsServerReady(true)
+      setServerError(null)
+
+      await bootstrap()
+
+      // Guard against double-subscription on retry: drop any prior listener first.
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = bridge.agent.onEvent((payload) => {
+        const event = payload as Event
         if (!mountedRef.current) return
-        setConnectionStatus("connected")
-        setIsServerReady(true)
-        setServerError(null)
 
-        await bootstrap()
+        useSessionStore.getState().handleEvent(event)
 
-        unsubscribe = bridge.agent.onEvent((payload) => {
-          const event = payload as Event
-          if (!mountedRef.current) return
+        handlersRef.current.forEach((handler) => {
+          try {
+            handler(event)
+          } catch (err) {
+            console.error("[GlobalEvents] Handler error:", err)
+          }
+        })
 
-          useSessionStore.getState().handleEvent(event)
-
-          handlersRef.current.forEach((handler) => {
+        const sessionId = extractSessionId(event)
+        if (sessionId) {
+          const sessionHandlers = sessionHandlersRef.current.get(sessionId)
+          sessionHandlers?.forEach((handler) => {
             try {
               handler(event)
             } catch (err) {
-              console.error("[GlobalEvents] Handler error:", err)
+              console.error("[GlobalEvents] Session handler error:", err)
             }
           })
-
-          const sessionId = extractSessionId(event)
-          if (sessionId) {
-            const sessionHandlers = sessionHandlersRef.current.get(sessionId)
-            sessionHandlers?.forEach((handler) => {
-              try {
-                handler(event)
-              } catch (err) {
-                console.error("[GlobalEvents] Session handler error:", err)
-              }
-            })
-          }
-        })
-      } catch (err) {
-        console.error("[GlobalEvents] Agent runtime start error:", err)
-        if (mountedRef.current) {
-          setIsServerReady(false)
-          setServerError(err instanceof Error ? err.message : String(err))
-          setConnectionStatus("disconnected")
         }
+      })
+    } catch (err) {
+      console.error("[GlobalEvents] Agent runtime start error:", err)
+      if (mountedRef.current) {
+        setIsServerReady(false)
+        setServerError(err instanceof Error ? err.message : String(err))
+        setConnectionStatus("disconnected")
       }
+    } finally {
+      startingRef.current = false
     }
+  }, [bootstrap])
 
-    init()
+  useEffect(() => {
+    mountedRef.current = true
+
+    startRuntime()
 
     return () => {
       mountedRef.current = false
-      unsubscribe?.()
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = undefined
       console.log("[GlobalEvents] Cleanup - disconnected")
     }
-  }, [bootstrap])
+  }, [startRuntime])
 
   return (
     <GlobalEventsContext.Provider
@@ -161,10 +171,10 @@ export function GlobalEventsProvider({ children }: { children: ReactNode }) {
         subscribe,
         subscribeToSession,
         connectionStatus,
-        reconnectAttempt,
         isConnected: connectionStatus === "connected",
         isServerReady,
         serverError,
+        retryStart: startRuntime,
         bootstrap,
       }}
     >
@@ -182,6 +192,6 @@ export function useGlobalEvents() {
 }
 
 export function useConnectionStatus() {
-  const { connectionStatus, reconnectAttempt } = useGlobalEvents()
-  return { connectionStatus, reconnectAttempt }
+  const { connectionStatus } = useGlobalEvents()
+  return { connectionStatus }
 }

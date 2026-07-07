@@ -6,7 +6,6 @@ import {
   useSessionMessages,
   useSessionStatus,
   useIsServerReady,
-  useError,
   useDebugEvents,
   useHasRunningTools,
   type MessagePart,
@@ -31,6 +30,7 @@ import type {
 } from "@dilag/desktop-bridge"
 import type { FileUIPart } from "ai"
 import { deliverDilagPrompt } from "@/lib/prompt-delivery"
+import { toast } from "sonner"
 
 export type SendMessageOptions = {
   streamingBehavior?: "steer" | "followUp"
@@ -106,7 +106,6 @@ export function useSessions() {
   const sessionStatus = useSessionStatus(currentSessionId)
   const hasRunningTools = useHasRunningTools(currentSessionId)
   const isServerReady = useIsServerReady()
-  const error = useError()
   const debugEvents = useDebugEvents()
 
   // Derived: current session from React Query data
@@ -126,7 +125,6 @@ export function useSessions() {
     setSessionStatus,
     setSessionError,
     clearDebugEvents,
-    setError,
     setServerReady,
     clearSessionData,
     resetRealtimeState,
@@ -227,7 +225,6 @@ export function useSessions() {
     if (!globalServerReady || initializedRef.current) return
     initializedRef.current = true
 
-    setError(null)
     setServerReady(true)
 
     // Auto-select most recent session if available and none selected
@@ -240,7 +237,6 @@ export function useSessions() {
     globalServerReady,
     sessions,
     currentSessionId,
-    setError,
     setServerReady,
     setCurrentSessionId,
     loadSessionMessages,
@@ -298,8 +294,6 @@ export function useSessions() {
   const createSession = useCallback(
     async (name?: string, platform?: "web" | "mobile"): Promise<string | null> => {
       try {
-        setError(null)
-
         const projects = await bridge.projects.list()
         const sortedProjects = [...projects].sort(
           (a, b) => new Date(b.last_opened_at).getTime() - new Date(a.last_opened_at).getTime(),
@@ -336,12 +330,12 @@ export function useSessions() {
 
         return sessionId
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create session")
+        toast.error(err instanceof Error ? err.message : "Failed to create session")
         console.error("Failed to create session:", err)
         return null
       }
     },
-    [sessions.length, setError, setCurrentSessionId, setMessages, queryClient],
+    [sessions.length, setCurrentSessionId, setMessages, queryClient],
   )
 
   const createSessionInProject = useCallback(
@@ -354,7 +348,6 @@ export function useSessions() {
       const platform = options.platform ?? project.platform
       const { initialPrompt, files, name } = options
       try {
-        setError(null)
         const response = await bridge.agent.createSession({ directory: project.path })
         const now = new Date().toISOString()
         const sessionMeta: SessionMeta = {
@@ -401,7 +394,10 @@ export function useSessions() {
             thinkingLevel: selectedThinkingLevel,
           }).catch((err) => {
             if (!isMountedRef.current) return
-            setError(err instanceof Error ? err.message : "Failed to send first message")
+            setSessionError(response.id, {
+              name: "PromptError",
+              message: err instanceof Error ? err.message : "Failed to send first message",
+            })
             setSessionStatus(response.id, "error")
             console.error("Failed to send first project prompt:", err)
           })
@@ -409,7 +405,7 @@ export function useSessions() {
 
         return response.id
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create chat")
+        toast.error(err instanceof Error ? err.message : "Failed to create chat")
         console.error("Failed to create project chat:", err)
         return null
       }
@@ -418,7 +414,6 @@ export function useSessions() {
       providerData,
       queryClient,
       setCurrentSessionId,
-      setError,
       setMessages,
       setSessionError,
       setSessionStatus,
@@ -464,11 +459,11 @@ export function useSessions() {
         }
         queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to rename session")
+        toast.error(err instanceof Error ? err.message : "Failed to rename session")
         console.error("Failed to rename session:", err)
       }
     },
-    [queryClient, sessions, setError],
+    [queryClient, sessions],
   )
 
   const deleteSession = useCallback(
@@ -498,11 +493,11 @@ export function useSessions() {
         // Clear Zustand real-time data
         clearSessionData(sessionId)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete session")
+        toast.error(err instanceof Error ? err.message : "Failed to delete session")
         console.error("Failed to delete session:", err)
       }
     },
-    [sessions, queryClient, removeSession, clearSessionData, setError],
+    [sessions, queryClient, removeSession, clearSessionData],
   )
 
   const stopSession = useCallback(async () => {
@@ -530,7 +525,6 @@ export function useSessions() {
       if (!currentSessionId || !currentSession) return null
 
       try {
-        setError(null)
         const response = await bridge.agent.forkSession({
           sessionID: currentSessionId,
           targetId: messageId,
@@ -558,19 +552,12 @@ export function useSessions() {
         await loadSessionMessages(newSessionId, currentSession.cwd)
         return newSessionId
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fork session")
+        toast.error(err instanceof Error ? err.message : "Failed to fork session")
         console.error("Failed to fork session:", err)
         return null
       }
     },
-    [
-      currentSessionId,
-      currentSession,
-      queryClient,
-      setCurrentSessionId,
-      loadSessionMessages,
-      setError,
-    ],
+    [currentSessionId, currentSession, queryClient, setCurrentSessionId, loadSessionMessages],
   )
 
   // Fork session with designs only - creates a new session and copies screen designs (no chat history)
@@ -578,8 +565,6 @@ export function useSessions() {
     if (!currentSessionId || !currentSession?.cwd) return null
 
     try {
-      setError(null)
-
       // Create a new chat in the same project folder.
       const cwd = currentSession.cwd
       const response = await bridge.agent.createSession({ directory: cwd })
@@ -617,11 +602,11 @@ export function useSessions() {
 
       return newSessionId
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fork session")
+      toast.error(err instanceof Error ? err.message : "Failed to fork session")
       console.error("Failed to fork session with designs:", err)
       return null
     }
-  }, [currentSessionId, currentSession, queryClient, setCurrentSessionId, setMessages, setError])
+  }, [currentSessionId, currentSession, queryClient, setCurrentSessionId, setMessages])
 
   const sendMessage = useCallback(
     async (content: string, files?: FileUIPart[], options?: SendMessageOptions) => {
@@ -647,8 +632,6 @@ export function useSessions() {
       const directory = currentSession.cwd
 
       try {
-        setError(null)
-
         // Set session status to running
         setSessionStatus(currentSessionId, "running")
 
@@ -689,7 +672,10 @@ export function useSessions() {
         return delivery
       } catch (err) {
         if (!isMountedRef.current) return
-        setError(err instanceof Error ? err.message : "Failed to send message")
+        setSessionError(currentSessionId, {
+          name: "PromptError",
+          message: err instanceof Error ? err.message : "Failed to send message",
+        })
         setSessionStatus(currentSessionId, "error")
         console.error("Failed to send message:", err)
         throw err
@@ -702,7 +688,6 @@ export function useSessions() {
       sessionStatus,
       hasRunningTools,
       providerData,
-      setError,
       setSessionStatus,
       setSessionError,
     ],
@@ -724,7 +709,6 @@ export function useSessions() {
     isLoading: sessionStatus === "running" || sessionStatus === "busy" || hasRunningTools,
     isLoadingSessions,
     isServerReady,
-    error,
     debugEvents,
     sessionStatus,
     connectionStatus,

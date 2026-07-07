@@ -160,7 +160,6 @@ interface SessionState {
 
   // Server connection state
   isServerReady: boolean
-  error: string | null
 
   // Debug
   debugEvents: Event[]
@@ -200,7 +199,6 @@ interface SessionState {
 
   // Actions - Server state
   setServerReady: (ready: boolean) => void
-  setError: (error: string | null) => void
 
   // Actions - Debug
   addDebugEvent: (event: Event) => void
@@ -379,7 +377,6 @@ export const useSessionStore = create<SessionState>()(
       designRefreshTick: 0,
       sessionFileWrites: {},
       isServerReady: false,
-      error: null,
       debugEvents: [],
 
       // Client state actions
@@ -736,11 +733,6 @@ export const useSessionStore = create<SessionState>()(
           state.isServerReady = ready
         }),
 
-      setError: (error) =>
-        set((state) => {
-          state.error = error
-        }),
-
       // Debug actions
       addDebugEvent: (event) =>
         set((state) => {
@@ -772,7 +764,6 @@ export const useSessionStore = create<SessionState>()(
           state.recentFileChanges = []
           state.sessionFileWrites = {}
           state.debugEvents = []
-          state.error = null
           // Note: currentSessionId and screenPositions are preserved
         }),
 
@@ -904,15 +895,14 @@ export const useSessionStore = create<SessionState>()(
           const { sessionID, error } = event.properties
           if (sessionID) {
             setSessionStatus(sessionID, "error")
-            // Extract error message from typed error
-            if (error && "data" in error && error.data) {
-              const data = error.data as Record<string, unknown>
-              const message = data.message || "Unknown error"
-              setSessionError(sessionID, {
-                name: error.name,
-                message: typeof message === "string" ? message : "Unknown error",
-              })
-            }
+            // Always surface a session error, even when the payload lacks a
+            // structured `.data` field, so the failure is never silent.
+            const data =
+              error && "data" in error && error.data
+                ? (error.data as Record<string, unknown>)
+                : undefined
+            const message = typeof data?.message === "string" ? data.message : "Unknown error"
+            setSessionError(sessionID, { name: error?.name ?? "SessionError", message })
           }
           return
         }
@@ -1033,7 +1023,6 @@ export const useScreenPositions = (sessionId: string | null) =>
     sessionId ? (state.screenPositions[sessionId] ?? EMPTY_POSITIONS) : EMPTY_POSITIONS,
   )
 export const useIsServerReady = () => useSessionStore((state) => state.isServerReady)
-export const useError = () => useSessionStore((state) => state.error)
 export const useDebugEvents = () => useSessionStore((state) => state.debugEvents)
 export const useResetRealtimeState = () => useSessionStore((state) => state.resetRealtimeState)
 export const useAllSessionStatuses = () => useSessionStore((state) => state.sessionStatus)

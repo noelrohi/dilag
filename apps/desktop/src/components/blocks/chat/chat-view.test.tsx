@@ -1,6 +1,14 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
+import { createElement, type ReactNode } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, to, ...props }: { children?: ReactNode; to?: string }) =>
+    createElement("a", { href: to, ...props }, children),
+}))
+
 import {
   parseMessageText,
   HighlightedText,
@@ -19,6 +27,7 @@ import {
   getDisplayMessageText,
   getStreamingComposerShortcut,
   SkillInvocationBlock,
+  ErrorState,
 } from "./chat-view"
 import type { MessagePart } from "@/context/session-store"
 
@@ -147,6 +156,26 @@ describe("SkillInvocationBlock", () => {
       screen.getAllByText("Skill").some((node) => node.classList.contains("text-muted-foreground")),
     ).toBe(true)
     expect(await screen.findByText(/Follow the design rules/)).toBeInTheDocument()
+  })
+})
+
+describe("ErrorState", () => {
+  it("renders a Retry button that calls onRetry and an Open Settings link", async () => {
+    const onRetry = vi.fn()
+    render(<ErrorState error="Failed to start Pi runtime" onRetry={onRetry} />)
+
+    expect(screen.getByText("Failed to start Pi runtime")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it("omits the Retry button when no onRetry is provided", () => {
+    render(<ErrorState error="Something went wrong" />)
+
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument()
   })
 })
 

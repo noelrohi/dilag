@@ -15,7 +15,6 @@ describe("session-store", () => {
       sessionDiffs: {},
       promptQueues: {},
       isServerReady: false,
-      error: null,
       debugEvents: [],
       recentFileChanges: [],
       designRefreshTick: 0,
@@ -288,14 +287,6 @@ describe("session-store", () => {
 
       useSessionStore.getState().setServerReady(false)
       expect(useSessionStore.getState().isServerReady).toBe(false)
-    })
-
-    it("should set error state", () => {
-      useSessionStore.getState().setError("Test error")
-      expect(useSessionStore.getState().error).toBe("Test error")
-
-      useSessionStore.getState().setError(null)
-      expect(useSessionStore.getState().error).toBeNull()
     })
 
     it("should set session status", () => {
@@ -615,6 +606,42 @@ describe("session-store", () => {
       expect(userMessages).toHaveLength(1)
       expect(userMessages[0].id).toBe("persisted-entry-1")
       expect(useSessionStore.getState().parts[syntheticMessageId]).toBeUndefined()
+    })
+
+    it("should set a session error with data.message on session.error events", () => {
+      const sessionId = "session-1"
+
+      useSessionStore.getState().handleEvent({
+        type: "session.error",
+        properties: {
+          sessionID: sessionId,
+          error: { name: "ProviderAuthError", data: { message: "Missing API key" } },
+        },
+      } as any)
+
+      expect(useSessionStore.getState().sessionStatus[sessionId]).toBe("error")
+      expect(useSessionStore.getState().sessionErrors[sessionId]).toEqual({
+        name: "ProviderAuthError",
+        message: "Missing API key",
+      })
+    })
+
+    it("should always set a session error even when the payload lacks data", () => {
+      const sessionId = "session-1"
+
+      useSessionStore.getState().handleEvent({
+        type: "session.error",
+        properties: {
+          sessionID: sessionId,
+          error: { name: "UnknownError" },
+        },
+      } as any)
+
+      expect(useSessionStore.getState().sessionStatus[sessionId]).toBe("error")
+      expect(useSessionStore.getState().sessionErrors[sessionId]).toEqual({
+        name: "UnknownError",
+        message: "Unknown error",
+      })
     })
 
     it("should handle session.diff events synthesized from agent file writes", () => {

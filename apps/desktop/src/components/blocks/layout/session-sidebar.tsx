@@ -83,7 +83,7 @@ function groupSessionsByTime(sessions: SessionMeta[]) {
 }
 
 function ConnectionStatusIndicator() {
-  const { connectionStatus, reconnectAttempt } = useConnectionStatus()
+  const { connectionStatus } = useConnectionStatus()
 
   const statusConfig: Record<
     ConnectionStatus,
@@ -98,12 +98,6 @@ function ConnectionStatusIndicator() {
       color: "bg-yellow-500",
       icon: <Restart size={12} className="animate-spin" />,
       label: "Connecting...",
-    },
-    reconnecting: {
-      color: "bg-yellow-500",
-      icon: <Restart size={12} className="animate-spin" />,
-      label:
-        reconnectAttempt > 1 ? `Reconnecting (attempt ${reconnectAttempt})` : "Reconnecting...",
     },
     disconnected: {
       color: "bg-red-500",
