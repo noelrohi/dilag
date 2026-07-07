@@ -175,7 +175,7 @@ function findActiveFileMention(text: string, caretPosition: number): FileMention
 }
 
 function removeMentionToken(text: string, mention: FileMention) {
-  let prefix = text.slice(0, mention.start)
+  const prefix = text.slice(0, mention.start)
   let suffix = text.slice(mention.end)
   if (/\s$/.test(prefix) && /^\s/.test(suffix)) suffix = suffix.slice(1)
   return { text: `${prefix}${suffix}`, caretPosition: prefix.length }

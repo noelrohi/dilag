@@ -212,7 +212,9 @@ function shutdown(code) {
   for (const child of children) {
     try {
       child.kill()
-    } catch {}
+    } catch {
+      // ignore: child may already have exited
+    }
   }
   process.exit(code)
 }

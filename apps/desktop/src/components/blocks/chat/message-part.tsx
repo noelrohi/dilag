@@ -106,7 +106,7 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
       }
       return <ToolPart tool={part.tool} state={part.state} isMessageComplete={!isStreaming} />
 
-    case "file":
+    case "file": {
       if (!part.url) return null
       const isImage = part.mime?.startsWith("image/")
       if (isImage) {
@@ -127,6 +127,7 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
           <span className="font-mono text-sm">{part.filename || "File"}</span>
         </div>
       )
+    }
 
     case "step-start":
       if (!part.model) return null
