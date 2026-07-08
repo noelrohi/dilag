@@ -72,10 +72,11 @@ const mockNavigateTree = vi.mocked(window.desktopBridge!.agent.navigateTree)
 const mockGetSession = vi.mocked(window.desktopBridge!.agent.getSession)
 const mockGetMessages = vi.mocked(window.desktopBridge!.agent.getMessages)
 
-function createWrapper() {
-  const queryClient = new QueryClient({
+function createWrapper(
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
-  })
+  }),
+) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return createElement(QueryClientProvider, { client: queryClient }, children)
   }
@@ -386,7 +387,10 @@ describe("use-sessions", () => {
 
   describe("forkSession", () => {
     it("creates a new Pi session forked from a message", async () => {
-      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      })
+      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper(queryClient) })
       let forkedSessionId: string | null = null
 
       await act(async () => {
@@ -404,6 +408,12 @@ describe("use-sessions", () => {
           parentID: "session-1",
         }),
       })
+      expect(queryClient.getQueryData<SessionMeta[]>(["sessions", "list"])).toEqual([
+        expect.objectContaining({
+          id: "session-fork",
+          parentID: "session-1",
+        }),
+      ])
       expect(forkedSessionId).toBe("session-fork")
     })
   })

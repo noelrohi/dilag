@@ -84,7 +84,6 @@ const bridge: DesktopBridge = {
     copyBetweenSessions: (args) => ipcRenderer.invoke(CHANNELS.designs.copyBetweenSessions, args),
     delete: (args) => ipcRenderer.invoke(CHANNELS.designs.delete, args),
     validateHtml: (args) => ipcRenderer.invoke(CHANNELS.designs.validateHtml, args),
-    captureHtmlToImage: (args) => ipcRenderer.invoke(CHANNELS.designs.captureHtmlToImage, args),
   },
   project: {
     listFiles: (args) => ipcRenderer.invoke(CHANNELS.project.listFiles, args),
