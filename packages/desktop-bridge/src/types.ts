@@ -67,6 +67,11 @@ export interface DesignFile {
   violations: Violation[]
 }
 
+export interface ImportDesignsResult {
+  imported: number
+  rejected: Array<{ path: string; reason: string }>
+}
+
 export interface FileNode {
   id: string
   name: string
@@ -212,6 +217,12 @@ export interface AgentTreeNode {
 
 // Save-dialog options — subset of Electron's SaveDialogOptions that the renderer uses.
 export interface SaveDialogOptions {
+  defaultPath?: string
+  filters?: Array<{ name: string; extensions: string[] }>
+}
+
+export interface OpenFilesOptions {
+  title?: string
   defaultPath?: string
   filters?: Array<{ name: string; extensions: string[] }>
 }

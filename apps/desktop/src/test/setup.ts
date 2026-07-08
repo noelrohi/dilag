@@ -63,6 +63,7 @@ const desktopBridgeMock: DesktopBridge = {
     copyBetweenSessions: vi.fn(),
     delete: vi.fn(),
     validateHtml: vi.fn(),
+    import: vi.fn(),
   },
   project: { listFiles: vi.fn(), readFile: vi.fn() },
   theme: { setTitlebarTheme: vi.fn() },
@@ -80,7 +81,7 @@ const desktopBridgeMock: DesktopBridge = {
     onViteError: vi.fn(() => noopUnsubscribe),
   },
   fs: { stat: vi.fn(), writeFile: vi.fn() },
-  dialog: { save: vi.fn(), openDirectory: vi.fn() },
+  dialog: { save: vi.fn(), openDirectory: vi.fn(), openFiles: vi.fn(), getPathForFile: vi.fn() },
   shell: { openExternal: vi.fn(), openPath: vi.fn(), showItemInFolder: vi.fn() },
   updater: {
     check: vi.fn(),

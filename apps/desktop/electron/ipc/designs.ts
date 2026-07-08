@@ -2,12 +2,18 @@ import fs from "node:fs"
 import fsp from "node:fs/promises"
 import path from "node:path"
 import {
+  getCanonicalGeneratedScreenDirectory,
+  getCanonicalGeneratedScreenPath,
   getGeneratedScreenDirectories,
   getGeneratedScreenFallbackKey,
   type DesignFile,
+  type ImportDesignsResult,
   type GeneratedScreenDirectory,
   type Violation,
 } from "@dilag/desktop-bridge"
+
+const IMPORT_SIZE_LIMIT_BYTES = 1024 * 1024
+const HTML_FILE_EXTENSIONS = new Set([".html", ".htm"])
 
 function extractHtmlAttr(html: string, attr: string): string | null {
   return new RegExp(`${attr}=["']([^"']+)["']`).exec(html)?.[1] ?? null
@@ -15,7 +21,7 @@ function extractHtmlAttr(html: string, attr: string): string | null {
 
 function titleFromFilename(filename: string): string {
   return filename
-    .replace(/\.html$/, "")
+    .replace(/\.html?$/, "")
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
@@ -57,6 +63,139 @@ export function validateHtml(html: string): Violation[] {
   return violations
 }
 
+function isHtmlFilename(filename: string): boolean {
+  return HTML_FILE_EXTENSIONS.has(path.extname(filename).toLowerCase())
+}
+
+function sanitizeDesignBasename(filename: string): string {
+  const normalized = filename.replace(/\\/g, "/").trim()
+  if (!normalized) throw new Error("File name is empty")
+  if (path.posix.isAbsolute(normalized) || path.win32.isAbsolute(filename)) {
+    throw new Error("Absolute paths are not allowed")
+  }
+
+  const segments = normalized.split("/")
+  if (segments.includes("..")) throw new Error("Parent directory segments are not allowed")
+
+  const basename = path.posix.basename(normalized)
+  if (!basename || basename === "." || basename === "..") throw new Error("File name is empty")
+  if (!isHtmlFilename(basename)) throw new Error("Only HTML files can be imported")
+
+  const extension = path.extname(basename)
+  const stem = basename.slice(0, -extension.length)
+  return extension.toLowerCase() === ".htm" ? `${stem}.html` : basename
+}
+
+function importBasenameFromPath(filePath: string): string {
+  const normalized = filePath.replace(/\\/g, "/")
+  return path.posix.basename(normalized)
+}
+
+function isInsideDirectory(parentDir: string, childPath: string): boolean {
+  const relative = path.relative(parentDir, childPath)
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fsp.access(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export async function writeDesignHtml(args: {
+  sessionCwd: string
+  filename: string
+  html: string
+  reservedFilenames?: Set<string>
+}): Promise<string> {
+  const designDir = path.resolve(getCanonicalGeneratedScreenDirectory(args.sessionCwd))
+  const basename = sanitizeDesignBasename(args.filename)
+  const extension = path.extname(basename)
+  const stem = basename.slice(0, -extension.length)
+  const reservedFilenames = args.reservedFilenames ?? new Set<string>()
+
+  await fsp.mkdir(designDir, { recursive: true })
+
+  let candidate = basename
+  let suffix = 2
+  while (
+    reservedFilenames.has(candidate) ||
+    (await fileExists(getCanonicalGeneratedScreenPath(args.sessionCwd, candidate)))
+  ) {
+    candidate = `${stem}-${suffix}${extension}`
+    suffix += 1
+  }
+
+  const targetPath = path.resolve(getCanonicalGeneratedScreenPath(args.sessionCwd, candidate))
+  if (!isInsideDirectory(designDir, targetPath)) {
+    throw new Error("Resolved import path escapes the designs directory")
+  }
+
+  await fsp.writeFile(targetPath, args.html, "utf8")
+  reservedFilenames.add(candidate)
+  return targetPath
+}
+
+export async function importDesigns(args: {
+  sessionCwd: string
+  filePaths: string[]
+}): Promise<ImportDesignsResult> {
+  const result: ImportDesignsResult = { imported: 0, rejected: [] }
+  const reservedFilenames = new Set<string>()
+
+  for (const filePath of args.filePaths) {
+    const basename = importBasenameFromPath(filePath)
+    if (!isHtmlFilename(basename)) {
+      result.rejected.push({ path: filePath, reason: "Only .html and .htm files can be imported" })
+      continue
+    }
+
+    let stat: fs.Stats
+    try {
+      stat = await fsp.stat(filePath)
+    } catch (error) {
+      result.rejected.push({
+        path: filePath,
+        reason:
+          error instanceof Error ? `Unable to read file: ${error.message}` : "Unable to read file",
+      })
+      continue
+    }
+
+    if (!stat.isFile()) {
+      result.rejected.push({ path: filePath, reason: "Path is not a file" })
+      continue
+    }
+
+    if (stat.size > IMPORT_SIZE_LIMIT_BYTES) {
+      result.rejected.push({ path: filePath, reason: "File exceeds the 1 MB import limit" })
+      continue
+    }
+
+    try {
+      const html = await fsp.readFile(filePath, "utf8")
+      validateHtml(html)
+      await writeDesignHtml({
+        sessionCwd: args.sessionCwd,
+        filename: basename,
+        html,
+        reservedFilenames,
+      })
+      result.imported += 1
+    } catch (error) {
+      result.rejected.push({
+        path: filePath,
+        reason: error instanceof Error ? error.message : "Unable to import file",
+      })
+    }
+  }
+
+  return result
+}
+
 async function loadDesignsFromDir(
   sessionCwd: string,
   directory: GeneratedScreenDirectory,
@@ -71,7 +210,7 @@ async function loadDesignsFromDir(
       await loadDesignsFromDir(sessionCwd, directory, seenScreenPaths, out, filePath)
       continue
     }
-    if (!entry.isFile() || !entry.name.endsWith(".html")) continue
+    if (!entry.isFile() || !isHtmlFilename(entry.name)) continue
 
     const screenPath = getGeneratedScreenFallbackKey(filePath, sessionCwd)
     if (!screenPath || seenScreenPaths.has(screenPath)) continue
