@@ -23,7 +23,7 @@ Web:          Next.js 16 marketing site
 
 ## Primary Screens
 
-- **Home**: prompt entry, platform choice, recent sessions.
+- **Home**: prompt entry, platform choice, recent chats (shown on the project landing view).
 - **Studio**: canvas preview, chat, timeline, file/project navigation, model selector, skill management.
 - **Settings/dialogs**: provider selection, API-key connection, updates, exports.
 
