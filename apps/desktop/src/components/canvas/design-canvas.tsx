@@ -51,12 +51,18 @@ interface DesignCanvasProps {
   sessionCwd?: string
   selectedIds?: Set<string>
   isLoading?: boolean
+  /** True while the session is busy — disables manual edit/rename/duplicate. */
+  readOnlyDesigns?: boolean
   onPositionsChange: (positions: ScreenPosition[]) => void
   onSelectionChange?: (ids: Set<string>) => void
   onDeleteScreen?: (filename: string) => void
   onCaptureScreen?: (design: DesignFile) => void
   /** Callback when user wants to edit a specific element with AI */
   onEditElementWithAI?: (design: DesignFile, element: ElementInfo) => void
+  onRenameScreen?: (from: string, to: string) => void
+  onDuplicateScreen?: (filename: string) => void
+  /** Called after a manual write/rename/duplicate succeeds. */
+  onDesignsMutated?: () => void
   className?: string
 }
 
@@ -66,11 +72,15 @@ function DesignCanvasInner({
   positions,
   sessionCwd,
   selectedIds,
+  readOnlyDesigns,
   onPositionsChange,
   onSelectionChange,
   onDeleteScreen,
   onCaptureScreen,
   onEditElementWithAI,
+  onRenameScreen,
+  onDuplicateScreen,
+  onDesignsMutated,
   className,
 }: DesignCanvasProps) {
   const { getNodes } = useReactFlow()
@@ -103,11 +113,17 @@ function DesignCanvasInner({
             design,
             platform: designPlatform,
             sessionCwd,
+            readOnly: readOnlyDesigns,
             onDelete: onDeleteScreen ? () => onDeleteScreen(screenPosition.id) : undefined,
             onAddToComposer: onCaptureScreen ? () => onCaptureScreen(design) : undefined,
+            onRename: onRenameScreen
+              ? (to: string) => onRenameScreen(screenPosition.id, to)
+              : undefined,
+            onDuplicate: onDuplicateScreen ? () => onDuplicateScreen(screenPosition.id) : undefined,
             onEditElementWithAI: onEditElementWithAI
               ? (element: ElementInfo) => onEditElementWithAI(design, element)
               : undefined,
+            onDesignsMutated,
           } as ScreenNodeData,
         } as Node
       })
@@ -120,9 +136,13 @@ function DesignCanvasInner({
     platform,
     sessionCwd,
     selectedIds,
+    readOnlyDesigns,
     onDeleteScreen,
     onCaptureScreen,
+    onRenameScreen,
+    onDuplicateScreen,
     onEditElementWithAI,
+    onDesignsMutated,
   ])
 
   const [nodes, setNodes] = useNodesState(initialNodes)

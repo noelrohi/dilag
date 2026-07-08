@@ -11,6 +11,8 @@ import {
   useScreenPositions,
   useSessionStore,
   useIsWritingScreen,
+  useSessionStatus,
+  usePromptQueue,
   type ScreenPosition,
 } from "@/context/session-store"
 import { Button } from "@dilag/ui/button"
@@ -116,6 +118,16 @@ export function StudioPageContent({
   const currentSession = sessions.find((s: { id: string }) => s.id === sessionId)
   const { data: designs = [], isLoading: isLoadingDesigns } = useSessionDesigns(currentSession?.cwd)
   const isWritingScreen = useIsWritingScreen(currentSession?.id ?? null)
+
+  // Busy gating for manual screen edits: block Edit/Rename/Duplicate while Pi is
+  // actively streaming or has queued steering/follow-up prompts (design doc §1).
+  const sessionStatus = useSessionStatus(sessionId)
+  const promptQueue = usePromptQueue(sessionId)
+  const isSessionBusy =
+    sessionStatus === "running" ||
+    sessionStatus === "busy" ||
+    promptQueue.steering.length > 0 ||
+    promptQueue.followUp.length > 0
 
   // Show canvas loading when session/design metadata is hydrating, the AI is actively
   // running, or a write/edit tool is pending. This avoids flashing the "No screens yet"
@@ -265,6 +277,58 @@ export function StudioPageContent({
     },
     [designs],
   )
+
+  const handleRenameScreen = useCallback(
+    async (from: string, to: string) => {
+      if (!currentSession?.cwd) return
+
+      const result = await bridge.designs.rename({ sessionCwd: currentSession.cwd, from, to })
+      if (!result.ok) {
+        toast.error(result.reason)
+        return
+      }
+
+      setScreenPositions(
+        sessionId,
+        screenPositions.map((p) => (p.id === from ? { ...p, id: result.filename } : p)),
+      )
+      setSelectedScreenIds((previous) => {
+        if (!previous.has(from)) return previous
+        const next = new Set(previous)
+        next.delete(from)
+        next.add(result.filename)
+        return next
+      })
+
+      queryClient.invalidateQueries({ queryKey: designKeys.session(currentSession.cwd) })
+      useSessionStore.getState().bumpDesignRefresh()
+      toast.success(`Renamed to ${result.filename}`)
+    },
+    [currentSession?.cwd, sessionId, screenPositions, setScreenPositions, queryClient],
+  )
+
+  const handleDuplicateScreen = useCallback(
+    async (filename: string) => {
+      if (!currentSession?.cwd) return
+
+      const result = await bridge.designs.duplicate({ sessionCwd: currentSession.cwd, filename })
+      if (!result.ok) {
+        toast.error(result.reason)
+        return
+      }
+
+      queryClient.invalidateQueries({ queryKey: designKeys.session(currentSession.cwd) })
+      useSessionStore.getState().bumpDesignRefresh()
+      toast.success(`Duplicated as ${result.filename}`)
+    },
+    [currentSession?.cwd, queryClient],
+  )
+
+  const handleDesignsMutated = useCallback(() => {
+    if (!currentSession?.cwd) return
+    queryClient.invalidateQueries({ queryKey: designKeys.session(currentSession.cwd) })
+    useSessionStore.getState().bumpDesignRefresh()
+  }, [currentSession?.cwd, queryClient])
 
   const handleRename = useCallback(async () => {
     if (!currentSession || !newName.trim()) return
@@ -511,9 +575,13 @@ export function StudioPageContent({
                   sessionCwd={currentSession?.cwd}
                   selectedIds={selectedScreenIds}
                   isLoading={isCanvasLoading}
+                  readOnlyDesigns={isSessionBusy}
                   onPositionsChange={handlePositionsChange}
                   onSelectionChange={setSelectedScreenIds}
                   onDeleteScreen={handleRequestDelete}
+                  onRenameScreen={handleRenameScreen}
+                  onDuplicateScreen={handleDuplicateScreen}
+                  onDesignsMutated={handleDesignsMutated}
                 />
               </ScreenCaptureProvider>
             )}
@@ -642,9 +710,13 @@ interface ConnectedCanvasProps {
   sessionCwd?: string
   selectedIds: Set<string>
   isLoading?: boolean
+  readOnlyDesigns?: boolean
   onPositionsChange: (positions: ScreenPosition[]) => void
   onSelectionChange: (ids: Set<string>) => void
   onDeleteScreen: (filename: string) => void
+  onRenameScreen?: (from: string, to: string) => void
+  onDuplicateScreen?: (filename: string) => void
+  onDesignsMutated?: () => void
 }
 
 function ConnectedCanvas({
@@ -654,9 +726,13 @@ function ConnectedCanvas({
   sessionCwd,
   selectedIds,
   isLoading,
+  readOnlyDesigns,
   onPositionsChange,
   onSelectionChange,
   onDeleteScreen,
+  onRenameScreen,
+  onDuplicateScreen,
+  onDesignsMutated,
 }: ConnectedCanvasProps) {
   const { captureAndAttach, captureElementAndAttach } = useScreenCaptureContext()
 
@@ -668,11 +744,15 @@ function ConnectedCanvas({
       sessionCwd={sessionCwd}
       selectedIds={selectedIds}
       isLoading={isLoading}
+      readOnlyDesigns={readOnlyDesigns}
       onPositionsChange={onPositionsChange}
       onSelectionChange={onSelectionChange}
       onDeleteScreen={onDeleteScreen}
       onCaptureScreen={captureAndAttach}
       onEditElementWithAI={captureElementAndAttach}
+      onRenameScreen={onRenameScreen}
+      onDuplicateScreen={onDuplicateScreen}
+      onDesignsMutated={onDesignsMutated}
     />
   )
 }

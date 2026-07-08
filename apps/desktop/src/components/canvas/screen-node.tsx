@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useMemo } from "react"
+import { memo, useCallback, useEffect, useRef, useMemo, useState } from "react"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import { IPhoneFrame } from "@/components/blocks/preview/iphone-frame"
 import { ViolationBadge } from "@/components/blocks/preview/violation-badge"
@@ -19,9 +19,12 @@ import {
   IconFolderOpen as FolderOpen,
   IconMessageCircle as ChatRoundDots,
   IconPhoto as Gallery,
+  IconEdit as Rename,
+  IconCopyPlus as DuplicateIcon,
 } from "@tabler/icons-react"
 import { copyFilePath, copyToClipboard, downloadHtml, exportAsPng } from "@/lib/design-export"
 import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer"
+import { ScreenNameDialog } from "@/components/blocks/dialogs/dialog-screen-name"
 import { injectInspector, type ElementInspectorMessage } from "@/lib/element-inspector"
 import { useElementSelectionStore, type ElementInfo } from "@/context/element-selection-store"
 import { ElementHighlight } from "./element-highlight"
@@ -51,15 +54,32 @@ export interface ScreenNodeData extends Record<string, unknown> {
   design: DesignFile
   platform: "mobile" | "web"
   sessionCwd?: string
+  /** True while the session is busy — disables manual edit/rename/duplicate. */
+  readOnly?: boolean
   onDelete?: () => void
   onAddToComposer?: () => void
+  onRename?: (to: string) => void
+  onDuplicate?: () => void
   /** Callback when user wants to edit a specific element with AI */
   onEditElementWithAI?: (element: ElementInfo) => void
+  /** Callback after a manual edit (Save in the code viewer) succeeds. */
+  onDesignsMutated?: () => void
 }
 
 function ScreenNodeComponent({ id, data, selected }: NodeProps) {
-  const { design, platform, sessionCwd, onDelete, onAddToComposer, onEditElementWithAI } =
-    data as ScreenNodeData
+  const {
+    design,
+    platform,
+    sessionCwd,
+    readOnly,
+    onDelete,
+    onAddToComposer,
+    onRename,
+    onDuplicate,
+    onEditElementWithAI,
+    onDesignsMutated,
+  } = data as ScreenNodeData
+  const [renameOpen, setRenameOpen] = useState(false)
   const isMobile = platform === "mobile"
   const mobileViewport = useMemo(() => {
     if (!isMobile) return null
@@ -241,6 +261,20 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
     onAddToComposer?.()
   }, [onAddToComposer])
 
+  const handleRenameSubmit = useCallback(
+    (value: string) => {
+      onRename?.(value.endsWith(".html") ? value : `${value}.html`)
+    },
+    [onRename],
+  )
+
+  const handleDuplicate = useCallback(() => {
+    onDuplicate?.()
+  }, [onDuplicate])
+
+  const canEditHtml = Boolean(sessionCwd && onRename !== undefined && !readOnly)
+  const screenStem = design.filename.replace(/\.html?$/i, "")
+
   // Check if this screen has hovered/selected elements
   // Don't show hover highlight when something is already selected
   const showHoveredHighlight = hoveredElement?.screenId === id && !selectedElement
@@ -411,12 +445,40 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
           </ContextMenuItem>
         )}
         <ContextMenuSeparator />
-        <CodeViewerDialog code={design.html} title={design.title}>
+        <CodeViewerDialog
+          code={design.html}
+          title={design.title}
+          sessionCwd={sessionCwd}
+          filename={design.filename}
+          readOnly={readOnly}
+          onSaved={onDesignsMutated}
+        >
           <ContextMenuItem onSelect={(e) => e.preventDefault()}>
             <Code size={16} className="mr-2" />
-            View Code
+            {canEditHtml ? "Edit HTML" : "View Code"}
           </ContextMenuItem>
         </CodeViewerDialog>
+        {onRename && (
+          <ContextMenuItem
+            onSelect={(e) => e.preventDefault()}
+            onClick={() => setRenameOpen(true)}
+            disabled={readOnly}
+            title={readOnly ? "Unavailable while Pi is writing" : undefined}
+          >
+            <Rename size={16} className="mr-2" />
+            Rename
+          </ContextMenuItem>
+        )}
+        {onDuplicate && (
+          <ContextMenuItem
+            onClick={handleDuplicate}
+            disabled={readOnly}
+            title={readOnly ? "Unavailable while Pi is writing" : undefined}
+          >
+            <DuplicateIcon size={16} className="mr-2" />
+            Duplicate
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem onClick={handleDownload}>
           <Download size={16} className="mr-2" />
@@ -440,6 +502,16 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
           </>
         )}
       </ContextMenuContent>
+      {onRename && (
+        <ScreenNameDialog
+          open={renameOpen}
+          onOpenChange={setRenameOpen}
+          title="Rename screen"
+          confirmLabel="Rename"
+          initialValue={screenStem}
+          onSubmit={handleRenameSubmit}
+        />
+      )}
     </ContextMenu>
   )
 }
