@@ -46,7 +46,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
     "dev": "tsc --watch"
   },
   "dependencies": {
@@ -67,8 +67,13 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "catalog:",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "catalog:"
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "globals": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   }
 }

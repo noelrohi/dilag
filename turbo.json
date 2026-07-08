@@ -28,7 +28,8 @@
       "dependsOn": ["^build"]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": [],
+      "inputs": ["src/**", "electron/**", "eslint.config.*", "package.json"]
     },
     "clean": {
       "cache": false

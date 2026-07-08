@@ -13,7 +13,7 @@
     "build": "tsc && vite build && tsdown",
     "build:electron": "tsdown",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
     "dist": "bun run build && electron-builder",
     "smoke:electron": "bun run build && bun scripts/smoke-electron.mjs",
     "preview": "vite preview",
@@ -106,6 +106,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@eslint/js": "catalog:",
     "@happy-dom/global-registrator": "^20.0.11",
     "@tanstack/router-plugin": "^1.141.2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -120,11 +121,15 @@
     "bumpp": "^10.3.2",
     "electron": "41.2.2",
     "electron-builder": "^26.8.1",
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "globals": "catalog:",
     "jsdom": "^27.3.0",
     "react-grab": "^0.1.37",
     "tsdown": "^0.21.9",
     "tw-animate-css": "catalog:",
     "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
     "vite": "^7.0.4",
     "vite-console-forward-plugin": "^2.0.1",
     "vitest": "^4.0.16"
