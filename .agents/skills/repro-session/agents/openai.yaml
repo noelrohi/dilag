@@ -1,4 +1,0 @@
-interface:
-  display_name: "Repro Session"
-  short_description: "Debug Dilag Pi session state"
-  default_prompt: "Use $repro-session to debug this Dilag session ID and report likely stuck state."
