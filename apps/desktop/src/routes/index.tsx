@@ -16,6 +16,7 @@ import { Button } from "@dilag/ui/button"
 import { Input } from "@dilag/ui/input"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -25,7 +26,8 @@ function HomePage() {
   const navigate = useNavigate()
   const [projectName, setProjectName] = useState("")
   const { data: projects = [], isLoading: isLoadingProjects } = useProjectsList()
-  const { createProject, addExistingProject, dismissLegacyNotice } = useProjectMutations()
+  const { createProject, addExistingProject, importLegacySessions, dismissLegacyNotice } =
+    useProjectMutations()
   const { data: legacyNotice } = useLegacySessionsNotice(projects.length === 0)
 
   useEffect(() => {
@@ -60,6 +62,16 @@ function HomePage() {
     if (!folder) return
     const project = await addExistingProject({ path: folder })
     navigate({ to: "/project/$projectId", params: { projectId: project.id } })
+  }
+
+  const handleImportLegacySessions = async () => {
+    const result = await importLegacySessions()
+    toast.success(`Imported ${result.imported} ${result.imported === 1 ? "project" : "projects"}`)
+    if (result.skipped.length > 0) {
+      toast.message("Some old sessions were skipped", {
+        description: result.skipped.map((item) => `${item.name}: ${item.reason}`).join("\n"),
+      })
+    }
   }
 
   if (isLoadingProjects) {
@@ -161,6 +173,9 @@ function HomePage() {
                         </p>
                       </div>
                       <div className="flex gap-2">
+                        <Button size="sm" onClick={handleImportLegacySessions}>
+                          Import all
+                        </Button>
                         <Button size="sm" variant="secondary" onClick={handleUseExistingFolder}>
                           Use an existing folder
                         </Button>

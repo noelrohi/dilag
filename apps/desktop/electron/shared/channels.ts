@@ -56,6 +56,7 @@ export const CHANNELS = {
     remove: "projects:remove",
     touch: "projects:touch",
     getLegacyNotice: "projects:get-legacy-notice",
+    importLegacy: "projects:import-legacy",
     dismissLegacyNotice: "projects:dismiss-legacy-notice",
   },
   designs: {

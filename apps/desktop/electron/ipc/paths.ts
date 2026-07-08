@@ -13,7 +13,7 @@ export function resolveDesignAssetDir(): string {
 }
 
 export function getDilagDir(): string {
-  return path.join(os.homedir(), ".dilag")
+  return path.join(process.env.DILAG_HOME ?? os.homedir(), ".dilag")
 }
 
 export function getSessionsDir(): string {

@@ -56,6 +56,7 @@ const desktopBridgeMock: DesktopBridge = {
     remove: vi.fn(),
     touch: vi.fn(),
     getLegacyNotice: vi.fn(),
+    importLegacy: vi.fn(),
     dismissLegacyNotice: vi.fn(),
   },
   designs: {

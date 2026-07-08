@@ -4,7 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
 import { DatabaseSync } from "node:sqlite"
-import type { Platform, ProjectMeta } from "@dilag/desktop-bridge"
+import type { Platform, ProjectMeta, SessionMeta } from "@dilag/desktop-bridge"
 import { getDefaultProjectsDir, getSessionsFile, getStateDbPath } from "./paths.js"
 
 const MIGRATIONS = [
@@ -36,11 +36,18 @@ type ProjectRow = {
 }
 
 let db: DatabaseSync | undefined
+let dbPath: string | undefined
 
 function getDb(): DatabaseSync {
+  const nextDbPath = getStateDbPath()
+  if (db && dbPath !== nextDbPath) {
+    db.close()
+    db = undefined
+  }
   if (!db) {
-    fs.mkdirSync(path.dirname(getStateDbPath()), { recursive: true })
-    db = new DatabaseSync(getStateDbPath())
+    fs.mkdirSync(path.dirname(nextDbPath), { recursive: true })
+    db = new DatabaseSync(nextDbPath)
+    dbPath = nextDbPath
     db.exec("PRAGMA journal_mode = WAL")
     db.exec("PRAGMA foreign_keys = ON")
     for (const migration of MIGRATIONS) db.exec(migration)
@@ -257,4 +264,84 @@ export function getLegacySessionsNotice(): { hasLegacySessions: boolean; dismiss
 
 export function dismissLegacySessionsNotice(): void {
   setAppState("legacySessionsNoticeDismissed", true)
+}
+
+type LegacySessionsImportResult = {
+  imported: number
+  skipped: Array<{ name: string; reason: string }>
+}
+
+type LegacySessionsStore = {
+  sessions: SessionMeta[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function loadLegacySessionsForImport(): LegacySessionsStore {
+  const parsed: unknown = JSON.parse(fs.readFileSync(getSessionsFile(), "utf8"))
+  if (!isRecord(parsed) || !Array.isArray(parsed.sessions)) return { sessions: [] }
+  return {
+    sessions: parsed.sessions.filter((session): session is SessionMeta => {
+      return (
+        isRecord(session) &&
+        typeof session.id === "string" &&
+        typeof session.name === "string" &&
+        typeof session.created_at === "string" &&
+        typeof session.cwd === "string"
+      )
+    }),
+  }
+}
+
+function getLegacySessionName(session: Pick<SessionMeta, "cwd" | "name">): string {
+  return session.name.trim() || path.basename(session.cwd) || session.cwd
+}
+
+function getLegacySessionPlatform(session: SessionMeta): Platform | undefined {
+  return session.platform === "web" || session.platform === "mobile" ? session.platform : undefined
+}
+
+export async function importLegacySessions(): Promise<LegacySessionsImportResult> {
+  let store: LegacySessionsStore
+  try {
+    store = loadLegacySessionsForImport()
+  } catch {
+    return {
+      imported: 0,
+      skipped: [{ name: path.basename(getSessionsFile()), reason: "malformed sessions.json" }],
+    }
+  }
+
+  let imported = 0
+  const skipped: LegacySessionsImportResult["skipped"] = []
+
+  // Legacy sessions are stored in ~/.dilag/sessions.json as SessionMeta records:
+  // id, name, created_at, optional updated_at/parentID/platform/favorite/projectId, and cwd.
+  // The importable project folder is cwd; ~/.dilag/sessions/{id} is the old
+  // runtime/design folder and remains read-only during this migration.
+  for (const session of store.sessions) {
+    const name = getLegacySessionName(session)
+    const projectPath = normalizeProjectPath(session.cwd)
+    const stat = await fsp.stat(projectPath).catch(() => null)
+    if (!stat?.isDirectory()) {
+      skipped.push({ name, reason: "folder missing" })
+      continue
+    }
+
+    if (getProjectByPath(projectPath)) {
+      skipped.push({ name, reason: "already registered" })
+      continue
+    }
+
+    await addExistingProject({ path: projectPath, platform: getLegacySessionPlatform(session) })
+    imported += 1
+  }
+
+  if (store.sessions.length > 0 && skipped.every((item) => item.reason === "already registered")) {
+    setAppState("legacySessionsNoticeDismissed", true)
+  }
+
+  return { imported, skipped }
 }

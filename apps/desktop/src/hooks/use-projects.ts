@@ -113,12 +113,23 @@ export function useProjectMutations() {
     },
   })
 
+  const importLegacySessions = useMutation({
+    mutationFn: () => bridge.projects.importLegacy(),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: projectKeys.list() }),
+        queryClient.invalidateQueries({ queryKey: projectKeys.legacyNotice() }),
+      ])
+    },
+  })
+
   return {
     createProject: createProject.mutateAsync,
     addExistingProject: addExistingProject.mutateAsync,
     updateProject: updateProject.mutateAsync,
     removeProject: removeProject.mutateAsync,
     touchProject: touchProject.mutateAsync,
+    importLegacySessions: importLegacySessions.mutateAsync,
     dismissLegacyNotice: dismissLegacyNotice.mutateAsync,
   }
 }

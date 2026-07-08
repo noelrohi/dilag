@@ -54,6 +54,7 @@ import {
   dismissLegacySessionsNotice,
   getLegacySessionsNotice,
   getProjectById,
+  importLegacySessions,
   listProjects,
   removeProject,
   touchProject,
@@ -214,6 +215,7 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
     touchProject(args),
   )
   ipcMain.handle(CHANNELS.projects.getLegacyNotice, getLegacySessionsNotice)
+  ipcMain.handle(CHANNELS.projects.importLegacy, importLegacySessions)
   ipcMain.handle(CHANNELS.projects.dismissLegacyNotice, dismissLegacySessionsNotice)
 
   ipcMain.handle(CHANNELS.designs.loadForSession, (_event, args: { sessionCwd: string }) =>

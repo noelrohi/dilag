@@ -36,6 +36,11 @@ import type {
 
 export type Unsubscribe = () => void
 
+export type LegacySessionsImportResult = {
+  imported: number
+  skipped: Array<{ name: string; reason: string }>
+}
+
 export interface DesktopBridge {
   app: {
     getInfo(): Promise<AppInfo>
@@ -112,6 +117,7 @@ export interface DesktopBridge {
     remove(args: { id: string }): Promise<void>
     touch(args: { id: string }): Promise<ProjectMeta>
     getLegacyNotice(): Promise<{ hasLegacySessions: boolean; dismissed: boolean }>
+    importLegacy(): Promise<LegacySessionsImportResult>
     dismissLegacyNotice(): Promise<void>
   }
 

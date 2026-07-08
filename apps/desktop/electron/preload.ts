@@ -77,6 +77,7 @@ const bridge: DesktopBridge = {
     remove: (args) => ipcRenderer.invoke(CHANNELS.projects.remove, args),
     touch: (args) => ipcRenderer.invoke(CHANNELS.projects.touch, args),
     getLegacyNotice: () => ipcRenderer.invoke(CHANNELS.projects.getLegacyNotice),
+    importLegacy: () => ipcRenderer.invoke(CHANNELS.projects.importLegacy),
     dismissLegacyNotice: () => ipcRenderer.invoke(CHANNELS.projects.dismissLegacyNotice),
   },
   designs: {
