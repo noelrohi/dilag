@@ -13,6 +13,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # node:sqlite (used by the desktop main process and its tests)
+      # requires Node >= 22.5; the runner default is older.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
