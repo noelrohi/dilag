@@ -18,7 +18,15 @@ import type { Violation } from "@dilag/desktop-bridge"
 interface CodeViewerDialogProps {
   code: string
   title: string
-  children: ReactNode
+  /**
+   * Optional trigger. Omit it (and control `open`/`onOpenChange` instead) when
+   * opening from a context-menu item — mounting the dialog inside an open
+   * Radix menu leaks dialog interactions into the menu's item handling.
+   */
+  children?: ReactNode
+  /** Controlled open state; pair with `onOpenChange`. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   sessionCwd?: string
   filename?: string
   /** True while the session is busy — disables entering edit mode. */
@@ -30,6 +38,8 @@ export function CodeViewerDialog({
   code,
   title,
   children,
+  open: controlledOpen,
+  onOpenChange,
   sessionCwd,
   filename,
   readOnly,
@@ -37,7 +47,9 @@ export function CodeViewerDialog({
 }: CodeViewerDialogProps) {
   const canEdit = Boolean(sessionCwd && filename && !readOnly)
 
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
   const [copied, setCopied] = useState(false)
   // The view-mode content. Kept in sync with the `code` prop while the dialog
   // is closed, and updated locally on a successful save so the dialog
@@ -69,7 +81,7 @@ export function CodeViewerDialog({
       if (!nextOpen) resetEditState()
       setOpen(nextOpen)
     },
-    [isEditing, isDirty, resetEditState],
+    [isEditing, isDirty, resetEditState, setOpen],
   )
 
   const handleCopy = useCallback(() => {
@@ -115,7 +127,7 @@ export function CodeViewerDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children !== undefined && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent
         className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0"
         showCloseButton={false}

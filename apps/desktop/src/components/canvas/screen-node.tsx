@@ -80,6 +80,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
     onDesignsMutated,
   } = data as ScreenNodeData
   const [renameOpen, setRenameOpen] = useState(false)
+  const [codeViewerOpen, setCodeViewerOpen] = useState(false)
   const isMobile = platform === "mobile"
   const mobileViewport = useMemo(() => {
     if (!isMobile) return null
@@ -426,42 +427,32 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
       <ContextMenuContent className="w-48">
         {onAddToComposer && (
           <>
-            <ContextMenuItem onClick={handleAddToComposer}>
+            <ContextMenuItem onSelect={handleAddToComposer}>
               <ChatRoundDots size={16} className="mr-2" />
               Add to chat
             </ContextMenuItem>
             <ContextMenuSeparator />
           </>
         )}
-        <ContextMenuItem onClick={handleCopy}>
+        <ContextMenuItem onSelect={handleCopy}>
           <Copy size={16} className="mr-2" />
           Copy
           <ContextMenuShortcut>Cmd+C</ContextMenuShortcut>
         </ContextMenuItem>
         {filePath && (
-          <ContextMenuItem onClick={handleCopyPath}>
+          <ContextMenuItem onSelect={handleCopyPath}>
             <FolderOpen size={16} className="mr-2" />
             Copy path
           </ContextMenuItem>
         )}
         <ContextMenuSeparator />
-        <CodeViewerDialog
-          code={design.html}
-          title={design.title}
-          sessionCwd={sessionCwd}
-          filename={design.filename}
-          readOnly={readOnly}
-          onSaved={onDesignsMutated}
-        >
-          <ContextMenuItem onSelect={(e) => e.preventDefault()}>
-            <Code size={16} className="mr-2" />
-            {canEditHtml ? "Edit HTML" : "View Code"}
-          </ContextMenuItem>
-        </CodeViewerDialog>
+        <ContextMenuItem onSelect={() => setCodeViewerOpen(true)}>
+          <Code size={16} className="mr-2" />
+          {canEditHtml ? "Edit HTML" : "View Code"}
+        </ContextMenuItem>
         {onRename && (
           <ContextMenuItem
-            onSelect={(e) => e.preventDefault()}
-            onClick={() => setRenameOpen(true)}
+            onSelect={() => setRenameOpen(true)}
             disabled={readOnly}
             title={readOnly ? "Unavailable while Pi is writing" : undefined}
           >
@@ -471,7 +462,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
         )}
         {onDuplicate && (
           <ContextMenuItem
-            onClick={handleDuplicate}
+            onSelect={handleDuplicate}
             disabled={readOnly}
             title={readOnly ? "Unavailable while Pi is writing" : undefined}
           >
@@ -480,11 +471,11 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
           </ContextMenuItem>
         )}
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={handleDownload}>
+        <ContextMenuItem onSelect={handleDownload}>
           <Download size={16} className="mr-2" />
           Download HTML
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleExportPng}>
+        <ContextMenuItem onSelect={handleExportPng}>
           <Gallery size={16} className="mr-2" />
           Export as PNG
         </ContextMenuItem>
@@ -492,7 +483,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
           <>
             <ContextMenuSeparator />
             <ContextMenuItem
-              onClick={handleDelete}
+              onSelect={handleDelete}
               className="text-destructive focus:text-destructive focus:bg-destructive/10"
             >
               <TrashBinMinimalistic size={16} className="mr-2" />
@@ -502,6 +493,19 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
           </>
         )}
       </ContextMenuContent>
+      {/* Dialogs live outside ContextMenuContent: mounting them inside keeps
+          the menu open behind the modal, leaking dialog interactions into
+          menu-item handlers (e.g. text selection triggering "Add to chat"). */}
+      <CodeViewerDialog
+        code={design.html}
+        title={design.title}
+        open={codeViewerOpen}
+        onOpenChange={setCodeViewerOpen}
+        sessionCwd={sessionCwd}
+        filename={design.filename}
+        readOnly={readOnly}
+        onSaved={onDesignsMutated}
+      />
       {onRename && (
         <ScreenNameDialog
           open={renameOpen}

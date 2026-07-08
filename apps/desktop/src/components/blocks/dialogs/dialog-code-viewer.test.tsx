@@ -148,4 +148,25 @@ describe("CodeViewerDialog", () => {
     expect(document.querySelector("textarea")).toBeInTheDocument()
     expect(onSaved).not.toHaveBeenCalled()
   })
+
+  it("supports controlled open without a trigger (used from the screen context menu)", async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+    render(
+      <CodeViewerDialog
+        code={CODE}
+        title="Home"
+        open
+        onOpenChange={onOpenChange}
+        sessionCwd="/tmp/session"
+        filename="home.html"
+      />,
+    )
+
+    expect(screen.getByText("Home")).toBeInTheDocument()
+    expect(screen.getByText(CODE)).toBeInTheDocument()
+
+    await user.keyboard("{Escape}")
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
 })
