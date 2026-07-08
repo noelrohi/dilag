@@ -6,10 +6,12 @@ import type { SkillInfo, SkillInstallResult, SkillPreviewResult } from "@dilag/d
 import { runCommand } from "./processes.js"
 
 function stripAnsi(input: string): string {
-  return input
-    // eslint-disable-next-line no-control-regex -- intentional: strip ANSI escape sequences
-    .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "")
-    .replace(/[●◇◆\r]/g, "")
+  return (
+    input
+      // eslint-disable-next-line no-control-regex -- intentional: strip ANSI escape sequences
+      .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "")
+      .replace(/[●◇◆\r]/g, "")
+  )
 }
 
 function parseSkillList(rawOutput: string): SkillPreviewResult["skills"] {

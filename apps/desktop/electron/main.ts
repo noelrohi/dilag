@@ -3,12 +3,7 @@ import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { registerThemeHandlers } from "./ipc/theme.js"
 import { registerZoomHandlers } from "./ipc/zoom.js"
-import {
-  getBootstrapPort,
-  initializeHost,
-  registerHostHandlers,
-  shutdownHost,
-} from "./ipc/host.js"
+import { getBootstrapPort, initializeHost, registerHostHandlers, shutdownHost } from "./ipc/host.js"
 import { setupApplicationMenu } from "./menu.js"
 import { CHANNELS } from "./shared/channels.js"
 import type { NativeMenuContext, NativeMenuState } from "@dilag/desktop-bridge"

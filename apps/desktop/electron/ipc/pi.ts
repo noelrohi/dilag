@@ -736,9 +736,7 @@ export function selectSessionsToEvict(candidates: EvictionCandidate[], keepN: nu
   return byRecency
     .filter(
       (candidate) =>
-        !candidate.isStreaming &&
-        !candidate.hasPendingQuestion &&
-        !protectedIds.has(candidate.id),
+        !candidate.isStreaming && !candidate.hasPendingQuestion && !protectedIds.has(candidate.id),
     )
     .map((candidate) => candidate.id)
 }
