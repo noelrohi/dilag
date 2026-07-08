@@ -83,6 +83,7 @@ import type { FileNode } from "@dilag/desktop-bridge"
 import { toast } from "sonner"
 import { bridge } from "@/lib/bridge"
 import { queuedFollowUpPreview, type PromptDeliveryOutcome } from "@/lib/prompt-delivery"
+import { loadPromptHistory, pushPromptHistory } from "@/lib/prompt-history"
 
 const FILE_MENTION_SEARCH_DEBOUNCE_MS = 150
 const FILE_MENTION_SEARCH_LIMIT = 8
@@ -150,6 +151,12 @@ function flattenFileNodes(nodes: FileNode[]): string[] {
   }
   nodes.forEach(visit)
   return files
+}
+
+function isCaretOnFirstLine(textarea: HTMLTextAreaElement): boolean {
+  const caretPosition = textarea.selectionStart ?? 0
+  const firstLineEnd = textarea.value.indexOf("\n")
+  return firstLineEnd === -1 || caretPosition <= firstLineEnd
 }
 
 // Detect active @file mention at a given caret position.
@@ -947,6 +954,7 @@ function ChatInputArea({
   const [highlightedMentionIndex, setHighlightedMentionIndex] = useState(0)
   const [mentionedFiles, setMentionedFiles] = useState<MentionedFileRef[]>([])
   const mentionSearchRequestRef = useRef(0)
+  const historyIndexRef = useRef<number | null>(null)
   const nextStreamingBehaviorRef = useRef<"steer" | "followUp">("steer")
   const hasInput = textInput.value.trim().length > 0
   const hasComposerReferences =
@@ -969,6 +977,10 @@ function ChatInputArea({
   )
   const hasQueuedPrompts = queuedPrompts.length > 0
   const { pendingMessage, clearPendingMessage } = usePendingMessage()
+
+  useEffect(() => {
+    historyIndexRef.current = null
+  }, [sessionId])
 
   // Handle pending messages from server error overlay or other sources
   useEffect(() => {
@@ -1116,6 +1128,46 @@ function ChatInputArea({
         return
       }
 
+      if (
+        e.key === "ArrowUp" &&
+        (textInput.value.length === 0 || historyIndexRef.current !== null) &&
+        isCaretOnFirstLine(e.target as HTMLTextAreaElement)
+      ) {
+        const history = loadPromptHistory(sessionId)
+        if (history.length === 0) return
+
+        e.preventDefault()
+        const nextIndex =
+          historyIndexRef.current === null
+            ? history.length - 1
+            : Math.max(0, historyIndexRef.current - 1)
+        const nextPrompt = history[nextIndex]
+        historyIndexRef.current = nextIndex
+        textInput.setInput(nextPrompt)
+        setCaretPosition(nextPrompt.length)
+        return
+      }
+
+      if (e.key === "ArrowDown" && historyIndexRef.current !== null) {
+        const history = loadPromptHistory(sessionId)
+        const nextIndex = historyIndexRef.current + 1
+
+        e.preventDefault()
+
+        if (nextIndex >= history.length) {
+          historyIndexRef.current = null
+          textInput.setInput("")
+          setCaretPosition(0)
+          return
+        }
+
+        const nextPrompt = history[nextIndex]
+        historyIndexRef.current = nextIndex
+        textInput.setInput(nextPrompt)
+        setCaretPosition(nextPrompt.length)
+        return
+      }
+
       const isPlainEnter = e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey
       if (mentionOpen && (isPlainEnter || e.key === "Tab")) {
         e.preventDefault()
@@ -1155,7 +1207,9 @@ function ChatInputArea({
       isLoading,
       mentionOpen,
       mentionSearchResults,
+      sessionId,
       selectMentionResult,
+      textInput,
     ],
   )
 
@@ -1247,12 +1301,14 @@ function ChatInputArea({
         mergedFiles.length > 0 ? mergedFiles : undefined,
         { streamingBehavior },
       )
+      pushPromptHistory(sessionId, trimmedText)
       if (delivery?.status === "queued") {
         toast.success(
           delivery.mode === "followUp" ? "Queued follow-up message" : "Queued steering message",
         )
       }
       nextStreamingBehaviorRef.current = "steer"
+      historyIndexRef.current = null
       setMentionedFiles([])
       setMentionOpen(false)
       setMentionSearchResults([])
@@ -1406,9 +1462,10 @@ function ChatInputArea({
               aria-keyshortcuts={isLoading ? "Meta+Enter Control+Enter" : undefined}
               placeholder={isLoading ? "Ask for follow-up changes" : "Describe what to design..."}
               className="min-h-[56px] max-h-[200px]"
-              onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                historyIndexRef.current = null
                 syncCaretPosition(event.currentTarget)
-              }
+              }}
               onClick={(event) => syncCaretPosition(event.currentTarget)}
               onKeyUp={(event) => syncCaretPosition(event.currentTarget)}
               onSelect={(event) => syncCaretPosition(event.currentTarget as HTMLTextAreaElement)}

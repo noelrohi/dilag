@@ -1,12 +1,71 @@
-import { describe, it, expect, vi } from "vitest"
+import { beforeEach, describe, it, expect, vi } from "vitest"
 import { createElement, type ReactNode } from "react"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+
+const mocks = vi.hoisted(() => ({
+  useSessions: vi.fn(),
+  useGlobalEvents: vi.fn(),
+  usePendingMessage: vi.fn(),
+  listFiles: vi.fn(),
+  readFile: vi.fn(),
+  clearQueue: vi.fn(),
+}))
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   Link: ({ children, to, ...props }: { children?: ReactNode; to?: string }) =>
     createElement("a", { href: to, ...props }, children),
+}))
+
+vi.mock("@/hooks/use-sessions", () => ({
+  useSessions: mocks.useSessions,
+}))
+
+vi.mock("@/context/global-events", () => ({
+  useGlobalEvents: mocks.useGlobalEvents,
+}))
+
+vi.mock("@/hooks/use-chat-interface", () => ({
+  usePendingMessage: mocks.usePendingMessage,
+}))
+
+vi.mock("@/lib/bridge", () => ({
+  bridge: {
+    project: {
+      listFiles: mocks.listFiles,
+      readFile: mocks.readFile,
+    },
+    agent: {
+      clearQueue: mocks.clearQueue,
+    },
+  },
+}))
+
+vi.mock("@/components/ai-elements/conversation", () => ({
+  Conversation: ({ children }: { children?: ReactNode }) => children,
+  ConversationContent: ({ children }: { children?: ReactNode }) => children,
+  ConversationScrollButton: () => null,
+}))
+
+vi.mock("@/components/blocks/selectors/model-selector-button", () => ({
+  ModelSelectorButton: () => null,
+}))
+
+vi.mock("@/components/blocks/selectors/agent-selector-button", () => ({
+  AgentSelectorButton: () => null,
+}))
+
+vi.mock("@/components/blocks/selectors/thinking-mode-selector", () => ({
+  ThinkingModeSelector: () => null,
+}))
+
+vi.mock("./question-list", () => ({
+  QuestionList: () => null,
+}))
+
+vi.mock("./attachment-bridge-connector", () => ({
+  AttachmentBridgeConnector: () => null,
 }))
 
 import {
@@ -28,8 +87,69 @@ import {
   getStreamingComposerShortcut,
   SkillInvocationBlock,
   ErrorState,
+  ChatView,
 } from "./chat-view"
 import type { MessagePart } from "@/context/session-store"
+import { pushPromptHistory } from "@/lib/prompt-history"
+
+function renderChatView({
+  sendMessage = vi.fn().mockResolvedValue(undefined),
+  sessionId = "session-1",
+} = {}) {
+  mocks.useSessions.mockReturnValue({
+    messages: [],
+    currentSessionId: sessionId,
+    currentSession: { cwd: "/tmp/project" },
+    isLoading: false,
+    isServerReady: true,
+    sendMessage,
+    stopSession: vi.fn(),
+    createSession: vi.fn(),
+    forkSession: vi.fn(),
+  })
+  mocks.useGlobalEvents.mockReturnValue({ serverError: null, retryStart: vi.fn() })
+  mocks.usePendingMessage.mockReturnValue({ pendingMessage: null, clearPendingMessage: vi.fn() })
+  mocks.listFiles.mockResolvedValue([])
+  mocks.readFile.mockResolvedValue("")
+  mocks.clearQueue.mockResolvedValue(undefined)
+
+  render(<ChatView />)
+
+  return {
+    sendMessage,
+    textarea: screen.getByPlaceholderText("Describe what to design...") as HTMLTextAreaElement,
+  }
+}
+
+async function submitPrompt(textarea: HTMLTextAreaElement, prompt: string) {
+  const user = userEvent.setup()
+
+  await user.type(textarea, prompt)
+  await user.click(screen.getByRole("button", { name: "Send message" }))
+  await waitFor(() => expect(textarea).toHaveValue(""))
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  const storage = new Map<string, string>()
+
+  vi.stubGlobal("localStorage", {
+    getItem: vi.fn((key: string) => storage.get(key) ?? null),
+    setItem: vi.fn((key: string, value: string) => {
+      storage.set(key, value)
+    }),
+    removeItem: vi.fn((key: string) => {
+      storage.delete(key)
+    }),
+    clear: vi.fn(() => {
+      storage.clear()
+    }),
+    key: vi.fn((index: number) => Array.from(storage.keys())[index] ?? null),
+    get length() {
+      return storage.size
+    },
+  })
+})
 
 describe("parseMessageText", () => {
   describe("screen context removal", () => {
@@ -176,6 +296,55 @@ describe("ErrorState", () => {
 
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument()
+  })
+})
+
+describe("composer prompt history recall", () => {
+  it("records submitted prompts and recalls the latest prompt from an empty composer", async () => {
+    const sendMessage = vi.fn().mockResolvedValue(undefined)
+    const { textarea } = renderChatView({ sendMessage })
+
+    await submitPrompt(textarea, "Build a portfolio")
+
+    expect(sendMessage).toHaveBeenCalledWith("Build a portfolio", undefined, {
+      streamingBehavior: undefined,
+    })
+
+    fireEvent.keyDown(textarea, { key: "ArrowUp" })
+
+    await waitFor(() => expect(textarea).toHaveValue("Build a portfolio"))
+  })
+
+  it("cycles backward and forward through prompt history", async () => {
+    const { textarea } = renderChatView()
+
+    await submitPrompt(textarea, "Build a portfolio")
+    await submitPrompt(textarea, "Make it responsive")
+
+    fireEvent.keyDown(textarea, { key: "ArrowUp" })
+    await waitFor(() => expect(textarea).toHaveValue("Make it responsive"))
+
+    fireEvent.keyDown(textarea, { key: "ArrowUp" })
+    await waitFor(() => expect(textarea).toHaveValue("Build a portfolio"))
+
+    fireEvent.keyDown(textarea, { key: "ArrowDown" })
+    await waitFor(() => expect(textarea).toHaveValue("Make it responsive"))
+
+    fireEvent.keyDown(textarea, { key: "ArrowDown" })
+    await waitFor(() => expect(textarea).toHaveValue(""))
+  })
+
+  it("keeps ArrowUp reserved for mention navigation while the mention popover is open", async () => {
+    const { textarea } = renderChatView()
+    const user = userEvent.setup()
+    pushPromptHistory("session-1", "Build a portfolio")
+
+    await user.type(textarea, "@")
+    await screen.findByText("Files")
+
+    fireEvent.keyDown(textarea, { key: "ArrowUp" })
+
+    expect(textarea).toHaveValue("@")
   })
 })
 
