@@ -132,6 +132,17 @@ export function useSessions() {
 
   const { isServerReady: globalServerReady, subscribeToSession } = useGlobalEvents()
 
+  const persistNewSession = useCallback(
+    async (meta: SessionMeta) => {
+      await bridge.sessions.saveMeta({ session: meta })
+      queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) => [...(old ?? []), meta])
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+      setCurrentSessionId(meta.id)
+      setMessages(meta.id, [])
+    },
+    [queryClient, setCurrentSessionId, setMessages],
+  )
+
   // Track cleanup functions for async operations
   const cleanupRef = useRef<(() => void)[]>([])
   const isMountedRef = useRef(true)
@@ -316,17 +327,7 @@ export function useSessions() {
           platform: platform ?? project.platform ?? "web",
           projectId: project.id,
         }
-        await bridge.sessions.saveMeta({ session: sessionMeta })
-
-        // Update React Query cache optimistically. Pi SDK owns persistence.
-        queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
-          old ? [...old, sessionMeta] : [sessionMeta],
-        )
-        queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
-
-        // Update Zustand client state
-        setCurrentSessionId(sessionId)
-        setMessages(sessionId, [])
+        await persistNewSession(sessionMeta)
 
         return sessionId
       } catch (err) {
@@ -335,7 +336,7 @@ export function useSessions() {
         return null
       }
     },
-    [sessions.length, setCurrentSessionId, setMessages, queryClient],
+    [sessions.length, persistNewSession],
   )
 
   const createSessionInProject = useCallback(
@@ -360,13 +361,7 @@ export function useSessions() {
           projectId: project.id,
           favorite: project.pinned,
         }
-        await bridge.sessions.saveMeta({ session: sessionMeta })
-        queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
-          old ? [...old, sessionMeta] : [sessionMeta],
-        )
-        setCurrentSessionId(response.id)
-        setMessages(response.id, [])
-        queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+        await persistNewSession(sessionMeta)
 
         if (initialPrompt?.trim() || (files && files.length > 0)) {
           const { selectedModel, variants } = useModelStore.getState()
@@ -410,14 +405,7 @@ export function useSessions() {
         return null
       }
     },
-    [
-      providerData,
-      queryClient,
-      setCurrentSessionId,
-      setMessages,
-      setSessionError,
-      setSessionStatus,
-    ],
+    [providerData, persistNewSession, setSessionError, setSessionStatus],
   )
 
   const selectSession = useCallback(
@@ -542,13 +530,7 @@ export function useSessions() {
           projectId: currentSession.projectId,
           favorite: currentSession.favorite,
         }
-        await bridge.sessions.saveMeta({ session: sessionMeta })
-
-        queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
-          old ? [...old, sessionMeta] : [sessionMeta],
-        )
-        queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
-        setCurrentSessionId(newSessionId)
+        await persistNewSession(sessionMeta)
         await loadSessionMessages(newSessionId, currentSession.cwd)
         return newSessionId
       } catch (err) {
@@ -557,7 +539,7 @@ export function useSessions() {
         return null
       }
     },
-    [currentSessionId, currentSession, queryClient, setCurrentSessionId, loadSessionMessages],
+    [currentSessionId, currentSession, persistNewSession, loadSessionMessages],
   )
 
   // Fork session with designs only - creates a new session and copies screen designs (no chat history)
@@ -589,16 +571,7 @@ export function useSessions() {
         projectId: currentSession.projectId,
         favorite: currentSession.favorite,
       }
-      await bridge.sessions.saveMeta({ session: sessionMeta })
-
-      queryClient.setQueryData<SessionMeta[]>(sessionKeys.list(), (old) =>
-        old ? [...old, sessionMeta] : [sessionMeta],
-      )
-      queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
-
-      // Switch to the new session
-      setCurrentSessionId(newSessionId)
-      setMessages(newSessionId, [])
+      await persistNewSession(sessionMeta)
 
       return newSessionId
     } catch (err) {
@@ -606,7 +579,7 @@ export function useSessions() {
       console.error("Failed to fork session with designs:", err)
       return null
     }
-  }, [currentSessionId, currentSession, queryClient, setCurrentSessionId, setMessages])
+  }, [currentSessionId, currentSession, persistNewSession])
 
   const sendMessage = useCallback(
     async (content: string, files?: FileUIPart[], options?: SendMessageOptions) => {
