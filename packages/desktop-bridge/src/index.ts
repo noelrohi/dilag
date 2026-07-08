@@ -19,6 +19,7 @@ import type {
   AgentThinkingLevel,
   AgentTreeNode,
   DesignFile,
+  DesignMutationResult,
   FileNode,
   ImportDesignsResult,
   Violation,
@@ -130,6 +131,13 @@ export interface DesktopBridge {
     validateHtml(args: { html: string }): Promise<Violation[]>
     // Exposed to renderer call sites as bridge.designs.import.
     import(args: { sessionCwd: string; filePaths: string[] }): Promise<ImportDesignsResult>
+    write(args: {
+      sessionCwd: string
+      filename: string
+      html: string
+    }): Promise<DesignMutationResult>
+    rename(args: { sessionCwd: string; from: string; to: string }): Promise<DesignMutationResult>
+    duplicate(args: { sessionCwd: string; filename: string }): Promise<DesignMutationResult>
   }
 
   project: {
@@ -211,6 +219,7 @@ export type {
   AgentThinkingLevel,
   AgentTreeNode,
   DesignFile,
+  DesignMutationResult,
   FileNode,
   ImportDesignsResult,
   MenuEventId,

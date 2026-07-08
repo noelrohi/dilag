@@ -72,6 +72,10 @@ export interface ImportDesignsResult {
   rejected: Array<{ path: string; reason: string }>
 }
 
+export type DesignMutationResult =
+  | { ok: true; filename: string }
+  | { ok: false; reason: string; violations?: Violation[] }
+
 export interface FileNode {
   id: string
   name: string

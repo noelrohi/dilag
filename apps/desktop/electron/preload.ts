@@ -86,6 +86,9 @@ const bridge: DesktopBridge = {
     delete: (args) => ipcRenderer.invoke(CHANNELS.designs.delete, args),
     validateHtml: (args) => ipcRenderer.invoke(CHANNELS.designs.validateHtml, args),
     import: (args) => ipcRenderer.invoke(CHANNELS.designs.import, args),
+    write: (args) => ipcRenderer.invoke(CHANNELS.designs.write, args),
+    rename: (args) => ipcRenderer.invoke(CHANNELS.designs.rename, args),
+    duplicate: (args) => ipcRenderer.invoke(CHANNELS.designs.duplicate, args),
   },
   project: {
     listFiles: (args) => ipcRenderer.invoke(CHANNELS.project.listFiles, args),

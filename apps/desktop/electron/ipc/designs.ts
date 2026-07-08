@@ -7,6 +7,7 @@ import {
   getGeneratedScreenDirectories,
   getGeneratedScreenFallbackKey,
   type DesignFile,
+  type DesignMutationResult,
   type ImportDesignsResult,
   type GeneratedScreenDirectory,
   type Violation,
@@ -249,4 +250,121 @@ export async function copyHtmlFiles(sourceDir: string, destDir: string): Promise
     copied++
   }
   return copied
+}
+
+// Resolve an existing screen by sanitized basename: canonical .designs first,
+// then legacy fallback directories (which may nest files in subdirectories),
+// matching how the loader de-duplicates in loadDesignsForSession.
+async function resolveExistingDesignPath(
+  sessionCwd: string,
+  filename: string,
+): Promise<{ filePath: string; legacy: boolean } | null> {
+  const canonical = getCanonicalGeneratedScreenPath(sessionCwd, filename)
+  if (await fileExists(canonical)) return { filePath: canonical, legacy: false }
+
+  const designs = await loadDesignsForSession(sessionCwd)
+  const match = designs.find((design) => design.filename === filename)
+  if (!match) return null
+  return { filePath: match.file_path, legacy: true }
+}
+
+export async function writeDesign(args: {
+  sessionCwd: string
+  filename: string
+  html: string
+}): Promise<DesignMutationResult> {
+  let basename: string
+  try {
+    basename = sanitizeDesignBasename(args.filename)
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : "Invalid file name" }
+  }
+
+  const violations = validateHtml(args.html)
+  if (violations.length > 0) {
+    return { ok: false, reason: "Validation failed", violations }
+  }
+
+  const designDir = path.resolve(getCanonicalGeneratedScreenDirectory(args.sessionCwd))
+  const targetPath = path.resolve(getCanonicalGeneratedScreenPath(args.sessionCwd, basename))
+  if (!isInsideDirectory(designDir, targetPath)) {
+    return { ok: false, reason: "Resolved path escapes the designs directory" }
+  }
+
+  await fsp.mkdir(designDir, { recursive: true })
+  await fsp.writeFile(targetPath, args.html, "utf8") // overwrite in place — this is Save
+  return { ok: true, filename: basename }
+}
+
+export async function renameDesign(args: {
+  sessionCwd: string
+  from: string
+  to: string
+}): Promise<DesignMutationResult> {
+  let fromBasename: string
+  let toBasename: string
+  try {
+    fromBasename = sanitizeDesignBasename(args.from)
+    toBasename = sanitizeDesignBasename(args.to)
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : "Invalid file name" }
+  }
+
+  const source = await resolveExistingDesignPath(args.sessionCwd, fromBasename)
+  if (!source) return { ok: false, reason: "Screen not found" }
+
+  const designDir = path.resolve(getCanonicalGeneratedScreenDirectory(args.sessionCwd))
+  const targetPath = path.resolve(getCanonicalGeneratedScreenPath(args.sessionCwd, toBasename))
+  if (!isInsideDirectory(designDir, targetPath)) {
+    return { ok: false, reason: "Resolved path escapes the designs directory" }
+  }
+  if (await fileExists(targetPath)) {
+    return { ok: false, reason: "A screen with that name already exists" }
+  }
+
+  await fsp.mkdir(designDir, { recursive: true })
+  if (source.legacy) {
+    await fsp.copyFile(source.filePath, targetPath)
+    await fsp.unlink(source.filePath)
+  } else {
+    await fsp.rename(source.filePath, targetPath)
+  }
+
+  return { ok: true, filename: toBasename }
+}
+
+export async function duplicateDesign(args: {
+  sessionCwd: string
+  filename: string
+}): Promise<DesignMutationResult> {
+  let basename: string
+  try {
+    basename = sanitizeDesignBasename(args.filename)
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : "Invalid file name" }
+  }
+
+  const source = await resolveExistingDesignPath(args.sessionCwd, basename)
+  if (!source) return { ok: false, reason: "Screen not found" }
+
+  const extension = path.extname(basename)
+  const stem = basename.slice(0, -extension.length)
+
+  const designDir = path.resolve(getCanonicalGeneratedScreenDirectory(args.sessionCwd))
+  let candidate = `${stem} copy${extension}`
+  let suffix = 2
+  while (await fileExists(getCanonicalGeneratedScreenPath(args.sessionCwd, candidate))) {
+    candidate = `${stem} copy ${suffix}${extension}`
+    suffix += 1
+  }
+
+  const targetPath = path.resolve(getCanonicalGeneratedScreenPath(args.sessionCwd, candidate))
+  if (!isInsideDirectory(designDir, targetPath)) {
+    return { ok: false, reason: "Resolved path escapes the designs directory" }
+  }
+
+  await fsp.mkdir(designDir, { recursive: true })
+  await fsp.copyFile(source.filePath, targetPath)
+
+  return { ok: true, filename: candidate }
 }

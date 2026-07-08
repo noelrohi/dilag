@@ -65,6 +65,9 @@ export const CHANNELS = {
     delete: "designs:delete",
     validateHtml: "designs:validate-html",
     import: "designs:import",
+    write: "designs:write",
+    rename: "designs:rename",
+    duplicate: "designs:duplicate",
   },
   project: {
     listFiles: "project:list-files",

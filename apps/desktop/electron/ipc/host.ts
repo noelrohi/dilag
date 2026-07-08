@@ -7,7 +7,15 @@ import {
   type UpdateDownloadEvent,
 } from "@dilag/desktop-bridge"
 import { isNewerAppVersion } from "../../src/lib/version.js"
-import { copyHtmlFiles, importDesigns, loadDesignsForSession, validateHtml } from "./designs.js"
+import {
+  copyHtmlFiles,
+  duplicateDesign,
+  importDesigns,
+  loadDesignsForSession,
+  renameDesign,
+  validateHtml,
+  writeDesign,
+} from "./designs.js"
 import {
   abortAgentSession,
   clearAgentPromptQueue,
@@ -239,6 +247,18 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(
     CHANNELS.designs.import,
     (_event, args: { sessionCwd: string; filePaths: string[] }) => importDesigns(args),
+  )
+  ipcMain.handle(
+    CHANNELS.designs.write,
+    (_event, args: { sessionCwd: string; filename: string; html: string }) => writeDesign(args),
+  )
+  ipcMain.handle(
+    CHANNELS.designs.rename,
+    (_event, args: { sessionCwd: string; from: string; to: string }) => renameDesign(args),
+  )
+  ipcMain.handle(
+    CHANNELS.designs.duplicate,
+    (_event, args: { sessionCwd: string; filename: string }) => duplicateDesign(args),
   )
 
   ipcMain.handle(CHANNELS.project.listFiles, (_event, args: { sessionCwd: string }) =>
