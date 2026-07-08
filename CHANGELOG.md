@@ -5,6 +5,26 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-07-08
+
+### Added
+
+- **Editable Screens**: Edit any screen's HTML directly in the app with inline validation, and Rename or Duplicate screens from the canvas context menu. Renaming a legacy `screens/` file migrates it into `.designs/`. Manual edits are disabled while Pi is actively writing.
+- **Import HTML**: Bring existing HTML mockups onto the canvas via the new Import control or by dropping `.html` files onto the canvas, with filename de-collision, size limits, and path sanitization.
+- **Recent Chats**: The project landing page now lists your five most recently updated chats for one-click re-entry.
+- **Prompt History Recall**: Press ArrowUp in an empty composer to recall previously sent prompts and cycle through per-session history.
+- **One-Click Legacy Import**: The "Old sessions found" notice now offers "Import all", registering every legacy session folder as a project — read-only on legacy data and safe to re-run.
+
+### Fixed
+
+- **Error Recovery**: Runtime errors no longer take over the full screen; startup failures offer an in-place retry and session errors stay visible inline.
+- **Pi Session Lifecycle**: Sessions no longer leak on close, the app shuts Pi down cleanly on quit, and agent questions route to the correct session.
+- **Canvas Event Leaks**: Selecting code in the screen editor no longer spuriously adds the screen to chat, and pressing Enter in inputs no longer triggers element editing.
+
+### Changed
+
+- **Workspace Health**: Real ESLint across desktop and shared packages, React pinned via the workspace catalog, Turbo now caches the Electron bundle correctly, and dead IPC surfaces plus phantom workspace packages were removed.
+
 ## [0.7.2] - 2026-06-06
 
 ### Added
