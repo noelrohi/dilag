@@ -188,7 +188,8 @@ export function CodeViewerDialog({
           <div className="px-4 py-2 border-b bg-destructive/5 space-y-1">
             {violations.map((violation, index) => (
               <p key={index} className="text-xs text-destructive">
-                <span className="font-medium">{violation.rule}</span>: {violation.snippet}
+                <span className="font-medium">{violation.rule}</span>:{" "}
+                <span>{violation.snippet}</span>
               </p>
             ))}
           </div>
