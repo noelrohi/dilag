@@ -3,7 +3,12 @@ import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { registerThemeHandlers } from "./ipc/theme.js"
 import { registerZoomHandlers } from "./ipc/zoom.js"
-import { getBootstrapPort, initializeHost, registerHostHandlers } from "./ipc/host.js"
+import {
+  getBootstrapPort,
+  initializeHost,
+  registerHostHandlers,
+  shutdownHost,
+} from "./ipc/host.js"
 import { setupApplicationMenu } from "./menu.js"
 import { CHANNELS } from "./shared/channels.js"
 import type { NativeMenuContext, NativeMenuState } from "@dilag/desktop-bridge"
@@ -237,6 +242,12 @@ app.whenReady().then(async () => {
     applicationMenu?.setState(nextState)
   })
   return createWindow()
+})
+
+// Fire-and-forget so a hung stop cannot deadlock quit; stopAgentRuntime aborts
+// each session's in-flight work and disposes it.
+app.on("before-quit", () => {
+  void shutdownHost()
 })
 
 app.on("window-all-closed", () => {

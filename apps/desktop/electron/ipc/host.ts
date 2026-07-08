@@ -27,6 +27,7 @@ import {
   navigateAgentTree,
   promptAgentSession,
   rejectAgentQuestion,
+  releaseAgentSessionsForDirectory,
   renameAgentSession,
   replyAgentQuestion,
   restartAgentRuntime,
@@ -52,6 +53,7 @@ import {
   createProject,
   dismissLegacySessionsNotice,
   getLegacySessionsNotice,
+  getProjectById,
   listProjects,
   removeProject,
   touchProject,
@@ -60,6 +62,12 @@ import {
 
 export function initializeHost() {
   return startAgentRuntime()
+}
+
+// Called from the main process `before-quit` hook. Fire-and-forget: it aborts
+// and disposes every live agent session so in-flight work stops on quit.
+export function shutdownHost(): Promise<void> {
+  return stopAgentRuntime()
 }
 
 export function getBootstrapPort() {
@@ -199,9 +207,13 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.projects.update, (_event, args: Parameters<typeof updateProject>[0]) =>
     updateProject(args),
   )
-  ipcMain.handle(CHANNELS.projects.remove, (_event, args: Parameters<typeof removeProject>[0]) =>
-    removeProject(args),
-  )
+  ipcMain.handle(CHANNELS.projects.remove, (_event, args: Parameters<typeof removeProject>[0]) => {
+    // Release any live runtime sessions rooted at the project before its row is
+    // deleted, so eviction does not depend on the project still existing.
+    const project = getProjectById(args.id)
+    if (project) releaseAgentSessionsForDirectory(project.path)
+    removeProject(args)
+  })
   ipcMain.handle(CHANNELS.projects.touch, (_event, args: Parameters<typeof touchProject>[0]) =>
     touchProject(args),
   )

@@ -64,6 +64,7 @@ type RuntimeSession = {
   cwd: string
   session: AgentSession
   unsubscribe: () => void
+  lastUsedAt: number
   activeMessageId?: string
   toolInputs: Map<string, unknown>
   toolMessageIds: Map<string, string>
@@ -92,6 +93,10 @@ type PiSessionTreeNode = {
 
 const sessions = new Map<string, RuntimeSession>()
 const pendingQuestions = new Map<string, PendingQuestion>()
+// Live Pi runtime sessions are memory- and event-heavy; keep only the most
+// recently used idle ones resident. Streaming or question-blocked sessions are
+// never evicted (they are transparently re-opened from disk on next access).
+const MAX_IDLE_RUNTIME_SESSIONS = 3
 const OAUTH_PROVIDER_IDS = new Set(["openai-codex", "github-copilot"])
 const STALE_DEFAULT_MODELS = new Set(["google/gemini-1.5-flash"])
 const PREFERRED_DEFAULT_MODELS = [
@@ -134,6 +139,7 @@ export async function stopAgentRuntime(): Promise<void> {
       runtime.unsubscribe()
       runtime.session.clearQueue()
       await runtime.session.abort().catch(() => undefined)
+      runtime.session.dispose()
     }),
   )
   sessions.clear()
@@ -584,6 +590,7 @@ async function ensureRuntimeSession(
 ): Promise<RuntimeSession> {
   const existing = sessions.get(sessionID)
   if (existing) {
+    existing.lastUsedAt = Date.now()
     await applyRuntimeModelOptions(existing, requestedModel, thinkingLevel)
     return existing
   }
@@ -596,6 +603,7 @@ async function ensureRuntimeSession(
   const { session } = await createPiSession(cwd, sessionManager, requestedModel, thinkingLevel)
   const runtime = bindRuntimeSession(session, cwd)
   sessions.set(runtime.id, runtime)
+  maybeEvictIdleSessions()
   return runtime
 }
 
@@ -671,6 +679,7 @@ function bindRuntimeSession(session: AgentSession, cwd: string): RuntimeSession 
     cwd,
     session,
     unsubscribe: () => undefined,
+    lastUsedAt: Date.now(),
     toolInputs: new Map(),
     toolMessageIds: new Map(),
     toolStates: new Map(),
@@ -696,7 +705,65 @@ export function releaseAgentSessionsForDirectory(cwd: string): void {
   const normalizedCwd = path.resolve(cwd)
   for (const [sessionID, runtime] of sessions) {
     if (path.resolve(runtime.cwd) !== normalizedCwd) continue
-    runtime.unsubscribe()
+    disposeRuntimeSession(runtime)
+    sessions.delete(sessionID)
+  }
+}
+
+function disposeRuntimeSession(runtime: RuntimeSession): void {
+  runtime.unsubscribe()
+  // `dispose()` removes all listeners and disconnects from the agent; it is the
+  // SDK's "completely done with this session" cleanup (see AgentSession d.ts).
+  runtime.session.dispose()
+}
+
+type EvictionCandidate = {
+  id: string
+  isStreaming: boolean
+  hasPendingQuestion: boolean
+  lastUsedAt: number
+}
+
+/**
+ * Pure eviction policy: given a snapshot of resident sessions, return the ids
+ * safe to evict. A session is evictable only when it is idle (not streaming),
+ * has no pending question blocked on it, and is not among the `keepN` most
+ * recently used sessions. Exported for unit testing.
+ */
+export function selectSessionsToEvict(candidates: EvictionCandidate[], keepN: number): string[] {
+  const byRecency = [...candidates].sort((a, b) => b.lastUsedAt - a.lastUsedAt)
+  const protectedIds = new Set(byRecency.slice(0, keepN).map((candidate) => candidate.id))
+  return byRecency
+    .filter(
+      (candidate) =>
+        !candidate.isStreaming &&
+        !candidate.hasPendingQuestion &&
+        !protectedIds.has(candidate.id),
+    )
+    .map((candidate) => candidate.id)
+}
+
+function maybeEvictIdleSessions(): void {
+  const pendingSessionIds = new Set<string>()
+  for (const pending of pendingQuestions.values()) {
+    pendingSessionIds.add(pending.request.sessionID)
+  }
+
+  const candidates: EvictionCandidate[] = Array.from(sessions.values()).map((runtime) => ({
+    id: runtime.id,
+    isStreaming: runtime.session.isStreaming,
+    hasPendingQuestion: pendingSessionIds.has(runtime.id),
+    lastUsedAt: runtime.lastUsedAt,
+  }))
+
+  for (const sessionID of selectSessionsToEvict(candidates, MAX_IDLE_RUNTIME_SESSIONS)) {
+    const runtime = sessions.get(sessionID)
+    if (!runtime) continue
+    // Guard again right before disposing: never kill an in-flight stream or a
+    // session parked on a pending question, even if state changed since the
+    // snapshot was taken above.
+    if (runtime.session.isStreaming || pendingSessionIds.has(sessionID)) continue
+    disposeRuntimeSession(runtime)
     sessions.delete(sessionID)
   }
 }
@@ -742,8 +809,8 @@ async function createQuestionTool(): Promise<ToolDefinition> {
     parameters: Type.Object({
       questions: Type.Array(QuestionSchema),
     }),
-    async execute(toolCallId, params, signal) {
-      const sessionId = findSessionIdForToolCall(toolCallId)
+    async execute(toolCallId, params, signal, _onUpdate, ctx) {
+      const sessionId = ctx.sessionManager.getSessionId()
       if (!sessionId) {
         return {
           content: [{ type: "text", text: "Question UI unavailable: session not found." }],
@@ -878,26 +945,8 @@ function waitForQuestionAnswer(
   })
 }
 
-function findSessionIdForToolCall(toolCallId: string): string | undefined {
-  for (const runtime of sessions.values()) {
-    if (
-      runtime.session.messages.some((message) =>
-        messageHasToolCall(message as PiMessage, toolCallId),
-      )
-    ) {
-      return runtime.id
-    }
-    if (runtime.session.isStreaming) return runtime.id
-  }
-  return sessions.values().next().value?.id
-}
-
-function messageHasToolCall(message: PiMessage, toolCallId: string): boolean {
-  if (!Array.isArray(message.content)) return false
-  return message.content.some((part) => part.type === "toolCall" && part.id === toolCallId)
-}
-
 function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent) {
+  runtime.lastUsedAt = Date.now()
   debugPiSessionEvent(runtime, event)
 
   if (
