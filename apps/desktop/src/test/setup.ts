@@ -63,7 +63,6 @@ const desktopBridgeMock: DesktopBridge = {
     copyBetweenSessions: vi.fn(),
     delete: vi.fn(),
     validateHtml: vi.fn(),
-    captureHtmlToImage: vi.fn(),
   },
   project: { listFiles: vi.fn(), readFile: vi.fn() },
   theme: { setTitlebarTheme: vi.fn() },

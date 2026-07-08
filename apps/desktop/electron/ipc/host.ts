@@ -70,10 +70,6 @@ export function shutdownHost(): Promise<void> {
   return stopAgentRuntime()
 }
 
-export function getBootstrapPort() {
-  return 0
-}
-
 export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   autoUpdater.autoDownload = false
   setAgentEventSender((channel, event) => getWindow()?.webContents.send(channel, event))
@@ -238,9 +234,6 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.designs.validateHtml, (_event, args: { html: string }) =>
     validateHtml(args.html),
   )
-  ipcMain.handle(CHANNELS.designs.captureHtmlToImage, () => {
-    throw new Error("Native capture not supported. Use html2canvas fallback.")
-  })
 
   ipcMain.handle(CHANNELS.project.listFiles, (_event, args: { sessionCwd: string }) =>
     listProjectFiles(args.sessionCwd),

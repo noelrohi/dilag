@@ -20,6 +20,7 @@ import type {
   AgentTreeNode,
   DesignFile,
   FileNode,
+  Violation,
   MenuEventId,
   NativeMenuState,
   Platform,
@@ -118,8 +119,7 @@ export interface DesktopBridge {
     loadForSession(args: { sessionCwd: string }): Promise<DesignFile[]>
     copyBetweenSessions(args: { sourceCwd: string; destCwd: string }): Promise<void>
     delete(args: { filePath: string }): Promise<void>
-    validateHtml(args: { html: string }): Promise<unknown>
-    captureHtmlToImage(args: { html: string }): Promise<unknown>
+    validateHtml(args: { html: string }): Promise<Violation[]>
   }
 
   project: {

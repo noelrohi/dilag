@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 import path from "node:path"
 import { registerThemeHandlers } from "./ipc/theme.js"
 import { registerZoomHandlers } from "./ipc/zoom.js"
-import { getBootstrapPort, initializeHost, registerHostHandlers, shutdownHost } from "./ipc/host.js"
+import { initializeHost, registerHostHandlers, shutdownHost } from "./ipc/host.js"
 import { setupApplicationMenu } from "./menu.js"
 import { CHANNELS } from "./shared/channels.js"
 import type { NativeMenuContext, NativeMenuState } from "@dilag/desktop-bridge"
@@ -156,8 +156,7 @@ async function waitForRendererSmokeState(timeoutMs = 10_000): Promise<SmokeRepor
 }
 
 async function createWindow() {
-  const additionalArguments = [`--dilag-bootstrap-port=${getBootstrapPort()}`]
-  if (SMOKE_TEST) additionalArguments.push("--dilag-smoke-test")
+  const additionalArguments = SMOKE_TEST ? ["--dilag-smoke-test"] : []
 
   const smokeReport = SMOKE_TEST ? waitForSmokeReport() : null
 
@@ -179,8 +178,7 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      // Inject bootstrap values before any renderer script runs so
-      // window.__DILAG__ is set synchronously for legacy consumers.
+      // Inject runtime flags before any renderer script runs.
       additionalArguments,
     },
   })

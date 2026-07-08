@@ -63,7 +63,6 @@ export const CHANNELS = {
     copyBetweenSessions: "designs:copy-between-sessions",
     delete: "designs:delete",
     validateHtml: "designs:validate-html",
-    captureHtmlToImage: "designs:capture-html-to-image",
   },
   project: {
     listFiles: "project:list-files",
