@@ -3,29 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { bridge } from "@/lib/bridge"
 import { useSessionStore } from "@/context/session-store"
 import { isGeneratedScreenFile } from "@dilag/desktop-bridge"
+import type { DesignFile, Violation, ViolationRule } from "@dilag/desktop-bridge"
 
-export type ViolationRule =
-  | "keyframes"
-  | "initial_opacity_zero"
-  | "real_url"
-  | "emoji_as_icon"
-  | "animation_css"
-  | "decorative_animation"
-
-export interface Violation {
-  rule: ViolationRule
-  snippet: string
-}
-
-export interface DesignFile {
-  filename: string
-  file_path: string
-  title: string
-  screen_type: string
-  html: string
-  modified_at: number
-  violations: Violation[]
-}
+export type { DesignFile, Violation, ViolationRule }
 
 async function loadSessionDesigns(sessionCwd: string): Promise<DesignFile[]> {
   return bridge.designs.loadForSession({ sessionCwd })
