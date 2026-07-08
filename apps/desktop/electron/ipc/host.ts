@@ -7,7 +7,7 @@ import {
   type UpdateDownloadEvent,
 } from "@dilag/desktop-bridge"
 import { isNewerAppVersion } from "../../src/lib/version.js"
-import { copyHtmlFiles, loadDesignsForSession, validateHtml } from "./designs.js"
+import { copyHtmlFiles, importDesigns, loadDesignsForSession, validateHtml } from "./designs.js"
 import {
   abortAgentSession,
   clearAgentPromptQueue,
@@ -236,6 +236,10 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
   ipcMain.handle(CHANNELS.designs.validateHtml, (_event, args: { html: string }) =>
     validateHtml(args.html),
   )
+  ipcMain.handle(
+    CHANNELS.designs.import,
+    (_event, args: { sessionCwd: string; filePaths: string[] }) => importDesigns(args),
+  )
 
   ipcMain.handle(CHANNELS.project.listFiles, (_event, args: { sessionCwd: string }) =>
     listProjectFiles(args.sessionCwd),
@@ -285,6 +289,22 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
       : await dialog.showOpenDialog({ properties: ["openDirectory", "createDirectory"] })
     return result.canceled ? null : (result.filePaths[0] ?? null)
   })
+  ipcMain.handle(
+    CHANNELS.dialog.openFiles,
+    async (_event, options?: Electron.OpenDialogOptions) => {
+      const dialogOptions: Electron.OpenDialogOptions = {
+        title: "Import HTML files",
+        filters: [{ name: "HTML files", extensions: ["html", "htm"] }],
+        ...options,
+        properties: ["openFile", "multiSelections"],
+      }
+      const window = getWindow()
+      const result = window
+        ? await dialog.showOpenDialog(window, dialogOptions)
+        : await dialog.showOpenDialog(dialogOptions)
+      return result.canceled ? null : result.filePaths
+    },
+  )
   ipcMain.handle(CHANNELS.shell.openExternal, (_event, url: string) => shell.openExternal(url))
   ipcMain.handle(CHANNELS.shell.openPath, async (_event, filePath: string) => {
     const error = await shell.openPath(filePath)

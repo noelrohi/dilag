@@ -1,4 +1,13 @@
-import { useCallback, useMemo, useEffect, useRef, type MouseEvent as ReactMouseEvent } from "react"
+import {
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   ReactFlow,
   SelectionMode,
@@ -15,15 +24,18 @@ import "@xyflow/react/dist/style.css"
 
 import { ScreenNode, type ScreenNodeData } from "./screen-node"
 import { CanvasControls } from "./canvas-controls"
-import type { DesignFile } from "@/hooks/use-designs"
+import { designKeys, type DesignFile } from "@/hooks/use-designs"
 import type { ElementInfo } from "@/context/element-selection-store"
+import { useSessionStore } from "@/context/session-store"
 import {
   getAutoScreenPositions,
   reconcileScreenPositions,
   type ScreenPosition,
 } from "@/lib/screen-layout"
 import { resolveDesignPlatform } from "@/lib/design-viewport"
+import { bridge } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 export type { ScreenPosition } from "@/lib/screen-layout"
 
@@ -62,6 +74,8 @@ function DesignCanvasInner({
   className,
 }: DesignCanvasProps) {
   const { getNodes } = useReactFlow()
+  const queryClient = useQueryClient()
+  const [isDragImportActive, setIsDragImportActive] = useState(false)
 
   // Convert designs and persisted ScreenPosition[] to React Flow nodes. The
   // layout module reconciles missing persisted positions so available HTML
@@ -198,6 +212,72 @@ function DesignCanvasInner({
     onPositionsChange(getAutoScreenPositions({ designs, platform }))
   }, [designs, onPositionsChange, platform])
 
+  const handleImportFiles = useCallback(
+    async (filePaths: string[]) => {
+      if (!sessionCwd || filePaths.length === 0) return
+
+      const result = await bridge.designs.import({ sessionCwd, filePaths })
+      if (result.imported > 0) {
+        useSessionStore.getState().bumpDesignRefresh()
+        await queryClient.invalidateQueries({ queryKey: designKeys.session(sessionCwd) })
+        toast.success(
+          result.imported === 1 ? "Imported 1 screen" : `Imported ${result.imported} screens`,
+        )
+      }
+
+      if (result.rejected.length > 0) {
+        const description = result.rejected
+          .slice(0, 3)
+          .map(
+            (rejection) =>
+              `${rejection.path.split(/[\\/]/).pop() ?? rejection.path}: ${rejection.reason}`,
+          )
+          .join("\n")
+        toast.error(
+          result.rejected.length === 1
+            ? "Failed to import 1 file"
+            : `Failed to import ${result.rejected.length} files`,
+          { description },
+        )
+      }
+    },
+    [queryClient, sessionCwd],
+  )
+
+  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    if (!Array.from(event.dataTransfer.items).some((item) => item.kind === "file")) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "copy"
+    setIsDragImportActive(true)
+  }, [])
+
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      const htmlFiles = Array.from(event.dataTransfer.files).filter((file) =>
+        /\.html?$/i.test(file.name),
+      )
+      if (htmlFiles.length === 0) {
+        setIsDragImportActive(false)
+        return
+      }
+
+      event.preventDefault()
+      setIsDragImportActive(false)
+
+      const filePaths = htmlFiles
+        .map((file) => bridge.dialog.getPathForFile(file))
+        .filter((filePath) => filePath.length > 0)
+
+      if (filePaths.length === 0) {
+        toast.error("Unable to access dropped file paths")
+        return
+      }
+
+      void handleImportFiles(filePaths)
+    },
+    [handleImportFiles],
+  )
+
   const dotPatternStyle = {
     backgroundImage: "radial-gradient(var(--canvas-dot-color) 1px, transparent 1px)",
     backgroundSize: "24px 24px",
@@ -210,6 +290,9 @@ function DesignCanvasInner({
         className,
       )}
       style={dotPatternStyle}
+      onDragLeave={() => setIsDragImportActive(false)}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <ReactFlow
         nodes={nodes}
@@ -240,7 +323,17 @@ function DesignCanvasInner({
       />
 
       {/* Controls rendered outside ReactFlow to ensure they're clickable */}
-      <CanvasControls onAutoPosition={designs.length > 0 ? handleAutoPosition : undefined} />
+      <CanvasControls
+        onAutoPosition={designs.length > 0 ? handleAutoPosition : undefined}
+        onImportFiles={sessionCwd ? handleImportFiles : undefined}
+      />
+      {isDragImportActive && (
+        <div className="pointer-events-none absolute inset-4 z-40 flex items-center justify-center rounded-xl border-2 border-dashed border-primary/60 bg-background/70 backdrop-blur-sm">
+          <div className="rounded-lg bg-popover px-4 py-2 text-sm font-medium text-foreground shadow-lg">
+            Drop HTML files to import
+          </div>
+        </div>
+      )}
     </div>
   )
 }

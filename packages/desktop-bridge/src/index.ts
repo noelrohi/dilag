@@ -20,9 +20,11 @@ import type {
   AgentTreeNode,
   DesignFile,
   FileNode,
+  ImportDesignsResult,
   Violation,
   MenuEventId,
   NativeMenuState,
+  OpenFilesOptions,
   Platform,
   ProjectMeta,
   SaveDialogOptions,
@@ -126,6 +128,8 @@ export interface DesktopBridge {
     copyBetweenSessions(args: { sourceCwd: string; destCwd: string }): Promise<void>
     delete(args: { filePath: string }): Promise<void>
     validateHtml(args: { html: string }): Promise<Violation[]>
+    // Exposed to renderer call sites as bridge.designs.import.
+    import(args: { sessionCwd: string; filePaths: string[] }): Promise<ImportDesignsResult>
   }
 
   project: {
@@ -166,6 +170,8 @@ export interface DesktopBridge {
   dialog: {
     save(options: SaveDialogOptions): Promise<string | null>
     openDirectory(): Promise<string | null>
+    openFiles(options?: OpenFilesOptions): Promise<string[] | null>
+    getPathForFile(file: File): string
   }
 
   shell: {
@@ -206,9 +212,11 @@ export type {
   AgentTreeNode,
   DesignFile,
   FileNode,
+  ImportDesignsResult,
   MenuEventId,
   NativeMenuContext,
   NativeMenuState,
+  OpenFilesOptions,
   ProjectMeta,
   SaveDialogOptions,
   SessionMeta,

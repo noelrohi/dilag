@@ -64,6 +64,7 @@ export const CHANNELS = {
     copyBetweenSessions: "designs:copy-between-sessions",
     delete: "designs:delete",
     validateHtml: "designs:validate-html",
+    import: "designs:import",
   },
   project: {
     listFiles: "project:list-files",
@@ -95,6 +96,7 @@ export const CHANNELS = {
   dialog: {
     save: "dialog:save",
     openDirectory: "dialog:open-directory",
+    openFiles: "dialog:open-files",
   },
   shell: {
     openExternal: "shell:open-external",

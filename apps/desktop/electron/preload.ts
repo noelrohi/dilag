@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron"
+import { contextBridge, ipcRenderer, webUtils } from "electron"
 import type { DesktopBridge } from "@dilag/desktop-bridge"
 import { CHANNELS } from "./shared/channels.js"
 
@@ -85,6 +85,7 @@ const bridge: DesktopBridge = {
     copyBetweenSessions: (args) => ipcRenderer.invoke(CHANNELS.designs.copyBetweenSessions, args),
     delete: (args) => ipcRenderer.invoke(CHANNELS.designs.delete, args),
     validateHtml: (args) => ipcRenderer.invoke(CHANNELS.designs.validateHtml, args),
+    import: (args) => ipcRenderer.invoke(CHANNELS.designs.import, args),
   },
   project: {
     listFiles: (args) => ipcRenderer.invoke(CHANNELS.project.listFiles, args),
@@ -116,6 +117,8 @@ const bridge: DesktopBridge = {
   dialog: {
     save: (options) => ipcRenderer.invoke(CHANNELS.dialog.save, options),
     openDirectory: () => ipcRenderer.invoke(CHANNELS.dialog.openDirectory),
+    openFiles: (options) => ipcRenderer.invoke(CHANNELS.dialog.openFiles, options),
+    getPathForFile: (file) => webUtils.getPathForFile(file),
   },
   shell: {
     openExternal: (url) => ipcRenderer.invoke(CHANNELS.shell.openExternal, url),
