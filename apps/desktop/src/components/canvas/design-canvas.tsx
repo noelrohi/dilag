@@ -219,7 +219,14 @@ function DesignCanvasInner({
 
   // Handle node double-click - trigger capture and add to composer
   const handleNodeDoubleClick: NodeMouseHandler = useCallback(
-    (_event, node) => {
+    (event, node) => {
+      // Dialogs rendered by node components (code editor, rename) are portaled
+      // to <body>, but their React synthetic events still bubble here through
+      // the React tree. Only treat double-clicks physically inside the node as
+      // add-to-chat — double-clicking a word in the code editor is not one.
+      const wrapper = event.currentTarget as HTMLElement | null
+      if (wrapper && event.target instanceof Node && !wrapper.contains(event.target)) return
+
       const nodeData = node.data as ScreenNodeData
       if (nodeData.design && onCaptureScreen) {
         onCaptureScreen(nodeData.design)

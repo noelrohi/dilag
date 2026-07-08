@@ -131,6 +131,13 @@ export function CodeViewerDialog({
       <DialogContent
         className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0"
         showCloseButton={false}
+        // This dialog is rendered by canvas screen nodes; without these stops,
+        // its mouse events bubble (through the portal, along the React tree)
+        // into React Flow's node handlers — e.g. double-click-to-select-text
+        // became "add screen to chat".
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/30">
           <DialogTitle className="text-sm font-medium truncate">{title}</DialogTitle>

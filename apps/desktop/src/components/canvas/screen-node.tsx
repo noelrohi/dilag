@@ -26,6 +26,7 @@ import { copyFilePath, copyToClipboard, downloadHtml, exportAsPng } from "@/lib/
 import { CodeViewerDialog } from "@/components/blocks/dialogs/dialog-code-viewer"
 import { ScreenNameDialog } from "@/components/blocks/dialogs/dialog-screen-name"
 import { injectInspector, type ElementInspectorMessage } from "@/lib/element-inspector"
+import { isEditableShortcutTarget } from "@/lib/shortcut-target"
 import { useElementSelectionStore, type ElementInfo } from "@/context/element-selection-store"
 import { ElementHighlight } from "./element-highlight"
 import { ElementSelectionMenu } from "./element-selection-menu"
@@ -172,6 +173,9 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Only handle if this screen has the selected element
       if (selectedElement?.screenId !== id) return
+      // Ignore keys typed into inputs/textareas (chat composer, code editor,
+      // rename dialog) — Enter there must not trigger element editing.
+      if (event.defaultPrevented || isEditableShortcutTarget(event.target)) return
 
       if (event.key === "Escape") {
         event.preventDefault()

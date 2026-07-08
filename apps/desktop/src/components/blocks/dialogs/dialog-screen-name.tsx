@@ -37,7 +37,15 @@ export function ScreenNameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent
+        className="sm:max-w-[400px]"
+        // Rendered by canvas screen nodes — stop mouse events from bubbling
+        // (through the portal, along the React tree) into React Flow's node
+        // handlers. See dialog-code-viewer.tsx for the original bug.
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

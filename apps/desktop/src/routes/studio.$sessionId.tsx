@@ -67,6 +67,7 @@ import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen
 import { toast } from "sonner"
 import { bridge } from "@/lib/bridge"
 import { findMissingScreenPositions } from "@/lib/screen-layout"
+import { isEditableShortcutTarget } from "@/lib/shortcut-target"
 import { getCanonicalGeneratedScreenPath } from "@dilag/desktop-bridge"
 
 export const Route = createFileRoute("/studio/$sessionId")({
@@ -76,15 +77,6 @@ export const Route = createFileRoute("/studio/$sessionId")({
 interface DeleteTarget {
   filename: string
   title: string
-}
-
-function isEditableShortcutTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false
-  return Boolean(
-    target.closest(
-      'input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"]',
-    ),
-  )
 }
 
 function StudioRoutePage() {
