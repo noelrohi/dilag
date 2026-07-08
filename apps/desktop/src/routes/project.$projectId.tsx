@@ -12,6 +12,7 @@ import {
   usePromptInputController,
 } from "@/components/ai-elements/prompt-input"
 import { PageHeader } from "@/components/blocks/layout/page-header"
+import { RecentSessions } from "@/components/blocks/layout/recent-sessions"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
@@ -45,7 +46,7 @@ function ProjectComposerPage() {
   })
   const { data: projects = [], isLoading: isLoadingProjects } = useProjectsList()
   const { touchProject } = useProjectMutations()
-  const { createSessionInProject, isServerReady } = useSessions()
+  const { createSessionInProject, isServerReady, sessions } = useSessions()
   const { rememberProject, submitProjectComposer } = useNewDesignFlow({
     projects,
     touchProject,
@@ -133,6 +134,8 @@ function ProjectComposerPage() {
                 projectPath={project.path}
               />
             </PromptInputProvider>
+
+            <RecentSessions sessions={sessions} projectId={project.id} />
           </div>
         </div>
       </main>
