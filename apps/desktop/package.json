@@ -1,7 +1,7 @@
 {
   "name": "@dilag/desktop",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "AI-powered design studio for mobile and web app prototypes.",
   "author": "Noel Garcia",
   "type": "module",
@@ -72,7 +72,7 @@
   "dependencies": {
     "@dilag/desktop-bridge": "workspace:*",
     "@dilag/ui": "workspace:*",
-    "@earendil-works/pi-coding-agent": "^0.75.5",
+    "@earendil-works/pi-coding-agent": "^0.80.6",
     "@pierre/diffs": "^1.0.4",
     "@tabler/icons-react": "catalog:",
     "@tailwindcss/vite": "^4.1.18",
