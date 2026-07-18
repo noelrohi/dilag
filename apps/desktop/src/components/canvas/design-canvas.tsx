@@ -313,7 +313,7 @@ function DesignCanvasInner({
   return (
     <div
       className={cn(
-        "w-full h-full relative bg-muted/20 [--canvas-dot-color:oklch(0.22_0.015_55_/_0.16)] dark:[--canvas-dot-color:rgba(240,240,245,0.15)]",
+        "w-full h-full relative border-l border-border bg-muted/20 [--canvas-dot-color:oklch(0.22_0.015_55_/_0.16)] dark:[--canvas-dot-color:rgba(240,240,245,0.15)]",
         className,
       )}
       style={dotPatternStyle}

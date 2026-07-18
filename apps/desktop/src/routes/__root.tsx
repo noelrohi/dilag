@@ -60,7 +60,7 @@ function RootLayout() {
             <SidebarMenuEventBridge />
             <AppSidebar />
             <PersistentSidebarTrigger />
-            <SidebarInset className="min-h-0 overflow-hidden border-l border-border bg-background">
+            <SidebarInset className="min-h-0 overflow-hidden rounded-tl-none border-l border-border bg-background md:peer-data-[variant=inset]:rounded-tl-none">
               <Outlet />
             </SidebarInset>
           </SidebarProvider>

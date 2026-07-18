@@ -38,11 +38,14 @@ import {
   IconGitBranch as BranchingPathsUp,
   IconPencil as Pen,
   IconPalette as Palette,
-  IconPlayerPlay as Play,
   IconDownload as Download,
+  IconFolder as Folder,
   IconChevronDown as AltArrowDown,
   IconCode as Code,
   IconPhoto as Gallery,
+  IconLayoutSidebarRight as SidebarRight,
+  IconArrowsDiagonal as ArrowsExpand,
+  IconArrowsDiagonalMinimize2 as ArrowsCollapse,
 } from "@tabler/icons-react"
 import { IconDots as Ellipsis } from "@tabler/icons-react"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
@@ -60,12 +63,12 @@ import {
   exportImages,
   exportImagesAndHtml,
 } from "@/lib/design-export"
-import { PreviewCarousel } from "@/components/blocks/preview/preview-carousel"
 import { AttachmentBridgeProvider } from "@/context/attachment-bridge"
 import { useMenuEvents } from "@/context/menu-events"
 import { ScreenCaptureProvider, useScreenCaptureContext } from "@/context/screen-capture-context"
 import { toast } from "sonner"
 import { bridge } from "@/lib/bridge"
+import { cn } from "@/lib/utils"
 import { findMissingScreenPositions } from "@/lib/screen-layout"
 import { isEditableShortcutTarget } from "@/lib/shortcut-target"
 import { getCanonicalGeneratedScreenPath } from "@dilag/desktop-bridge"
@@ -96,10 +99,12 @@ export function StudioPageContent({
   const [renameOpen, setRenameOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [deleteTargets, setDeleteTargets] = useState<DeleteTarget[]>([])
-  const [previewOpen, setPreviewOpen] = useState(false)
+  const [canvasOpen, setCanvasOpen] = useState(true)
+  const [chatCollapsed, setChatCollapsed] = useState(false)
   const [selectedScreenIds, setSelectedScreenIds] = useState<Set<string>>(new Set())
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null)
+  const canvasPanelRef = useRef<ImperativePanelHandle>(null)
   const { size: chatSize, updateSize, minSize } = useChatWidth()
   const { registerChatToggle } = useMenuEvents()
 
@@ -140,9 +145,37 @@ export function StudioPageContent({
     selectSession(sessionId)
   }, [sessionId, selectSession])
 
+  // Animate panel sizes only for button/menu toggles, never while dragging the
+  // handle — a transition during drag would make resizing feel laggy.
+  const [isPanelAnimating, setIsPanelAnimating] = useState(false)
+  const panelAnimationTimeout = useRef<number | null>(null)
+
+  const animatePanels = useCallback(() => {
+    setIsPanelAnimating(true)
+    if (panelAnimationTimeout.current) {
+      window.clearTimeout(panelAnimationTimeout.current)
+    }
+    panelAnimationTimeout.current = window.setTimeout(() => setIsPanelAnimating(false), 300)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (panelAnimationTimeout.current) {
+        window.clearTimeout(panelAnimationTimeout.current)
+      }
+    },
+    [],
+  )
+
+  const panelAnimationClass = isPanelAnimating
+    ? "transition-[flex-grow] duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
+    : undefined
+
   const toggleChatPanel = useCallback(() => {
     const panel = chatPanelRef.current
     if (!panel) return
+
+    animatePanels()
 
     if (panel.isCollapsed()) {
       panel.expand(minSize)
@@ -150,12 +183,59 @@ export function StudioPageContent({
       return
     }
 
+    // Collapsing the chat while the canvas is hidden would leave an empty window.
+    if (!canvasOpen) return
+
     const currentSize = panel.getSize()
     if (currentSize > 0) {
       updateSize(currentSize)
     }
     panel.collapse()
-  }, [chatSize, minSize, updateSize])
+  }, [chatSize, minSize, updateSize, canvasOpen, animatePanels])
+
+  const toggleCanvasPanel = useCallback(() => {
+    const canvasPanel = canvasPanelRef.current
+    if (!canvasPanel) return
+
+    animatePanels()
+
+    if (canvasOpen) {
+      const chatPanel = chatPanelRef.current
+      if (chatPanel?.isCollapsed()) {
+        chatPanel.expand(minSize)
+      }
+      canvasPanel.collapse()
+      return
+    }
+
+    const nextChatSize = Math.min(Math.max(chatSize, minSize), 50)
+    canvasPanel.expand(100 - nextChatSize)
+    requestAnimationFrame(() => canvasPanel.resize(100 - nextChatSize))
+  }, [canvasOpen, chatSize, minSize, animatePanels])
+
+  // Expand the canvas to full width (collapsing the chat), or restore the chat.
+  const toggleExpandCanvas = useCallback(() => {
+    const chatPanel = chatPanelRef.current
+    const canvasPanel = canvasPanelRef.current
+    if (!chatPanel || !canvasPanel) return
+
+    animatePanels()
+
+    if (chatPanel.isCollapsed()) {
+      chatPanel.expand(minSize)
+      requestAnimationFrame(() => chatPanel.resize(Math.max(Math.min(chatSize, 50), minSize)))
+      return
+    }
+
+    const currentSize = chatPanel.getSize()
+    if (currentSize > 0) {
+      updateSize(currentSize)
+    }
+    if (canvasPanel.isCollapsed()) {
+      canvasPanel.expand()
+    }
+    chatPanel.collapse()
+  }, [chatSize, minSize, updateSize, animatePanels])
 
   useEffect(() => registerChatToggle(toggleChatPanel), [registerChatToggle, toggleChatPanel])
 
@@ -382,8 +462,8 @@ export function StudioPageContent({
         setSelectedScreenIds(new Set(designs.map((d) => d.filename)))
       }
 
-      // Escape: Clear selection (only when preview is not open)
-      if (e.key === "Escape" && !previewOpen) {
+      // Escape: Clear selection
+      if (e.key === "Escape") {
         setSelectedScreenIds(new Set())
       }
 
@@ -408,177 +488,232 @@ export function StudioPageContent({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [designs, selectedScreenIds, previewOpen])
+  }, [designs, selectedScreenIds])
 
   return (
     <AttachmentBridgeProvider>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-        <PageHeader>
-          <PageHeaderLeft>
-            <span className="text-sm font-medium truncate max-w-[200px]">
-              {currentSession?.name ?? "Untitled chat"}
-            </span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Session actions"
-                  className="flex items-center justify-center size-6 hover:bg-muted rounded"
-                >
-                  <Ellipsis size={16} className="text-muted-foreground" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setNewName(currentSession?.name ?? "")
-                    setRenameOpen(true)
-                  }}
-                >
-                  <Pen size={16} className="mr-2" />
-                  Rename
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleForkSession}>
-                  <BranchingPathsUp size={16} className="mr-2" />
-                  Fork to new session
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => currentSession?.cwd && copyFilePath(currentSession.cwd)}
-                  disabled={!currentSession?.cwd}
-                >
-                  <Copy size={16} className="mr-2" />
-                  Copy project path
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (currentSession?.id) {
-                      navigator.clipboard.writeText(currentSession.id)
-                      toast.success("Session ID copied to clipboard")
-                    }
-                  }}
-                  disabled={!currentSession?.id}
-                >
-                  <Copy size={16} className="mr-2" />
-                  Copy chat ID
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </PageHeaderLeft>
-
-          <PageHeaderRight>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="size-7"
-                  onClick={() => setPreviewOpen(true)}
-                  disabled={designs.length === 0}
-                  aria-label="Preview designs"
-                >
-                  <Play size={14} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Preview</TooltipContent>
-            </Tooltip>
-            <ButtonGroup>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className="size-7"
-                onClick={() => handleExportDesigns("html")}
-                disabled={designs.length === 0}
-                aria-label="Export HTML"
-              >
-                <Download size={14} />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    className="size-7 px-0"
-                    disabled={designs.length === 0}
-                    aria-label="Export options"
-                  >
-                    <AltArrowDown size={14} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-max">
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      className="whitespace-nowrap"
-                      onClick={() => handleExportDesigns("png")}
-                    >
-                      <Gallery size={16} />
-                      Export PNG
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="whitespace-nowrap"
-                      onClick={() => handleExportDesigns("pngAndHtml")}
-                    >
-                      <Code size={16} />
-                      Export PNG + HTML
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ButtonGroup>
-          </PageHeaderRight>
-        </PageHeader>
-
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-background">
         {/* Main content */}
         <ResizablePanelGroup
           direction="horizontal"
           className="flex-1 min-h-0 overflow-hidden"
           onLayout={(sizes) => {
-            if (sizes[0] > 0) {
+            if (canvasOpen && sizes.length > 1 && sizes[0] > 0) {
               updateSize(sizes[0])
             }
           }}
         >
-          {/* Chat pane - collapsible and resizable */}
+          {/* Chat pane - collapsible and resizable, owns the page header */}
           <ResizablePanel
+            id="chat"
+            order={1}
             ref={chatPanelRef}
-            defaultSize={chatSize}
+            defaultSize={Math.min(chatSize, 50)}
             minSize={minSize}
-            maxSize={50}
+            maxSize={100}
             collapsible
             collapsedSize={0}
-            className="overflow-hidden"
+            onCollapse={() => setChatCollapsed(true)}
+            onExpand={() => setChatCollapsed(false)}
+            className={cn("overflow-hidden", panelAnimationClass)}
           >
-            <div className="h-full min-h-0">
-              <ChatView />
+            <div className="flex h-full min-h-0 flex-col">
+              <PageHeader>
+                <PageHeaderLeft>
+                  <Folder size={14} className="shrink-0 text-muted-foreground" />
+                  <span className="text-sm font-medium truncate max-w-[200px]">
+                    {currentSession?.name ?? "Untitled chat"}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Session actions"
+                        className="flex items-center justify-center size-6 hover:bg-muted rounded"
+                      >
+                        <Ellipsis size={16} className="text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setNewName(currentSession?.name ?? "")
+                          setRenameOpen(true)
+                        }}
+                      >
+                        <Pen size={16} className="mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleForkSession}>
+                        <BranchingPathsUp size={16} className="mr-2" />
+                        Fork to new session
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => currentSession?.cwd && copyFilePath(currentSession.cwd)}
+                        disabled={!currentSession?.cwd}
+                      >
+                        <Copy size={16} className="mr-2" />
+                        Copy project path
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (currentSession?.id) {
+                            navigator.clipboard.writeText(currentSession.id)
+                            toast.success("Session ID copied to clipboard")
+                          }
+                        }}
+                        disabled={!currentSession?.id}
+                      >
+                        <Copy size={16} className="mr-2" />
+                        Copy chat ID
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </PageHeaderLeft>
+
+                {/* Reserve space for the pinned panel controls when the chat is full width. */}
+                <PageHeaderRight className={cn(!canvasOpen && "pr-16")}>
+                  <ButtonGroup>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      className="size-7"
+                      onClick={() => handleExportDesigns("html")}
+                      disabled={designs.length === 0}
+                      aria-label="Export HTML"
+                    >
+                      <Download size={14} />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="size-7 px-0"
+                          disabled={designs.length === 0}
+                          aria-label="Export options"
+                        >
+                          <AltArrowDown size={14} className="text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-max">
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem
+                            className="whitespace-nowrap"
+                            onClick={() => handleExportDesigns("png")}
+                          >
+                            <Gallery size={16} />
+                            Export PNG
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="whitespace-nowrap"
+                            onClick={() => handleExportDesigns("pngAndHtml")}
+                          >
+                            <Code size={16} />
+                            Export PNG + HTML
+                          </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </ButtonGroup>
+                </PageHeaderRight>
+              </PageHeader>
+
+              <div className="flex-1 min-h-0">
+                <ChatView />
+              </div>
             </div>
           </ResizablePanel>
 
-          <ResizableHandle />
+          <ResizableHandle disabled={!canvasOpen} className={canvasOpen ? undefined : "hidden"} />
 
-          {/* Canvas area */}
-          <ResizablePanel defaultSize={100 - chatSize} className="bg-muted/20 overflow-hidden">
-            {designs.length === 0 ? (
-              <CanvasEmptyState isLoading={isCanvasLoading} />
-            ) : (
-              <ScreenCaptureProvider platform={currentSession?.platform ?? "web"}>
-                <ConnectedCanvas
-                  designs={designs}
-                  platform={currentSession?.platform ?? "web"}
-                  positions={screenPositions}
-                  sessionCwd={currentSession?.cwd}
-                  selectedIds={selectedScreenIds}
-                  isLoading={isCanvasLoading}
-                  readOnlyDesigns={isSessionBusy}
-                  onPositionsChange={handlePositionsChange}
-                  onSelectionChange={setSelectedScreenIds}
-                  onDeleteScreen={handleRequestDelete}
-                  onRenameScreen={handleRenameScreen}
-                  onDuplicateScreen={handleDuplicateScreen}
-                  onDesignsMutated={handleDesignsMutated}
-                />
-              </ScreenCaptureProvider>
+          {/* Keep the panel registered while collapsed. Dynamically adding it back causes
+              react-resizable-panels to briefly resize against a stale one-panel layout. */}
+          <ResizablePanel
+            id="canvas"
+            order={2}
+            ref={canvasPanelRef}
+            defaultSize={100 - Math.min(chatSize, 50)}
+            minSize={50}
+            collapsible
+            collapsedSize={0}
+            onCollapse={() => setCanvasOpen(false)}
+            onExpand={() => setCanvasOpen(true)}
+            className={cn("overflow-hidden", panelAnimationClass)}
+          >
+            {canvasOpen && (
+              <div className="h-full min-h-0">
+                <div className="h-full min-h-0 overflow-hidden bg-muted/20">
+                  {designs.length === 0 ? (
+                    <CanvasEmptyState isLoading={isCanvasLoading} />
+                  ) : (
+                    <ScreenCaptureProvider platform={currentSession?.platform ?? "web"}>
+                      <ConnectedCanvas
+                        designs={designs}
+                        platform={currentSession?.platform ?? "web"}
+                        positions={screenPositions}
+                        sessionCwd={currentSession?.cwd}
+                        selectedIds={selectedScreenIds}
+                        isLoading={isCanvasLoading}
+                        readOnlyDesigns={isSessionBusy}
+                        onPositionsChange={handlePositionsChange}
+                        onSelectionChange={setSelectedScreenIds}
+                        onDeleteScreen={handleRequestDelete}
+                        onRenameScreen={handleRenameScreen}
+                        onDuplicateScreen={handleDuplicateScreen}
+                        onDesignsMutated={handleDesignsMutated}
+                      />
+                    </ScreenCaptureProvider>
+                  )}
+                </div>
+              </div>
             )}
           </ResizablePanel>
         </ResizablePanelGroup>
+
+        {/* Panel controls - pinned to the app's top-right corner */}
+        <div className="absolute top-0 right-3 z-40 flex h-[44px] items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className={cn(
+                  "size-7 text-muted-foreground hover:text-foreground",
+                  chatCollapsed && "bg-muted text-foreground",
+                )}
+                onClick={toggleExpandCanvas}
+                aria-label={chatCollapsed ? "Restore chat" : "Expand canvas"}
+                aria-pressed={chatCollapsed}
+              >
+                {chatCollapsed ? <ArrowsCollapse size={14} /> : <ArrowsExpand size={14} />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {chatCollapsed ? "Restore chat" : "Expand canvas"}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className={cn(
+                  "size-7 text-muted-foreground hover:text-foreground",
+                  canvasOpen && "bg-muted text-foreground",
+                )}
+                onClick={toggleCanvasPanel}
+                aria-label={canvasOpen ? "Hide canvas" : "Show canvas"}
+                aria-pressed={canvasOpen}
+              >
+                <SidebarRight size={14} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {canvasOpen ? "Hide canvas" : "Show canvas"}
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
         {/* Rename Dialog */}
         <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
@@ -639,18 +774,6 @@ export function StudioPageContent({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        {/* Preview Carousel */}
-        <PreviewCarousel
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-          designs={
-            selectedScreenIds.size > 0
-              ? designs.filter((d) => selectedScreenIds.has(d.filename))
-              : designs
-          }
-          platform={currentSession?.platform}
-        />
       </div>
     </AttachmentBridgeProvider>
   )
