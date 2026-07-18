@@ -1,8 +1,5 @@
 import { useEffect } from "react"
-import {
-  useProviderAttachments,
-  useProviderScreenRefs,
-} from "./prompt-input"
+import { useProviderAttachments, useProviderScreenRefs } from "./prompt-input"
 import { useOptionalAttachmentBridge } from "@/context/attachment-bridge"
 
 /**

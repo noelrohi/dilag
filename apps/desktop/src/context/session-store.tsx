@@ -323,7 +323,9 @@ function isTerminalToolStatus(status: ToolState["status"] | undefined): boolean 
 }
 
 function isInterruptedToolPart(part: MessagePart): boolean {
-  return part.type === "tool" && part.state?.status === "error" && part.state.error === "Interrupted"
+  return (
+    part.type === "tool" && part.state?.status === "error" && part.state.error === "Interrupted"
+  )
 }
 
 function shouldKeepExistingPart(existing: MessagePart, incoming: MessagePart): boolean {

@@ -302,10 +302,7 @@ describe("session-store", () => {
 
       const interrupted = useSessionStore.getState().parts[messageId]
       expect(interrupted.map((part) => part.state?.status)).toEqual(["error", "error"])
-      expect(interrupted.map((part) => part.state?.error)).toEqual([
-        "Interrupted",
-        "Interrupted",
-      ])
+      expect(interrupted.map((part) => part.state?.error)).toEqual(["Interrupted", "Interrupted"])
       expect(interrupted[0].state?.time?.start).toBe(1000)
       expect(interrupted[0].state?.time?.end).toEqual(expect.any(Number))
       expect(interrupted[1].state?.time?.start).toBe(interrupted[1].state?.time?.end)

@@ -1032,9 +1032,7 @@ describe("AssistantMessage work group integration", () => {
     // Reasoning stays collapsed behind the one-line summary until expanded.
     expect(screen.queryByText("First I inspect the project.")).not.toBeInTheDocument()
 
-    await user.click(
-      screen.getByRole("button", { name: /Explored 1 file and made 1 file change/ }),
-    )
+    await user.click(screen.getByRole("button", { name: /Explored 1 file and made 1 file change/ }))
 
     const first = screen.getByText("First I inspect the project.")
     const second = screen.getByText("Then I apply the edit.")

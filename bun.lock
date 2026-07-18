@@ -11,7 +11,7 @@
     },
     "apps/desktop": {
       "name": "@dilag/desktop",
-      "version": "0.8.5",
+      "version": "0.8.6",
       "dependencies": {
         "@dilag/desktop-bridge": "workspace:*",
         "@dilag/ui": "workspace:*",

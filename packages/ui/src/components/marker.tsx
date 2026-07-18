@@ -15,7 +15,7 @@ const markerVariants = cva(
         border: "border-b border-border pb-2",
       },
     },
-  }
+  },
 )
 
 function Marker({
@@ -44,10 +44,7 @@ function MarkerIcon({ className, ...props }: React.ComponentProps<"span">) {
     <span
       data-slot="marker-icon"
       aria-hidden="true"
-      className={cn(
-        "size-4 shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
-      )}
+      className={cn("size-4 shrink-0 [&_svg:not([class*='size-'])]:size-4", className)}
       {...props}
     />
   )
@@ -59,7 +56,7 @@ function MarkerContent({ className, ...props }: React.ComponentProps<"span">) {
       data-slot="marker-content"
       className={cn(
         "min-w-0 wrap-break-word group-data-[variant=separator]/marker:flex-none group-data-[variant=separator]/marker:text-center *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
-        className
+        className,
       )}
       {...props}
     />

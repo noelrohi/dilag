@@ -52,9 +52,7 @@ describe("ToolPart", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Ran xcodebuild test/ }))
 
-    expect(
-      screen.getByRole("button", { name: /Ran command.*Exit code 65/ }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Ran command.*Exit code 65/ })).toBeInTheDocument()
     expect(screen.getByText("Exit code 65")).toBeInTheDocument()
   })
 

@@ -85,7 +85,9 @@ describe("MessagePart", () => {
       />,
     )
 
-    expect(screen.getByRole("button", { name: /Asked question.*Mobile.*Success/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Asked question.*Mobile.*Success/ }),
+    ).toBeInTheDocument()
   })
 
   it("renders an interrupted question tool as a terminal row", () => {
@@ -104,6 +106,8 @@ describe("MessagePart", () => {
       />,
     )
 
-    expect(screen.getByRole("button", { name: /Interrupted.*Which format.*Interrupted/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Interrupted.*Which format.*Interrupted/ }),
+    ).toBeInTheDocument()
   })
 })
