@@ -71,6 +71,7 @@ type RuntimeSession = {
   toolMessageIds: Map<string, string>
   toolStates: Map<string, AgentToolState>
   changedFiles: Map<string, { file: string; additions: number; deletions: number }>
+  terminalError?: string
 }
 
 type PendingQuestion = {
@@ -342,6 +343,7 @@ export async function promptAgentSession(args: {
     args.model,
     args.thinkingLevel,
   )
+  runtime.terminalError = undefined
   emitSessionStatus(runtime.id, "running")
   debugPiSmoke("prompt.start", {
     sessionID: runtime.id,
@@ -970,7 +972,12 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
   ) {
     const phase =
       event.type === "message_start" ? "start" : event.type === "message_end" ? "end" : "update"
-    emitMessage(runtime, event.message as PiMessage, phase)
+    const message = event.message as PiMessage
+    emitMessage(runtime, message, phase)
+    if (phase === "end") {
+      const error = assistantErrorMessage(message)
+      if (error) runtime.terminalError = error
+    }
     return
   }
 
@@ -1017,7 +1024,12 @@ function handlePiSessionEvent(runtime: RuntimeSession, event: AgentSessionEvent)
 
   if (event.type === "agent_end") {
     runtime.activeMessageId = undefined
-    emitSessionIdle(runtime.id)
+    if (runtime.terminalError) {
+      emitSessionError(runtime.id, new Error(runtime.terminalError))
+      runtime.terminalError = undefined
+    } else {
+      emitSessionIdle(runtime.id)
+    }
     return
   }
 
@@ -1128,7 +1140,7 @@ function messageEntryToBridgeMessages(
         role: message.role,
         time: { created, completed: created },
       },
-      parts: messageParts(sessionID, messageID, message, toolStates),
+      parts: messageParts(sessionID, messageID, message, toolStates, true),
     },
   ]
 }
@@ -1138,8 +1150,15 @@ function messageParts(
   messageID: string,
   message: PiMessage,
   toolStates?: Map<string, AgentToolState>,
+  includeErrorFallback = false,
 ): AgentMessagePart[] {
   const content = normalizeContent(message.content)
+  const error = includeErrorFallback ? assistantErrorMessage(message) : undefined
+  if (content.length === 0 && error) {
+    return [
+      { id: `${messageID}:error`, messageID, sessionID, type: "text", text: `Error: ${error}` },
+    ]
+  }
   return content.flatMap((part, index): AgentMessagePart[] => {
     const id = `${messageID}:part:${index}`
     if (part.type === "text") {
@@ -1176,6 +1195,15 @@ function messageParts(
       },
     ]
   })
+}
+
+export function assistantErrorMessage(message: {
+  role: string
+  stopReason?: string
+  errorMessage?: string
+}): string | undefined {
+  if (message.role !== "assistant" || message.stopReason !== "error") return undefined
+  return message.errorMessage?.trim() || "The model request failed."
 }
 
 function trackToolMessageIds(runtime: RuntimeSession, messageID: string, message: PiMessage) {

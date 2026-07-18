@@ -9,7 +9,7 @@ vi.mock("electron", () => ({
   },
 }))
 
-import { selectSessionsToEvict } from "../../electron/ipc/pi.js"
+import { assistantErrorMessage, selectSessionsToEvict } from "../../electron/ipc/pi.js"
 
 type Candidate = Parameters<typeof selectSessionsToEvict>[0][number]
 
@@ -21,6 +21,25 @@ function candidate(overrides: Partial<Candidate> & Pick<Candidate, "id">): Candi
     ...overrides,
   }
 }
+
+describe("assistantErrorMessage", () => {
+  it("surfaces provider errors from terminal assistant messages", () => {
+    expect(
+      assistantErrorMessage({
+        role: "assistant",
+        stopReason: "error",
+        errorMessage: '401: {"type":"AuthError","message":"Invalid API key."}',
+      }),
+    ).toContain("Invalid API key")
+  })
+
+  it("ignores successful and non-assistant messages", () => {
+    expect(assistantErrorMessage({ role: "assistant", stopReason: "stop" })).toBeUndefined()
+    expect(
+      assistantErrorMessage({ role: "user", stopReason: "error", errorMessage: "ignored" }),
+    ).toBeUndefined()
+  })
+})
 
 describe("selectSessionsToEvict", () => {
   it("evicts idle sessions beyond the most-recently-used keepN", () => {
