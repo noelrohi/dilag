@@ -2,6 +2,7 @@ import { IconDownload, IconSquarePlus as AddSquare } from "@tabler/icons-react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@dilag/ui/button"
 import { SidebarTrigger, useSidebar } from "@dilag/ui/sidebar"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@dilag/ui/tooltip"
 import { useUpdaterContext } from "@/context/updater-context"
 import { useNewDesignFlow } from "@/features/new-design/use-new-design-flow"
 import { useProjectsList } from "@/hooks/use-projects"
@@ -27,36 +28,47 @@ export function PersistentSidebarTrigger() {
 
   return (
     <>
-      <SidebarTrigger
-        className={cn(
-          "fixed left-(--titlebar-control-left) top-(--titlebar-control-center-y) z-50 size-(--titlebar-control-size) -translate-y-1/2 rounded-md border border-transparent text-muted-foreground/75 shadow-none transition-[background-color,color,border-color] duration-150 ease-out hover:bg-accent hover:text-foreground [&>svg]:size-3.5",
-          "focus-visible:ring-2 focus-visible:ring-ring/50",
-          isCollapsed
-            ? "bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/55"
-            : "bg-sidebar/70 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground supports-[backdrop-filter]:bg-sidebar/55",
-        )}
-        aria-label="Toggle sidebar"
-      />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <SidebarTrigger
+            className={cn(
+              "fixed left-(--titlebar-control-left) top-(--titlebar-control-center-y) z-50 size-(--titlebar-control-size) -translate-y-1/2 rounded-md border border-transparent text-muted-foreground/75 shadow-none transition-[background-color,color,border-color] duration-150 ease-out hover:bg-accent hover:text-foreground [&>svg]:size-3.5",
+              "focus-visible:ring-2 focus-visible:ring-ring/50",
+              isCollapsed
+                ? "bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/55"
+                : "bg-sidebar/70 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground supports-[backdrop-filter]:bg-sidebar/55",
+            )}
+            aria-label={isCollapsed ? "Open sidebar" : "Close sidebar"}
+          />
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {isCollapsed ? "Open sidebar" : "Close sidebar"}
+        </TooltipContent>
+      </Tooltip>
       <AnimatePresence initial={false}>
         {isCollapsed && (
           <motion.div
             key="new-design-titlebar-button"
-            className="fixed left-(--titlebar-content-left) top-(--titlebar-control-center-y) z-50 size-(--titlebar-control-size) -translate-y-1/2"
+            className="fixed left-(--titlebar-content-left) top-(--titlebar-control-center-y) z-50 size-(--titlebar-control-size) -translate-y-1/2 after:pointer-events-none after:absolute after:-right-2 after:top-1/2 after:h-3.5 after:w-px after:-translate-y-1/2 after:bg-border"
             initial={{ opacity: 0, scale: 0.86, x: -6 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.86, x: -6 }}
             transition={titlebarButtonTransition}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className={titlebarIconButtonClass}
-              onClick={openNewDesign}
-              aria-label="New design"
-              title="New design"
-            >
-              <AddSquare />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={titlebarIconButtonClass}
+                  onClick={openNewDesign}
+                  aria-label="New design"
+                >
+                  <AddSquare />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">New design</TooltipContent>
+            </Tooltip>
           </motion.div>
         )}
       </AnimatePresence>
@@ -71,24 +83,28 @@ export function PersistentSidebarTrigger() {
           }}
           transition={titlebarButtonTransition}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              titlebarIconButtonClass,
-              !isCollapsed &&
-                "bg-sidebar/70 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground supports-[backdrop-filter]:bg-sidebar/55",
-            )}
-            onClick={() => void installUpdate()}
-            aria-label="Restart and install update"
-            title={
-              updateInfo
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  titlebarIconButtonClass,
+                  !isCollapsed &&
+                    "bg-sidebar/70 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground supports-[backdrop-filter]:bg-sidebar/55",
+                )}
+                onClick={() => void installUpdate()}
+                aria-label="Restart and install update"
+              >
+                <IconDownload />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {updateInfo
                 ? `Restart and install Dilag ${updateInfo.version}`
-                : "Restart and install update"
-            }
-          >
-            <IconDownload />
-          </Button>
+                : "Restart and install update"}
+            </TooltipContent>
+          </Tooltip>
         </motion.div>
       )}
     </>

@@ -52,7 +52,7 @@ function RootLayout() {
                 "--titlebar-content-left":
                   "calc(var(--titlebar-control-left) + var(--titlebar-control-size) + 4px)",
                 "--titlebar-page-header-collapsed-left":
-                  "calc(var(--titlebar-content-left) + var(--titlebar-control-size) + 8px)",
+                  "calc(var(--titlebar-content-left) + var(--titlebar-control-size) + 16px)",
               } as CSSProperties
             }
           >

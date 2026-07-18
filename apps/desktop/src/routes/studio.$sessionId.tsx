@@ -525,15 +525,20 @@ export function StudioPageContent({
                     {currentSession?.name ?? "Untitled chat"}
                   </span>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Session actions"
-                        className="flex items-center justify-center size-6 hover:bg-muted rounded"
-                      >
-                        <Ellipsis size={16} className="text-muted-foreground" />
-                      </button>
-                    </DropdownMenuTrigger>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="Chat actions"
+                            className="flex items-center justify-center size-6 hover:bg-muted rounded"
+                          >
+                            <Ellipsis size={16} className="text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">Chat actions</TooltipContent>
+                    </Tooltip>
                     <DropdownMenuContent align="start">
                       <DropdownMenuItem
                         onClick={() => {
