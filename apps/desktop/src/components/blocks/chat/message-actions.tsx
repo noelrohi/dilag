@@ -8,7 +8,13 @@ import type { ComponentProps } from "react"
 export type MessageActionsProps = ComponentProps<"div">
 
 export const MessageActions = ({ className, children, ...props }: MessageActionsProps) => (
-  <div className={cn("flex items-center gap-1", className)} {...props}>
+  <div
+    className={cn(
+      "flex items-center gap-1 opacity-0 transition-opacity group-hover/message:opacity-100 focus-within:opacity-100",
+      className,
+    )}
+    {...props}
+  >
     {children}
   </div>
 )
@@ -24,10 +30,17 @@ export const MessageAction = ({
   label,
   variant = "ghost",
   size = "icon-sm",
+  className,
   ...props
 }: MessageActionProps) => {
   const button = (
-    <Button size={size} type="button" variant={variant} {...props}>
+    <Button
+      size={size}
+      type="button"
+      variant={variant}
+      className={cn("border-0 text-muted-foreground", className)}
+      {...props}
+    >
       {children}
       <span className="sr-only">{label || tooltip}</span>
     </Button>

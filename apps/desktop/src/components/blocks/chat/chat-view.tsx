@@ -507,11 +507,11 @@ function UserMessage({
       {skillBlock && <SkillInvocationBlock skill={skillBlock} />}
       {(cleanText || fileParts.length > 0) && (
         <div
-          className="w-full max-w-[95%] animate-slide-up"
+          className="ml-auto flex w-full max-w-[95%] flex-col items-end animate-slide-up"
           style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
         >
           <Bubble align="end" variant="secondary" className="max-w-full">
-            <BubbleContent className="flex flex-col gap-2 space-y-2 rounded-lg px-4 py-3">
+            <BubbleContent className="flex flex-col gap-2 space-y-2 rounded-lg px-3 py-2">
               {/* File attachments */}
               {fileParts.length > 0 && (
                 <AttachmentGroup className="flex-wrap gap-2 overflow-x-visible py-0 snap-none">
@@ -1366,7 +1366,7 @@ function ChatInputArea({
   }, [isLoading, stopSession])
 
   return (
-    <div className="relative px-4 pb-4">
+    <div className="relative mx-auto w-full max-w-3xl px-4 pb-4">
       <div className="relative isolate">
         {hasQueuedPrompts && (
           <div className="relative z-0 mx-auto mb-[-14px] w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-sidebar-border/80 bg-sidebar px-3 pb-5 pt-2 shadow-lg shadow-black/5">
@@ -1627,7 +1627,7 @@ export function ChatView() {
         <MessageScrollerProvider autoScroll defaultScrollPosition="end">
           <MessageScroller className="flex-1 min-h-0">
             <MessageScrollerViewport className="scrollbar-none">
-              <MessageScrollerContent className="gap-3 p-4">
+              <MessageScrollerContent className="mx-auto w-full max-w-3xl gap-3 p-4">
                 {messages.length === 0
                   ? null
                   : messages.map((message, index) => {
@@ -1640,6 +1640,7 @@ export function ChatView() {
                         <MessageScrollerItem
                           key={message.id}
                           messageId={message.id}
+                          className="group/message"
                           scrollAnchor={message.role === "user"}
                         >
                           {message.role === "user" ? (
