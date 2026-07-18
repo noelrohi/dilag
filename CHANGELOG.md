@@ -5,6 +5,21 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.6] - 2026-07-18
+
+### Added
+
+- **Studio Workspace Controls**: Collapse, restore, or expand the chat and canvas panels to focus on the active part of the design workflow.
+
+### Changed
+
+- **Chat Experience**: Refined message presentation, actions, activity states, and scrolling for a cleaner, more compact conversation view.
+- **Desktop Navigation**: Simplified recent-chat and skills surfaces, and polished titlebar controls with consistent tooltips, spacing, and separation.
+
+### Fixed
+
+- **Desktop Development Tools**: Restored Electron CDP access in development builds.
+
 ## [0.8.5] - 2026-07-18
 
 ### Fixed
