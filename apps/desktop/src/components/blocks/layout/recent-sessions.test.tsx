@@ -32,13 +32,13 @@ describe("RecentSessions", () => {
     mockNavigate.mockReset()
   })
 
-  it("renders the 5 most recently updated sessions for the project, newest first", () => {
+  it("renders the 4 most recently updated sessions for the project, newest first", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-07-08T12:00:00.000Z"))
 
     renderRecentSessions({
       sessions: [
-        session({ id: "s1", name: "Oldest included", updated_at: "2026-07-08T07:00:00.000Z" }),
+        session({ id: "s1", name: "Excluded fifth", updated_at: "2026-07-08T07:00:00.000Z" }),
         session({ id: "s2", name: "Second", updated_at: "2026-07-08T11:00:00.000Z" }),
         session({ id: "s3", name: "Newest", updated_at: "2026-07-08T11:30:00.000Z" }),
         session({ id: "s4", name: "Fourth", updated_at: "2026-07-08T09:00:00.000Z" }),
@@ -48,13 +48,13 @@ describe("RecentSessions", () => {
     })
 
     expect(screen.getByRole("region", { name: "Recent chats" })).toBeInTheDocument()
+    expect(screen.queryByText("Excluded fifth")).not.toBeInTheDocument()
     expect(screen.queryByText("Excluded sixth")).not.toBeInTheDocument()
     expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
       "Newest30m ago",
       "Second1h ago",
       "Third2h ago",
       "Fourth3h ago",
-      "Oldest included5h ago",
     ])
   })
 

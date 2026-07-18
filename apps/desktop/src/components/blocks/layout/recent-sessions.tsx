@@ -1,10 +1,11 @@
-import { cn } from "@/lib/utils"
 import type { SessionMeta } from "@/context/session-store"
+import { Button } from "@dilag/ui/button"
+import { Separator } from "@dilag/ui/separator"
 import { IconStar as Star } from "@tabler/icons-react"
 import { useNavigate } from "@tanstack/react-router"
-import { useMemo } from "react"
+import { Fragment, useMemo } from "react"
 
-const RECENT_SESSION_LIMIT = 5
+const RECENT_SESSION_LIMIT = 4
 
 export function RecentSessions({
   sessions,
@@ -26,44 +27,42 @@ export function RecentSessions({
   if (recentSessions.length === 0) return null
 
   return (
-    <section className="mt-8 space-y-3" aria-label="Recent chats">
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-sm font-medium text-foreground">Recent chats</h2>
-      </div>
-
-      <div className="space-y-2">
-        {recentSessions.map((session) => (
-          <button
-            key={session.id}
-            type="button"
-            className={cn(
-              "group flex w-full items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 text-left",
-              "transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
-            )}
-            onClick={() =>
-              navigate({
-                to: "/project/$projectId/session/$sessionId",
-                params: { projectId, sessionId: session.id },
-              })
-            }
-          >
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-medium text-foreground">{session.name}</span>
-                {session.favorite && (
-                  <Star
-                    size={14}
-                    fill="currentColor"
-                    className="shrink-0 text-amber-500"
-                    aria-label={`${session.name} is favorited`}
-                  />
-                )}
+    <section className="mt-8" aria-label="Recent chats">
+      <div>
+        {recentSessions.map((session, index) => (
+          <Fragment key={session.id}>
+            {index > 0 && <Separator className="bg-border/60" />}
+            <Button
+              type="button"
+              variant="ghost"
+              className="group h-auto w-full justify-between gap-3 rounded-xl px-3 py-3 text-left focus-visible:ring-2 focus-visible:ring-ring/30"
+              onClick={() =>
+                navigate({
+                  to: "/project/$projectId/session/$sessionId",
+                  params: { projectId, sessionId: session.id },
+                })
+              }
+            >
+              <span className="min-w-0 flex-1">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-normal text-foreground">
+                    {session.name}
+                  </span>
+                  {session.favorite && (
+                    <Star
+                      size={14}
+                      fill="currentColor"
+                      className="shrink-0 text-amber-500"
+                      aria-label={`${session.name} is favorited`}
+                    />
+                  )}
+                </span>
               </span>
-            </span>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {formatRelativeTime(session.updated_at ?? session.created_at)}
-            </span>
-          </button>
+              <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                {formatRelativeTime(session.updated_at ?? session.created_at)}
+              </span>
+            </Button>
+          </Fragment>
         ))}
       </div>
     </section>
