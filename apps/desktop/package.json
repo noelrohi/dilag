@@ -80,7 +80,6 @@
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-router": "^1.141.2",
     "@xyflow/react": "^12.10.0",
-    "ai": "^5.0.113",
     "clsx": "catalog:",
     "dayjs": "^1.11.19",
     "diff": "^8.0.2",
@@ -102,7 +101,6 @@
     "tailwindcss": "^4.1.18",
     "tokenlens": "^1.3.1",
     "typebox": "^1.1.38",
-    "use-stick-to-bottom": "^1.1.1",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
@@ -118,6 +116,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^4.6.0",
     "@vitest/ui": "^4.0.16",
+    "ai": "^5.0.113",
     "bumpp": "^10.3.2",
     "electron": "41.2.2",
     "electron-builder": "^26.8.1",
@@ -126,6 +125,7 @@
     "globals": "catalog:",
     "jsdom": "^27.3.0",
     "react-grab": "^0.1.37",
+    "shadcn": "^4.13.1",
     "tsdown": "^0.21.9",
     "tw-animate-css": "catalog:",
     "typescript": "catalog:",

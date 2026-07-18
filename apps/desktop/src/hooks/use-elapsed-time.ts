@@ -5,7 +5,8 @@ import duration from "dayjs/plugin/duration"
 dayjs.extend(duration)
 
 function formatDuration(ms: number): string {
-  const d = dayjs.duration(ms)
+  const safeMs = Number.isFinite(ms) ? Math.max(0, ms) : 0
+  const d = dayjs.duration(safeMs)
   const seconds = Math.floor(d.asSeconds())
 
   if (seconds < 60) {
@@ -46,16 +47,21 @@ function getElapsedSnapshot() {
 }
 
 export function useElapsedTime(startTime: number, endTime?: number): string {
-  const isComplete = endTime !== undefined
+  const safeStartTime = Number.isFinite(startTime) ? startTime : undefined
+  const safeEndTime = endTime !== undefined && Number.isFinite(endTime) ? endTime : undefined
+  const isComplete = safeEndTime !== undefined
   const subscribe = useCallback(
     (listener: () => void) => (isComplete ? () => undefined : subscribeToElapsedTicker(listener)),
     [isComplete],
   )
   const getSnapshot = useCallback(
-    () => (isComplete ? endTime : getElapsedSnapshot()),
-    [endTime, isComplete],
+    () => (isComplete ? safeEndTime! : getElapsedSnapshot()),
+    [isComplete, safeEndTime],
   )
   const now = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
-  return useMemo(() => formatDuration((endTime ?? now) - startTime), [endTime, now, startTime])
+  return useMemo(
+    () => formatDuration(safeStartTime === undefined ? 0 : (safeEndTime ?? now) - safeStartTime),
+    [now, safeEndTime, safeStartTime],
+  )
 }

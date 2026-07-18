@@ -70,7 +70,7 @@ const getInput = (props: ToolRenderProps) => ({
   command: props.input.command as string | undefined,
   description: props.input.description as string | undefined,
   url: props.input.url as string | undefined,
-  prompt: props.input.prompt as string | undefined,
+  prompt: (props.input.prompt ?? props.input.query) as string | undefined,
   oldString: (props.input.old_string ??
     props.input.oldString ??
     props.input.old ??
@@ -275,13 +275,25 @@ interface Todo {
   status: "pending" | "in_progress" | "completed"
 }
 
+type StatusTitles = Record<ToolState["status"], string>
+
+function statusTitle(props: ToolRenderProps, titles: StatusTitles): string {
+  if (props.status === "error" && props.error === "Interrupted") return "Interrupted"
+  return titles[props.status]
+}
+
 // Tool registry - all tool configs in one place
 // Note: Tool names from backend are lowercase
 export const TOOLS: Record<string, ToolConfig> = {
   read: {
     icon: Glasses,
-    title: () => "Read",
-    expandedTitle: () => "Read file",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to read",
+        running: "Reading",
+        completed: "Read",
+        error: "Failed to read",
+      }),
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const file = filename(getInput(p).filePath)
@@ -302,8 +314,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   edit: {
     icon: PencilLine,
-    title: (p) => (p.status === "completed" ? "Edited" : "Editing"),
-    expandedTitle: () => "Edited file",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to edit",
+        running: "Editing",
+        completed: "Edited",
+        error: "Failed to edit",
+      }),
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const { filePath } = getInput(p)
@@ -326,9 +343,20 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   bash: {
     icon: Terminal,
-    title: (p) => (p.status === "running" || p.status === "pending" ? "Running" : "Ran"),
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to run",
+        running: "Running",
+        completed: "Ran",
+        error: "Failed to run",
+      }),
     expandedTitle: (p) =>
-      p.status === "running" || p.status === "pending" ? "Running command" : "Ran command",
+      statusTitle(p, {
+        pending: "Waiting to run command",
+        running: "Running command",
+        completed: "Ran command",
+        error: "Failed to run command",
+      }),
     contentTitle: () => "Shell",
     chipLabel: (p) => {
       const desc = p.metadata?.description as string | undefined
@@ -385,8 +413,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   write: {
     icon: FilePlus2,
-    title: (p) => (p.status === "completed" ? "Wrote" : "Writing"),
-    expandedTitle: () => "Wrote file",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to write",
+        running: "Writing",
+        completed: "Wrote",
+        error: "Failed to write",
+      }),
     chipLabel: (p) => filename(getInput(p).filePath),
     subtitle: (p) => {
       const { filePath } = getInput(p)
@@ -439,9 +472,26 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
   },
 
+  todoread: {
+    icon: ClipboardList,
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to read to-dos",
+        running: "Reading to-dos",
+        completed: "Read to-dos",
+        error: "Failed to read to-dos",
+      }),
+  },
+
   todowrite: {
     icon: ClipboardList,
-    title: () => "Updated to-dos",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to update to-dos",
+        running: "Updating to-dos",
+        completed: "Updated to-dos",
+        error: "Failed to update to-dos",
+      }),
     subtitle: (p) => {
       const todos = p.input.todos as Todo[] | undefined
       if (!todos?.length) return undefined
@@ -478,7 +528,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   glob: {
     icon: FolderTree,
-    title: () => "Found files",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to find files",
+        running: "Finding files",
+        completed: "Found files",
+        error: "Failed to find files",
+      }),
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
       const pattern = getInput(p).pattern
@@ -506,7 +562,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   list: {
     icon: FolderTree,
-    title: () => "Listed",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to list",
+        running: "Listing",
+        completed: "Listed",
+        error: "Failed to list",
+      }),
     chipLabel: (p) => filename(getInput(p).filePath) || "directory",
     subtitle: (p) => {
       const { filePath } = getInput(p)
@@ -535,7 +597,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   grep: {
     icon: Search,
-    title: () => "Searched for",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to search",
+        running: "Searching for",
+        completed: "Searched for",
+        error: "Failed to search",
+      }),
     chipLabel: (p) => getInput(p).pattern?.slice(0, 20),
     subtitle: (p) => {
       const pattern = getInput(p).pattern
@@ -563,7 +631,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   webfetch: {
     icon: Globe,
-    title: () => "Fetched",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to fetch",
+        running: "Fetching",
+        completed: "Fetched",
+        error: "Failed to fetch",
+      }),
     chipLabel: (p) => {
       const url = getInput(p).url
       try {
@@ -614,9 +688,34 @@ export const TOOLS: Record<string, ToolConfig> = {
     },
   },
 
+  websearch: {
+    icon: Search,
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to search the web",
+        running: "Searching the web",
+        completed: "Searched the web",
+        error: "Failed to search the web",
+      }),
+    chipLabel: (p) => getInput(p).prompt?.slice(0, 25),
+    subtitle: (p) => getInput(p).prompt,
+    content: (p) =>
+      p.output && (
+        <PlainToolOutput
+          text={p.output.length > 2000 ? `${p.output.slice(0, 2000)}\n...` : p.output}
+        />
+      ),
+  },
+
   task: {
     icon: Bot,
-    title: () => "Ran task",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to run task",
+        running: "Running task",
+        completed: "Ran task",
+        error: "Failed to run task",
+      }),
     chipLabel: (p) => getInput(p).description?.slice(0, 25),
     subtitle: (p) => {
       const { description } = getInput(p)
@@ -625,14 +724,21 @@ export const TOOLS: Record<string, ToolConfig> = {
         | undefined
       if (summary?.length) {
         const completed = summary.filter((s) => s.state.status === "completed").length
-        return (
-          <>
-            {description}{" "}
+        return {
+          text: description,
+          suffix: (
             <span className="text-muted-foreground">
               ({completed}/{summary.length} tools)
             </span>
-          </>
-        )
+          ),
+          ariaText: [
+            description,
+            `${completed}/${summary.length} tools`,
+            ...summary.map((item) => `${item.tool} ${item.state.status}`),
+          ]
+            .filter(Boolean)
+            .join(" "),
+        }
       }
       return description
     },
@@ -690,7 +796,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 
   theme: {
     icon: Pallete2,
-    title: () => "Created theme",
+    title: (p) =>
+      statusTitle(p, {
+        pending: "Waiting to create theme",
+        running: "Creating theme",
+        completed: "Created theme",
+        error: "Failed to create theme",
+      }),
     chipLabel: (p) => {
       const name = p.input.name as string | undefined
       return name?.slice(0, 20)
@@ -726,7 +838,10 @@ export const TOOLS: Record<string, ToolConfig> = {
         .filter((c) => c.value)
 
       if (colors.length === 0) {
-        return <div className="text-xs text-muted-foreground">Creating theme...</div>
+        if (p.status === "pending" || p.status === "running") {
+          return <div className="text-xs text-muted-foreground">Creating theme...</div>
+        }
+        return null
       }
 
       return (
@@ -752,14 +867,19 @@ export const TOOLS: Record<string, ToolConfig> = {
   skill: {
     icon: BookOpen,
     title: (p) => {
-      // Try different possible input keys for skill name
-      const name = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined
-      if (!name) return "Skill"
-      // Convert kebab-case to Title Case
-      return name
-        .split("-")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ")
+      const rawName = (p.input.skill ?? p.input.name ?? p.input.skillName) as string | undefined
+      const name = rawName
+        ? rawName
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ")
+        : "skill"
+      return statusTitle(p, {
+        pending: `Waiting to load ${name}`,
+        running: `Loading ${name}`,
+        completed: `Loaded ${name}`,
+        error: `Failed to load ${name}`,
+      })
     },
     content: (p) => {
       // Show input for debugging if no recognized keys
@@ -777,10 +897,12 @@ export const TOOLS: Record<string, ToolConfig> = {
     title: (p) => {
       const questions = p.input.questions as Array<{ header?: string }> | undefined
       const firstHeader = questions?.[0]?.header
-      if (p.status === "completed") {
-        return "Asked question"
-      }
-      return firstHeader || "Question"
+      return statusTitle(p, {
+        pending: firstHeader ? `Waiting for ${firstHeader}` : "Waiting for question",
+        running: firstHeader || "Asking question",
+        completed: "Asked question",
+        error: "Failed to ask question",
+      })
     },
     chipLabel: (p) => {
       const questions = p.input.questions as Array<{ header?: string }> | undefined
@@ -872,7 +994,13 @@ export const TOOLS: Record<string, ToolConfig> = {
 // Default config for unknown tools
 export const DEFAULT_TOOL: ToolConfig = {
   icon: Settings,
-  title: (p) => p.tool,
+  title: (p) =>
+    statusTitle(p, {
+      pending: `Waiting to use ${p.tool}`,
+      running: `Using ${p.tool}`,
+      completed: `Used ${p.tool}`,
+      error: `Failed to use ${p.tool}`,
+    }),
   content: (p) => {
     const hasInput = Object.keys(p.input).length > 0
     return (

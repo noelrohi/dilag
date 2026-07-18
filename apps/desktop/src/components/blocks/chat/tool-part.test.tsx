@@ -27,7 +27,7 @@ describe("ToolPart", () => {
 
     await userEvent.click(trigger)
 
-    expect(screen.getByRole("button", { name: "Ran command" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Ran command.*Success/ })).toBeInTheDocument()
     expect(screen.getByText("Shell")).toBeInTheDocument()
     expect(screen.getByText("Success")).toBeInTheDocument()
   })
@@ -52,7 +52,9 @@ describe("ToolPart", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Ran xcodebuild test/ }))
 
-    expect(screen.getByRole("button", { name: "Ran command" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Ran command.*Exit code 65/ }),
+    ).toBeInTheDocument()
     expect(screen.getByText("Exit code 65")).toBeInTheDocument()
   })
 
@@ -92,7 +94,7 @@ describe("ToolPart", () => {
     expect(await screen.findByText(/Wellness content/)).toBeInTheDocument()
   })
 
-  it("shows stale running tools as complete when the parent message is done", async () => {
+  it("does not coerce a running tool to success when the parent message is done", () => {
     render(
       <ToolPart
         tool="write"
@@ -104,11 +106,32 @@ describe("ToolPart", () => {
       />,
     )
 
-    expect(screen.queryByText("Running")).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /Writing.*step-profile\.html.*Running/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText("Success")).not.toBeInTheDocument()
+  })
 
-    await userEvent.click(screen.getByRole("button", { name: /Wrote.*step-profile\.html/ }))
+  it("renders an interrupted tool as interrupted rather than successful", async () => {
+    render(
+      <ToolPart
+        tool="write"
+        state={{
+          status: "error",
+          error: "Interrupted",
+          input: { filePath: "step-profile.html", content: "<html>Profile</html>" },
+          time: { start: 1000, end: 2000 },
+        }}
+      />,
+    )
 
-    expect(await screen.findByText("Success")).toBeInTheDocument()
+    const trigger = screen.getByRole("button", {
+      name: /Interrupted.*step-profile\.html.*Interrupted/,
+    })
+    await userEvent.click(trigger)
+
+    expect(screen.getAllByText("Interrupted").length).toBeGreaterThan(1)
+    expect(screen.queryByText("Success")).not.toBeInTheDocument()
   })
 
   it("shows write line additions without the pending shimmer treatment", () => {
@@ -123,7 +146,9 @@ describe("ToolPart", () => {
     )
 
     expect(
-      screen.getByRole("button", { name: /Writing.*notes-app-dashboard\.html.*\+3/ }),
+      screen.getByRole("button", {
+        name: /Waiting to write.*notes-app-dashboard\.html.*\+3.*Pending/,
+      }),
     ).toBeInTheDocument()
     expect(screen.queryByText("Thinking...")).not.toBeInTheDocument()
   })

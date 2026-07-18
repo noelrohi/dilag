@@ -13,7 +13,10 @@ describe("session-store", () => {
       parts: {},
       sessionStatus: {},
       sessionDiffs: {},
+      sessionErrors: {},
       promptQueues: {},
+      pendingPermissions: {},
+      pendingQuestions: {},
       isServerReady: false,
       debugEvents: [],
       recentFileChanges: [],
@@ -261,6 +264,67 @@ describe("session-store", () => {
       expect(parts[0].state?.output).toBe("file contents")
     })
 
+    it("interrupts both pending and running tools and protects them from replays", () => {
+      const sessionId = "session-1"
+      const messageId = "msg-1"
+      useSessionStore.getState().setMessages(sessionId, [
+        {
+          id: messageId,
+          sessionID: sessionId,
+          role: "assistant",
+          time: { created: 1000 },
+          isStreaming: true,
+        },
+      ])
+      useSessionStore.getState().updatePart(messageId, {
+        id: "pending-tool",
+        messageID: messageId,
+        sessionID: sessionId,
+        type: "tool",
+        tool: "read",
+        state: { status: "pending", input: { path: "one.ts" }, time: { start: 1000 } },
+      })
+      useSessionStore.getState().updatePart(messageId, {
+        id: "running-tool",
+        messageID: messageId,
+        sessionID: sessionId,
+        type: "tool",
+        tool: "write",
+        state: { status: "running", input: { path: "two.ts" } },
+      })
+      useSessionStore.getState().addPendingQuestion(sessionId, {
+        id: "question-1",
+        sessionID: sessionId,
+        questions: [],
+      })
+
+      useSessionStore.getState().abortRunningTools(sessionId)
+
+      const interrupted = useSessionStore.getState().parts[messageId]
+      expect(interrupted.map((part) => part.state?.status)).toEqual(["error", "error"])
+      expect(interrupted.map((part) => part.state?.error)).toEqual([
+        "Interrupted",
+        "Interrupted",
+      ])
+      expect(interrupted[0].state?.time?.start).toBe(1000)
+      expect(interrupted[0].state?.time?.end).toEqual(expect.any(Number))
+      expect(interrupted[1].state?.time?.start).toBe(interrupted[1].state?.time?.end)
+      expect(useSessionStore.getState().pendingQuestions[sessionId]).toBeUndefined()
+
+      useSessionStore.getState().updatePart(messageId, {
+        id: "pending-tool",
+        messageID: messageId,
+        sessionID: sessionId,
+        type: "tool",
+        tool: "read",
+        state: { status: "completed", input: { path: "one.ts" }, output: "late result" },
+      })
+      expect(useSessionStore.getState().parts[messageId][0].state).toMatchObject({
+        status: "error",
+        error: "Interrupted",
+      })
+    })
+
     it("should maintain streamed insertion order", () => {
       const messageId = "msg-1"
 
@@ -490,6 +554,19 @@ describe("session-store", () => {
           isStreaming: true,
         },
       ])
+      useSessionStore.getState().updatePart("assistant-1", {
+        id: "tool-1",
+        messageID: "assistant-1",
+        sessionID: sessionId,
+        type: "tool",
+        tool: "bash",
+        state: { status: "running", input: { command: "sleep 10" }, time: { start: 1000 } },
+      })
+      useSessionStore.getState().addPendingQuestion(sessionId, {
+        id: "question-1",
+        sessionID: sessionId,
+        questions: [],
+      })
 
       useSessionStore.getState().handleEvent({
         type: "session.idle",
@@ -500,6 +577,11 @@ describe("session-store", () => {
       expect(useSessionStore.getState().sessionStatus[sessionId]).toBe("idle")
       expect(message.isStreaming).toBe(false)
       expect(message.time.completed).toEqual(expect.any(Number))
+      expect(useSessionStore.getState().parts["assistant-1"][0].state).toMatchObject({
+        status: "error",
+        error: "Interrupted",
+      })
+      expect(useSessionStore.getState().pendingQuestions[sessionId]).toBeUndefined()
     })
 
     it("should handle message.part.updated event", () => {

@@ -5,12 +5,26 @@ import {
   useSessionStore,
   type QuestionRequest,
 } from "@/context/session-store"
-import { QuestionPrompt } from "@/components/ai-elements/question-prompt"
+import { QuestionPrompt } from "./question-prompt"
 import { cn } from "@/lib/utils"
 import { bridge } from "@/lib/bridge"
 
 // Timeout for question reply requests (30 seconds)
 const QUESTION_REPLY_TIMEOUT = 30000
+
+async function withQuestionTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(message)), QUESTION_REPLY_TIMEOUT)
+      }),
+    ])
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
+}
 
 interface QuestionListProps {
   sessionId?: string
@@ -25,65 +39,22 @@ export function QuestionList({ sessionId, className }: QuestionListProps) {
 
   const handleReply = useCallback(
     async (request: QuestionRequest, answers: string[][]) => {
-      try {
-        // Create a timeout promise
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Question reply timeout")), QUESTION_REPLY_TIMEOUT)
-        })
-
-        // Race between the actual reply and timeout
-        await Promise.race([
-          bridge.agent.replyQuestion({
-            requestID: request.id,
-            answers,
-          }),
-          timeoutPromise,
-        ])
-
-        if (effectiveSessionId) {
-          removePendingQuestion(effectiveSessionId, request.id)
-          console.log("[QuestionList] Question reply successful, removed from store")
-        }
-      } catch (err) {
-        console.error("[QuestionList] Failed to reply:", err)
-        // Remove question on timeout/error to prevent stuck state
-        if (effectiveSessionId) {
-          removePendingQuestion(effectiveSessionId, request.id)
-          useSessionStore.getState().abortRunningTools(effectiveSessionId)
-        }
-      }
+      await withQuestionTimeout(
+        bridge.agent.replyQuestion({ requestID: request.id, answers }),
+        "Question reply timed out. Please retry.",
+      )
+      if (effectiveSessionId) removePendingQuestion(effectiveSessionId, request.id)
     },
     [effectiveSessionId, removePendingQuestion],
   )
 
   const handleReject = useCallback(
     async (request: QuestionRequest) => {
-      try {
-        // Create a timeout promise
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Question reject timeout")), QUESTION_REPLY_TIMEOUT)
-        })
-
-        // Race between the actual reject and timeout
-        await Promise.race([
-          bridge.agent.rejectQuestion({
-            requestID: request.id,
-          }),
-          timeoutPromise,
-        ])
-
-        if (effectiveSessionId) {
-          removePendingQuestion(effectiveSessionId, request.id)
-          console.log("[QuestionList] Question reject successful, removed from store")
-        }
-      } catch (err) {
-        console.error("[QuestionList] Failed to reject:", err)
-        // Remove question on timeout/error to prevent stuck state
-        if (effectiveSessionId) {
-          removePendingQuestion(effectiveSessionId, request.id)
-          useSessionStore.getState().abortRunningTools(effectiveSessionId)
-        }
-      }
+      await withQuestionTimeout(
+        bridge.agent.rejectQuestion({ requestID: request.id }),
+        "Question dismissal timed out. Please retry.",
+      )
+      if (effectiveSessionId) removePendingQuestion(effectiveSessionId, request.id)
     },
     [effectiveSessionId, removePendingQuestion],
   )

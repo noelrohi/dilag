@@ -47,4 +47,14 @@ describe("useElapsedTime", () => {
 
     expect(result.current).toBe("4s")
   })
+
+  it("clamps negative elapsed time to zero", () => {
+    const { result } = renderHook(() => useElapsedTime(12_000, 8_000))
+    expect(result.current).toBe("0s")
+  })
+
+  it("ignores non-finite timestamps", () => {
+    const { result } = renderHook(() => useElapsedTime(Number.NaN, Number.POSITIVE_INFINITY))
+    expect(result.current).toBe("0s")
+  })
 })

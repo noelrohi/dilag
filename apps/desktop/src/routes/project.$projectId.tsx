@@ -10,7 +10,7 @@ import {
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputController,
-} from "@/components/ai-elements/prompt-input"
+} from "@/components/blocks/chat/prompt-input"
 import { PageHeader } from "@/components/blocks/layout/page-header"
 import { RecentSessions } from "@/components/blocks/layout/recent-sessions"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"

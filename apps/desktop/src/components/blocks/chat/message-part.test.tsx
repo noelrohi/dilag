@@ -12,7 +12,7 @@ const reasoningPart: MessagePartType = {
 }
 
 describe("MessagePart", () => {
-  it("renders plain prose reasoning inline like Pi TUI", () => {
+  it("renders plain reasoning inline like Pi TUI", () => {
     render(<MessagePart part={reasoningPart} isStreaming />)
 
     expect(screen.queryByText(/Thinking/)).not.toBeInTheDocument()
@@ -48,5 +48,62 @@ describe("MessagePart", () => {
     expect(getReasoningBody("I need to inspect files.\nThen edit.")).toBe(
       "I need to inspect files.\nThen edit.",
     )
+  })
+
+  it.each(["pending", "running"] as const)("hides %s question tool duplicates", (status) => {
+    const { container } = render(
+      <MessagePart
+        part={{
+          id: "question-1",
+          type: "tool",
+          tool: "question",
+          state: {
+            status,
+            input: { questions: [{ header: "Format", question: "Which format?" }] },
+          },
+        }}
+        isStreaming
+      />,
+    )
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it("renders a completed question tool", () => {
+    render(
+      <MessagePart
+        part={{
+          id: "question-1",
+          type: "tool",
+          tool: "question",
+          state: {
+            status: "completed",
+            input: { questions: [{ header: "Format", question: "Which format?" }] },
+            metadata: { answers: [["Mobile"]] },
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: /Asked question.*Mobile.*Success/ })).toBeInTheDocument()
+  })
+
+  it("renders an interrupted question tool as a terminal row", () => {
+    render(
+      <MessagePart
+        part={{
+          id: "question-1",
+          type: "tool",
+          tool: "question",
+          state: {
+            status: "error",
+            error: "Interrupted",
+            input: { questions: [{ header: "Format", question: "Which format?" }] },
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: /Interrupted.*Which format.*Interrupted/ })).toBeInTheDocument()
   })
 })

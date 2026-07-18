@@ -322,11 +322,41 @@ function isTerminalToolStatus(status: ToolState["status"] | undefined): boolean 
   return status === "completed" || status === "error"
 }
 
+function isInterruptedToolPart(part: MessagePart): boolean {
+  return part.type === "tool" && part.state?.status === "error" && part.state.error === "Interrupted"
+}
+
 function shouldKeepExistingPart(existing: MessagePart, incoming: MessagePart): boolean {
   if (existing.type !== "tool" || incoming.type !== "tool") return false
+  if (isInterruptedToolPart(existing)) return true
   const existingStatus = existing.state?.status
   const incomingStatus = incoming.state?.status
   return isTerminalToolStatus(existingStatus) && !isTerminalToolStatus(incomingStatus)
+}
+
+function interruptActiveToolParts(
+  messages: Message[] | undefined,
+  partsByMessage: Record<string, MessagePart[]>,
+  now: number,
+) {
+  for (const message of messages ?? []) {
+    for (const part of partsByMessage[message.id] ?? []) {
+      if (
+        part.type !== "tool" ||
+        (part.state?.status !== "pending" && part.state?.status !== "running")
+      ) {
+        continue
+      }
+
+      const start = part.state.time?.start ?? now
+      part.state = {
+        ...part.state,
+        status: "error",
+        error: "Interrupted",
+        time: { start, end: now },
+      }
+    }
+  }
 }
 
 function toolInputKey(part: MessagePart): string {
@@ -451,22 +481,20 @@ export const useSessionStore = create<SessionState>()(
           }
 
           let incomingPart = part
-          if (
-            incomingPart.type === "tool" &&
-            incomingPart.sessionID &&
-            !isTerminalToolStatus(incomingPart.state?.status)
-          ) {
+          if (incomingPart.type === "tool" && incomingPart.sessionID) {
             for (const message of state.messages[incomingPart.sessionID] ?? []) {
               for (const existingPart of state.parts[message.id] ?? []) {
+                if (!isMatchingToolPart(existingPart, incomingPart)) continue
                 if (
-                  isMatchingToolPart(existingPart, incomingPart) &&
-                  isTerminalToolStatus(existingPart.state?.status)
+                  isInterruptedToolPart(existingPart) ||
+                  (!isTerminalToolStatus(incomingPart.state?.status) &&
+                    isTerminalToolStatus(existingPart.state?.status))
                 ) {
                   incomingPart = { ...incomingPart, state: existingPart.state }
                   break
                 }
               }
-              if (isTerminalToolStatus(incomingPart.state?.status)) break
+              if (isInterruptedToolPart(incomingPart)) break
             }
           }
 
@@ -581,29 +609,11 @@ export const useSessionStore = create<SessionState>()(
           }
         }),
 
-      // Mark all running tools as aborted for a session (used when stop fails to clean up backend state)
+      // Mark all active tools as interrupted and clear question prompts for a session.
       abortRunningTools: (sessionId) =>
         set((state) => {
-          const messages = state.messages[sessionId]
-          if (!messages) return
-
-          for (const message of messages) {
-            const parts = state.parts[message.id]
-            if (!parts) continue
-
-            for (const part of parts) {
-              if (part.type === "tool" && part.state?.status === "running") {
-                const now = Date.now()
-                const start = part.state.time?.start ?? now
-                part.state = {
-                  ...part.state,
-                  status: "error",
-                  error: "Aborted",
-                  time: { start, end: now },
-                }
-              }
-            }
-          }
+          interruptActiveToolParts(state.messages[sessionId], state.parts, Date.now())
+          delete state.pendingQuestions[sessionId]
         }),
 
       // New event state actions
@@ -880,13 +890,15 @@ export const useSessionStore = create<SessionState>()(
           const { sessionID } = event.properties
           const completed = Date.now()
           set((state) => {
-            state.sessionStatus[sessionID] = "idle"
+            interruptActiveToolParts(state.messages[sessionID], state.parts, completed)
+            delete state.pendingQuestions[sessionID]
             for (const message of state.messages[sessionID] ?? []) {
               if (message.isStreaming) {
                 message.isStreaming = false
                 message.time.completed ??= completed
               }
             }
+            state.sessionStatus[sessionID] = "idle"
           })
           return
         }
@@ -894,7 +906,18 @@ export const useSessionStore = create<SessionState>()(
         if (isEventSessionError(event)) {
           const { sessionID, error } = event.properties
           if (sessionID) {
-            setSessionStatus(sessionID, "error")
+            const completed = Date.now()
+            set((state) => {
+              interruptActiveToolParts(state.messages[sessionID], state.parts, completed)
+              delete state.pendingQuestions[sessionID]
+              for (const message of state.messages[sessionID] ?? []) {
+                if (message.isStreaming) {
+                  message.isStreaming = false
+                  message.time.completed ??= completed
+                }
+              }
+              state.sessionStatus[sessionID] = "error"
+            })
             // Always surface a session error, even when the payload lacks a
             // structured `.data` field, so the failure is never silent.
             const data =

@@ -1,8 +1,8 @@
 import { memo } from "react"
-import { Streamdown } from "streamdown"
+import { Marker, MarkerContent, MarkerIcon } from "@dilag/ui/marker"
 import type { MessagePart as MessagePartType } from "@/context/session-store"
-import { MessageResponse } from "@/components/ai-elements/message"
-import { Reasoning, ReasoningTrigger, ReasoningContent } from "@/components/ai-elements/reasoning"
+import { Markdown } from "./markdown"
+import { Reasoning, ReasoningTrigger, ReasoningContent } from "./reasoning"
 import { ToolPart } from "./tool-part"
 import { IconFileCode as CodeFile } from "@tabler/icons-react"
 import { ErrorBoundary, InlineErrorFallback } from "@/components/blocks/errors/error-boundary"
@@ -71,8 +71,8 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
     case "text":
       if (!part.text?.trim()) return null
       return (
-        <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
-          <MessageResponse>{part.text}</MessageResponse>
+        <div className="text-foreground">
+          <Markdown>{part.text}</Markdown>
         </div>
       )
 
@@ -82,10 +82,8 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
         const title = getReasoningTitle(part.text)
         if (!title) {
           return (
-            <div className="not-prose py-1 text-sm italic text-muted-foreground">
-              <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                {part.text.trim()}
-              </Streamdown>
+            <div className="py-1 text-sm italic text-muted-foreground">
+              <Markdown>{part.text.trim()}</Markdown>
             </div>
           )
         }
@@ -99,9 +97,11 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
 
     case "tool":
       if (!part.tool || !part.state) return null
-      // Hide question tool entirely - the QuestionPrompt UI handles interaction
-      // Show only when completed successfully with user's answers
-      if (part.tool === "question" && part.state.status !== "completed") {
+      // QuestionPrompt owns interaction; terminal outcomes remain visible in message history.
+      if (
+        part.tool === "question" &&
+        (part.state.status === "pending" || part.state.status === "running")
+      ) {
         return null
       }
       return <ToolPart tool={part.tool} state={part.state} isMessageComplete={!isStreaming} />
@@ -132,13 +132,17 @@ function MessagePartContent({ part, isStreaming = false }: MessagePartProps) {
     case "step-start":
       if (!part.model) return null
       return (
-        <div className="inline-flex items-center gap-2 text-[10px] font-mono text-muted-foreground/50 py-1 uppercase tracking-wider">
-          <div className="size-1 rounded-full bg-primary/40" />
-          <span>
-            {part.provider && `${part.provider}/`}
-            {part.model}
-          </span>
-        </div>
+        <Marker className="w-fit gap-2 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/50">
+          <MarkerIcon className="flex items-center justify-center">
+            <div className="size-1 rounded-full bg-primary/40" />
+          </MarkerIcon>
+          <MarkerContent>
+            <span>
+              {part.provider && `${part.provider}/`}
+              {part.model}
+            </span>
+          </MarkerContent>
+        </Marker>
       )
 
     case "step-finish":

@@ -942,6 +942,10 @@ function waitForQuestionAnswer(
     const cleanup = () => pendingQuestions.delete(request.id)
     const onAbort = () => {
       cleanup()
+      emitAgentEvent({
+        type: "question.rejected",
+        properties: { sessionID: request.sessionID, requestID: request.id },
+      })
       reject(new Error("Question was aborted."))
     }
     signal?.addEventListener("abort", onAbort, { once: true })
@@ -1161,6 +1165,7 @@ function messageParts(
   }
   return content.flatMap((part, index): AgentMessagePart[] => {
     const id = `${messageID}:part:${index}`
+    const partStart = message.timestamp ?? Date.now()
     if (part.type === "text") {
       return [{ id, messageID, sessionID, type: "text", text: part.text }]
     }
@@ -1188,9 +1193,13 @@ function messageParts(
         type: "tool",
         tool: part.name,
         state: toolStates?.get(part.id) ?? {
-          status: "pending",
+          status: includeErrorFallback ? "error" : "pending",
           input: part.arguments,
-          time: { start: message.timestamp ?? Date.now() },
+          error: includeErrorFallback ? "Interrupted" : undefined,
+          time: {
+            start: partStart,
+            end: includeErrorFallback ? partStart : undefined,
+          },
         },
       },
     ]

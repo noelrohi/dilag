@@ -16,7 +16,7 @@ import {
   ModelSelectorGroup,
   ModelSelectorItem,
   ModelSelectorLogo,
-} from "@/components/ai-elements/model-selector"
+} from "./model-selector"
 import { DialogSelectProvider } from "@/components/blocks/dialogs/dialog-select-provider"
 import { DialogConnectProvider } from "@/components/blocks/dialogs/dialog-connect-provider"
 import { useModels, type Model } from "@/hooks/use-models"

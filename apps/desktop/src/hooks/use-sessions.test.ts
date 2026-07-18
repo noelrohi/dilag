@@ -383,6 +383,38 @@ describe("use-sessions", () => {
       expect(mockAbort).toHaveBeenCalledWith({ sessionID: "session-1" })
       expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("idle")
     })
+
+    it("interrupts active tools before a hung abort request resolves", () => {
+      useSessionStore.getState().setMessages("session-1", [
+        {
+          id: "assistant-1",
+          sessionID: "session-1",
+          role: "assistant",
+          time: { created: 1000 },
+          isStreaming: true,
+        },
+      ])
+      useSessionStore.getState().updatePart("assistant-1", {
+        id: "tool-1",
+        messageID: "assistant-1",
+        sessionID: "session-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "running", input: { command: "sleep 10" } },
+      })
+      mockAbort.mockReturnValueOnce(new Promise(() => undefined))
+      const { result } = renderHook(() => useSessions(), { wrapper: createWrapper() })
+
+      act(() => {
+        void result.current.stopSession()
+      })
+
+      expect(useSessionStore.getState().parts["assistant-1"][0].state).toMatchObject({
+        status: "error",
+        error: "Interrupted",
+      })
+      expect(useSessionStore.getState().sessionStatus["session-1"]).toBe("idle")
+    })
   })
 
   describe("forkSession", () => {

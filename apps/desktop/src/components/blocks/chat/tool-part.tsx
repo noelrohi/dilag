@@ -13,9 +13,8 @@ import {
 } from "@/lib/tool-registry"
 import type { ToolState } from "@/context/session-store"
 import { cn } from "@/lib/utils"
-import { Shimmer } from "@/components/ai-elements/shimmer"
 import { useElapsedTime } from "@/hooks/use-elapsed-time"
-import { isValidElement, useMemo, useState, type ReactNode } from "react"
+import { isValidElement, useMemo, useRef, useState, type ReactNode } from "react"
 
 interface ToolPartProps {
   tool: string
@@ -50,23 +49,18 @@ function renderSubtitleAccessibleText(subtitle: ReactNode | StructuredSubtitle) 
   return [reactNodeText(subtitle.text), reactNodeText(subtitle.suffix)].filter(Boolean).join(" ")
 }
 
-function displayedToolStatus(state: ToolState, isMessageComplete: boolean): ToolState["status"] {
-  if (isMessageComplete && (state.status === "pending" || state.status === "running")) {
-    return "completed"
-  }
-  return state.status
-}
-
 function isFileMutationTool(tool: string) {
   return tool === "write" || tool === "edit"
 }
 
-export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartProps) {
+export function ToolPart({ tool, state }: ToolPartProps) {
   const config = getToolConfig(tool)
   const defaultOpen = DEFAULT_OPEN_TOOLS.includes(tool)
   const [open, setOpen] = useState(defaultOpen)
-  const status = displayedToolStatus(state, isMessageComplete)
-  const elapsedStart = state.time?.start ?? Date.now()
+  const fallbackStartRef = useRef<number | null>(null)
+  if (fallbackStartRef.current === null) fallbackStartRef.current = Date.now()
+  const status = state.status
+  const elapsedStart = state.time?.start ?? fallbackStartRef.current
   const elapsedEnd =
     status === "running" ? state.time?.end : (state.time?.end ?? state.time?.start ?? elapsedStart)
   const elapsed = useElapsedTime(elapsedStart, elapsedEnd)
@@ -108,15 +102,22 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
     : status === "completed"
       ? "Success"
       : status === "error"
-        ? "Failed"
-        : "Running"
+        ? state.error === "Interrupted"
+          ? "Interrupted"
+          : "Failed"
+        : status === "pending"
+          ? "Pending"
+          : "Running"
   const StatusIcon =
     status === "completed" && !hasExitCodeFailure
       ? CheckCircle
       : status === "error" || hasExitCodeFailure
         ? DangerTriangle
         : ClockCircle
-  const triggerLabel = open ? expandedTitle : [title, subtitleText].filter(Boolean).join(" ").trim()
+  const triggerLabel = [open ? expandedTitle : title, subtitleText, statusLabel]
+    .filter(Boolean)
+    .join(" ")
+    .trim()
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -132,13 +133,13 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left whitespace-nowrap">
           {shouldShimmer ? (
-            <Shimmer className="min-w-0 truncate whitespace-nowrap">
+            <span className={cn("shimmer", "min-w-0 truncate whitespace-nowrap")}>
               {subtitle ? renderSubtitleText(subtitle) : title}
-            </Shimmer>
+            </span>
           ) : open ? (
             <span className="min-w-0 truncate text-foreground">
               {shouldShimmerTitle ? (
-                <Shimmer className="whitespace-nowrap">{expandedTitle}</Shimmer>
+                <span className={cn("shimmer", "whitespace-nowrap")}>{expandedTitle}</span>
               ) : (
                 expandedTitle
               )}
@@ -146,7 +147,7 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
           ) : (
             <>
               {shouldShimmerTitle ? (
-                <Shimmer className="shrink-0 whitespace-nowrap">{title}</Shimmer>
+                <span className={cn("shimmer", "shrink-0 whitespace-nowrap")}>{title}</span>
               ) : (
                 <span className="shrink-0 whitespace-nowrap text-foreground">{title}</span>
               )}
@@ -198,7 +199,10 @@ export function ToolPart({ tool, state, isMessageComplete = false }: ToolPartPro
             )}
           </div>
           <div className="flex items-center justify-end gap-1.5 px-3 pb-3 text-xs text-muted-foreground">
-            <StatusIcon size={13} className={status === "error" ? "text-destructive" : ""} />
+            <StatusIcon
+              size={13}
+              className={status === "error" || hasExitCodeFailure ? "text-destructive" : ""}
+            />
             <span>{statusLabel}</span>
           </div>
         </CollapsibleContent>

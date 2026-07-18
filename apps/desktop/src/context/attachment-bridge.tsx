@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react"
-import type { ScreenReference } from "@/components/ai-elements/prompt-input"
+import type { ScreenReference } from "@/components/blocks/chat/prompt-input"
 
 type AddAttachmentFn = (files: File[]) => void
 type AddScreenRefFn = (ref: Omit<ScreenReference, "id">) => void

@@ -18,6 +18,8 @@ export interface QuestionPromptProps {
 
 export function QuestionPrompt({ request, onReply, onReject, className }: QuestionPromptProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
+  const [failedAction, setFailedAction] = useState<"reply" | "reject" | null>(null)
   const [activeTab, setActiveTab] = useState(0)
   const [answers, setAnswers] = useState<string[][]>(request.questions.map(() => []))
   const [customInputs, setCustomInputs] = useState<string[]>(request.questions.map(() => ""))
@@ -89,25 +91,32 @@ export function QuestionPrompt({ request, onReply, onReject, className }: Questi
     [activeTab],
   )
 
+  const submitAnswers = useCallback(async () => {
+    setIsLoading(true)
+    setSubmissionError(null)
+    setFailedAction(null)
+    try {
+      const finalAnswers = answers.map((ans, idx) => {
+        const customInput = customInputs[idx]
+        if (customInput && customInput.trim()) return [customInput.trim()]
+        return ans
+      })
+      await onReply(finalAnswers)
+    } catch (error) {
+      setFailedAction("reply")
+      setSubmissionError(error instanceof Error ? error.message : "Failed to send answer.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [answers, customInputs, onReply])
+
   const handleSubmit = useCallback(
-    async (e: React.MouseEvent) => {
+    (e: React.MouseEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      setIsLoading(true)
-      try {
-        const finalAnswers = answers.map((ans, idx) => {
-          const customInput = customInputs[idx]
-          if (customInput && customInput.trim()) {
-            return [customInput.trim()]
-          }
-          return ans
-        })
-        await onReply(finalAnswers)
-      } finally {
-        setIsLoading(false)
-      }
+      void submitAnswers()
     },
-    [answers, customInputs, onReply],
+    [submitAnswers],
   )
 
   const handleReject = useCallback(
@@ -115,8 +124,13 @@ export function QuestionPrompt({ request, onReply, onReject, className }: Questi
       e.preventDefault()
       e.stopPropagation()
       setIsLoading(true)
+      setSubmissionError(null)
+      setFailedAction(null)
       try {
         await onReject()
+      } catch (error) {
+        setFailedAction("reject")
+        setSubmissionError(error instanceof Error ? error.message : "Failed to dismiss question.")
       } finally {
         setIsLoading(false)
       }
@@ -230,6 +244,25 @@ export function QuestionPrompt({ request, onReply, onReject, className }: Questi
           </div>
         )}
       </div>
+
+      {submissionError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 border-t border-destructive/20 bg-destructive/10 px-4 py-2 text-xs text-destructive"
+        >
+          <span>{submissionError}</span>
+          {failedAction === "reply" && (
+            <button
+              type="button"
+              onClick={() => void submitAnswers()}
+              disabled={isLoading || !allAnswered}
+              className="shrink-0 font-medium underline underline-offset-2 disabled:opacity-50"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Footer - compact actions */}
       <div className="px-4 py-3 border-t border-border/40 flex items-center justify-between bg-muted/20">

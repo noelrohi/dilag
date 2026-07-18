@@ -6,8 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/c
 import { cn } from "@/lib/utils"
 import type { ComponentProps, ReactNode } from "react"
 import { createContext, memo, useContext, useEffect, useState } from "react"
-import { Streamdown } from "streamdown"
-import { Shimmer } from "./shimmer"
+import { Markdown } from "./markdown"
 
 type ReasoningContextValue = {
   isStreaming: boolean
@@ -104,7 +103,7 @@ export const Reasoning = memo(
     return (
       <ReasoningContext.Provider value={{ isStreaming, isOpen, setIsOpen, duration }}>
         <Collapsible
-          className={cn("not-prose mb-4", className)}
+          className={cn("mb-4", className)}
           onOpenChange={handleOpenChange}
           open={isOpen}
           {...props}
@@ -122,7 +121,7 @@ export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & 
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer as="span">Thinking...</Shimmer>
+    return <span className="shimmer">Thinking...</span>
   }
   if (duration === undefined) {
     return <span>Thought for a few seconds</span>
@@ -180,9 +179,7 @@ export const ReasoningContent = memo(({ className, children, ...props }: Reasoni
     )}
     {...props}
   >
-    <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-      {children}
-    </Streamdown>
+    <Markdown>{children}</Markdown>
   </CollapsibleContent>
 ))
 

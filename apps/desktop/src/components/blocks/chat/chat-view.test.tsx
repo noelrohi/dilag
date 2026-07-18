@@ -42,10 +42,13 @@ vi.mock("@/lib/bridge", () => ({
   },
 }))
 
-vi.mock("@/components/ai-elements/conversation", () => ({
-  Conversation: ({ children }: { children?: ReactNode }) => children,
-  ConversationContent: ({ children }: { children?: ReactNode }) => children,
-  ConversationScrollButton: () => null,
+vi.mock("@dilag/ui/message-scroller", () => ({
+  MessageScrollerProvider: ({ children }: { children?: ReactNode }) => children,
+  MessageScroller: ({ children }: { children?: ReactNode }) => children,
+  MessageScrollerViewport: ({ children }: { children?: ReactNode }) => children,
+  MessageScrollerContent: ({ children }: { children?: ReactNode }) => children,
+  MessageScrollerItem: ({ children }: { children?: ReactNode }) => children,
+  MessageScrollerButton: () => null,
 }))
 
 vi.mock("@/components/blocks/selectors/model-selector-button", () => ({
@@ -76,7 +79,6 @@ import {
   estimateMentionFileSizeBytes,
   buildMentionDataUrl,
   getRenderableAssistantParts,
-  getChatActivityLabel,
   isAssistantMessageStreaming,
   splitAssistantWorkParts,
   getAssistantWorkSummary,
@@ -90,6 +92,7 @@ import {
   ChatView,
 } from "./chat-view"
 import type { MessagePart } from "@/context/session-store"
+import { useSessionStore } from "@/context/session-store"
 import { pushPromptHistory } from "@/lib/prompt-history"
 
 function renderChatView({
@@ -725,7 +728,51 @@ describe("getAssistantWorkSummary", () => {
       },
     ]
 
-    expect(getAssistantWorkSummary(parts)).toBe("Explored 1 search, ran 2 commands")
+    expect(getAssistantWorkSummary(parts)).toBe("Explored 1 search and ran 2 commands")
+  })
+
+  it("uses present tense while a grouped tool is still working", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "read-1",
+        type: "tool",
+        tool: "read",
+        state: { status: "completed", input: { path: "src/app.tsx" } },
+      },
+      {
+        id: "bash-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "running", input: { command: "bun test" } },
+      },
+    ]
+
+    expect(getAssistantWorkSummary(parts)).toBe("Exploring 1 file and running 1 command")
+  })
+
+  it("counts interrupted and failed tools separately", () => {
+    const parts: MessagePart[] = [
+      {
+        id: "read-1",
+        type: "tool",
+        tool: "read",
+        state: { status: "completed", input: { path: "src/app.tsx" } },
+      },
+      {
+        id: "bash-1",
+        type: "tool",
+        tool: "bash",
+        state: { status: "error", error: "Interrupted", input: { command: "bun test" } },
+      },
+      {
+        id: "edit-1",
+        type: "tool",
+        tool: "edit",
+        state: { status: "error", error: "Command failed", input: { filePath: "src/app.tsx" } },
+      },
+    ]
+
+    expect(getAssistantWorkSummary(parts)).toBe("Explored 1 file, 1 interrupted, and 1 failed")
   })
 
   it("keeps pluralization stable across multiple work categories", () => {
@@ -757,7 +804,7 @@ describe("getAssistantWorkSummary", () => {
     ]
 
     expect(getAssistantWorkSummary(parts)).toBe(
-      "Explored 2 files, made 1 file change, ran 1 command",
+      "Explored 2 files, made 1 file change, and ran 1 command",
     )
   })
 })
@@ -779,16 +826,16 @@ describe("shouldShimmerAssistantWorkSummary", () => {
       },
     ]
 
-    expect(shouldShimmerAssistantWorkSummary(parts, false)).toBe(true)
+    expect(shouldShimmerAssistantWorkSummary(parts)).toBe(true)
   })
 
-  it("returns false when only an earlier grouped tool is pending", () => {
+  it("returns true when any grouped tool is still running, not just the latest", () => {
     const parts: MessagePart[] = [
       {
         id: "write-1",
         type: "tool",
         tool: "write",
-        state: { status: "pending", input: { filePath: "todo-home.html" } },
+        state: { status: "running", input: { filePath: "todo-home.html" } },
       },
       {
         id: "bash-1",
@@ -798,20 +845,7 @@ describe("shouldShimmerAssistantWorkSummary", () => {
       },
     ]
 
-    expect(shouldShimmerAssistantWorkSummary(parts, false)).toBe(false)
-  })
-
-  it("returns false for stale pending tools after the message is complete", () => {
-    const parts: MessagePart[] = [
-      {
-        id: "write-1",
-        type: "tool",
-        tool: "write",
-        state: { status: "pending", input: { filePath: "portfolio-home.html" } },
-      },
-    ]
-
-    expect(shouldShimmerAssistantWorkSummary(parts, true)).toBe(false)
+    expect(shouldShimmerAssistantWorkSummary(parts)).toBe(true)
   })
 
   it("returns false after all grouped tools have settled", () => {
@@ -822,14 +856,20 @@ describe("shouldShimmerAssistantWorkSummary", () => {
         tool: "bash",
         state: { status: "completed", input: { command: "ls" } },
       },
+      {
+        id: "read-1",
+        type: "tool",
+        tool: "read",
+        state: { status: "error", error: "Interrupted", input: { path: "src/app.tsx" } },
+      },
     ]
 
-    expect(shouldShimmerAssistantWorkSummary(parts, false)).toBe(false)
+    expect(shouldShimmerAssistantWorkSummary(parts)).toBe(false)
   })
 })
 
 describe("AssistantWorkGroup", () => {
-  it("uses the shimmer treatment while any grouped item is pending", () => {
+  it("shimmers a present-tense summary with elapsed time while a tool is running", () => {
     render(
       <AssistantWorkGroup
         parts={[
@@ -837,7 +877,7 @@ describe("AssistantWorkGroup", () => {
             id: "bash-1",
             type: "tool",
             tool: "bash",
-            state: { status: "pending", input: { command: "ls -la" } },
+            state: { status: "running", input: { command: "ls -la" } },
           },
         ]}
         isStreaming
@@ -845,10 +885,11 @@ describe("AssistantWorkGroup", () => {
       />,
     )
 
-    expect(screen.getByText("Ran 1 command")).toHaveClass("text-transparent")
+    const summary = screen.getByText(/Running 1 command · /)
+    expect(summary).toHaveClass("shimmer")
   })
 
-  it("does not shimmer stale pending summaries after completion", () => {
+  it("shows a clean past-tense summary without shimmer once the turn settles", () => {
     render(
       <AssistantWorkGroup
         parts={[
@@ -856,7 +897,7 @@ describe("AssistantWorkGroup", () => {
             id: "write-1",
             type: "tool",
             tool: "write",
-            state: { status: "pending", input: { filePath: "portfolio-home.html" } },
+            state: { status: "completed", input: { filePath: "portfolio-home.html" } },
           },
         ]}
         isStreaming={false}
@@ -865,7 +906,8 @@ describe("AssistantWorkGroup", () => {
       />,
     )
 
-    expect(screen.getByText("Made 1 file change")).not.toHaveClass("text-shimmer-sweep")
+    const summary = screen.getByText("Made 1 file change")
+    expect(summary).not.toHaveClass("shimmer")
   })
 
   it("keeps the latest thinking block open while a following tool is running", async () => {
@@ -902,51 +944,109 @@ describe("AssistantWorkGroup", () => {
       />,
     )
 
-    await user.click(screen.getByRole("button", { name: /Made 1 file change, ran 1 command/ }))
+    await user.click(
+      screen.getByRole("button", { name: /Making 1 file change and running 1 command/ }),
+    )
 
     expect(screen.getByText("I inspected the existing design files.")).toBeInTheDocument()
     expect(screen.getByText("Now I can create the requested screens.")).toBeInTheDocument()
   })
 })
 
-describe("getChatActivityLabel", () => {
-  it("prioritizes user-blocking questions", () => {
-    expect(
-      getChatActivityLabel({
-        isLoading: true,
-        pendingQuestionCount: 1,
-        runningQuestionToolCount: 0,
-        runningTools: [{ tool: "write" }],
-        sessionStatus: "running",
-        fallback: "Thinking",
-      }),
-    ).toBe("Waiting for your answer")
-  })
+describe("AssistantMessage work group integration", () => {
+  it("mounts the work group ahead of the final response and reveals rows in store order", async () => {
+    const user = userEvent.setup()
+    const sessionId = "session-group"
+    const messageId = "assistant-group-1"
 
-  it("uses specific labels for running tools", () => {
-    expect(
-      getChatActivityLabel({
-        isLoading: true,
-        pendingQuestionCount: 0,
-        runningQuestionToolCount: 0,
-        runningTools: [{ tool: "write" }],
-        sessionStatus: "idle",
-        fallback: "Thinking",
-      }),
-    ).toBe("Writing screen")
-  })
+    useSessionStore.setState((state) => {
+      state.parts[messageId] = [
+        {
+          id: "reasoning-1",
+          sessionID: sessionId,
+          messageID: messageId,
+          type: "reasoning",
+          text: "First I inspect the project.",
+        },
+        {
+          id: "tool-read",
+          sessionID: sessionId,
+          messageID: messageId,
+          type: "tool",
+          tool: "read",
+          state: { status: "completed", input: { path: "src/app.tsx" }, output: "contents" },
+        },
+        {
+          id: "reasoning-2",
+          sessionID: sessionId,
+          messageID: messageId,
+          type: "reasoning",
+          text: "Then I apply the edit.",
+        },
+        {
+          id: "tool-edit",
+          sessionID: sessionId,
+          messageID: messageId,
+          type: "tool",
+          tool: "edit",
+          state: { status: "completed", input: { filePath: "src/app.tsx" } },
+        },
+        {
+          id: "text-1",
+          sessionID: sessionId,
+          messageID: messageId,
+          type: "text",
+          text: "All set.",
+        },
+      ]
+      state.sessionStatus[sessionId] = "idle"
+    })
 
-  it("returns undefined when idle", () => {
-    expect(
-      getChatActivityLabel({
-        isLoading: false,
-        pendingQuestionCount: 0,
-        runningQuestionToolCount: 0,
-        runningTools: [],
-        sessionStatus: "idle",
-        fallback: "Thinking",
-      }),
-    ).toBeUndefined()
+    mocks.useSessions.mockReturnValue({
+      messages: [
+        {
+          id: messageId,
+          sessionID: sessionId,
+          role: "assistant",
+          isStreaming: false,
+          time: { created: 1000, completed: 2000 },
+        },
+      ],
+      currentSessionId: sessionId,
+      currentSession: { cwd: "/tmp/project" },
+      isLoading: false,
+      isServerReady: true,
+      sendMessage: vi.fn(),
+      stopSession: vi.fn(),
+      createSession: vi.fn(),
+      forkSession: vi.fn(),
+    })
+    mocks.useGlobalEvents.mockReturnValue({ serverError: null, retryStart: vi.fn() })
+    mocks.usePendingMessage.mockReturnValue({ pendingMessage: null, clearPendingMessage: vi.fn() })
+
+    render(<ChatView />)
+
+    // Final response renders outside the group as the star of the turn.
+    expect(screen.getByText("All set.")).toBeInTheDocument()
+
+    // Reasoning stays collapsed behind the one-line summary until expanded.
+    expect(screen.queryByText("First I inspect the project.")).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole("button", { name: /Explored 1 file and made 1 file change/ }),
+    )
+
+    const first = screen.getByText("First I inspect the project.")
+    const second = screen.getByText("Then I apply the edit.")
+    expect(first).toBeInTheDocument()
+    expect(second).toBeInTheDocument()
+    // Grouped rows preserve chronological store order.
+    expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    useSessionStore.setState((state) => {
+      delete state.parts[messageId]
+      delete state.sessionStatus[sessionId]
+    })
   })
 })
 

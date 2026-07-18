@@ -41,23 +41,31 @@ import {
   type SessionStatus,
   type Message as SessionMessage,
 } from "@/context/session-store"
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle,
+} from "@dilag/ui/attachment"
+import { Bubble, BubbleContent } from "@dilag/ui/bubble"
 import { Button } from "@dilag/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@dilag/ui/collapsible"
+import { Marker, MarkerContent, MarkerIcon } from "@dilag/ui/marker"
+import {
+  MessageScrollerProvider,
+  MessageScroller,
+  MessageScrollerViewport,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerButton,
+} from "@dilag/ui/message-scroller"
 import { cn } from "@/lib/utils"
+import { Markdown } from "./markdown"
+import { MessageActions, MessageAction } from "./message-actions"
 import { MessagePart } from "./message-part"
-import { Shimmer } from "@/components/ai-elements/shimmer"
-import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from "@/components/ai-elements/conversation"
-import {
-  Message,
-  MessageContent,
-  MessageActions,
-  MessageAction,
-  MessageResponse,
-} from "@/components/ai-elements/message"
 import {
   PromptInput,
   PromptInputTextarea,
@@ -72,7 +80,7 @@ import {
   PromptInputScreenReference,
   PromptInputProvider,
   usePromptInputController,
-} from "@/components/ai-elements/prompt-input"
+} from "./prompt-input"
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
 import { ThinkingModeSelector } from "@/components/blocks/selectors/thinking-mode-selector"
@@ -283,36 +291,6 @@ export function parseSkillBlock(text: string): ParsedSkillBlock | null {
   }
 }
 
-export function getChatActivityLabel({
-  isLoading,
-  pendingQuestionCount,
-  runningQuestionToolCount,
-  runningTools,
-  sessionStatus,
-  fallback,
-}: {
-  isLoading: boolean
-  pendingQuestionCount: number
-  runningQuestionToolCount: number
-  runningTools: Array<{ tool: string }>
-  sessionStatus: SessionStatus
-  fallback: string
-}): string | undefined {
-  if (!isLoading) return undefined
-  if (pendingQuestionCount > 0) return "Waiting for your answer"
-  if (runningQuestionToolCount > 0) return "Preparing questions"
-
-  const tool = runningTools[0]?.tool
-  if (tool === "write" || tool === "edit") return "Writing screen"
-  if (tool === "read" || tool === "grep" || tool === "glob") return "Reading project"
-  if (tool === "bash") return "Running command"
-  if (tool === "webfetch" || tool === "websearch") return "Searching"
-  if (tool === "task") return "Delegating"
-
-  if (sessionStatus === "running" || sessionStatus === "busy") return "Thinking"
-  return fallback
-}
-
 export function isAssistantMessageStreaming(
   message: Pick<SessionMessage, "isStreaming" | "time">,
   sessionStatus: SessionStatus,
@@ -327,16 +305,18 @@ export function isAssistantMessageStreaming(
 
 function DesigningIndicator({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={cn("flex items-center gap-3 animate-slide-up", compact ? "py-2" : "py-4")}>
-      <div className="relative flex items-center justify-center size-8">
-        <div className="absolute inset-0 rounded-xl bg-primary/10" />
-        <div className="absolute -inset-1 rounded-2xl bg-primary/5 blur-sm" />
-        <DilagIcon animated className="relative size-5 text-primary" />
-      </div>
-      <Shimmer as="span" className="text-sm font-medium">
-        Designing screens
-      </Shimmer>
-    </div>
+    <Marker className={cn("w-fit gap-3 animate-slide-up", compact ? "py-2" : "py-4")}>
+      <MarkerIcon className="size-8">
+        <div className="relative flex items-center justify-center size-8">
+          <div className="absolute inset-0 rounded-xl bg-primary/10" />
+          <div className="absolute -inset-1 rounded-2xl bg-primary/5 blur-sm" />
+          <DilagIcon animated className="relative size-5 text-primary" />
+        </div>
+      </MarkerIcon>
+      <MarkerContent>
+        <span className={cn("shimmer", "text-sm font-medium")}>Designing screens</span>
+      </MarkerContent>
+    </Marker>
   )
 }
 
@@ -493,8 +473,8 @@ export function SkillInvocationBlock({ skill }: { skill: ParsedSkillBlock }) {
         <CollapsibleContent className="mt-1 overflow-hidden rounded-lg border border-border/60 bg-card text-card-foreground shadow-sm">
           <div className="max-h-72 overflow-y-auto p-3">
             <div className="mb-3 text-xs font-medium text-muted-foreground">Skill</div>
-            <div className="prose prose-sm dark:prose-invert max-w-none text-sm text-card-foreground [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-card-foreground [&_code]:!text-card-foreground [&_*]:!border-border/70 [&_h1]:text-card-foreground [&_h2]:text-card-foreground [&_h3]:text-card-foreground [&_li]:text-card-foreground [&_p]:text-card-foreground [&_strong]:text-card-foreground">
-              <MessageResponse>{`**${skill.name}**\n\n${skill.content}`}</MessageResponse>
+            <div className="text-sm text-card-foreground [&_pre]:!bg-transparent [&_code]:!bg-transparent [&_pre]:!m-0 [&_pre]:!p-0 [&_pre]:!text-card-foreground [&_code]:!text-card-foreground [&_*]:!border-border/70">
+              <Markdown>{`**${skill.name}**\n\n${skill.content}`}</Markdown>
             </div>
           </div>
         </CollapsibleContent>
@@ -526,51 +506,65 @@ function UserMessage({
     <>
       {skillBlock && <SkillInvocationBlock skill={skillBlock} />}
       {(cleanText || fileParts.length > 0) && (
-        <Message
-          from="user"
-          className="animate-slide-up ml-0!"
+        <div
+          className="w-full max-w-[95%] animate-slide-up"
           style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
         >
-          <MessageContent className="ml-0! space-y-2">
-            {/* File attachments */}
-            {fileParts.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {fileParts.map((file) => (
-                  <div
-                    key={file.id}
-                    className="relative rounded-lg overflow-hidden border border-border/50 bg-muted/30"
-                  >
-                    {file.mime?.startsWith("image/") ? (
-                      <img
-                        src={file.url}
-                        alt={file.filename || "Attached image"}
-                        className="max-w-[200px] max-h-[200px] object-contain"
-                      />
+          <Bubble align="end" variant="secondary" className="max-w-full">
+            <BubbleContent className="flex flex-col gap-2 space-y-2 rounded-lg px-4 py-3">
+              {/* File attachments */}
+              {fileParts.length > 0 && (
+                <AttachmentGroup className="flex-wrap gap-2 overflow-x-visible py-0 snap-none">
+                  {fileParts.map((file) =>
+                    file.mime?.startsWith("image/") ? (
+                      <Attachment
+                        key={file.id}
+                        className="min-w-0 overflow-hidden rounded-lg border-border/50 bg-muted/30 has-data-[slot=attachment-media]:p-0"
+                      >
+                        <AttachmentMedia
+                          variant="image"
+                          className="aspect-auto h-auto w-auto bg-transparent"
+                        >
+                          <img
+                            src={file.url}
+                            alt={file.filename || "Attached image"}
+                            className="max-w-[200px] max-h-[200px] object-contain"
+                          />
+                        </AttachmentMedia>
+                      </Attachment>
                     ) : (
-                      <div className="px-3 py-2 flex items-center gap-2 text-sm text-muted-foreground">
-                        <ClipboardText size={16} />
-                        <span className="truncate max-w-[150px]">
-                          {file.filename || "Attachment"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Text content with inline highlights for @ScreenName refs */}
-            {cleanText && (
-              <p className="whitespace-pre-wrap leading-relaxed">
-                {hasScreenRefs ? <HighlightedText text={cleanText} /> : cleanText}
-              </p>
-            )}
-          </MessageContent>
+                      <Attachment
+                        key={file.id}
+                        size="sm"
+                        className="rounded-lg border-border/50 bg-muted/30 text-sm text-muted-foreground"
+                      >
+                        <AttachmentMedia variant="icon" className="bg-transparent">
+                          <ClipboardText size={16} className="size-4" />
+                        </AttachmentMedia>
+                        <AttachmentContent>
+                          <AttachmentTitle className="max-w-[150px] font-normal">
+                            {file.filename || "Attachment"}
+                          </AttachmentTitle>
+                        </AttachmentContent>
+                      </Attachment>
+                    ),
+                  )}
+                </AttachmentGroup>
+              )}
+              {/* Text content with inline highlights for @ScreenName refs */}
+              {cleanText && (
+                <p className="whitespace-pre-wrap leading-relaxed">
+                  {hasScreenRefs ? <HighlightedText text={cleanText} /> : cleanText}
+                </p>
+              )}
+            </BubbleContent>
+          </Bubble>
           {!hideActions && (
-            <MessageActions>
+            <MessageActions className="mt-2">
               <CopyMessageAction messageId={message.id} onCopyText={onCopyText} />
             </MessageActions>
           )}
-        </Message>
+        </div>
       )}
       {skillBlock && !cleanText && fileParts.length === 0 && !hideActions && (
         <MessageActions>
@@ -591,19 +585,27 @@ export function splitAssistantWorkParts(parts: MessagePartType[]) {
   }
 }
 
-const EXPLORATION_TOOL_LABELS: Record<string, string> = {
-  grep: "search",
-  websearch: "search",
-  read: "file",
-  glob: "file search",
-  list: "directory",
-  webfetch: "page",
+// Singular/plural pair for a counted work category. Explicit forms avoid the
+// naive "+s" pluralization that mangles words like "directory" and "search".
+type CountLabel = { singular: string; plural: string }
+
+const EXPLORATION_TOOL_LABELS: Record<string, CountLabel> = {
+  grep: { singular: "search", plural: "searches" },
+  websearch: { singular: "search", plural: "searches" },
+  read: { singular: "file", plural: "files" },
+  glob: { singular: "file search", plural: "file searches" },
+  list: { singular: "directory", plural: "directories" },
+  webfetch: { singular: "page", plural: "pages" },
 }
 
-function pluralizeCount(count: number, label: string) {
-  if (count === 1) return `1 ${label}`
-  if (label.endsWith("search")) return `${count} ${label}es`
-  return `${count} ${label}s`
+const FILE_CHANGE_LABEL: CountLabel = { singular: "file change", plural: "file changes" }
+const COMMAND_LABEL: CountLabel = { singular: "command", plural: "commands" }
+const TASK_LABEL: CountLabel = { singular: "task", plural: "tasks" }
+const QUESTION_LABEL: CountLabel = { singular: "question", plural: "questions" }
+const TOOL_LABEL: CountLabel = { singular: "tool", plural: "tools" }
+
+function pluralize(count: number, label: CountLabel) {
+  return `${count} ${count === 1 ? label.singular : label.plural}`
 }
 
 function joinSummaryItems(items: string[]) {
@@ -620,20 +622,39 @@ export function getAssistantWorkSummary(parts: MessagePartType[]): string | unde
   const toolParts = parts.filter((part) => part.type === "tool" && part.tool)
   if (toolParts.length === 0) return undefined
 
-  const explorationCounts = new Map<string, number>()
+  // Present tense while any grouped tool is still working, past tense once settled.
+  const isWorking = toolParts.some(
+    (part) => part.state?.status === "pending" || part.state?.status === "running",
+  )
+  const verb = (past: string, present: string) => (isWorking ? present : past)
+
+  const explorationCounts = new Map<string, { label: CountLabel; count: number }>()
   let commandCount = 0
   let fileUpdateCount = 0
   let taskCount = 0
   let todoCount = 0
   let questionCount = 0
   let otherToolCount = 0
+  let interruptedCount = 0
+  let failedCount = 0
 
   for (const part of toolParts) {
+    if (part.state?.status === "error") {
+      if (part.state.error === "Interrupted") interruptedCount++
+      else failedCount++
+      continue
+    }
+
     const tool = part.tool!
     const explorationLabel = EXPLORATION_TOOL_LABELS[tool]
 
     if (explorationLabel) {
-      explorationCounts.set(explorationLabel, (explorationCounts.get(explorationLabel) ?? 0) + 1)
+      const entry = explorationCounts.get(explorationLabel.singular) ?? {
+        label: explorationLabel,
+        count: 0,
+      }
+      entry.count++
+      explorationCounts.set(explorationLabel.singular, entry)
     } else if (tool === "bash") {
       commandCount++
     } else if (tool === "write" || tool === "edit") {
@@ -649,45 +670,42 @@ export function getAssistantWorkSummary(parts: MessagePartType[]): string | unde
     }
   }
 
-  const phrases: string[] = []
-  const explorationItems = Array.from(explorationCounts.entries()).map(([label, count]) =>
-    pluralizeCount(count, label),
+  const clauses: string[] = []
+  const explorationItems = Array.from(explorationCounts.values()).map((entry) =>
+    pluralize(entry.count, entry.label),
   )
 
   if (explorationItems.length > 0) {
-    phrases.push(`explored ${joinSummaryItems(explorationItems)}`)
+    clauses.push(`${verb("explored", "exploring")} ${joinSummaryItems(explorationItems)}`)
   }
-  if (fileUpdateCount > 0) phrases.push(`made ${pluralizeCount(fileUpdateCount, "file change")}`)
-  if (commandCount > 0) phrases.push(`ran ${pluralizeCount(commandCount, "command")}`)
-  if (taskCount > 0) phrases.push(`ran ${pluralizeCount(taskCount, "task")}`)
-  if (todoCount > 0) phrases.push("updated to-dos")
-  if (questionCount > 0) phrases.push(`asked ${pluralizeCount(questionCount, "question")}`)
-  if (otherToolCount > 0) phrases.push(`used ${pluralizeCount(otherToolCount, "tool")}`)
+  if (fileUpdateCount > 0) {
+    clauses.push(`${verb("made", "making")} ${pluralize(fileUpdateCount, FILE_CHANGE_LABEL)}`)
+  }
+  if (commandCount > 0) {
+    clauses.push(`${verb("ran", "running")} ${pluralize(commandCount, COMMAND_LABEL)}`)
+  }
+  if (taskCount > 0) clauses.push(`${verb("ran", "running")} ${pluralize(taskCount, TASK_LABEL)}`)
+  if (todoCount > 0) clauses.push(verb("updated to-dos", "updating to-dos"))
+  if (questionCount > 0) {
+    clauses.push(`${verb("asked", "asking")} ${pluralize(questionCount, QUESTION_LABEL)}`)
+  }
+  if (otherToolCount > 0) {
+    clauses.push(`${verb("used", "using")} ${pluralize(otherToolCount, TOOL_LABEL)}`)
+  }
+  if (interruptedCount > 0) clauses.push(`${interruptedCount} interrupted`)
+  if (failedCount > 0) clauses.push(`${failedCount} failed`)
 
-  return phrases.length > 0 ? sentenceCase(phrases.join(", ")) : undefined
+  return clauses.length > 0 ? sentenceCase(joinSummaryItems(clauses)) : undefined
 }
 
-function getEffectiveToolStatus(part: MessagePartType, isMessageComplete: boolean) {
-  const status = part.state?.status
-  if (!status) return undefined
-  if (isMessageComplete && (status === "pending" || status === "running")) return "completed"
-  return status
-}
-
-function isFileMutationToolPart(part: MessagePartType) {
-  return part.tool === "write" || part.tool === "edit"
-}
-
-export function shouldShimmerAssistantWorkSummary(
-  parts: MessagePartType[],
-  isMessageComplete: boolean,
-) {
-  const latestToolPart = [...parts].reverse().find((part) => part.type === "tool" && part.state)
-  if (!latestToolPart) return false
-
-  const status = getEffectiveToolStatus(latestToolPart, isMessageComplete)
-  if (status === "pending") return true
-  return status === "running" && isFileMutationToolPart(latestToolPart)
+// Shimmer whenever ANY grouped tool is still pending/running. The store settles
+// interrupted/aborted tools to a terminal status, so a live status is authoritative.
+export function shouldShimmerAssistantWorkSummary(parts: MessagePartType[]) {
+  return parts.some(
+    (part) =>
+      part.type === "tool" &&
+      (part.state?.status === "pending" || part.state?.status === "running"),
+  )
 }
 
 function isReasoningPartStreaming(
@@ -715,12 +733,20 @@ export function AssistantWorkGroup({
   startedAt: number
   completedAt?: number
 }) {
+  const isWorking = completedAt === undefined
+  const elapsed = useElapsedTime(startedAt, completedAt)
+
   if (parts.length === 0) return null
 
-  const elapsed = useElapsedTime(startedAt, completedAt)
-  const prefix = completedAt === undefined ? "Working" : "Worked for"
-  const summary = getAssistantWorkSummary(parts) ?? `${prefix} ${elapsed}`
-  const shouldShimmerSummary = shouldShimmerAssistantWorkSummary(parts, !isStreaming)
+  const summary = getAssistantWorkSummary(parts)
+  const shouldShimmerSummary = shouldShimmerAssistantWorkSummary(parts)
+  // Keep elapsed on the trigger while working; drop it once the turn settles so the
+  // final summary reads clean. Fall back to "Worked for Xs" when there's no summary.
+  const triggerText = summary
+    ? isWorking
+      ? `${summary} · ${elapsed}`
+      : summary
+    : `${isWorking ? "Working" : "Worked for"} ${elapsed}`
 
   return (
     <Collapsible>
@@ -734,11 +760,9 @@ export function AssistantWorkGroup({
           <Terminal className="size-[15px] stroke-[1.75]" />
         </span>
         {shouldShimmerSummary ? (
-          <Shimmer as="span" className="min-w-0 truncate text-left">
-            {summary}
-          </Shimmer>
+          <span className={cn("shimmer", "min-w-0 truncate text-left")}>{triggerText}</span>
         ) : (
-          <span className="min-w-0 truncate text-left">{summary}</span>
+          <span className="min-w-0 truncate text-left">{triggerText}</span>
         )}
         <AltArrowRight
           size={14}
@@ -755,12 +779,10 @@ export function AssistantWorkGroup({
               ? isReasoningPartStreaming(parts, partIndex, isStreaming)
               : isStreaming
 
+          // No index-based stagger: grouped parts remount/reorder while streaming,
+          // which would replay the entrance animation on every store update.
           return (
-            <div
-              key={part.id}
-              className="animate-stream-in"
-              style={{ animationDelay: `${partIndex * 35}ms` }}
-            >
+            <div key={part.id} className="animate-stream-in">
               <MessagePart part={part} isStreaming={isPartStreaming} />
             </div>
           )
@@ -791,33 +813,39 @@ function AssistantMessage({
   )
   const isStreaming = isAssistantMessageStreaming(message, sessionStatus)
   const turnRenderableParts = getRenderableAssistantParts(messageParts, isStreaming)
+  const { workParts, finalParts } = splitAssistantWorkParts(turnRenderableParts)
+  // The grouped summary shimmers while tools run, so only fall back to the compact
+  // "awaiting model" indicator once final output is streaming with no active work —
+  // never both at once.
   const showAwaitingModelIndicator =
-    isStreaming && turnRenderableParts.length > 0 && !hasActiveToolPart(messageParts)
+    isStreaming && finalParts.length > 0 && !hasActiveToolPart(messageParts)
 
   if (!isStreaming && turnRenderableParts.length === 0 && !sessionError) {
     return null
   }
 
   return (
-    <Message
-      from="assistant"
-      className="animate-slide-up"
+    <div
+      className="flex w-full max-w-[95%] flex-col gap-2 animate-slide-up"
       style={{ animationDelay: `${Math.min(index * 30, 200)}ms` }}
     >
-      <MessageContent className="space-y-2 w-full">
-        {turnRenderableParts.map((part, partIndex) => {
-          const isPartStreaming = isStreaming
+      <div className="flex w-full max-w-full min-w-0 flex-col gap-2 space-y-2 overflow-hidden text-sm text-foreground">
+        {/* Tool/reasoning work collapses behind a one-line summary; the final response
+            renders after it as the star of the turn. Bucket order stays chronological. */}
+        {workParts.length > 0 && (
+          <AssistantWorkGroup
+            parts={workParts}
+            isStreaming={isStreaming}
+            startedAt={message.time.created}
+            completedAt={isStreaming ? undefined : (message.time.completed ?? message.time.created)}
+          />
+        )}
 
-          return (
-            <div
-              key={part.id}
-              className="animate-stream-in"
-              style={{ animationDelay: `${partIndex * 50}ms` }}
-            >
-              <MessagePart part={part} isStreaming={isPartStreaming} />
-            </div>
-          )
-        })}
+        {finalParts.map((part) => (
+          <div key={part.id} className="animate-stream-in">
+            <MessagePart part={part} isStreaming={isStreaming} />
+          </div>
+        ))}
 
         {/* Thinking indicator - show before the first renderable part, and also between tool waves
             while Pi is waiting on the provider after all current tools have completed. Pi TUI keeps
@@ -828,7 +856,7 @@ function AssistantMessage({
 
         {/* Inline error - show on last assistant message when session has error */}
         {isLast && !isStreaming && sessionError && <InlineErrorCard error={sessionError} />}
-      </MessageContent>
+      </div>
       {!isStreaming && isLast && (
         <MessageActions>
           <CopyMessageAction messageId={message.id} onCopyText={onCopyText} />
@@ -837,7 +865,7 @@ function AssistantMessage({
           </MessageAction>
         </MessageActions>
       )}
-    </Message>
+    </div>
   )
 }
 
@@ -1340,9 +1368,6 @@ function ChatInputArea({
   return (
     <div className="relative px-4 pb-4">
       <div className="relative isolate">
-        {/* Gradient fade */}
-        <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
-
         {hasQueuedPrompts && (
           <div className="relative z-0 mx-auto mb-[-14px] w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-sidebar-border/80 bg-sidebar px-3 pb-5 pt-2 shadow-lg shadow-black/5">
             <div className="max-h-24 divide-y divide-sidebar-border/60 overflow-y-auto">
@@ -1431,27 +1456,32 @@ function ChatInputArea({
           {mentionedFiles.length > 0 && (
             <div className="flex w-full flex-wrap items-start justify-start gap-1.5 px-3 pt-2">
               {mentionedFiles.map((file) => (
-                <div
+                <Attachment
                   key={file.id}
-                  className="group relative inline-flex h-6 cursor-default select-none items-center gap-1 rounded-[5px] pl-1.5 pr-1 bg-gradient-to-b from-foreground/[0.06] to-foreground/[0.03] ring-1 ring-inset ring-foreground/[0.08]"
+                  size="xs"
+                  className="h-6 cursor-default gap-1 rounded-[5px] border-transparent bg-transparent bg-gradient-to-b from-foreground/[0.06] to-foreground/[0.03] ring-1 ring-inset ring-foreground/[0.08] select-none"
                 >
-                  <ClipboardText size={10} className="text-foreground/45" />
-                  <span className="max-w-[220px] truncate text-[12px] font-medium tracking-tight text-foreground/70 group-hover:text-foreground/85">
-                    {file.path}
-                  </span>
-                  <button
-                    aria-label={`Remove ${file.displayName}`}
-                    className="ml-0.5 flex size-4 shrink-0 cursor-pointer items-center justify-center rounded opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-foreground/10"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeMentionedFile(file.id)
-                    }}
-                    type="button"
-                  >
-                    <CloseCircle size={10} className="text-foreground/50" />
-                    <span className="sr-only">Remove</span>
-                  </button>
-                </div>
+                  <AttachmentContent className="flex items-center gap-1">
+                    <ClipboardText size={10} className="size-2.5 shrink-0 text-foreground/45" />
+                    <AttachmentTitle className="max-w-[220px] tracking-tight text-foreground/70 group-hover/attachment:text-foreground/85">
+                      {file.path}
+                    </AttachmentTitle>
+                  </AttachmentContent>
+                  <AttachmentActions>
+                    <AttachmentAction
+                      aria-label={`Remove ${file.displayName}`}
+                      className="ml-0.5 size-4 shrink-0 cursor-pointer rounded opacity-0 transition-all duration-150 group-hover/attachment:opacity-100 hover:bg-foreground/10"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeMentionedFile(file.id)
+                      }}
+                      type="button"
+                    >
+                      <CloseCircle size={10} className="size-2.5 text-foreground/50" />
+                      <span className="sr-only">Remove</span>
+                    </AttachmentAction>
+                  </AttachmentActions>
+                </Attachment>
               ))}
             </div>
           )}
@@ -1474,7 +1504,7 @@ function ChatInputArea({
           <PromptInputFooter className="border-t-0">
             {/* Left side - agent selector, model selector, thinking mode */}
             <PromptInputTools className="min-w-0 flex-1">
-              <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="flex items-center gap-1 overflow-x-auto max-w-[280px] scroll-fade-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <AgentSelectorButton />
                 <ModelSelectorButton />
                 <ThinkingModeSelector />
@@ -1594,38 +1624,50 @@ export function ChatView() {
       <AttachmentBridgeConnector />
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         {/* Messages area - flex-1 + min-h-0 allows proper flex shrinking */}
-        <Conversation className="scrollbar-none flex-1 min-h-0">
-          <ConversationContent className="scrollbar-none px-4">
-            {messages.length === 0
-              ? null
-              : messages.map((message, index) => {
-                  // Check if this is the last assistant message
-                  const isLastAssistant =
-                    message.role === "assistant" &&
-                    !messages.slice(index + 1).some((m) => m.role === "assistant")
+        <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+          <MessageScroller className="flex-1 min-h-0">
+            <MessageScrollerViewport className="scrollbar-none">
+              <MessageScrollerContent className="gap-3 p-4">
+                {messages.length === 0
+                  ? null
+                  : messages.map((message, index) => {
+                      // Check if this is the last assistant message
+                      const isLastAssistant =
+                        message.role === "assistant" &&
+                        !messages.slice(index + 1).some((m) => m.role === "assistant")
 
-                  return message.role === "user" ? (
-                    <UserMessage
-                      key={message.id}
-                      message={message}
-                      index={index}
-                      onCopyText={handleCopyText}
-                      hideActions={hideInitialMessageActions && message.id === firstUserMessageId}
-                    />
-                  ) : (
-                    <AssistantMessage
-                      key={message.id}
-                      message={message}
-                      index={index}
-                      isLast={isLastAssistant}
-                      onFork={handleFork}
-                      onCopyText={handleCopyText}
-                    />
-                  )
-                })}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
+                      return (
+                        <MessageScrollerItem
+                          key={message.id}
+                          messageId={message.id}
+                          scrollAnchor={message.role === "user"}
+                        >
+                          {message.role === "user" ? (
+                            <UserMessage
+                              message={message}
+                              index={index}
+                              onCopyText={handleCopyText}
+                              hideActions={
+                                hideInitialMessageActions && message.id === firstUserMessageId
+                              }
+                            />
+                          ) : (
+                            <AssistantMessage
+                              message={message}
+                              index={index}
+                              isLast={isLastAssistant}
+                              onFork={handleFork}
+                              onCopyText={handleCopyText}
+                            />
+                          )}
+                        </MessageScrollerItem>
+                      )
+                    })}
+              </MessageScrollerContent>
+            </MessageScrollerViewport>
+            <MessageScrollerButton className="rounded-full" />
+          </MessageScroller>
+        </MessageScrollerProvider>
 
         {/* Input area */}
         <div className="shrink-0">

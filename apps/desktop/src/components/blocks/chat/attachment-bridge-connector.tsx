@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import {
   useProviderAttachments,
   useProviderScreenRefs,
-} from "@/components/ai-elements/prompt-input"
+} from "./prompt-input"
 import { useOptionalAttachmentBridge } from "@/context/attachment-bridge"
 
 /**

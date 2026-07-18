@@ -491,19 +491,20 @@ export function useSessions() {
   const stopSession = useCallback(async () => {
     if (!currentSessionId || !currentSession) return
 
-    // Get abortRunningTools action from store
     const { abortRunningTools } = useSessionStore.getState()
+
+    // Settle renderer state before IPC so a slow abort cannot strand active labels or timers.
+    abortRunningTools(currentSessionId)
+    setSessionStatus(currentSessionId, "idle")
 
     try {
       await bridge.agent.abort({ sessionID: currentSessionId })
-      setSessionStatus(currentSessionId, "idle")
-      // Also abort any stuck running tools (backend may not clean them up)
-      abortRunningTools(currentSessionId)
     } catch (err) {
       console.error("Failed to stop session:", err)
-      // Still set to idle and abort tools - abort may fail if session already stopped
-      setSessionStatus(currentSessionId, "idle")
+    } finally {
+      // Reconcile any tool updates that raced with the abort request.
       abortRunningTools(currentSessionId)
+      setSessionStatus(currentSessionId, "idle")
     }
   }, [currentSessionId, currentSession, setSessionStatus])
 
