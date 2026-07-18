@@ -124,7 +124,7 @@
     "eslint-plugin-react-hooks": "catalog:",
     "globals": "catalog:",
     "jsdom": "^27.3.0",
-    "react-grab": "^0.1.37",
+    "react-grab": "^0.1.48",
     "shadcn": "^4.13.1",
     "tsdown": "^0.21.9",
     "tw-animate-css": "catalog:",
