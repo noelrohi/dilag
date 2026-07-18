@@ -84,11 +84,9 @@ function spawnElectron() {
     electronProc.removeAllListeners("exit")
     electronProc.kill()
   }
-  const electronArgs = [path.join(DIST_ELECTRON, "main.cjs")]
   const remoteDebuggingPort = process.env.ELECTRON_REMOTE_DEBUGGING_PORT
-  if (remoteDebuggingPort) {
-    electronArgs.push(`--remote-debugging-port=${remoteDebuggingPort}`)
-  }
+  const electronArgs = remoteDebuggingPort ? [`--remote-debugging-port=${remoteDebuggingPort}`] : []
+  electronArgs.push(path.join(DIST_ELECTRON, "main.cjs"))
 
   electronProc = track(
     spawn(electronPath, electronArgs, {
