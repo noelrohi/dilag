@@ -3,6 +3,7 @@ import type {
   AgentSessionEvent,
   ExtensionUIContext,
   ModelRegistry,
+  ModelRuntime,
   SessionManager,
   ToolDefinition,
 } from "@earendil-works/pi-coding-agent"
@@ -252,31 +253,33 @@ export async function listAgentProviders(): Promise<AgentProvider[]> {
 }
 
 export async function setAgentApiKey(args: { providerID: string; apiKey: string }): Promise<void> {
-  const pi = await loadPi()
-  const authStorage = pi.AuthStorage.create(path.join(getPiAgentDir(), "auth.json"))
-  authStorage.set(args.providerID, { type: "api_key", key: args.apiKey })
+  const modelRuntime = await createModelRuntime()
+  await modelRuntime.login(args.providerID, "api_key", {
+    notify: () => undefined,
+    prompt: async (prompt) =>
+      prompt.type === "select" && prompt.options[0] ? prompt.options[0].id : args.apiKey,
+  })
 }
 
 export async function loginAgentOAuthProvider(
   args: { providerID: string },
   openExternal: (url: string) => Promise<void>,
 ): Promise<void> {
-  const pi = await loadPi()
-  const authStorage = pi.AuthStorage.create(path.join(getPiAgentDir(), "auth.json"))
-  await authStorage.login(args.providerID, {
-    onAuth: ({ url }) => {
-      void openExternal(url)
+  const modelRuntime = await createModelRuntime()
+  await modelRuntime.login(args.providerID, "oauth", {
+    notify: (event) => {
+      if (event.type === "auth_url") {
+        void openExternal(event.url)
+      } else if (event.type === "device_code") {
+        void openExternal(event.verificationUri)
+      } else {
+        console.log(`[pi oauth:${args.providerID}] ${event.message}`)
+      }
     },
-    onDeviceCode: ({ verificationUri }) => {
-      void openExternal(verificationUri)
-    },
-    onPrompt: async () => {
+    prompt: async (prompt) => {
+      if (prompt.type === "select" && prompt.options[0]) return prompt.options[0].id
       throw new Error("Browser OAuth callback did not complete. Please try again.")
     },
-    onProgress: (message) => {
-      console.log(`[pi oauth:${args.providerID}] ${message}`)
-    },
-    onSelect: async (prompt) => prompt.options[0]?.id,
   })
 }
 
@@ -640,7 +643,8 @@ async function createPiSession(
 ) {
   await syncDilagDesignSkills()
   const pi = await loadPi()
-  const registry = await createModelRegistry()
+  const modelRuntime = await createModelRuntime()
+  const registry = new pi.ModelRegistry(modelRuntime)
   const model = requestedModel
     ? registry.find(requestedModel.providerID, requestedModel.modelID)
     : chooseDefaultModel(registry.getAvailable())
@@ -659,7 +663,7 @@ async function createPiSession(
     agentDir: getPiAgentDir(),
     model,
     thinkingLevel: getSupportedThinkingLevel(model, thinkingLevel),
-    modelRegistry: registry,
+    modelRuntime,
     sessionManager,
     settingsManager,
     resourceLoader,
@@ -766,11 +770,18 @@ function maybeEvictIdleSessions(): void {
   }
 }
 
-async function createModelRegistry(): Promise<ModelRegistry> {
+async function createModelRuntime(): Promise<ModelRuntime> {
   const pi = await loadPi()
   const agentDir = getPiAgentDir()
-  const authStorage = pi.AuthStorage.create(path.join(agentDir, "auth.json"))
-  return pi.ModelRegistry.create(authStorage, path.join(agentDir, "models.json"))
+  return pi.ModelRuntime.create({
+    authPath: path.join(agentDir, "auth.json"),
+    modelsPath: path.join(agentDir, "models.json"),
+  })
+}
+
+async function createModelRegistry(): Promise<ModelRegistry> {
+  const pi = await loadPi()
+  return new pi.ModelRegistry(await createModelRuntime())
 }
 
 async function findSessionFile(cwd: string, sessionID: string): Promise<string | undefined> {
