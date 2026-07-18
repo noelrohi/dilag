@@ -108,7 +108,7 @@ Tree navigation replaces the old revert/unrevert model. Timeline actions call `b
 
 ## Models And Auth
 
-`bridge.agent.getProviderData()` reads authenticated provider/model availability from Pi's `ModelRegistry`. On first run, Dilag falls back to the first available authenticated model. API keys entered in the provider dialog are written to Pi auth storage under `~/.dilag/pi`.
+`bridge.agent.getProviderData()` reads authenticated provider/model availability from Pi's shared `ModelRuntime`. On first run, Dilag falls back to the first available authenticated model. API keys and OAuth credentials entered through the provider dialog are persisted under `~/.dilag/pi`.
 
 ## Generated Output
 

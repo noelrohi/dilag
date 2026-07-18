@@ -5,13 +5,19 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.3] - 2026-07-18
+## [0.8.4] - 2026-07-18
+
+### Fixed
+
+- **Pi 0.80.10 Compatibility**: Reused Pi's canonical model runtime for authentication, discovery, and sessions, and added the SDK's new `max` thinking level to the desktop bridge and selector.
+
+## [0.8.3] - 2026-07-18 (cancelled release)
 
 ### Fixed
 
 - **Embedded Pi Runtime**: Migrated authentication, model discovery, and session creation to Pi 0.80.10's current SDK so clean release builds succeed.
 
-## [0.8.2] - 2026-07-18
+## [0.8.2] - 2026-07-18 (failed release)
 
 ### Changed
 

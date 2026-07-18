@@ -109,6 +109,7 @@ const DEBUG_PI_SMOKE = process.env.DILAG_DEBUG_PI === "1"
 
 let eventSender: EventSender | undefined
 let piModulePromise: Promise<typeof import("@earendil-works/pi-coding-agent")> | undefined
+let modelRuntimePromise: Promise<ModelRuntime> | undefined
 
 function loadPi() {
   piModulePromise ??= import("@earendil-works/pi-coding-agent")
@@ -196,12 +197,12 @@ function getSupportedThinkingLevels(model?: {
   thinkingLevelMap?: Partial<Record<AgentThinkingLevel, string | null>>
 }): AgentThinkingLevel[] {
   if (!model?.reasoning) return []
-  const levels: AgentThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"]
+  const levels: AgentThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"]
   if (!model.thinkingLevelMap) return ["off", "low", "medium", "high"]
   return levels.filter((level) => {
     const mapped = model.thinkingLevelMap?.[level]
     if (mapped === null) return false
-    if (level === "xhigh") return mapped !== undefined
+    if (level === "xhigh" || level === "max") return mapped !== undefined
     return true
   })
 }
@@ -771,12 +772,16 @@ function maybeEvictIdleSessions(): void {
 }
 
 async function createModelRuntime(): Promise<ModelRuntime> {
-  const pi = await loadPi()
-  const agentDir = getPiAgentDir()
-  return pi.ModelRuntime.create({
-    authPath: path.join(agentDir, "auth.json"),
-    modelsPath: path.join(agentDir, "models.json"),
-  })
+  if (!modelRuntimePromise) {
+    modelRuntimePromise = loadPi().then((pi) => {
+      const agentDir = getPiAgentDir()
+      return pi.ModelRuntime.create({
+        authPath: path.join(agentDir, "auth.json"),
+        modelsPath: path.join(agentDir, "models.json"),
+      })
+    })
+  }
+  return modelRuntimePromise
 }
 
 async function createModelRegistry(): Promise<ModelRegistry> {

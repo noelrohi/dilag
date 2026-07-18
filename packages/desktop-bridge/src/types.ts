@@ -112,7 +112,7 @@ export interface AgentRuntimeInfo {
   sessionCount: number
 }
 
-export type AgentThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+export type AgentThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
 
 export interface AgentModel {
   id: string

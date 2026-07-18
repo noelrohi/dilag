@@ -132,7 +132,7 @@ export function registerHostHandlers(getWindow: () => BrowserWindow | null) {
         text: string
         images?: Array<{ type: "image"; data: string; mimeType: string }>
         model?: { providerID: string; modelID: string } | null
-        thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh"
+        thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
         streamingBehavior?: "steer" | "followUp"
       },
     ) => promptAgentSession(args),
