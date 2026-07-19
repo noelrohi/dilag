@@ -1,12 +1,11 @@
 import { createFileRoute, useParams, useNavigate } from "@tanstack/react-router"
-import { useEffect, useState, useCallback, useRef } from "react"
-import type { ImperativePanelHandle } from "react-resizable-panels"
+import { useEffect, useState, useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useSessions } from "@/hooks/use-sessions"
 import { useSessionMutations } from "@/hooks/use-session-data"
 import { useSessionDesigns, designKeys, type DesignFile } from "@/hooks/use-designs"
 import { usePngGenerator } from "@/hooks/use-png-generator"
-import { useChatWidth } from "@/hooks/use-chat-width"
+import { useStudioPanelLayout } from "@/hooks/use-studio-panels"
 import {
   useScreenPositions,
   useSessionStore,
@@ -32,23 +31,20 @@ import {
 } from "@dilag/ui/alert-dialog"
 import { ChatView } from "@/components/blocks/chat/chat-view"
 import { PageHeader, PageHeaderLeft, PageHeaderRight } from "@/components/blocks/layout/page-header"
+import { PanelControls } from "@/components/blocks/layout/panel-controls"
 import { DesignCanvas } from "@/components/canvas"
+import { CanvasEmptyState } from "@/components/canvas/canvas-empty-state"
 import {
   IconCopy as Copy,
   IconGitBranch as BranchingPathsUp,
   IconPencil as Pen,
-  IconPalette as Palette,
   IconDownload as Download,
   IconFolder as Folder,
   IconChevronDown as AltArrowDown,
   IconCode as Code,
   IconPhoto as Gallery,
-  IconLayoutSidebarRight as SidebarRight,
-  IconArrowsDiagonal as ArrowsExpand,
-  IconArrowsDiagonalMinimize2 as ArrowsCollapse,
 } from "@tabler/icons-react"
 import { IconDots as Ellipsis } from "@tabler/icons-react"
-import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,13 +95,24 @@ export function StudioPageContent({
   const [renameOpen, setRenameOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [deleteTargets, setDeleteTargets] = useState<DeleteTarget[]>([])
-  const [canvasOpen, setCanvasOpen] = useState(true)
-  const [chatCollapsed, setChatCollapsed] = useState(false)
   const [selectedScreenIds, setSelectedScreenIds] = useState<Set<string>>(new Set())
 
-  const chatPanelRef = useRef<ImperativePanelHandle>(null)
-  const canvasPanelRef = useRef<ImperativePanelHandle>(null)
-  const { size: chatSize, updateSize, minSize } = useChatWidth()
+  const {
+    chatPanelRef,
+    canvasPanelRef,
+    canvasOpen,
+    chatCollapsed,
+    setCanvasOpen,
+    setChatCollapsed,
+    updateSize,
+    minSize,
+    panelAnimationClass,
+    toggleChatPanel,
+    toggleCanvasPanel,
+    toggleExpandCanvas,
+    chatDefaultSize,
+    canvasDefaultSize,
+  } = useStudioPanelLayout()
   const { registerChatToggle } = useMenuEvents()
 
   const { selectSession, sessions, isLoading, isLoadingSessions, forkSessionDesignsOnly } =
@@ -144,98 +151,6 @@ export function StudioPageContent({
   useEffect(() => {
     selectSession(sessionId)
   }, [sessionId, selectSession])
-
-  // Animate panel sizes only for button/menu toggles, never while dragging the
-  // handle — a transition during drag would make resizing feel laggy.
-  const [isPanelAnimating, setIsPanelAnimating] = useState(false)
-  const panelAnimationTimeout = useRef<number | null>(null)
-
-  const animatePanels = useCallback(() => {
-    setIsPanelAnimating(true)
-    if (panelAnimationTimeout.current) {
-      window.clearTimeout(panelAnimationTimeout.current)
-    }
-    panelAnimationTimeout.current = window.setTimeout(() => setIsPanelAnimating(false), 300)
-  }, [])
-
-  useEffect(
-    () => () => {
-      if (panelAnimationTimeout.current) {
-        window.clearTimeout(panelAnimationTimeout.current)
-      }
-    },
-    [],
-  )
-
-  const panelAnimationClass = isPanelAnimating
-    ? "transition-[flex-grow] duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none"
-    : undefined
-
-  const toggleChatPanel = useCallback(() => {
-    const panel = chatPanelRef.current
-    if (!panel) return
-
-    animatePanels()
-
-    if (panel.isCollapsed()) {
-      panel.expand(minSize)
-      requestAnimationFrame(() => panel.resize(Math.max(chatSize, minSize)))
-      return
-    }
-
-    // Collapsing the chat while the canvas is hidden would leave an empty window.
-    if (!canvasOpen) return
-
-    const currentSize = panel.getSize()
-    if (currentSize > 0) {
-      updateSize(currentSize)
-    }
-    panel.collapse()
-  }, [chatSize, minSize, updateSize, canvasOpen, animatePanels])
-
-  const toggleCanvasPanel = useCallback(() => {
-    const canvasPanel = canvasPanelRef.current
-    if (!canvasPanel) return
-
-    animatePanels()
-
-    if (canvasOpen) {
-      const chatPanel = chatPanelRef.current
-      if (chatPanel?.isCollapsed()) {
-        chatPanel.expand(minSize)
-      }
-      canvasPanel.collapse()
-      return
-    }
-
-    const nextChatSize = Math.min(Math.max(chatSize, minSize), 50)
-    canvasPanel.expand(100 - nextChatSize)
-    requestAnimationFrame(() => canvasPanel.resize(100 - nextChatSize))
-  }, [canvasOpen, chatSize, minSize, animatePanels])
-
-  // Expand the canvas to full width (collapsing the chat), or restore the chat.
-  const toggleExpandCanvas = useCallback(() => {
-    const chatPanel = chatPanelRef.current
-    const canvasPanel = canvasPanelRef.current
-    if (!chatPanel || !canvasPanel) return
-
-    animatePanels()
-
-    if (chatPanel.isCollapsed()) {
-      chatPanel.expand(minSize)
-      requestAnimationFrame(() => chatPanel.resize(Math.max(Math.min(chatSize, 50), minSize)))
-      return
-    }
-
-    const currentSize = chatPanel.getSize()
-    if (currentSize > 0) {
-      updateSize(currentSize)
-    }
-    if (canvasPanel.isCollapsed()) {
-      canvasPanel.expand()
-    }
-    chatPanel.collapse()
-  }, [chatSize, minSize, updateSize, animatePanels])
 
   useEffect(() => registerChatToggle(toggleChatPanel), [registerChatToggle, toggleChatPanel])
 
@@ -508,7 +423,7 @@ export function StudioPageContent({
             id="chat"
             order={1}
             ref={chatPanelRef}
-            defaultSize={Math.min(chatSize, 50)}
+            defaultSize={chatDefaultSize}
             minSize={minSize}
             maxSize={100}
             collapsible
@@ -517,7 +432,14 @@ export function StudioPageContent({
             onExpand={() => setChatCollapsed(false)}
             className={cn("overflow-hidden", panelAnimationClass)}
           >
-            <div className="flex h-full min-h-0 flex-col">
+            {/* Width floor so the collapsing pane clips its content instead of
+                squishing it; the fade masks the residual reflow. */}
+            <div
+              className={cn(
+                "flex h-full min-h-0 min-w-96 flex-col transition-opacity ease-out motion-reduce:transition-none",
+                chatCollapsed ? "opacity-0 duration-150" : "opacity-100 duration-200 delay-75",
+              )}
+            >
               <PageHeader>
                 <PageHeaderLeft>
                   <Folder size={14} className="shrink-0 text-muted-foreground" />
@@ -638,7 +560,7 @@ export function StudioPageContent({
             id="canvas"
             order={2}
             ref={canvasPanelRef}
-            defaultSize={100 - Math.min(chatSize, 50)}
+            defaultSize={canvasDefaultSize}
             minSize={50}
             collapsible
             collapsedSize={0}
@@ -648,27 +570,28 @@ export function StudioPageContent({
           >
             {canvasOpen && (
               <div className="h-full min-h-0">
-                <div className="h-full min-h-0 overflow-hidden bg-muted/20">
-                  {designs.length === 0 ? (
-                    <CanvasEmptyState isLoading={isCanvasLoading} />
-                  ) : (
-                    <ScreenCaptureProvider platform={currentSession?.platform ?? "web"}>
-                      <ConnectedCanvas
-                        designs={designs}
-                        platform={currentSession?.platform ?? "web"}
-                        positions={screenPositions}
-                        sessionCwd={currentSession?.cwd}
-                        selectedIds={selectedScreenIds}
-                        isLoading={isCanvasLoading}
-                        readOnlyDesigns={isSessionBusy}
-                        onPositionsChange={handlePositionsChange}
-                        onSelectionChange={setSelectedScreenIds}
-                        onDeleteScreen={handleRequestDelete}
-                        onRenameScreen={handleRenameScreen}
-                        onDuplicateScreen={handleDuplicateScreen}
-                        onDesignsMutated={handleDesignsMutated}
-                      />
-                    </ScreenCaptureProvider>
+                <div className="relative h-full min-h-0 overflow-hidden bg-muted/20">
+                  <ScreenCaptureProvider platform={currentSession?.platform ?? "web"}>
+                    <ConnectedCanvas
+                      designs={designs}
+                      platform={currentSession?.platform ?? "web"}
+                      positions={screenPositions}
+                      sessionCwd={currentSession?.cwd}
+                      selectedIds={selectedScreenIds}
+                      isLoading={isCanvasLoading}
+                      readOnlyDesigns={isSessionBusy}
+                      onPositionsChange={handlePositionsChange}
+                      onSelectionChange={setSelectedScreenIds}
+                      onDeleteScreen={handleRequestDelete}
+                      onRenameScreen={handleRenameScreen}
+                      onDuplicateScreen={handleDuplicateScreen}
+                      onDesignsMutated={handleDesignsMutated}
+                    />
+                  </ScreenCaptureProvider>
+                  {designs.length === 0 && (
+                    <div className="pointer-events-none absolute inset-0 z-10">
+                      <CanvasEmptyState isLoading={isCanvasLoading} />
+                    </div>
                   )}
                 </div>
               </div>
@@ -676,49 +599,12 @@ export function StudioPageContent({
           </ResizablePanel>
         </ResizablePanelGroup>
 
-        {/* Panel controls - pinned to the app's top-right corner */}
-        <div className="absolute top-0 right-3 z-40 flex h-[44px] items-center gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className={cn(
-                  "size-7 text-muted-foreground hover:text-foreground",
-                  chatCollapsed && "bg-muted text-foreground",
-                )}
-                onClick={toggleExpandCanvas}
-                aria-label={chatCollapsed ? "Restore chat" : "Expand canvas"}
-                aria-pressed={chatCollapsed}
-              >
-                {chatCollapsed ? <ArrowsCollapse size={14} /> : <ArrowsExpand size={14} />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {chatCollapsed ? "Restore chat" : "Expand canvas"}
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className={cn(
-                  "size-7 text-muted-foreground hover:text-foreground",
-                  canvasOpen && "bg-muted text-foreground",
-                )}
-                onClick={toggleCanvasPanel}
-                aria-label={canvasOpen ? "Hide canvas" : "Show canvas"}
-                aria-pressed={canvasOpen}
-              >
-                <SidebarRight size={14} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {canvasOpen ? "Hide canvas" : "Show canvas"}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+        <PanelControls
+          chatCollapsed={chatCollapsed}
+          canvasOpen={canvasOpen}
+          onToggleExpandCanvas={toggleExpandCanvas}
+          onToggleCanvas={toggleCanvasPanel}
+        />
 
         {/* Rename Dialog */}
         <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
@@ -781,44 +667,6 @@ export function StudioPageContent({
         </AlertDialog>
       </div>
     </AttachmentBridgeProvider>
-  )
-}
-
-function CanvasEmptyState({ isLoading }: { isLoading?: boolean }) {
-  if (isLoading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="relative size-20 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center mb-4">
-            <div className="absolute inset-0 rounded-2xl bg-primary/5 animate-pulse" />
-            <DilagIcon animated className="size-10 text-primary" />
-          </div>
-          <h3 className="font-semibold text-lg">Designing your screens...</h3>
-          <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-            Your screens will appear here as they&apos;re created
-          </p>
-          <div className="flex gap-1.5 justify-center pt-1">
-            <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:0ms]" />
-            <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:300ms]" />
-            <span className="size-1.5 rounded-full bg-primary/50 animate-pulse [animation-delay:600ms]" />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div className="text-center space-y-3">
-        <div className="size-20 rounded-2xl bg-primary/10 mx-auto flex items-center justify-center mb-4">
-          <Palette size={40} className="text-primary/60" />
-        </div>
-        <h3 className="font-semibold text-lg">No screens yet</h3>
-        <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-          Describe what you want to design in the chat and screens will appear here
-        </p>
-      </div>
-    </div>
   )
 }
 

@@ -12,6 +12,10 @@ import {
   usePromptInputController,
 } from "@/components/blocks/chat/prompt-input"
 import { PageHeader } from "@/components/blocks/layout/page-header"
+import { PanelControls } from "@/components/blocks/layout/panel-controls"
+import { CanvasEmptyState } from "@/components/canvas/canvas-empty-state"
+import { useStudioPanelLayout } from "@/hooks/use-studio-panels"
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@dilag/ui/resizable"
 import { RecentSessions } from "@/components/blocks/layout/recent-sessions"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
@@ -63,6 +67,21 @@ function ProjectComposerPage() {
   })
   const project = projects.find((item) => item.id === projectId)
   const [targetPlatform, setTargetPlatform] = useState<"web" | "mobile">("web")
+  const {
+    chatPanelRef,
+    canvasPanelRef,
+    canvasOpen,
+    chatCollapsed,
+    setCanvasOpen,
+    setChatCollapsed,
+    updateSize,
+    minSize,
+    panelAnimationClass,
+    toggleCanvasPanel,
+    toggleExpandCanvas,
+    chatDefaultSize,
+    canvasDefaultSize,
+  } = useStudioPanelLayout()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isSubmittingRef = useRef(false)
 
@@ -123,37 +142,99 @@ function ProjectComposerPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background relative overflow-hidden">
-      <PageHeader className="border-b-0" />
-      <main className="relative flex-1 flex flex-col overflow-auto">
-        <div className="flex-1 flex items-center justify-center px-6 py-16">
-          <div className="w-full max-w-2xl">
-            <div className="text-center mb-10">
-              <h1 className="text-[26px] md:text-[28px] font-normal leading-snug tracking-[-0.01em] text-balance">
-                What should we design in {project.name}?
-              </h1>
-            </div>
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-background">
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="flex-1 min-h-0 overflow-hidden"
+        onLayout={(sizes) => {
+          if (canvasOpen && sizes.length > 1 && sizes[0] > 0) {
+            updateSize(sizes[0])
+          }
+        }}
+      >
+        {/* Composer pane - stands in for the studio's chat pane until a session exists */}
+        <ResizablePanel
+          id="chat"
+          order={1}
+          ref={chatPanelRef}
+          defaultSize={chatDefaultSize}
+          minSize={minSize}
+          maxSize={100}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setChatCollapsed(true)}
+          onExpand={() => setChatCollapsed(false)}
+          className={cn("overflow-hidden", panelAnimationClass)}
+        >
+          {/* Width floor so the collapsing pane clips its content instead of
+              squishing it; the fade masks the residual reflow. */}
+          <div
+            className={cn(
+              "flex h-full min-h-0 min-w-[28rem] flex-col transition-opacity ease-out motion-reduce:transition-none",
+              chatCollapsed ? "opacity-0 duration-150" : "opacity-100 duration-200 delay-75",
+            )}
+          >
+            <PageHeader className="border-b-0" />
+            <main className="relative flex-1 flex flex-col overflow-auto">
+              <div className="flex-1 flex items-center justify-center px-6 py-16">
+                <div className="w-full max-w-2xl">
+                  <div className="text-center mb-10">
+                    <h1 className="text-[26px] md:text-[28px] font-normal leading-snug tracking-[-0.01em] text-balance">
+                      What should we design in {project.name}?
+                    </h1>
+                  </div>
 
-            <ComposerContextTray
-              projectName={project.name}
-              platform={targetPlatform}
-              onPlatformChange={setTargetPlatform}
-            />
+                  <ComposerContextTray
+                    projectName={project.name}
+                    platform={targetPlatform}
+                    onPlatformChange={setTargetPlatform}
+                  />
 
-            <div className="relative z-10">
-              <PromptInputProvider>
-                <ComposerInput
-                  onSubmit={handleSubmit}
-                  disabled={!isServerReady || isSubmitting}
-                  projectPath={project.path}
-                />
-              </PromptInputProvider>
-            </div>
+                  <div className="relative z-10">
+                    <PromptInputProvider>
+                      <ComposerInput
+                        onSubmit={handleSubmit}
+                        disabled={!isServerReady || isSubmitting}
+                        projectPath={project.path}
+                      />
+                    </PromptInputProvider>
+                  </div>
 
-            <RecentSessions sessions={sessions} projectId={project.id} />
+                  <RecentSessions sessions={sessions} projectId={project.id} />
+                </div>
+              </div>
+            </main>
           </div>
-        </div>
-      </main>
+        </ResizablePanel>
+
+        <ResizableHandle disabled={!canvasOpen} className={canvasOpen ? undefined : "hidden"} />
+
+        <ResizablePanel
+          id="canvas"
+          order={2}
+          ref={canvasPanelRef}
+          defaultSize={canvasDefaultSize}
+          minSize={50}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setCanvasOpen(false)}
+          onExpand={() => setCanvasOpen(true)}
+          className={cn("overflow-hidden", panelAnimationClass)}
+        >
+          {canvasOpen && (
+            <div className="h-full min-h-0 bg-muted/20">
+              <CanvasEmptyState />
+            </div>
+          )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      <PanelControls
+        chatCollapsed={chatCollapsed}
+        canvasOpen={canvasOpen}
+        onToggleExpandCanvas={toggleExpandCanvas}
+        onToggleCanvas={toggleCanvasPanel}
+      />
     </div>
   )
 }

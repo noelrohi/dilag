@@ -35,7 +35,7 @@ export function RecentSessions({
             <Button
               type="button"
               variant="ghost"
-              className="group h-auto w-full justify-between gap-3 rounded-xl px-3 py-3 text-left focus-visible:ring-2 focus-visible:ring-ring/30"
+              className="group h-auto w-full justify-between gap-3 rounded-none px-3 py-3 text-left focus-visible:ring-2 focus-visible:ring-ring/30"
               onClick={() =>
                 navigate({
                   to: "/project/$projectId/session/$sessionId",
@@ -45,7 +45,7 @@ export function RecentSessions({
             >
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-sm font-normal text-foreground">
+                  <span className="truncate text-sm font-normal text-muted-foreground">
                     {session.name}
                   </span>
                   {session.favorite && (
