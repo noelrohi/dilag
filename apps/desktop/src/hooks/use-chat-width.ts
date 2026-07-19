@@ -2,7 +2,7 @@ import { useState, useCallback } from "react"
 
 const STORAGE_KEY = "dilag-studio-chat-size"
 const DEFAULT_SIZE = 35 // ~400px on typical screen
-const MIN_SIZE = 20 // ~280px minimum
+const MIN_SIZE = 30 // Keep the chat/composer usable while the canvas is open
 
 export function useChatWidth() {
   const [size, setSize] = useState<number>(() => {
