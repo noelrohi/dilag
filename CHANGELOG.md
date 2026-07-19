@@ -5,6 +5,17 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.8] - 2026-07-19
+
+### Added
+
+- **Inline Element Edits**: Select an element on the canvas, describe the change in place, and send it directly to the agent with the relevant screen context.
+
+### Changed
+
+- **Project Canvas**: Existing project designs now appear before a chat starts, with canvas controls for focusing the composer or design workspace.
+- **Studio Layout**: Increased the minimum chat width so prompts and conversation content remain usable beside the canvas.
+
 ## [0.8.7] - 2026-07-19
 
 ### Changed
