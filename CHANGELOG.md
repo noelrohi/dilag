@@ -5,6 +5,13 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.9] - 2026-07-19
+
+### Changed
+
+- **App Updates**: Update status and download progress now appear consistently in the titlebar and Settings, with clearer controls for checking, downloading, and restarting.
+- **Settings**: Simplified the General, Storage, and About sections for a more compact layout.
+
 ## [0.8.8] - 2026-07-19
 
 ### Added
