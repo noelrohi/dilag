@@ -14,7 +14,9 @@ import {
 import { PageHeader } from "@/components/blocks/layout/page-header"
 import { PanelControls } from "@/components/blocks/layout/panel-controls"
 import { CanvasEmptyState } from "@/components/canvas/canvas-empty-state"
+import { DesignCanvas, type ScreenPosition } from "@/components/canvas"
 import { useStudioPanelLayout } from "@/hooks/use-studio-panels"
+import { useSessionDesigns } from "@/hooks/use-designs"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@dilag/ui/resizable"
 import { RecentSessions } from "@/components/blocks/layout/recent-sessions"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
@@ -66,7 +68,9 @@ function ProjectComposerPage() {
     createSessionInProject,
   })
   const project = projects.find((item) => item.id === projectId)
+  const { data: designs = [], isLoading: isLoadingDesigns } = useSessionDesigns(project?.path)
   const [targetPlatform, setTargetPlatform] = useState<"web" | "mobile">("web")
+  const [screenPositions, setScreenPositions] = useState<ScreenPosition[]>([])
   const {
     chatPanelRef,
     canvasPanelRef,
@@ -170,7 +174,7 @@ function ProjectComposerPage() {
               squishing it; the fade masks the residual reflow. */}
           <div
             className={cn(
-              "flex h-full min-h-0 min-w-[28rem] flex-col transition-opacity ease-out motion-reduce:transition-none",
+              "flex h-full min-h-0 min-w-96 flex-col transition-opacity ease-out motion-reduce:transition-none",
               chatCollapsed ? "opacity-0 duration-150" : "opacity-100 duration-200 delay-75",
             )}
           >
@@ -222,8 +226,20 @@ function ProjectComposerPage() {
           className={cn("overflow-hidden", panelAnimationClass)}
         >
           {canvasOpen && (
-            <div className="h-full min-h-0 bg-muted/20">
-              <CanvasEmptyState />
+            <div className="relative h-full min-h-0 overflow-hidden bg-muted/20">
+              <DesignCanvas
+                designs={designs}
+                platform={targetPlatform}
+                positions={screenPositions}
+                sessionCwd={project.path}
+                readOnlyDesigns
+                onPositionsChange={setScreenPositions}
+              />
+              {designs.length === 0 && (
+                <div className="pointer-events-none absolute inset-0 z-10">
+                  <CanvasEmptyState isLoading={isLoadingDesigns} />
+                </div>
+              )}
             </div>
           )}
         </ResizablePanel>
