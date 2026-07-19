@@ -5,6 +5,12 @@ All notable changes to Dilag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.7] - 2026-07-19
+
+### Changed
+
+- **Desktop Composer**: Elevated the prompt surface and added a compact project and platform context tray for clearer prompt targeting.
+
 ## [0.8.6] - 2026-07-18
 
 ### Added
