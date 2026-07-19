@@ -32,7 +32,10 @@ export type UpdateCheckResult =
   | { status: "up-to-date" }
   | { status: "error"; error: string }
 
+export type UpdaterPhase = "idle" | "checking" | "downloading" | "ready"
+
 interface UpdaterContextValue extends UpdaterState {
+  phase: UpdaterPhase
   checkForUpdates: (silent?: boolean) => Promise<UpdateCheckResult>
   installUpdate: () => Promise<void>
   dismissUpdate: () => void
@@ -283,8 +286,17 @@ export function UpdaterProvider({ children }: UpdaterProviderProps) {
     return () => clearTimeout(timer)
   }, [checkForUpdates])
 
+  const phase: UpdaterPhase = state.checking
+    ? "checking"
+    : state.downloading
+      ? "downloading"
+      : state.updateReady
+        ? "ready"
+        : "idle"
+
   const value: UpdaterContextValue = {
     ...state,
+    phase,
     checkForUpdates,
     installUpdate,
     dismissUpdate,

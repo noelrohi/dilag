@@ -6,13 +6,9 @@ import {
   IconDeviceDesktop as Monitor,
   IconExternalLink as SquareArrowRightUp,
   IconTrash as TrashBinMinimalistic,
-  IconRefresh as Refresh,
-  IconServer as Server,
-  IconInfoCircle as InfoCircle,
-  IconPalette as Palette,
 } from "@tabler/icons-react"
 import { useTheme } from "@/components/theme-provider"
-import { useUpdaterContext } from "@/context/updater-context"
+import { useUpdaterContext, type UpdaterPhase } from "@/context/updater-context"
 import { PageHeader } from "@/components/blocks/layout/page-header"
 import { cn } from "@/lib/utils"
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
@@ -38,19 +34,6 @@ interface AppInfo {
 
 function SettingsPage() {
   const { theme, setTheme } = useTheme()
-  const {
-    checkForUpdates,
-    checking,
-    updateAvailable,
-    updateInfo,
-    installUpdate,
-    downloading,
-    downloadProgress,
-    updateReady,
-    upToDate,
-    error: updateError,
-  } = useUpdaterContext()
-
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -90,8 +73,8 @@ function SettingsPage() {
               <h1 className="text-xl font-semibold text-foreground">Settings</h1>
               <p className="text-sm text-muted-foreground mt-0.5">Manage your preferences</p>
             </header>
-            {/* Appearance Section */}
-            <SettingsSection icon={<Palette size={16} />} title="Appearance">
+            {/* General Section */}
+            <SettingsSection title="General">
               <SettingsCard>
                 <SettingsRow label="Theme">
                   <ThemeSegment value={theme} onChange={setTheme} />
@@ -105,7 +88,6 @@ function SettingsPage() {
 
             {/* Storage Section */}
             <SettingsSection
-              icon={<Server size={16} />}
               title="Storage"
               description={appInfo ? formatBytes(appInfo.data_size_bytes) : undefined}
             >
@@ -116,55 +98,42 @@ function SettingsPage() {
                   </code>
                 </SettingsRow>
                 <SettingsDivider />
-                <button
-                  onClick={() => setResetDialogOpen(true)}
-                  className={cn(
-                    "w-full flex items-center gap-3 py-3 px-1",
-                    "text-destructive hover:text-destructive/80 transition-colors",
-                  )}
-                >
-                  <TrashBinMinimalistic size={16} />
-                  <span className="text-sm font-medium">Reset All Data</span>
-                </button>
+                <SettingsRow label="Reset">
+                  <button
+                    onClick={() => setResetDialogOpen(true)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium",
+                      "text-destructive bg-destructive/10 hover:bg-destructive/15 transition-colors",
+                    )}
+                  >
+                    <TrashBinMinimalistic size={13} />
+                    Reset All Data
+                  </button>
+                </SettingsRow>
               </SettingsCard>
             </SettingsSection>
 
             {/* About Section */}
-            <SettingsSection icon={<InfoCircle size={16} />} title="About">
+            <SettingsSection title="About">
               <SettingsCard>
                 <SettingsRow label="Version">
-                  <span className="text-sm font-mono tabular-nums text-muted-foreground">
-                    {appInfo?.version ?? "—"}
-                  </span>
+                  <UpdateSettingsControl version={appInfo?.version} />
                 </SettingsRow>
                 <SettingsDivider />
-                <SettingsRow label="Updates">
-                  <UpdateSettingsControl
-                    checking={checking}
-                    updateAvailable={updateAvailable}
-                    updateVersion={updateInfo?.version}
-                    downloading={downloading}
-                    downloadProgress={downloadProgress}
-                    updateReady={updateReady}
-                    upToDate={upToDate}
-                    error={updateError}
-                    onCheck={() => checkForUpdates()}
-                    onInstall={installUpdate}
-                  />
+                <SettingsRow label="Links">
+                  <div className="flex items-center gap-2">
+                    <ExternalLinkButton
+                      onClick={() => bridge.shell.openExternal("https://github.com/noelrohi/dilag")}
+                      label="GitHub"
+                    />
+                    <ExternalLinkButton
+                      onClick={() =>
+                        bridge.shell.openExternal("https://github.com/noelrohi/dilag#readme")
+                      }
+                      label="Documentation"
+                    />
+                  </div>
                 </SettingsRow>
-                <SettingsDivider />
-                <div className="flex items-center gap-2 py-3 px-1">
-                  <ExternalLinkButton
-                    onClick={() => bridge.shell.openExternal("https://github.com/noelrohi/dilag")}
-                    label="GitHub"
-                  />
-                  <ExternalLinkButton
-                    onClick={() =>
-                      bridge.shell.openExternal("https://github.com/noelrohi/dilag#readme")
-                    }
-                    label="Documentation"
-                  />
-                </div>
               </SettingsCard>
             </SettingsSection>
           </div>
@@ -212,95 +181,65 @@ function SettingsPage() {
   )
 }
 
-function UpdateSettingsControl({
-  checking,
-  updateAvailable,
-  updateVersion,
-  downloading,
-  downloadProgress,
-  updateReady,
-  upToDate,
-  error,
-  onCheck,
-  onInstall,
-}: {
-  checking: boolean
-  updateAvailable: boolean
-  updateVersion?: string
-  downloading: boolean
-  downloadProgress: number
-  updateReady: boolean
-  upToDate: boolean
-  error: string | null
-  onCheck: () => void
-  onInstall: () => void
-}) {
-  if (updateAvailable && updateReady) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">
-          Ready to install{updateVersion ? ` v${updateVersion}` : ""}
-        </span>
-        <button
-          onClick={onInstall}
-          className={cn(
-            "px-3 py-1.5 rounded-md text-xs font-medium",
-            "bg-primary text-primary-foreground",
-            "hover:bg-primary/90 transition-colors",
-          )}
-        >
-          Update
-        </button>
-      </div>
-    )
-  }
+function UpdateSettingsControl({ version }: { version?: string }) {
+  const {
+    phase,
+    updateAvailable,
+    updateInfo,
+    downloadProgress,
+    upToDate,
+    error,
+    checkForUpdates,
+    installUpdate,
+  } = useUpdaterContext()
 
-  if (updateAvailable && downloading) {
-    return (
-      <span className="text-xs tabular-nums text-muted-foreground">
-        Downloading {downloadProgress}%
-      </span>
-    )
-  }
-
-  if (checking) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Refresh size={12} className="animate-spin" />
-        Checking…
-      </span>
-    )
+  const busy = phase === "checking" || phase === "downloading"
+  const labelByPhase: Record<UpdaterPhase, string> = {
+    idle: "Check for Updates",
+    checking: "Checking…",
+    downloading: `Downloading ${downloadProgress}%`,
+    ready: "Restart to Update",
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {error ? <span className="max-w-56 truncate text-xs text-destructive">{error}</span> : null}
-      {!error && upToDate ? (
-        <span className="text-xs text-muted-foreground">You're on the latest version</span>
+    <div className="flex items-center gap-3">
+      {error ? (
+        <span className="max-w-48 truncate text-xs text-destructive">{error}</span>
+      ) : upToDate ? (
+        <span className="text-xs text-muted-foreground">Up to date</span>
       ) : null}
+      <span className="text-sm font-mono tabular-nums text-muted-foreground">
+        {version ?? "—"}
+        {updateAvailable && updateInfo ? ` → ${updateInfo.version}` : ""}
+      </span>
       <button
-        onClick={onCheck}
+        onClick={() => {
+          if (phase === "ready") {
+            void installUpdate()
+          } else {
+            void checkForUpdates()
+          }
+        }}
+        disabled={busy}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-1.5 rounded-md",
-          "text-xs text-muted-foreground",
-          "bg-muted/50 hover:bg-muted hover:text-foreground",
-          "transition-colors",
+          "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+          "disabled:opacity-60 tabular-nums",
+          phase === "ready"
+            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
         )}
       >
-        <Refresh size={12} />
-        Check for Updates
+        {labelByPhase[phase]}
       </button>
     </div>
   )
 }
 
 function SettingsSection({
-  icon,
   title,
   description,
   children,
 }: {
-  icon: React.ReactNode
   title: string
   description?: string
   children: React.ReactNode
@@ -308,7 +247,6 @@ function SettingsSection({
   return (
     <section className="mb-8">
       <div className="flex items-center gap-2.5 px-1 mb-3">
-        <span className="text-muted-foreground">{icon}</span>
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         {description && (
           <>
