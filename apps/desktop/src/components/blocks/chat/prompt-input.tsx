@@ -996,7 +996,22 @@ export const PromptInput = ({
         title="Upload files"
         type="file"
       />
-      <form className={cn("w-full", className)} onSubmit={handleSubmit} ref={formRef} {...props}>
+      <form
+        className={cn(
+          // Elevated composer surface: definition from a hairline ring and
+          // layered shadow rather than a border.
+          "w-full rounded-2xl bg-sidebar text-sidebar-foreground transition-shadow duration-200",
+          "[&_[data-slot=input-group]]:rounded-2xl",
+          "[&_[data-slot=input-group]]:border-transparent",
+          "[&_[data-slot=input-group]]:ring-1 [&_[data-slot=input-group]]:ring-foreground/10",
+          "[&_[data-slot=input-group]]:shadow-xl [&_[data-slot=input-group]]:shadow-black/30",
+          "focus-within:[&_[data-slot=input-group]]:ring-foreground/20",
+          className,
+        )}
+        onSubmit={handleSubmit}
+        ref={formRef}
+        {...props}
+      >
         <InputGroup className="overflow-hidden">{children}</InputGroup>
       </form>
     </>

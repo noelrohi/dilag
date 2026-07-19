@@ -22,11 +22,20 @@ import { useSessions } from "@/hooks/use-sessions"
 import { bridge } from "@/lib/bridge"
 import { cn } from "@/lib/utils"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@dilag/ui/dropdown-menu"
+import {
   IconArrowUp as ArrowUp,
+  IconChevronDown as ChevronDown,
+  IconCircleCheck as CheckCircle,
   IconCircleX as CloseCircle,
   IconClipboardText as ClipboardText,
   IconDeviceDesktop as Monitor,
   IconDeviceMobile as Smartphone,
+  IconFolder as Folder,
 } from "@tabler/icons-react"
 import { createFileRoute, Outlet, useMatch, useNavigate, useParams } from "@tanstack/react-router"
 import type { FileUIPart } from "ai"
@@ -125,15 +134,21 @@ function ProjectComposerPage() {
               </h1>
             </div>
 
-            <PlatformToggle value={targetPlatform} onChange={setTargetPlatform} />
+            <ComposerContextTray
+              projectName={project.name}
+              platform={targetPlatform}
+              onPlatformChange={setTargetPlatform}
+            />
 
-            <PromptInputProvider>
-              <ComposerInput
-                onSubmit={handleSubmit}
-                disabled={!isServerReady || isSubmitting}
-                projectPath={project.path}
-              />
-            </PromptInputProvider>
+            <div className="relative z-10">
+              <PromptInputProvider>
+                <ComposerInput
+                  onSubmit={handleSubmit}
+                  disabled={!isServerReady || isSubmitting}
+                  projectPath={project.path}
+                />
+              </PromptInputProvider>
+            </div>
 
             <RecentSessions sessions={sessions} projectId={project.id} />
           </div>
@@ -362,7 +377,6 @@ function ComposerInput({
       <PromptInput
         onSubmit={({ text, files }) => handleSubmit(text, files)}
         onKeyDownCapture={handleKeyDownCapture}
-        className="rounded-2xl bg-sidebar text-sidebar-foreground transition-colors duration-200 [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border focus-within:[&_[data-slot=input-group]]:border-primary/50"
       >
         <PromptInputAttachments>
           {(attachment) => <PromptInputAttachment data={attachment} />}
@@ -442,40 +456,54 @@ function ComposerInput({
   )
 }
 
-function PlatformToggle({
-  value,
-  onChange,
+const PLATFORM_OPTIONS = [
+  { value: "web", label: "Web", icon: Monitor },
+  { value: "mobile", label: "Mobile", icon: Smartphone },
+] as const
+
+function ComposerContextTray({
+  projectName,
+  platform,
+  onPlatformChange,
 }: {
-  value: "web" | "mobile"
-  onChange: (platform: "web" | "mobile") => void
+  projectName: string
+  platform: "web" | "mobile"
+  onPlatformChange: (platform: "web" | "mobile") => void
 }) {
+  const active = PLATFORM_OPTIONS.find((option) => option.value === platform) ?? PLATFORM_OPTIONS[0]
+  const ActiveIcon = active.icon
   return (
-    <div className="flex justify-center mb-6">
-      <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-muted/50 border border-border/30">
-        <button
-          onClick={() => onChange("web")}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-xs font-medium transition-all duration-200",
-            value === "web"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Monitor size={14} />
-          Web
-        </button>
-        <button
-          onClick={() => onChange("mobile")}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-xs font-medium transition-all duration-200",
-            value === "mobile"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Smartphone size={14} />
-          Mobile
-        </button>
+    // Tray fuses behind the composer: its bottom padding hides under the
+    // composer card, which sits above it via the z-10 wrapper. mx-4 insets it
+    // to where the composer's rounded-2xl top corners end on both sides.
+    <div className="relative mx-4 rounded-t-2xl bg-muted/30 shadow-lg shadow-black/20 px-2 pt-1.5 pb-6 -mb-4">
+      <div className="flex items-center gap-1">
+        <span className="inline-flex h-8 min-w-0 items-center gap-2 rounded-lg px-2.5 text-sm text-muted-foreground">
+          <Folder size={16} className="shrink-0 opacity-70" />
+          <span className="max-w-56 truncate">{projectName}</span>
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="inline-flex h-8 shrink-0 items-center gap-2 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground">
+              <ActiveIcon size={16} className="opacity-70" />
+              {active.label}
+              <ChevronDown size={13} className="opacity-50" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {PLATFORM_OPTIONS.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                onClick={() => onPlatformChange(option.value)}
+                className="gap-2"
+              >
+                <option.icon size={15} />
+                <span className="flex-1">{option.label} app</span>
+                {platform === option.value && <CheckCircle size={15} className="text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )

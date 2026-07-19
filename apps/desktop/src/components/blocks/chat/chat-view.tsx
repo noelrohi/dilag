@@ -1443,9 +1443,7 @@ function ChatInputArea({
         <PromptInput
           onSubmit={async ({ text, files }) => handleSubmit(text, files)}
           onKeyDownCapture={handleComposerKeyDownCapture}
-          className={cn(
-            "relative z-10 rounded-2xl bg-sidebar text-sidebar-foreground transition-colors duration-200 [&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:border-sidebar-border focus-within:[&_[data-slot=input-group]]:border-primary/50",
-          )}
+          className="relative z-10"
         >
           <PromptInputAttachments>
             {(attachment) => <PromptInputAttachment data={attachment} />}
