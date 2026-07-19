@@ -106,6 +106,34 @@ export type ScreenReferencesContext = {
   clear: () => void
 }
 
+/**
+ * Convert a screen reference to a file part (an HTML file with a data URL).
+ * If the screen has a selectedElement, it's embedded as a marker comment in
+ * the HTML so the agent knows which element the message targets.
+ */
+export function screenReferenceToFilePart(ref: Omit<ScreenReference, "id">): FileUIPart {
+  let htmlContent = ref.html
+
+  if (ref.selectedElement) {
+    const marker = `<!-- dilag-element-selection: ${JSON.stringify(ref.selectedElement)} -->`
+    // Insert after <!DOCTYPE html> if present, otherwise at the start
+    if (htmlContent.toLowerCase().startsWith("<!doctype")) {
+      const doctypeEnd = htmlContent.indexOf(">") + 1
+      htmlContent = htmlContent.slice(0, doctypeEnd) + "\n" + marker + htmlContent.slice(doctypeEnd)
+    } else {
+      htmlContent = marker + "\n" + htmlContent
+    }
+  }
+
+  const base64 = btoa(unescape(encodeURIComponent(htmlContent)))
+  return {
+    type: "file" as const,
+    url: `data:text/html;base64,${base64}`,
+    mediaType: "text/html",
+    filename: ref.filename,
+  }
+}
+
 export type TextInputContext = {
   value: string
   setInput: (v: string) => void
@@ -899,33 +927,7 @@ export const PromptInput = ({
       form.reset()
     }
 
-    // Convert screen references to file parts (as HTML files with data URLs)
-    // If a screen has a selectedElement, embed it as a marker comment in the HTML
-    const screenRefFiles: FileUIPart[] = screenReferences.map((ref) => {
-      let htmlContent = ref.html
-
-      // Embed element selection info as a marker comment at the top of the HTML
-      if (ref.selectedElement) {
-        const marker = `<!-- dilag-element-selection: ${JSON.stringify(ref.selectedElement)} -->`
-        // Insert after <!DOCTYPE html> if present, otherwise at the start
-        if (htmlContent.toLowerCase().startsWith("<!doctype")) {
-          const doctypeEnd = htmlContent.indexOf(">") + 1
-          htmlContent =
-            htmlContent.slice(0, doctypeEnd) + "\n" + marker + htmlContent.slice(doctypeEnd)
-        } else {
-          htmlContent = marker + "\n" + htmlContent
-        }
-      }
-
-      // Convert HTML string to base64 data URL
-      const base64 = btoa(unescape(encodeURIComponent(htmlContent)))
-      return {
-        type: "file" as const,
-        url: `data:text/html;base64,${base64}`,
-        mediaType: "text/html",
-        filename: ref.filename,
-      }
-    })
+    const screenRefFiles: FileUIPart[] = screenReferences.map(screenReferenceToFilePart)
 
     // Convert blob URLs to data URLs asynchronously
     Promise.all(

@@ -1,7 +1,6 @@
-import { memo } from "react"
+import { memo, useState } from "react"
 import { Button } from "@dilag/ui/button"
-import { IconWand as MagicStick, IconCopy as Copy } from "@tabler/icons-react"
-import { IconX as X } from "@tabler/icons-react"
+import { IconCopy as Copy, IconX as X, IconArrowUp as ArrowUp } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 import type { ElementInfo } from "@/context/element-selection-store"
 import { toast } from "sonner"
@@ -13,15 +12,18 @@ interface ElementSelectionMenuProps {
   scale: number
   /** Offset from the container */
   offset?: { x: number; y: number }
-  /** Callback when "Edit with AI" is clicked */
-  onEditWithAI: () => void
+  /**
+   * Edit the element with AI. With a prompt, the edit is sent to the agent
+   * immediately; without one, the element is attached to the composer.
+   */
+  onEditWithAI: (prompt?: string) => void
   /** Callback to close/deselect */
   onClose: () => void
 }
 
 /**
- * Floating menu that appears when an element is selected.
- * Positioned above the selected element.
+ * Inline prompt that appears when an element is selected: describe the change
+ * right where you clicked and it's sent straight to the agent.
  */
 function ElementSelectionMenuComponent({
   element,
@@ -30,7 +32,8 @@ function ElementSelectionMenuComponent({
   onEditWithAI,
   onClose,
 }: ElementSelectionMenuProps) {
-  // Calculate position (above the element)
+  const [prompt, setPrompt] = useState("")
+
   const scaledRect = {
     x: element.rect.x * scale + offset.x,
     y: element.rect.y * scale + offset.y,
@@ -38,10 +41,10 @@ function ElementSelectionMenuComponent({
     height: element.rect.height * scale,
   }
 
-  // Position menu above the element, centered horizontally
+  // Below the element, centered horizontally
   const menuStyle = {
     left: scaledRect.x + scaledRect.width / 2,
-    top: scaledRect.y - 8, // 8px gap above element
+    top: scaledRect.y + scaledRect.height + 8,
   }
 
   const handleCopySelector = () => {
@@ -49,52 +52,80 @@ function ElementSelectionMenuComponent({
     toast.success("Selector copied to clipboard")
   }
 
+  const handleSubmit = () => {
+    const trimmed = prompt.trim()
+    onEditWithAI(trimmed || undefined)
+    // A typed prompt is on its way to the agent — the selection has served
+    // its purpose. An empty submit attaches to the composer instead, where
+    // the selection chip provides the context, so close in both cases.
+    onClose()
+  }
+
   return (
     <div
       className={cn(
-        "absolute z-30 flex items-center gap-1 p-1",
-        "bg-popover/95 backdrop-blur-sm rounded-lg shadow-lg",
+        "nodrag absolute z-30 w-[236px] p-1.5",
+        "bg-popover/95 backdrop-blur-sm rounded-xl shadow-lg",
         "border border-border",
-        "transform -translate-x-1/2 -translate-y-full",
+        "transform -translate-x-1/2",
         "animate-in fade-in-0 zoom-in-95 duration-150",
       )}
       style={menuStyle}
       onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
     >
-      <Button
-        size="sm"
-        variant="default"
-        className="h-7 w-7 p-0"
-        onClick={onEditWithAI}
-        title="Edit selected element"
-        aria-label="Edit selected element"
-      >
-        <MagicStick size={14} />
-      </Button>
-
-      <div className="w-px h-5 bg-border" />
-
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0"
-        onClick={handleCopySelector}
-        title="Copy CSS selector"
-        aria-label="Copy CSS selector"
-      >
-        <Copy size={14} />
-      </Button>
-
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
-        onClick={onClose}
-        title="Close"
-        aria-label="Close element menu"
-      >
-        <X size={14} />
-      </Button>
+      <div className="mb-1 flex items-center gap-1.5 px-0.5">
+        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-primary">
+          {`<${element.tagName}>`}
+        </span>
+        <span className="text-[10px] tabular-nums text-muted-foreground">
+          {Math.round(element.rect.width)}×{Math.round(element.rect.height)}
+        </span>
+        <div className="ml-auto flex items-center">
+          <button
+            type="button"
+            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+            onClick={handleCopySelector}
+            title="Copy CSS selector"
+            aria-label="Copy CSS selector"
+          >
+            <Copy size={12} />
+          </button>
+          <button
+            type="button"
+            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+            onClick={onClose}
+            title="Close"
+            aria-label="Close element menu"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      </div>
+      <div className="flex items-center gap-1">
+        <input
+          autoFocus
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder={`Change this ${element.tagName}…`}
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-ring"
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === "Enter") handleSubmit()
+            if (e.key === "Escape") onClose()
+          }}
+        />
+        <Button
+          size="sm"
+          className="h-7 w-7 shrink-0 p-0"
+          onClick={handleSubmit}
+          title={prompt.trim() ? "Send edit to agent" : "Add element to chat"}
+          aria-label={prompt.trim() ? "Send edit to agent" : "Add element to chat"}
+        >
+          <ArrowUp size={13} />
+        </Button>
+      </div>
     </div>
   )
 }

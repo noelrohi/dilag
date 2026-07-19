@@ -10,6 +10,7 @@ import type { ScreenReference } from "@/components/blocks/chat/prompt-input"
 
 type AddAttachmentFn = (files: File[]) => void
 type AddScreenRefFn = (ref: Omit<ScreenReference, "id">) => void
+type SendElementPromptFn = (prompt: string, ref: Omit<ScreenReference, "id">) => Promise<void>
 
 interface AttachmentBridgeContextValue {
   /** Register the attachment add function from PromptInputProvider */
@@ -26,6 +27,13 @@ interface AttachmentBridgeContextValue {
   addScreenRef: (ref: Omit<ScreenReference, "id">) => void
   /** Ref for external access */
   addScreenRefRef: RefObject<AddScreenRefFn | null>
+  /** Register the function that sends an element-edit prompt straight to the agent */
+  registerSendElementPrompt: (fn: SendElementPromptFn) => void
+  /**
+   * Send an element-edit prompt directly (bypasses the composer).
+   * Returns false if no handler is registered — caller should fall back to attaching.
+   */
+  sendElementPrompt: (prompt: string, ref: Omit<ScreenReference, "id">) => Promise<boolean>
 }
 
 const AttachmentBridgeContext = createContext<AttachmentBridgeContextValue | null>(null)
@@ -43,6 +51,7 @@ interface AttachmentBridgeProviderProps {
 export function AttachmentBridgeProvider({ children }: AttachmentBridgeProviderProps) {
   const addAttachmentRef = useRef<AddAttachmentFn | null>(null)
   const addScreenRefRef = useRef<AddScreenRefFn | null>(null)
+  const sendElementPromptRef = useRef<SendElementPromptFn | null>(null)
 
   const registerAddAttachment = useCallback((fn: AddAttachmentFn) => {
     addAttachmentRef.current = fn
@@ -72,6 +81,22 @@ export function AttachmentBridgeProvider({ children }: AttachmentBridgeProviderP
     return addAttachmentRef.current !== null
   }, [])
 
+  const registerSendElementPrompt = useCallback((fn: SendElementPromptFn) => {
+    sendElementPromptRef.current = fn
+  }, [])
+
+  const sendElementPrompt = useCallback(
+    async (prompt: string, ref: Omit<ScreenReference, "id">) => {
+      if (!sendElementPromptRef.current) {
+        console.warn("AttachmentBridge: No element prompt handler registered yet")
+        return false
+      }
+      await sendElementPromptRef.current(prompt, ref)
+      return true
+    },
+    [],
+  )
+
   const value: AttachmentBridgeContextValue = {
     registerAddAttachment,
     addAttachment,
@@ -80,6 +105,8 @@ export function AttachmentBridgeProvider({ children }: AttachmentBridgeProviderP
     registerAddScreenRef,
     addScreenRef,
     addScreenRefRef,
+    registerSendElementPrompt,
+    sendElementPrompt,
   }
 
   return (

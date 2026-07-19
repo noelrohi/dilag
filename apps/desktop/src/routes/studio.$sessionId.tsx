@@ -702,7 +702,7 @@ function ConnectedCanvas({
   onDuplicateScreen,
   onDesignsMutated,
 }: ConnectedCanvasProps) {
-  const { captureAndAttach, captureElementAndAttach } = useScreenCaptureContext()
+  const { captureAndAttach, editElementWithAI } = useScreenCaptureContext()
 
   return (
     <DesignCanvas
@@ -717,7 +717,7 @@ function ConnectedCanvas({
       onSelectionChange={onSelectionChange}
       onDeleteScreen={onDeleteScreen}
       onCaptureScreen={captureAndAttach}
-      onEditElementWithAI={captureElementAndAttach}
+      onEditElementWithAI={editElementWithAI}
       onRenameScreen={onRenameScreen}
       onDuplicateScreen={onDuplicateScreen}
       onDesignsMutated={onDesignsMutated}

@@ -57,8 +57,8 @@ interface DesignCanvasProps {
   onSelectionChange?: (ids: Set<string>) => void
   onDeleteScreen?: (filename: string) => void
   onCaptureScreen?: (design: DesignFile) => void
-  /** Callback when user wants to edit a specific element with AI */
-  onEditElementWithAI?: (design: DesignFile, element: ElementInfo) => void
+  /** Callback when user wants to edit a specific element with AI. A prompt sends immediately; without one the element is attached to the composer. */
+  onEditElementWithAI?: (design: DesignFile, element: ElementInfo, prompt?: string) => void
   onRenameScreen?: (from: string, to: string) => void
   onDuplicateScreen?: (filename: string) => void
   /** Called after a manual write/rename/duplicate succeeds. */
@@ -121,7 +121,8 @@ function DesignCanvasInner({
               : undefined,
             onDuplicate: onDuplicateScreen ? () => onDuplicateScreen(screenPosition.id) : undefined,
             onEditElementWithAI: onEditElementWithAI
-              ? (element: ElementInfo) => onEditElementWithAI(design, element)
+              ? (element: ElementInfo, prompt?: string) =>
+                  onEditElementWithAI(design, element, prompt)
               : undefined,
             onDesignsMutated,
           } as ScreenNodeData,

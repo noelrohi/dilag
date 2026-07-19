@@ -61,8 +61,8 @@ export interface ScreenNodeData extends Record<string, unknown> {
   onAddToComposer?: () => void
   onRename?: (to: string) => void
   onDuplicate?: () => void
-  /** Callback when user wants to edit a specific element with AI */
-  onEditElementWithAI?: (element: ElementInfo) => void
+  /** Callback when user wants to edit a specific element with AI. A prompt sends immediately; without one the element is attached to the composer. */
+  onEditElementWithAI?: (element: ElementInfo, prompt?: string) => void
   /** Callback after a manual edit (Save in the code viewer) succeeds. */
   onDesignsMutated?: () => void
 }
@@ -355,7 +355,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                     element={selectedElement}
                     scale={scale}
                     offset={iframeOffset}
-                    onEditWithAI={() => onEditElementWithAI(selectedElement)}
+                    onEditWithAI={(prompt) => onEditElementWithAI(selectedElement, prompt)}
                     onClose={clearSelection}
                   />
                 )}
@@ -414,7 +414,7 @@ function ScreenNodeComponent({ id, data, selected }: NodeProps) {
                     element={selectedElement}
                     scale={scale}
                     offset={iframeOffset}
-                    onEditWithAI={() => onEditElementWithAI(selectedElement)}
+                    onEditWithAI={(prompt) => onEditElementWithAI(selectedElement, prompt)}
                     onClose={clearSelection}
                   />
                 )}

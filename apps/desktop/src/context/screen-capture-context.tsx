@@ -18,6 +18,13 @@ interface ScreenCaptureContextValue {
   captureElementAndAttach: (design: DesignFile, element: ElementInfo) => Promise<boolean>
 
   /**
+   * Edit a selected element with AI. With a prompt, sends it straight to the
+   * agent along with the element context; without one, attaches the element
+   * to the composer so the user can write the message there.
+   */
+  editElementWithAI: (design: DesignFile, element: ElementInfo, prompt?: string) => Promise<boolean>
+
+  /**
    * Check if a specific screen is currently being captured.
    */
   isCapturing: (screenId: string) => boolean
@@ -41,7 +48,7 @@ interface ScreenCaptureProviderProps {
 }
 
 export function ScreenCaptureProvider({ children, platform }: ScreenCaptureProviderProps) {
-  const { addScreenRef } = useAttachmentBridge()
+  const { addScreenRef, sendElementPrompt } = useAttachmentBridge()
 
   // Track referenced screen IDs locally (filenames without extension)
   const [referencedScreens, setReferencedScreens] = useState<Set<string>>(new Set())
@@ -118,9 +125,41 @@ export function ScreenCaptureProvider({ children, platform }: ScreenCaptureProvi
     [addScreenRef],
   )
 
+  const editElementWithAI = useCallback(
+    async (design: DesignFile, element: ElementInfo, prompt?: string): Promise<boolean> => {
+      const trimmedPrompt = prompt?.trim()
+      if (!trimmedPrompt) {
+        return captureElementAndAttach(design, element)
+      }
+
+      try {
+        const sent = await sendElementPrompt(trimmedPrompt, {
+          filename: design.filename,
+          title: design.title,
+          html: design.html,
+          selectedElement: {
+            selector: element.selector,
+            html: element.html,
+            tagName: element.tagName,
+            ancestorPath: element.ancestorPath,
+          },
+        })
+        // No chat mounted to send through — fall back to the composer
+        if (!sent) return captureElementAndAttach(design, element)
+        return true
+      } catch (err) {
+        console.error("Failed to send element edit:", err)
+        toast.error("Failed to send edit")
+        return false
+      }
+    },
+    [captureElementAndAttach, sendElementPrompt],
+  )
+
   const value: ScreenCaptureContextValue = {
     captureAndAttach,
     captureElementAndAttach,
+    editElementWithAI,
     isCapturing,
     isAttached,
     platform,

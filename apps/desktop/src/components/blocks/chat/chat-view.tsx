@@ -32,6 +32,7 @@ import { useElapsedTime } from "@/hooks/use-elapsed-time"
 import { DilagIcon } from "@/components/blocks/branding/dilag-icon"
 import { useSessions, type SendMessageOptions } from "@/hooks/use-sessions"
 import { useGlobalEvents } from "@/context/global-events"
+import { useOptionalAttachmentBridge } from "@/context/attachment-bridge"
 import {
   useMessageParts,
   useSessionError,
@@ -80,6 +81,7 @@ import {
   PromptInputScreenReference,
   PromptInputProvider,
   usePromptInputController,
+  screenReferenceToFilePart,
 } from "./prompt-input"
 import { ModelSelectorButton } from "@/components/blocks/selectors/model-selector-button"
 import { AgentSelectorButton } from "@/components/blocks/selectors/agent-selector-button"
@@ -1345,6 +1347,22 @@ function ChatInputArea({
       toast.error("Failed to send message")
     }
   }
+
+  // Element-edit prompts from the canvas bypass the composer and send directly
+  const attachmentBridge = useOptionalAttachmentBridge()
+  useEffect(() => {
+    if (!attachmentBridge) return
+    attachmentBridge.registerSendElementPrompt(async (prompt, ref) => {
+      const filePart = screenReferenceToFilePart(ref)
+      const delivery = await sendMessage(prompt, [filePart], {
+        streamingBehavior: isLoading ? "steer" : undefined,
+      })
+      pushPromptHistory(sessionId, prompt)
+      if (delivery?.status === "queued") {
+        toast.success("Queued steering message")
+      }
+    })
+  }, [attachmentBridge, sendMessage, isLoading, sessionId])
 
   // ESC key handler to stop session
   useEffect(() => {
